@@ -63,9 +63,12 @@ const LoginScreen = ({ navigation }) => {
                             <Text style={styles.forgotText}>Forgot password?</Text>
                         </TouchableOpacity>
 
-                        <TouchableOpacity style={styles.primaryButton}>
-                            <Text style={styles.primaryButtonText}>Log in</Text>
-                        </TouchableOpacity>
+                      <TouchableOpacity 
+    style={styles.primaryButton} 
+    onPress={() => navigation.navigate('NewsFeed')}
+>
+    <Text style={styles.primaryButtonText}>Log in</Text>
+</TouchableOpacity>
 
                         <Text style={styles.dividerText}>Or Login with</Text>
 
