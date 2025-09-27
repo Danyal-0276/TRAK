@@ -1,5 +1,6 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -15,11 +16,14 @@ import PasswordChangedScreen from '../route/PasswordChangedScreen/PasswordChange
 import TagSelectionScreen from '../route/TagSelectionScreen/TagSelectionScreen.jsx';
 import KeywordSelectionScreen from '../route/KeywordSelectionScreen/KeywordSelectionScreen.jsx';
 
-// Import icons - using react-native-vector-icons as fallback
-import { Home, Search, Bell, User } from 'lucide-react-native';
-
 // Import your SearchScreen
 import SearchScreen from '../route/SearchScreen/SearchScreen.jsx';
+
+// IMPORT YOUR ACTUAL ARTICLE DETAIL SCREEN
+import ArticleDetailScreen from '../route/ArticleDetailScreen/ArticleDetailScreen.jsx';
+
+// Import icons
+import { Home, Search, Bell, User } from 'lucide-react-native';
 
 // Fallback screens for missing components
 const FallbackScreen = ({ title, navigation }) => (
@@ -86,7 +90,7 @@ const TabNavigator = () => {
                                 width: 32,
                                 height: 32,
                                 borderRadius: 16,
-                                backgroundColor: '#1DA1F2',
+                                backgroundColor: '#000',
                                 justifyContent: 'center',
                                 alignItems: 'center',
                             }}>
@@ -97,7 +101,7 @@ const TabNavigator = () => {
                     
                     return <IconComponent size={size} color={color} />;
                 },
-                tabBarActiveTintColor: '#1DA1F2',
+                tabBarActiveTintColor: '#000',
                 tabBarInactiveTintColor: '#666',
                 tabBarStyle: {
                     backgroundColor: '#fff',
@@ -114,6 +118,20 @@ const TabNavigator = () => {
             <Tab.Screen name="Notifications" component={NotificationsScreen} />
             <Tab.Screen name="Profile" component={ProfileScreen} />
         </Tab.Navigator>
+    );
+};
+
+// Main App Stack with Tabs nested inside
+const MainAppStack = () => {
+    return (
+        <Stack.Navigator
+            screenOptions={{
+                headerShown: false,
+            }}
+        >
+            <Stack.Screen name="MainTabs" component={TabNavigator} />
+            <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
+        </Stack.Navigator>
     );
 };
 
@@ -135,7 +153,7 @@ const AppNavigation = () => {
                 <Stack.Screen name="ForgotPasswordCode" component={ForgotPasswordCodeScreen} />
                 <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
                 <Stack.Screen name="PasswordChanged" component={PasswordChangedScreen} />
-                <Stack.Screen name="NewsFeed" component={TabNavigator} />
+                <Stack.Screen name="NewsFeed" component={MainAppStack} />
             </Stack.Navigator>
         </NavigationContainer>
     );
