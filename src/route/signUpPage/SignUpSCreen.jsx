@@ -6,10 +6,10 @@ import {
     TouchableOpacity,
     StyleSheet,
     StatusBar,
-    ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
+import WhiteLogo from '../../assets/images/whiteLogo.svg';
 
 const SignUpScreen = ({ navigation }) => {
     const [fullName, setFullName] = useState('');
@@ -18,21 +18,35 @@ const SignUpScreen = ({ navigation }) => {
     const [confirmPassword, setConfirmPassword] = useState('');
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+        <View style={styles.fullContainer}>
+            <StatusBar barStyle="light-content" backgroundColor="#000" />
+            
+            <SafeAreaView style={styles.safeContainer}>
+                {/* Black Background Section - Smaller */}
+                <View style={styles.blackSection}>
+                    {/* Back Button */}
+                    <View style={styles.header}>
+                        <TouchableOpacity 
+                            style={styles.backButton}
+                            onPress={() => navigation.navigate('OpeningScreen')}
+                        >
+                            <ChevronLeft size={24} color="#fff" />
+                        </TouchableOpacity>
+                    </View>
 
-            {/* Back Button */}
-            <View style={styles.header}>
-                <TouchableOpacity
-                    style={styles.backButton}
-                    onPress={() => navigation.navigate('OpeningScreen')}
-                >
-                    <ChevronLeft size={24} color="#000" />
-                </TouchableOpacity>
-            </View>
+                    {/* Logo Section - Smaller */}
+                    <View style={styles.logoSection}>
+                        <View style={styles.logoContainer}>
+                            <WhiteLogo width={80} height={80} />
+                            <Text style={styles.brandName}>TRAK</Text>
+                        </View>
+                    </View>
+                </View>
+            </SafeAreaView>
 
-            <ScrollView contentContainerStyle={styles.scrollContent}>
-                <View style={styles.content}>
+            {/* White Bottom Section with Form - No Scroll */}
+            <View style={styles.bottomSection}>
+                <View style={styles.contentWrapper}>
                     <Text style={styles.title}>Create account</Text>
 
                     <View style={styles.formContainer}>
@@ -114,74 +128,110 @@ const SignUpScreen = ({ navigation }) => {
                         </TouchableOpacity>
                     </View>
                 </View>
-            </ScrollView>
-        </SafeAreaView>
+            </View>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
+    fullContainer: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: '#000',
+    },
+    safeContainer: {
+        backgroundColor: '#000',
+        paddingBottom: 0,
+    },
+    blackSection: {
+        backgroundColor: '#000',
+        paddingHorizontal: 20,
+        paddingBottom: 20,
+        height: 200, // Fixed smaller height
     },
     header: {
-        paddingHorizontal: 20,
         paddingTop: 10,
-        paddingBottom: 10,
+        paddingBottom: 15,
     },
     backButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: '#f5f5f5',
+        backgroundColor: 'rgba(255, 255, 255, 0.2)',
         justifyContent: 'center',
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#ddd',
     },
-    scrollContent: {
-        flexGrow: 1,
+    logoSection: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
     },
-    content: {
+    logoContainer: {
+        alignItems: 'center',
+    },
+    brandName: {
+        fontSize: 20, // Slightly smaller
+        fontWeight: 'bold',
+        color: '#fff',
+        letterSpacing: 3,
+        marginTop: 8,
+    },
+    bottomSection: {
+        flex: 1,
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+    },
+    contentWrapper: {
         flex: 1,
         paddingHorizontal: 30,
-        paddingTop: 20,
+        paddingTop: 25,
+        paddingBottom: 20,
+        justifyContent: 'space-between',
     },
     title: {
-        fontSize: 28,
+        fontSize: 24, // Slightly smaller
         fontWeight: 'bold',
         color: '#000',
-        marginBottom: 30,
+        marginBottom: 20,
+        textAlign: 'left',
     },
     formContainer: {
         flex: 1,
     },
     inputGroup: {
-        marginBottom: 20,
+        marginBottom: 15, // Reduced spacing
     },
     label: {
         fontSize: 14,
         color: '#000',
-        marginBottom: 8,
+        marginBottom: 6,
         fontWeight: '500',
     },
     input: {
         borderWidth: 1,
         borderColor: '#ddd',
-        borderRadius: 8,
+        borderRadius: 12,
         paddingHorizontal: 16,
-        paddingVertical: 12,
+        paddingVertical: 14, // Slightly smaller
         fontSize: 16,
         color: '#000',
-        backgroundColor: '#fff',
+        backgroundColor: '#f8f9fa',
     },
     primaryButton: {
         backgroundColor: '#000',
-        paddingVertical: 15,
-        borderRadius: 8,
+        paddingVertical: 16, // Slightly smaller
+        borderRadius: 25,
         alignItems: 'center',
         marginTop: 10,
-        marginBottom: 30,
+        marginBottom: 20, // Reduced
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 4,
     },
     primaryButtonText: {
         color: '#fff',
@@ -192,18 +242,18 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         color: '#666',
         fontSize: 14,
-        marginBottom: 20,
+        marginBottom: 15, // Reduced
     },
     socialButtons: {
         flexDirection: 'row',
         justifyContent: 'center',
         gap: 15,
-        marginBottom: 40,
+        marginBottom: 15, // Reduced
     },
     socialButton: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        width: 45, // Slightly smaller
+        height: 45,
+        borderRadius: 22.5,
         backgroundColor: '#f5f5f5',
         justifyContent: 'center',
         alignItems: 'center',
@@ -211,14 +261,14 @@ const styles = StyleSheet.create({
         borderColor: '#ddd',
     },
     socialButtonText: {
-        fontSize: 18,
+        fontSize: 16, // Slightly smaller
         fontWeight: 'bold',
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingBottom: 30,
+        paddingTop: 10,
     },
     footerText: {
         color: '#666',
