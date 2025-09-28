@@ -57,61 +57,183 @@ try {
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Bottom Tab Navigator
+// Custom Tab Bar Component with Bubble Effect
+const CustomTabBar = ({ state, descriptors, navigation }) => {
+    return (
+        <View style={styles.tabBarContainer}>
+            {/* Black gradient background with border */}
+            <View style={styles.tabBarBackground}>
+                <View style={styles.tabBarContent}>
+                    {state.routes.map((route, index) => {
+                        const { options } = descriptors[route.key];
+                        const isFocused = state.index === index;
+                        
+                        const onPress = () => {
+                            const event = navigation.emit({
+                                type: 'tabPress',
+                                target: route.key,
+                            });
+
+                            if (!isFocused && !event.defaultPrevented) {
+                                navigation.navigate(route.name);
+                            }
+                        };
+
+                        let IconComponent;
+                        switch (route.name) {
+                            case 'Home':
+                                IconComponent = Home;
+                                break;
+                            case 'Search':
+                                IconComponent = Search;
+                                break;
+                            case 'Notifications':
+                                IconComponent = Bell;
+                                break;
+                            case 'Profile':
+                                IconComponent = User;
+                                break;
+                            default:
+                                IconComponent = Home;
+                        }
+
+                        return (
+                            <TouchableOpacity
+                                key={route.key}
+                                onPress={onPress}
+                                style={[
+                                    styles.tabItem,
+                                    isFocused && styles.tabItemActive
+                                ]}
+                                activeOpacity={0.8}
+                            >
+                                <View style={[
+                                    styles.iconContainer,
+                                    isFocused && styles.iconContainerActive
+                                ]}>
+                                    <IconComponent 
+                                        size={isFocused ? 22 : 20} 
+                                        color={isFocused ? '#fff' : '#888'} 
+                                        strokeWidth={2.5}
+                                    />
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })}
+                </View>
+            </View>
+        </View>
+    );
+};
+
+const styles = {
+    tabBarContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingHorizontal: 0,
+        paddingBottom: 0,
+        paddingTop: 10,
+    },
+    tabBarBackground: {
+        backgroundColor: '#2c2c2c', // Dark gradient start
+        borderTopLeftRadius: 25,
+        borderTopRightRadius: 25,
+        paddingTop: 1,
+        paddingLeft: 1,
+        paddingRight: 1,
+        paddingBottom: 0,
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 10,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    tabBarContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingHorizontal: 16,
+        paddingTop: 8,
+        paddingBottom: 16,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        height: 64,
+        overflow: 'visible',
+    },
+    tabItem: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        position: 'relative',
+        zIndex: 1,
+    },
+    tabItemActive: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        transform: [{ translateY: -24 }],
+        zIndex: 3,
+    },
+    iconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'transparent',
+    },
+    iconContainerActive: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#000', // Black instead of pink
+        shadowColor: '#000',
+        shadowOffset: {
+            width: 0,
+            height: 8,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 15,
+        elevation: 8,
+    },
+    leftCutout: {
+        position: 'absolute',
+        bottom: -8,
+        left: -24,
+        width: 24,
+        height: 24,
+        backgroundColor: '#fff',
+        borderTopRightRadius: 24,
+        zIndex: 2,
+    },
+    rightCutout: {
+        position: 'absolute',
+        bottom: -8,
+        right: -24,
+        width: 24,
+        height: 24,
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 24,
+        zIndex: 2,
+    },
+};
+
+// Bottom Tab Navigator with custom tab bar
 const TabNavigator = () => {
     return (
         <Tab.Navigator
-            screenOptions={({ route }) => ({
+            tabBar={props => <CustomTabBar {...props} />}
+            screenOptions={{
                 headerShown: false,
-                tabBarIcon: ({ focused, color, size }) => {
-                    let IconComponent;
-                    
-                    switch (route.name) {
-                        case 'Home':
-                            IconComponent = Home;
-                            break;
-                        case 'Search':
-                            IconComponent = Search;
-                            break;
-                        case 'Notifications':
-                            IconComponent = Bell;
-                            break;
-                        case 'Profile':
-                            IconComponent = User;
-                            break;
-                        default:
-                            IconComponent = Home;
-                    }
-                    
-                    // Special styling for focused Home tab
-                    if (route.name === 'Home' && focused) {
-                        return (
-                            <View style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 16,
-                                backgroundColor: '#000',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                            }}>
-                                <IconComponent size={20} color="#fff" />
-                            </View>
-                        );
-                    }
-                    
-                    return <IconComponent size={size} color={color} />;
-                },
-                tabBarActiveTintColor: '#000',
-                tabBarInactiveTintColor: '#666',
-                tabBarStyle: {
-                    backgroundColor: '#fff',
-                    borderTopWidth: 1,
-                    borderTopColor: '#e1e8ed',
-                    paddingVertical: 8,
-                    height: 70,
-                },
-                tabBarShowLabel: false,
-            })}
+            }}
         >
             <Tab.Screen name="Home" component={NewsFeedScreen} />
             <Tab.Screen name="Search" component={SearchScreen} />
