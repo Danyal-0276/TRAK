@@ -15,9 +15,10 @@ import ResetPasswordScreen from '../route/resetPasswordPage/ResetPasswordScreen.
 import PasswordChangedScreen from '../route/PasswordChangedScreen/PasswordChangedScreen.jsx';
 import TagSelectionScreen from '../route/TagSelectionScreen/TagSelectionScreen.jsx';
 import KeywordSelectionScreen from '../route/KeywordSelectionScreen/KeywordSelectionScreen.jsx';
+import SettingsScreen from '../route/SettingsScreen/SettingsScreen.jsx';
 
 // Import your SearchScreen
-import SearchScreen from '../route/SearchScreen/SearchScreen.jsx';
+import SearchScreen from '../route/SearchScreen/SearchScreen.jsx'; 
 
 // IMPORT YOUR ACTUAL ARTICLE DETAIL SCREEN
 import ArticleDetailScreen from '../route/ArticleDetailScreen/ArticleDetailScreen.jsx';
@@ -56,6 +57,8 @@ try {
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
+
+
 
 // Custom Tab Bar Component with Bubble Effect
 const CustomTabBar = ({ state, descriptors, navigation }) => {
@@ -253,6 +256,7 @@ const MainAppStack = () => {
         >
             <Stack.Screen name="MainTabs" component={TabNavigator} />
             <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
+             <Stack.Screen name="Settings" component={SettingsScreen} />
         </Stack.Navigator>
     );
 };

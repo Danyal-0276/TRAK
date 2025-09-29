@@ -89,9 +89,13 @@ The agreement, known as the Geneva Climate Accord, establishes binding commitmen
                 <View style={styles.logoContainer}>
                     <BlackLogo width={25} height={25} />
                 </View>
-                <TouchableOpacity style={styles.settingsButton}>
-                    <Settings size={20} color="#000" />
-                </TouchableOpacity>
+                <TouchableOpacity 
+  style={styles.settingsButton}
+  onPress={() => navigation.navigate("Settings")}
+>
+  <Settings size={20} color="#000" />
+</TouchableOpacity>
+
             </View>
 
             {/* Tabs */}
