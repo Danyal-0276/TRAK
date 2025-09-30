@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigation } from "@react-navigation/native";
 import {
   View,
   Text,
@@ -18,6 +19,8 @@ import {
   LogOut,
   Moon,
 } from "lucide-react-native";
+
+
 
 const SettingsScreen = ({ navigation }) => {
   const [pushEnabled, setPushEnabled] = useState(true);
@@ -65,7 +68,7 @@ const SettingsScreen = ({ navigation }) => {
             },
           ]}
         >
-          <Row onPress={() => navigation.navigate("AccountScreen")}>
+          <Row onPress={() => navigation.navigate('ProfileScreen')}>
             <User size={22} color={darkTheme ? "#fff" : "#000"} />
             <Text style={[styles.label, { color: darkTheme ? "#fff" : "#000" }]}>
               Account

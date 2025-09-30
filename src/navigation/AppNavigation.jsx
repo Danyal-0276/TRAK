@@ -280,6 +280,7 @@ const AppNavigation = () => {
                 <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
                 <Stack.Screen name="PasswordChanged" component={PasswordChangedScreen} />
                 <Stack.Screen name="NewsFeed" component={MainAppStack} />
+                <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
             </Stack.Navigator>
         </NavigationContainer>
     );
