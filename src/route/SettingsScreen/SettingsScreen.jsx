@@ -21,7 +21,7 @@ import {
 } from "lucide-react-native";
 
 
-
+ 
 const SettingsScreen = ({ navigation }) => {
   const [pushEnabled, setPushEnabled] = useState(true);
   const [keywordAlerts, setKeywordAlerts] = useState(false);
@@ -253,7 +253,7 @@ const SettingsScreen = ({ navigation }) => {
             },
           ]}
         >
-          <Row>
+          <Row  onPress={() => navigation.navigate("LoginScreen")}>
             <LogOut size={22} color="#EF4444" />
             <Text style={[styles.label, { color: "#EF4444" }]}>Log Out</Text>
           </Row>
