@@ -21,7 +21,7 @@ import PrivacyScreen from '../route/PrivacyScreen/PrivacyScreen.jsx';
 import DataScreen from '../route/DataScreen/DataScreen.jsx';
 import CategoriesScreen from '../route/CategoriesScreen/CategoriesScreen.jsx';
 import AboutScreen from '../route/AboutScreen/AboutScreen.jsx';
-
+import AdminScreen from '../route/AdminScreen/AdminScreen.jsx';
 // Import your SearchScreen
 import SearchScreen from '../route/SearchScreen/SearchScreen.jsx'; 
 
@@ -29,7 +29,7 @@ import SearchScreen from '../route/SearchScreen/SearchScreen.jsx';
 import ArticleDetailScreen from '../route/ArticleDetailScreen/ArticleDetailScreen.jsx';
 
 // Import icons
-import { Home, Search, Bell, User } from 'lucide-react-native';
+import { Home, Search, Bell, User, Shield,UserStar } from 'lucide-react-native';
 
 // Fallback screens for missing components
 const FallbackScreen = ({ title, navigation }) => (
@@ -40,7 +40,7 @@ const FallbackScreen = ({ title, navigation }) => (
 );
 
 // Try to import optional screens
-let NewsFeedScreen, NotificationsScreen, ProfileScreen;
+let NewsFeedScreen, NotificationsScreen, ProfileScreen, BookmarksScreen;
 
 try {
     NewsFeedScreen = require('../route/NewsFeedScreen/NewsFeedScreen.jsx').default;
@@ -58,6 +58,12 @@ try {
     ProfileScreen = require('../route/ProfileScreen/ProfileScreen.jsx').default;
 } catch (e) {
     ProfileScreen = (props) => <FallbackScreen title="Profile" {...props} />;
+}
+
+try {
+    BookmarksScreen = require('../route/BookmarksScreen/BookmarksScreen.jsx').default;
+} catch (e) {
+    BookmarksScreen = (props) => <FallbackScreen title="Bookmarks" {...props} />;
 }
 
 const Stack = createNativeStackNavigator();
@@ -94,6 +100,9 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
                                 break;
                             case 'Search':
                                 IconComponent = Search;
+                                break;
+                            case 'AdminScreen':
+                                IconComponent = UserStar;
                                 break;
                             case 'Notifications':
                                 IconComponent = Bell;
@@ -245,6 +254,7 @@ const TabNavigator = () => {
         >
             <Tab.Screen name="Home" component={NewsFeedScreen} />
             <Tab.Screen name="Search" component={SearchScreen} />
+            <Tab.Screen name="AdminScreen" component={AdminScreen} />
             <Tab.Screen name="Notifications" component={NotificationsScreen} />
             <Tab.Screen name="Profile" component={ProfileScreen} />
         </Tab.Navigator>
@@ -286,6 +296,7 @@ const AppNavigation = () => {
                 <Stack.Screen name="PasswordChanged" component={PasswordChangedScreen} />
                 <Stack.Screen name="NewsFeed" component={MainAppStack} />
                 <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
+                 <Stack.Screen name="AdminScreen" component={AdminScreen} />
                 <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} options={{ title: "Edit Profile" }} />
                 <Stack.Screen name="SettingsScreen" component={SettingsScreen} options={{ title: "Settings" }} />
                 <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ title: "Log In" }} />
