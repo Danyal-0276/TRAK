@@ -1,0 +1,83 @@
+import { Home, Search, Bell, User, UserStar } from 'lucide-react-native';
+
+export const tabBarStyles = {
+    tabBarContainer: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        paddingTop: 10,
+        marginTop: 10,
+    },
+    tabBarBackground: {
+        backgroundColor: '#2c2c2c',
+        borderTopLeftRadius: 25,
+        borderTopRightRadius: 25,
+        paddingTop: 1,
+        paddingLeft: 1,
+        paddingRight: 1,
+        paddingBottom: 0,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+        elevation: 10,
+    },
+    tabBarContent: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        paddingHorizontal: 16,
+        paddingTop: 8,
+        paddingBottom: 16,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-end',
+        height: 64,
+        overflow: 'visible',
+    },
+    tabItem: {
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        position: 'relative',
+        zIndex: 1,
+    },
+    tabItemActive: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        transform: [{ translateY: -24 }],
+        zIndex: 3,
+    },
+    iconContainer: {
+        width: 48,
+        height: 48,
+        borderRadius: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: 'transparent',
+    },
+    iconContainerActive: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        backgroundColor: '#000',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 15,
+        elevation: 8,
+    },
+};
+
+// IMPORTANT: These keys must match the screen names in TabNavigator.jsx
+export const iconMap = {
+    Home: Home,
+    Search: Search,
+    AdminScreen: UserStar,
+    Notifications: Bell,
+    Profile: User,
+};
