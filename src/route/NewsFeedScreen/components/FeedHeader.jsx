@@ -3,34 +3,38 @@
 // ============================================
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Settings, Bell } from 'lucide-react-native';
+import { Settings } from 'lucide-react-native';
+import { SvgXml } from 'react-native-svg';
+import BlackLogo from '../../../assets/images/blackLogo.svg';
+// If you're using react-native-svg with asset imports, use this instead:
+// import BlackLogo from '../assets/blackLogo.svg';
 
-export const FeedHeader = ({ navigation }) => (
-    <View style={headerStyles.container}>
-        <View style={headerStyles.content}>
-            <View style={headerStyles.logoContainer}>
-                <Text style={headerStyles.logoText}>N</Text>
+export const FeedHeader = ({ navigation }) => {
+    // If you need to load the SVG as a string, you can import it
+    // For now, I'll show you how to use it as a component
+    
+    return (
+        <View style={headerStyles.container}>
+            <View style={headerStyles.content}>
+                <View style={headerStyles.logoContainer}>
+                    <BlackLogo width={32} height={32} />
+                    {/* Alternative if using SvgXml: */}
+                    {/* <SvgXml xml={require('../assets/blackLogo.svg')} width={32} height={32} /> */}
+                </View>
+                <Text style={headerStyles.title}>Newsfeed</Text>
             </View>
-            <Text style={headerStyles.title}>Newsfeed</Text>
+            <View style={headerStyles.actions}>
+                <TouchableOpacity
+                    style={headerStyles.iconButton}
+                    onPress={() => navigation.navigate("Settings")}
+                    activeOpacity={0.7}
+                >
+                    <Settings size={20} color="#1F2937" strokeWidth={2} />
+                </TouchableOpacity>
+            </View>
         </View>
-        <View style={headerStyles.actions}>
-            <TouchableOpacity
-                style={headerStyles.iconButton}
-                onPress={() => { }}
-                activeOpacity={0.7}
-            >
-                <Bell size={20} color="#1F2937" strokeWidth={2} />
-            </TouchableOpacity>
-            <TouchableOpacity
-                style={headerStyles.iconButton}
-                onPress={() => navigation.navigate("Settings")}
-                activeOpacity={0.7}
-            >
-                <Settings size={20} color="#1F2937" strokeWidth={2} />
-            </TouchableOpacity>
-        </View>
-    </View>
-);
+    );
+};
 
 const headerStyles = StyleSheet.create({
     container: {
@@ -50,16 +54,9 @@ const headerStyles = StyleSheet.create({
     logoContainer: {
         width: 32,
         height: 32,
-        borderRadius: 16,
-        backgroundColor: '#FF4500',
         justifyContent: 'center',
         alignItems: 'center',
         marginRight: 10,
-    },
-    logoText: {
-        fontSize: 18,
-        fontWeight: '900',
-        color: '#fff',
     },
     title: {
         fontSize: 20,
