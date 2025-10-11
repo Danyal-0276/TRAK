@@ -290,4 +290,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AdminScreen;
+export default AdminScreen; 
