@@ -7,9 +7,9 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
         const IconComponent = iconMap[routeName] || iconMap.Home;
         return (
             <IconComponent
-                size={isFocused ? 22 : 20}
-                color={isFocused ? '#fff' : '#888'}
-                strokeWidth={2.5}
+                size={isFocused ? 24 : 22}
+                color={isFocused ? '#000' : '#888'}
+                strokeWidth={2}
             />
         );
     };
@@ -39,12 +39,9 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
                                     tabBarStyles.tabItem,
                                     isFocused && tabBarStyles.tabItemActive
                                 ]}
-                                activeOpacity={0.8}
+                                activeOpacity={0.7}
                             >
-                                <View style={[
-                                    tabBarStyles.iconContainer,
-                                    isFocused && tabBarStyles.iconContainerActive
-                                ]}>
+                                <View style={tabBarStyles.iconContainer}>
                                     {renderTabIcon(route.name, isFocused)}
                                 </View>
                             </TouchableOpacity>
