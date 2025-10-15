@@ -11,16 +11,16 @@ import {
     RefreshControl,
     Text,
     Animated,
+    Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FeedHeader } from './components/FeedHeader';
 import { TabBar } from './components/TabBar';
 import { NewsCard } from './components/NewsCard';
 import { mockApi } from './Service/mockApi';
 
-const HEADER_HEIGHT = 60; // Approximate height of FeedHeader
-const TAB_HEIGHT = 50; // Approximate height of TabBar
-const TOTAL_HEADER_HEIGHT = HEADER_HEIGHT + TAB_HEIGHT;
+const HEADER_HEIGHT = 60;
+const TAB_HEIGHT = 50;
 
 const NewsFeedScreen = ({ navigation }) => {
     const [activeTab, setActiveTab] = useState('For you');
@@ -29,6 +29,9 @@ const NewsFeedScreen = ({ navigation }) => {
     const [newsData, setNewsData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+
+    const insets = useSafeAreaInsets();
+    const TOTAL_HEADER_HEIGHT = HEADER_HEIGHT + TAB_HEIGHT + insets.top;
 
     const scrollY = useRef(new Animated.Value(0)).current;
     const lastScrollY = useRef(0);
@@ -52,7 +55,6 @@ const NewsFeedScreen = ({ navigation }) => {
 
     const handleRefresh = async () => {
         setRefreshing(true);
-        // Reset header position when refreshing
         Animated.spring(headerTranslateY, {
             toValue: 0,
             useNativeDriver: true,
@@ -70,10 +72,8 @@ const NewsFeedScreen = ({ navigation }) => {
                 const currentScrollY = event.nativeEvent.contentOffset.y;
                 const diff = currentScrollY - lastScrollY.current;
 
-                // Only hide/show if scrolled more than 5 pixels
                 if (Math.abs(diff) > 5) {
                     if (diff > 0 && currentScrollY > 50) {
-                        // Scrolling down - hide header
                         Animated.spring(headerTranslateY, {
                             toValue: -TOTAL_HEADER_HEIGHT,
                             useNativeDriver: true,
@@ -81,7 +81,6 @@ const NewsFeedScreen = ({ navigation }) => {
                             tension: 40,
                         }).start();
                     } else if (diff < 0) {
-                        // Scrolling up - show header
                         Animated.spring(headerTranslateY, {
                             toValue: 0,
                             useNativeDriver: true,
@@ -150,78 +149,116 @@ const NewsFeedScreen = ({ navigation }) => {
     }
 
     return (
-        <SafeAreaView style={styles.container} edges={['top']}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-
-            {/* Animated Header Container */}
-            <Animated.View
+        <View style={styles.outerContainer}>
+            <StatusBar 
+                barStyle="dark-content" 
+                backgroundColor="#FFFFFF"
+                translucent={false}
+            />
+            
+            {/* ABSOLUTE SOLID WHITE BLOCKER - NEVER MOVES */}
+            <View 
                 style={[
-                    styles.headerContainer,
-                    {
-                        transform: [{ translateY: headerTranslateY }],
-                    },
-                ]}
-            >
-                <FeedHeader navigation={navigation} />
-                <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />
-            </Animated.View>
+                    styles.absoluteBlocker, 
+                    { height: TOTAL_HEADER_HEIGHT }
+                ]} 
+                pointerEvents="box-none"
+            />
 
-            {/* Scrollable Feed */}
-            <Animated.ScrollView
-                style={styles.feed}
-                showsVerticalScrollIndicator={false}
-                onScroll={handleScroll}
-                scrollEventThrottle={16}
-                refreshControl={
-                    <RefreshControl
-                        refreshing={refreshing}
-                        onRefresh={handleRefresh}
-                        tintColor="#FF4500"
-                        colors={['#FF4500']}
-                        progressViewOffset={TOTAL_HEADER_HEIGHT}
-                    />
-                }
-            >
-                {/* Spacer for header */}
-                <View style={{ height: TOTAL_HEADER_HEIGHT }} />
+            <SafeAreaView style={styles.safeContainer} edges={['top']}>
+                {/* Animated header that can hide */}
+                <Animated.View
+                    style={[
+                        styles.headerWrapper,
+                        {
+                            transform: [{ translateY: headerTranslateY }],
+                        },
+                    ]}
+                >
+                    <FeedHeader navigation={navigation} />
+                    <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />
+                </Animated.View>
 
-                {newsData.map((item) => (
-                    <NewsCard
-                        key={item.id}
-                        item={item}
-                        onPress={() => handleArticlePress(item)}
-                        votedItems={votedItems}
-                        bookmarkedItems={bookmarkedItems}
-                        onVote={handleVote}
-                        onBookmark={handleBookmark}
-                    />
-                ))}
-                <View style={styles.endPadding} />
-            </Animated.ScrollView>
-        </SafeAreaView>
+                {/* Scrollable content */}
+                <Animated.ScrollView
+                    style={styles.feed}
+                    contentContainerStyle={styles.feedContent}
+                    showsVerticalScrollIndicator={false}
+                    onScroll={handleScroll}
+                    scrollEventThrottle={16}
+                    refreshControl={
+                        <RefreshControl
+                            refreshing={refreshing}
+                            onRefresh={handleRefresh}
+                            tintColor="#FF4500"
+                            colors={['#FF4500']}
+                            progressViewOffset={TOTAL_HEADER_HEIGHT}
+                        />
+                    }
+                >
+                    <View style={{ height: HEADER_HEIGHT + TAB_HEIGHT }} />
+
+                    {newsData.map((item) => (
+                        <NewsCard
+                            key={item.id}
+                            item={item}
+                            onPress={() => handleArticlePress(item)}
+                            votedItems={votedItems}
+                            bookmarkedItems={bookmarkedItems}
+                            onVote={handleVote}
+                            onBookmark={handleBookmark}
+                        />
+                    ))}
+                    <View style={styles.endPadding} />
+                </Animated.ScrollView>
+            </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
+    outerContainer: {
         flex: 1,
-        backgroundColor: '#F7F7F7',
+        backgroundColor: '#FFFFFF',
     },
-    headerContainer: {
+    absoluteBlocker: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
-        zIndex: 1000,
         backgroundColor: '#FFFFFF',
-        elevation: 4,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.1,
-        shadowRadius: 3,
+        zIndex: 99999,
+        elevation: 999,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 3,
+            },
+            android: {
+                elevation: 999,
+            },
+        }),
+    },
+    safeContainer: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+    },
+    container: {
+        flex: 1,
+        backgroundColor: '#F7F7F7',
+    },
+    headerWrapper: {
+        backgroundColor: '#FFFFFF',
+        zIndex: 1000,
+        elevation: 100,
     },
     feed: {
         flex: 1,
+        backgroundColor: '#F7F7F7',
+    },
+    feedContent: {
         backgroundColor: '#F7F7F7',
     },
     loadingContainer: {
