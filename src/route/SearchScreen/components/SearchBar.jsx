@@ -1,4 +1,10 @@
-import React, { useState, useRef, useImperativeHandle, forwardRef, useEffect } from "react";
+import React, {
+  useState,
+  useRef,
+  useImperativeHandle,
+  forwardRef,
+  useEffect,
+} from "react";
 import {
   View,
   TextInput,
@@ -7,10 +13,16 @@ import {
   Keyboard,
   FlatList,
   Text,
+  Pressable,
   Animated as RNAnimated,
 } from "react-native";
 import { Search, X, Trash2, AlertCircle } from "lucide-react-native";
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, Easing } from "react-native-reanimated";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from "react-native-reanimated";
 import LinearGradient from "react-native-linear-gradient";
 import { Dimensions } from "react-native";
 
@@ -20,36 +32,37 @@ const EXPANDED_WIDTH = SCREEN_WIDTH * 0.9;
 
 const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
   const [focused, setFocused] = useState(false);
-  const [expanded, setExpanded] = useState(false); 
+  const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState(initialQuery);
   const [history, setHistory] = useState([]);
   const [showAlert, setShowAlert] = useState(false);
   const inputRef = useRef(null);
 
   const width = useSharedValue(COLLAPSED_WIDTH);
-
-
   const popupScale = useRef(new RNAnimated.Value(0)).current;
 
   const animatedStyle = useAnimatedStyle(() => ({
-    width: withTiming(width.value, { duration: 400, easing: Easing.out(Easing.exp) }),
+    width: withTiming(width.value, {
+      duration: 400,
+      easing: Easing.out(Easing.exp),
+    }),
   }));
 
   const handleExpand = () => {
     setFocused(true);
-    setExpanded(true); 
+    setExpanded(true);
     width.value = EXPANDED_WIDTH;
-    setTimeout(() => inputRef.current?.focus(), 200);
+    setTimeout(() => inputRef.current?.focus(), 150);
   };
 
   const handleExpandVisual = () => {
-    setExpanded(true); 
+    setExpanded(true);
     width.value = EXPANDED_WIDTH;
   };
 
   const handleCollapse = () => {
     setFocused(false);
-    setExpanded(false); 
+    setExpanded(false);
     width.value = COLLAPSED_WIDTH;
     inputRef.current?.blur();
     Keyboard.dismiss();
@@ -62,7 +75,10 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
 
   const handleSearchSubmit = () => {
     if (query.trim().length === 0) return;
-    setHistory((prev) => [query.trim(), ...prev.filter((item) => item !== query.trim())]);
+    setHistory((prev) => [
+      query.trim(),
+      ...prev.filter((item) => item !== query.trim()),
+    ]);
     onSearch && onSearch(query);
   };
 
@@ -72,29 +88,84 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
 
   const handleClearHistory = () => {
     setShowAlert(true);
-    RNAnimated.spring(popupScale, { toValue: 1, useNativeDriver: true, friction: 5 }).start();
+    RNAnimated.spring(popupScale, {
+      toValue: 1,
+      useNativeDriver: true,
+      friction: 5,
+    }).start();
   };
 
   const confirmClearHistory = () => {
     setHistory([]);
-    RNAnimated.spring(popupScale, { toValue: 0, useNativeDriver: true, friction: 5 }).start(() => setShowAlert(false));
+    RNAnimated.spring(popupScale, {
+      toValue: 0,
+      useNativeDriver: true,
+      friction: 5,
+    }).start(() => setShowAlert(false));
   };
 
   const cancelClearHistory = () => {
-    RNAnimated.spring(popupScale, { toValue: 0, useNativeDriver: true, friction: 5 }).start(() => setShowAlert(false));
+    RNAnimated.spring(popupScale, {
+      toValue: 0,
+      useNativeDriver: true,
+      friction: 5,
+    }).start(() => setShowAlert(false));
   };
+
+  const handleCrossPress = () => {
+    if (query.length > 0) {
+      setQuery("");
+      onSearch && onSearch("");
+    } else {
+      handleCollapse();
+    }
+  };
+
+  const handleOutsidePress = () => {
+    if (focused || expanded) {
+      Keyboard.dismiss();
+      setFocused(false);
+      // Hide history when tapping outside
+    }
+  };
+
+    // Hide history dropdown only
+  const hideHistory = () => {
+    setFocused(false);
+  };
+
+  // Collapse visually but keep text
+  const collapseKeepText = () => {
+    setFocused(false);
+    setExpanded(false);
+    width.value = COLLAPSED_WIDTH;
+    inputRef.current?.blur();
+    Keyboard.dismiss();
+  };
+
 
   useEffect(() => {
     setQuery(initialQuery);
   }, [initialQuery]);
 
-  useImperativeHandle(ref, () => ({
+    useImperativeHandle(ref, () => ({
     collapse: handleCollapse,
     expandVisual: handleExpandVisual,
+    hideHistory,
+    collapseKeepText,
   }));
+
 
   return (
     <>
+      {/* Transparent overlay when search bar is active */}
+      {focused && (
+        <Pressable
+          onPress={handleOutsidePress}
+          style={StyleSheet.absoluteFillObject}
+        />
+      )}
+
       <Animated.View style={[styles.container, animatedStyle, { zIndex: 10 }]}>
         <LinearGradient
           colors={["#ffffff", "#f8faff"]}
@@ -118,16 +189,11 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
                 style={styles.input}
                 cursorColor="#4f8cff"
                 selectionColor="rgba(79,140,255,0.3)"
+                onFocus={() => setFocused(true)}
                 onSubmitEditing={handleSearchSubmit}
               />
               <TouchableOpacity
-                onPress={() => {
-                  if (query.length > 0) {
-                    setQuery("");
-                  } else {
-                    handleCollapse();
-                  }
-                }}
+                onPress={handleCrossPress}
                 style={[styles.closeButton, { zIndex: 15 }]}
               >
                 <X size={20} color="#4f8cff" />
@@ -137,8 +203,8 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
         </LinearGradient>
       </Animated.View>
 
-      
-      {expanded && history.length > 0 && (
+      {/* Search History only when focused/typing */}
+      {expanded && focused && query.length >= 0 && history.length > 0 && (
         <View style={styles.historyContainer}>
           <View style={styles.historyHeader}>
             <Text style={styles.historyTitle}>Search History</Text>
@@ -155,6 +221,8 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
                   onPress={() => {
                     setQuery(item);
                     onSearch && onSearch(item);
+                    inputRef.current?.blur();
+                    setFocused(false); // hide history
                   }}
                 >
                   <Text style={styles.historyText}>{item}</Text>
@@ -168,18 +236,20 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
         </View>
       )}
 
-     
       {showAlert && (
         <RNAnimated.View style={styles.modalOverlay}>
           <RNAnimated.View
-            style={[
-              styles.alertBox,
-              { transform: [{ scale: popupScale }] },
-            ]}
+            style={[styles.alertBox, { transform: [{ scale: popupScale }] }]}
           >
-            <AlertCircle size={28} color="#4f8cff" style={{ alignSelf: "center", marginBottom: 12 }} />
+            <AlertCircle
+              size={28}
+              color="#4f8cff"
+              style={{ alignSelf: "center", marginBottom: 12 }}
+            />
             <Text style={styles.alertTitle}>Clear Search History?</Text>
-            <Text style={styles.alertMessage}>This action cannot be undone.</Text>
+            <Text style={styles.alertMessage}>
+              This action cannot be undone.
+            </Text>
             <View style={styles.alertActions}>
               <TouchableOpacity
                 onPress={cancelClearHistory}
@@ -224,7 +294,13 @@ const styles = StyleSheet.create({
     borderColor: "rgba(79,140,255,0.25)",
   },
   icon: { marginRight: 8 },
-  input: { flex: 1, fontSize: 16, color: "#111", fontWeight: "500", paddingVertical: 0 },
+  input: {
+    flex: 1,
+    fontSize: 16,
+    color: "#111",
+    fontWeight: "500",
+    paddingVertical: 0,
+  },
   closeButton: { marginLeft: 10 },
   historyContainer: {
     position: "absolute",
@@ -242,11 +318,20 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 10,
   },
-  historyHeader: { flexDirection: "row", justifyContent: "space-between", marginBottom: 6 },
+  historyHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
   historyTitle: { fontWeight: "600", color: "#4f8cff" },
-  historyItem: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 6, borderBottomWidth: 0.5, borderBottomColor: "#ccc" },
+  historyItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingVertical: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#ccc",
+  },
   historyText: { color: "#111" },
-
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.35)",
@@ -265,9 +350,19 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 12,
   },
-  alertTitle: { fontWeight: "700", fontSize: 18, textAlign: "center", color: "#4f8cff", marginBottom: 6 },
+  alertTitle: {
+    fontWeight: "700",
+    fontSize: 18,
+    textAlign: "center",
+    color: "#4f8cff",
+    marginBottom: 6,
+  },
   alertMessage: { textAlign: "center", color: "#555", marginBottom: 15 },
-  alertActions: { flexDirection: "row", justifyContent: "space-between", gap: 10 },
+  alertActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 10,
+  },
   alertButton: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
 });
 

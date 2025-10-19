@@ -1,15 +1,13 @@
-import React, {
-  useState,
-  useEffect,
-  useCallback,
-  useRef,
-} from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   StyleSheet,
   ScrollView,
   Text,
   RefreshControl,
+  Animated,
+  Pressable,
+  Keyboard,
 } from "react-native";
 import SearchBar from "./components/SearchBar";
 import NewsCard from "./components/NewsCard";
@@ -24,8 +22,11 @@ const SearchScreen = () => {
   const [refreshing, setRefreshing] = useState(false);
 
   const searchRef = useRef(null);
-  const scrollOffset = useRef(0); 
+  const scrollOffset = useRef(0);
 
+  // animation refs
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(10)).current;
 
   const loadNews = async () => {
     try {
@@ -41,10 +42,29 @@ const SearchScreen = () => {
   };
 
   useEffect(() => {
-    loadNews();
+    const timeout = setTimeout(() => loadNews(), 200);
+    return () => clearTimeout(timeout);
   }, []);
 
-  
+  // animate when loading finishes
+  useEffect(() => {
+    if (!loading && filteredNews.length > 0) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.spring(translateY, {
+          toValue: 0,
+          friction: 6,
+          tension: 60,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [loading, filteredNews]);
+
   const handleSearch = useCallback((query) => {
     setSearchQuery(query);
   }, []);
@@ -65,49 +85,41 @@ const SearchScreen = () => {
         );
         setFilteredNews(results);
       }
-    }, 400);
-
+    }, 350);
     return () => clearTimeout(delay);
   }, [searchQuery, allNews]);
 
- 
   const onRefresh = async () => {
     setRefreshing(true);
     await loadNews();
     setRefreshing(false);
   };
 
-
   const handleScroll = (event) => {
     const currentOffset = event.nativeEvent.contentOffset.y;
     const direction = currentOffset > scrollOffset.current ? "down" : "up";
     scrollOffset.current = currentOffset;
-
-    if (direction === "down") {
-      searchRef.current?.collapse();
-    } else if (direction === "up") {
-      searchRef.current?.expandVisual(); 
-    }
+    if (direction === "down") searchRef.current?.collapse();
+    else if (direction === "up") searchRef.current?.expandVisual();
   };
-
 
   const renderShimmer = () => (
     <ScrollView
       contentContainerStyle={styles.scrollContainer}
       showsVerticalScrollIndicator={false}
     >
-      {[1, 2, 3, 4].map((key) => (
+      {[1, 2, 3, 4, 5].map((key) => (
         <SkeletonPlaceholder
           key={key}
-          borderRadius={22}
+          borderRadius={14}
           backgroundColor="#e2e8ff"
-          highlightColor="#f0f4ff"
+          highlightColor="#f5f8ff"
         >
           <SkeletonPlaceholder.Item
             width="100%"
-            height={220}
-            borderRadius={22}
-            marginBottom={20}
+            height={90}
+            borderRadius={14}
+            marginBottom={16}
           />
         </SkeletonPlaceholder>
       ))}
@@ -115,22 +127,43 @@ const SearchScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
-      <SearchBar ref={searchRef} onSearch={handleSearch} initialQuery={searchQuery} />
+    <View style={styles.screenWrapper}>
+  <SearchBar
+    ref={searchRef}
+    onSearch={handleSearch}
+    initialQuery={searchQuery}
+  />
 
-      {loading ? (
-        renderShimmer()
-      ) : filteredNews.length === 0 ? (
-        <View style={styles.noResultsContainer}>
-          <Text style={styles.noResultsText}>No news found 😔</Text>
-        </View>
-      ) : (
+  
+  <Pressable
+    style={{ flex: 1 }}
+    onPress={() => {
+      Keyboard.dismiss();
+      searchRef.current?.hideHistory();
+      searchRef.current?.collapseKeepText();
+    }}
+  >
+    {loading ? (
+      renderShimmer()
+    ) : filteredNews.length === 0 ? (
+      <View style={styles.noResultsContainer}>
+        <Text style={styles.noResultsEmoji}>😔</Text>
+        <Text style={styles.noResultsText}>No news found</Text>
+        <Text style={styles.noResultsSub}>Try searching something else</Text>
+      </View>
+    ) : (
+      <Animated.View
+        style={[
+          styles.animatedList,
+          { opacity: fadeAnim, transform: [{ translateY }] },
+        ]}
+      >
         <ScrollView
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
           }
-          onScroll={handleScroll} 
+          onScroll={handleScroll}
           scrollEventThrottle={16}
           contentContainerStyle={styles.scrollContainer}
         >
@@ -138,30 +171,48 @@ const SearchScreen = () => {
             <NewsCard key={item.id} item={item} />
           ))}
         </ScrollView>
-      )}
-    </View>
+      </Animated.View>
+    )}
+  </Pressable>
+</View>
+
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  screenWrapper: {
     flex: 1,
     backgroundColor: "#f5f8ff",
     paddingTop: 10,
   },
+  animatedList: {
+    flex: 1,
+  },
   scrollContainer: {
     paddingHorizontal: 12,
-    paddingBottom: 50,
+    paddingBottom: 60,
+    backgroundColor: "#f5f8ff",
   },
   noResultsContainer: {
     flex: 1,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#f5f8ff",
+    paddingHorizontal: 20,
+  },
+  noResultsEmoji: {
+    fontSize: 48,
+    marginBottom: 10,
   },
   noResultsText: {
-    fontSize: 16,
-    color: "#666",
-    fontWeight: "500",
+    fontSize: 18,
+    color: "#2e66ff",
+    fontWeight: "700",
+  },
+  noResultsSub: {
+    fontSize: 14,
+    color: "#888",
+    marginTop: 4,
   },
 });
 
