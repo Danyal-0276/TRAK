@@ -5,60 +5,15 @@ import {
   StyleSheet,
   TouchableOpacity,
   Animated,
-  ImageBackground,
-  Dimensions,
+  Image,
 } from "react-native";
 import { Bookmark, Share2 } from "lucide-react-native";
-import LinearGradient from "react-native-linear-gradient";
-import SkeletonPlaceholder from "react-native-skeleton-placeholder"; 
-
-const { width } = Dimensions.get("window");
-
-const getShimmerTheme = (tags = [], title = "") => {
-  const text = `${title} ${tags.join(" ")}`.toLowerCase();
-
-  if (text.includes("sports") || text.includes("cricket") || text.includes("football"))
-    return { base: "#b5f7b1", highlight: "#dbfdd6" }; 
-
-  if (text.includes("ai") || text.includes("technology") || text.includes("innovation"))
-    return { base: "#c9d8ff", highlight: "#e6edff" }; 
-
-  if (text.includes("politics") || text.includes("government") || text.includes("election"))
-    return { base: "#ffc9c9", highlight: "#ffe0d9" };
-
-  if (text.includes("finance") || text.includes("stock") || text.includes("business"))
-    return { base: "#fff5c2", highlight: "#fffde1" };
-
-  return { base: "#e0e0e0", highlight: "#f4f4f4" };
-};
-
-const getRelevantImage = (title, tags = []) => {
-  const text = `${title} ${tags.join(" ")}`.toLowerCase();
-
-  if (text.includes("pakistan") || text.includes("cricket") || text.includes("sports"))
-    return "https://images.unsplash.com/photo-1517649763962-0c623066013b?auto=format&fit=crop&w=900&q=60";
-
-  if (text.includes("ai") || text.includes("artificial intelligence") || text.includes("technology"))
-    return "https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=900&q=60";
-
-  if (text.includes("business") || text.includes("finance") || text.includes("stock"))
-    return "https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=900&q=60";
-
-  if (text.includes("politics") || text.includes("government"))
-    return "https://images.unsplash.com/photo-1535905496755-26ae35d0ae54?auto=format&fit=crop&w=900&q=60";
-
-  if (text.includes("trending") || text.includes("social") || text.includes("media"))
-    return "https://images.unsplash.com/photo-1603791452906-bb62a612b8a7?auto=format&fit=crop&w=900&q=60";
-
-  return "https://images.unsplash.com/photo-1522199710521-72d69614c702?auto=format&fit=crop&w=900&q=60";
-};
+import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 
 const NewsCard = ({ item, scrollY }) => {
   const scaleValue = useRef(new Animated.Value(1)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const [imageLoaded, setImageLoaded] = useState(false);
-
-  const shimmerTheme = getShimmerTheme(item.tags, item.title);
 
   const handlePressIn = () => {
     Animated.spring(scaleValue, {
@@ -84,12 +39,16 @@ const NewsCard = ({ item, scrollY }) => {
     }).start();
   };
 
-  const imageSource = { uri: item.image || getRelevantImage(item.title, item.tags) };
+  const imageSource = {
+    uri:
+      item.image ||
+      "https://images.unsplash.com/photo-1522199710521-72d69614c702?auto=format&fit=crop&w=900&q=60",
+  };
 
   const translateY = scrollY
     ? scrollY.interpolate({
         inputRange: [-100, 0, 100],
-        outputRange: [-8, 0, 8],
+        outputRange: [-4, 0, 4],
         extrapolate: "clamp",
       })
     : 0;
@@ -99,78 +58,58 @@ const NewsCard = ({ item, scrollY }) => {
       style={[
         styles.card,
         { transform: [{ scale: scaleValue }, { translateY }] },
-        imageLoaded && { shadowOpacity: 0.2 },
       ]}
     >
       <TouchableOpacity
         activeOpacity={0.9}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
+        style={styles.touchContainer}
       >
-        <View style={styles.imageContainer}>
+        {/* LEFT SIDE — TEXT CONTENT */}
+        <View style={styles.textContainer}>
+          <Text style={styles.title} numberOfLines={2}>
+            {item.title}
+          </Text>
+
+          <Text style={styles.description} numberOfLines={2}>
+            {item.content}
+          </Text>
+
+          <View style={styles.metaRow}>
+            <Text style={styles.source}>
+              {item.source || "Unknown Source"}
+            </Text>
+            <Text style={styles.dot}>•</Text>
+            <Text style={styles.time}>{item.time || "Just now"}</Text>
+          </View>
+
+          <View style={styles.actionRow}>
+            <TouchableOpacity style={styles.iconButton}>
+              <Share2 size={16} color="#2e66ff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconButton}>
+              <Bookmark size={16} color="#2e66ff" />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* RIGHT SIDE — IMAGE */}
+        <View style={styles.imageWrapper}>
           {!imageLoaded && (
             <SkeletonPlaceholder
-              borderRadius={22}
-              backgroundColor={shimmerTheme.base}
-              highlightColor={shimmerTheme.highlight}
+              borderRadius={10}
+              backgroundColor="#e6ebff"
+              highlightColor="#f5f8ff"
             >
-              <SkeletonPlaceholder.Item
-                width="100%"
-                height={190}
-                borderRadius={22}
-              />
+              <SkeletonPlaceholder.Item width={90} height={70} borderRadius={10} />
             </SkeletonPlaceholder>
           )}
-
-          <Animated.View style={[{ opacity: fadeAnim, position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }]}>
-  <ImageBackground
-    source={imageSource}
-    style={styles.image}
-    imageStyle={styles.imageStyle}
-    onLoadEnd={handleImageLoad}
-  >
-    <LinearGradient
-      colors={["rgba(0,0,0,0.65)", "rgba(0,0,0,0.15)", "transparent"]}
-      style={styles.imageOverlay}
-    />
-    <View style={styles.headerOverlay}>
-      <Text style={styles.source}>{item.source}</Text>
-      <Text style={styles.time}>{item.time}</Text>
-    </View>
-  </ImageBackground>
-</Animated.View>
-        </View>
-
-        <Text style={styles.title}>{item.title}</Text>
-
-        <View style={styles.tagsRow}>
-          {item.tags.map((tag, index) => (
-            <LinearGradient
-              key={index}
-              colors={["rgba(79,140,255,0.15)", "rgba(255,255,255,0.05)"]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.tag}
-            >
-              <Text style={styles.tagText}>{tag}</Text>
-            </LinearGradient>
-          ))}
-        </View>
-
-        <Text style={styles.content} numberOfLines={3}>
-          {item.content}
-        </Text>
-
-        <View style={styles.footerRow}>
-          <TouchableOpacity style={styles.actionButton}>
-            <Share2 size={18} color="#4f8cff" />
-            <Text style={styles.actionText}>Share</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.actionButton}>
-            <Bookmark size={18} color="#4f8cff" />
-            <Text style={styles.actionText}>Save</Text>
-          </TouchableOpacity>
+          <Animated.Image
+            source={imageSource}
+            style={[styles.image, { opacity: fadeAnim }]}
+            onLoadEnd={handleImageLoad}
+          />
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -179,106 +118,78 @@ const NewsCard = ({ item, scrollY }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#fff",
-    borderRadius: 22,
-    marginBottom: 22,
-    overflow: "hidden",
-    shadowColor: "#4f8cff",
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
-    borderWidth: 0.6,
-    borderColor: "rgba(79,140,255,0.15)",
-  },
-  imageContainer: {
-    height: 190,
-    width: "100%",
-    overflow: "hidden",
-  },
-  image: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
-  imageStyle: {
-    resizeMode: "cover",
-  },
-  imageOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  headerOverlay: {
-    position: "absolute",
-    top: 12,
-    left: 12,
-    right: 12,
     flexDirection: "row",
-    justifyContent: "space-between",
+    backgroundColor: "#ffffff",
+    borderRadius: 14,
+    marginBottom: 14,
+    marginHorizontal: 10,
+    padding: 10,
+    shadowColor: "#b0c4ff",
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
-  source: {
-    color: "#fff",
-    fontSize: 13,
-    fontWeight: "600",
-    textShadowColor: "rgba(0,0,0,0.4)",
-    textShadowRadius: 4,
+  touchContainer: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    flex: 1,
   },
-  time: {
-    color: "#ddd",
-    fontSize: 12,
+  textContainer: {
+    flex: 1,
+    marginRight: 10,
   },
   title: {
-    fontSize: 19,
-    fontWeight: "800",
-    color: "#111",
-    lineHeight: 26,
-    marginTop: 12,
-    paddingHorizontal: 16,
-  },
-  tagsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    paddingHorizontal: 16,
-    marginTop: 8,
-  },
-  tag: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-    marginRight: 8,
-    marginBottom: 6,
-    borderWidth: 0.5,
-    borderColor: "rgba(79,140,255,0.2)",
-  },
-  tagText: {
-    fontSize: 12,
-    color: "#222",
-    fontWeight: "600",
-  },
-  content: {
-    fontSize: 15,
-    color: "#444",
+    color: "#1a1a1a",
+    fontSize: 16.5,
+    fontWeight: "700",
     lineHeight: 22,
-    paddingHorizontal: 16,
+  },
+  description: {
+    color: "#555",
+    fontSize: 13.5,
     marginTop: 4,
-    marginBottom: 12,
+    lineHeight: 18,
   },
-  footerRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    borderTopWidth: 0.4,
-    borderTopColor: "#eee",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  actionButton: {
+  metaRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: 18,
+    marginTop: 6,
   },
-  actionText: {
-    marginLeft: 6,
-    fontSize: 13.5,
-    color: "#4f8cff",
+  source: {
+    color: "#2e66ff",
+    fontSize: 12.5,
     fontWeight: "600",
+  },
+  time: {
+    color: "#888",
+    fontSize: 12,
+    marginLeft: 4,
+  },
+  dot: {
+    color: "#999",
+    marginHorizontal: 5,
+  },
+  imageWrapper: {
+    width: 90,
+    height: 70,
+    borderRadius: 10,
+    overflow: "hidden",
+    backgroundColor: "#f0f4ff",
+  },
+  image: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
+    borderRadius: 10,
+  },
+  actionRow: {
+    flexDirection: "row",
+    marginTop: 8,
+  },
+  iconButton: {
+    marginRight: 10,
+    padding: 4,
   },
 });
 
