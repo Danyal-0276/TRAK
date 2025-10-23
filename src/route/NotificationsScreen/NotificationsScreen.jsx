@@ -1,40 +1,183 @@
-import React from "react";
-import { View, Text, StyleSheet, StatusBar } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+// src/route/NotificationsScreen/NotificationsScreen.jsx
+import React, { useState, useEffect } from "react";
+import { View, TouchableOpacity, Text, StyleSheet, Animated, ActivityIndicator } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import NotificationTabs from "./components/NotificationTabs";
+import mockAPI from "./services/mockNotificationAPI";
 
-const notifications = [
-  { id: "1", type: "keyword", keyword: "Mobile", text: "iPhone 16 Pro Max leaks reveal major design change", time: "5m ago" },
-  { id: "2", type: "keyword", keyword: "Mobile", text: "Samsung Galaxy Z Flip 6 pre-orders are now open", time: "20m ago" },
-  { id: "3", type: "keyword", keyword: "SNGPL", text: "SNGPL issues gas load shedding schedule for winter", time: "1h ago" },
-  { id: "4", type: "keyword", keyword: "SNGPL", text: "SNGPL introduces new customer care app for bill tracking", time: "3h ago" },
-  { id: "5", type: "like", text: "Ali liked your post", time: "4h ago" },
-  { id: "6", type: "mention", text: "Ahmed mentioned @Shahroz in a post", time: "5h ago" },
-  { id: "7", type: "follow", text: "Minahil started following you", time: "6h ago" },
-  { id: "8", type: "comment", text: "Sara commented: Great update, @Shahroz!", time: "7h ago" },
-  { id: "9", type: "retweet", text: "Zain reposted your status", time: "9h ago" },
-];
+const NotificationsScreen = () => {
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const buttonScale = useState(new Animated.Value(1))[0];
+  const navigation = useNavigation();
 
-const NotificationsScreen = () => (
-  <SafeAreaView style={styles.container}>
-    <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-    <View style={styles.header}>
-      <Text style={styles.headerTitle}>Notifications</Text>
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const loadNotifications = async () => {
+    try {
+      const data = await mockAPI.getNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.error("Error loading notifications:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const markAsRead = async (notificationId) => {
+    try {
+      await mockAPI.markAsRead(notificationId);
+      const updatedNotifications = notifications.map(notification =>
+        notification.id === notificationId 
+          ? { ...notification, read: true }
+          : notification
+      );
+      setNotifications(updatedNotifications);
+    } catch (error) {
+      console.error("Error marking as read:", error);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    // Button press animation
+    Animated.sequence([
+      Animated.timing(buttonScale, {
+        toValue: 0.95,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+      Animated.timing(buttonScale, {
+        toValue: 1,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    try {
+      await mockAPI.markAllAsRead();
+      const updatedNotifications = notifications.map(notification => ({
+        ...notification,
+        read: true
+      }));
+      setNotifications(updatedNotifications);
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+    }
+  };
+
+  const handleNotificationPress = (notificationId) => {
+    // Navigate to detail screen and pass the markAsRead function
+    navigation.navigate('NotificationDetail', { 
+      notificationId,
+      onMarkAsRead: markAsRead 
+    });
+  };
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3B82F6" />
+        <Text style={styles.loadingText}>Loading notifications...</Text>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      {/* Header with Mark All as Read button */}
+      <View style={styles.header}>
+        <Text style={styles.title}>Notifications</Text>
+        {unreadCount > 0 && (
+          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+            <TouchableOpacity 
+              style={styles.markAllButton}
+              onPress={markAllAsRead}
+            >
+              <Text style={styles.markAllText}>Mark all as read</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+      </View>
+
+      {/* Unread count badge */}
+      {unreadCount > 0 && (
+        <View style={styles.unreadBadge}>
+          <Text style={styles.unreadBadgeText}>
+            {unreadCount} unread {unreadCount === 1 ? 'notification' : 'notifications'}
+          </Text>
+        </View>
+      )}
+
+      {/* Tabs */}
+      <NotificationTabs 
+        notifications={notifications}
+        onMarkAsRead={markAsRead}
+        onNotificationPress={handleNotificationPress}
+      />
     </View>
-    <NotificationTabs notifications={notifications} />
-  </SafeAreaView>
-);
+  );
+};
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
-  header: {
-    backgroundColor: "#fff",
-    paddingVertical: 20,
+  container: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
+    backgroundColor: "#F3F4F6",
+  },
+  loadingText: {
+    marginTop: 12,
+    fontSize: 16,
+    color: "#6B7280",
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: "#FFF",
     borderBottomWidth: 1,
     borderBottomColor: "#E5E7EB",
   },
-  headerTitle: { fontSize: 22, fontWeight: "bold", color: "#000" },
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#1F2937",
+  },
+  markAllButton: {
+    backgroundColor: "#3B82F6",
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  markAllText: {
+    color: "#FFF",
+    fontWeight: "600",
+    fontSize: 14,
+  },
+  unreadBadge: {
+    backgroundColor: "#FEF3C7",
+    marginHorizontal: 20,
+    marginTop: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: "flex-start",
+  },
+  unreadBadgeText: {
+    color: "#92400E",
+    fontWeight: "600",
+    fontSize: 12,
+  },
 });
 
 export default NotificationsScreen;
