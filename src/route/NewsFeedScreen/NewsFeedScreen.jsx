@@ -1,5 +1,5 @@
 // ============================================
-// FILE: screens/NewsFeedScreen.jsx
+// NewsFeedScreen.jsx - HEADER SLIDES BEHIND STATUS BAR
 // ============================================
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -21,6 +21,7 @@ import { mockApi } from './Service/mockApi';
 
 const HEADER_HEIGHT = 60;
 const TAB_HEIGHT = 50;
+const TOTAL_HEADER_HEIGHT = HEADER_HEIGHT + TAB_HEIGHT;
 
 const NewsFeedScreen = ({ navigation }) => {
     const [activeTab, setActiveTab] = useState('For you');
@@ -31,8 +32,8 @@ const NewsFeedScreen = ({ navigation }) => {
     const [refreshing, setRefreshing] = useState(false);
 
     const insets = useSafeAreaInsets();
-    const TOTAL_HEADER_HEIGHT = HEADER_HEIGHT + TAB_HEIGHT + insets.top;
 
+    // Animation refs
     const scrollY = useRef(new Animated.Value(0)).current;
     const lastScrollY = useRef(0);
     const headerTranslateY = useRef(new Animated.Value(0)).current;
@@ -55,6 +56,7 @@ const NewsFeedScreen = ({ navigation }) => {
 
     const handleRefresh = async () => {
         setRefreshing(true);
+        // Show header on refresh
         Animated.spring(headerTranslateY, {
             toValue: 0,
             useNativeDriver: true,
@@ -72,8 +74,10 @@ const NewsFeedScreen = ({ navigation }) => {
                 const currentScrollY = event.nativeEvent.contentOffset.y;
                 const diff = currentScrollY - lastScrollY.current;
 
+                // Only trigger animation if scroll change is significant
                 if (Math.abs(diff) > 5) {
                     if (diff > 0 && currentScrollY > 50) {
+                        // Scrolling down - hide header behind status bar
                         Animated.spring(headerTranslateY, {
                             toValue: -TOTAL_HEADER_HEIGHT,
                             useNativeDriver: true,
@@ -81,6 +85,7 @@ const NewsFeedScreen = ({ navigation }) => {
                             tension: 40,
                         }).start();
                     } else if (diff < 0) {
+                        // Scrolling up - show header
                         Animated.spring(headerTranslateY, {
                             toValue: 0,
                             useNativeDriver: true,
@@ -138,40 +143,43 @@ const NewsFeedScreen = ({ navigation }) => {
 
     if (loading) {
         return (
-            <SafeAreaView style={styles.container}>
-                <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-                <View style={styles.loadingContainer}>
-                    <ActivityIndicator size="large" color="#FF4500" />
-                    <Text style={styles.loadingText}>Loading stories...</Text>
-                </View>
-            </SafeAreaView>
+            <View style={styles.outerContainer}>
+                <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent />
+                <SafeAreaView style={styles.container}>
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator size="large" color="#FF4500" />
+                        <Text style={styles.loadingText}>Loading stories...</Text>
+                    </View>
+                </SafeAreaView>
+            </View>
         );
     }
 
     return (
         <View style={styles.outerContainer}>
+            {/* Translucent status bar - header slides behind this area */}
             <StatusBar 
                 barStyle="dark-content" 
-                backgroundColor="#FFFFFF"
-                translucent={false}
+                backgroundColor="transparent" 
+                translucent 
             />
             
-            {/* ABSOLUTE SOLID WHITE BLOCKER - NEVER MOVES */}
+            {/* SOLID STATUS BAR AREA - ALWAYS VISIBLE */}
             <View 
                 style={[
-                    styles.absoluteBlocker, 
-                    { height: TOTAL_HEADER_HEIGHT }
-                ]} 
-                pointerEvents="box-none"
+                    styles.statusBarCover, 
+                    { height: insets.top }
+                ]}
             />
 
-            <SafeAreaView style={styles.safeContainer} edges={['top']}>
-                {/* Animated header that can hide */}
+            <View style={styles.container}>
+                {/* Animated Header that slides up behind status bar */}
                 <Animated.View
                     style={[
-                        styles.headerWrapper,
-                        {
-                            transform: [{ translateY: headerTranslateY }],
+                        styles.headerContainer,
+                        { 
+                            paddingTop: insets.top,
+                            transform: [{ translateY: headerTranslateY }]
                         },
                     ]}
                 >
@@ -179,7 +187,7 @@ const NewsFeedScreen = ({ navigation }) => {
                     <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />
                 </Animated.View>
 
-                {/* Scrollable content */}
+                {/* Scrollable Content */}
                 <Animated.ScrollView
                     style={styles.feed}
                     contentContainerStyle={styles.feedContent}
@@ -192,11 +200,12 @@ const NewsFeedScreen = ({ navigation }) => {
                             onRefresh={handleRefresh}
                             tintColor="#FF4500"
                             colors={['#FF4500']}
-                            progressViewOffset={TOTAL_HEADER_HEIGHT}
+                            progressViewOffset={TOTAL_HEADER_HEIGHT + insets.top}
                         />
                     }
                 >
-                    <View style={{ height: HEADER_HEIGHT + TAB_HEIGHT }} />
+                    {/* Spacer for header + status bar */}
+                    <View style={{ height: TOTAL_HEADER_HEIGHT + insets.top }} />
 
                     {newsData.map((item) => (
                         <NewsCard
@@ -211,7 +220,7 @@ const NewsFeedScreen = ({ navigation }) => {
                     ))}
                     <View style={styles.endPadding} />
                 </Animated.ScrollView>
-            </SafeAreaView>
+            </View>
         </View>
     );
 };
@@ -221,38 +230,37 @@ const styles = StyleSheet.create({
         flex: 1,
         backgroundColor: '#FFFFFF',
     },
-    absoluteBlocker: {
+    statusBarCover: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
         backgroundColor: '#FFFFFF',
-        zIndex: 99999,
-        elevation: 999,
+        zIndex: 10000,
+        elevation: 1000,
+    },
+    container: {
+        flex: 1,
+        backgroundColor: '#FFFFFF',
+    },
+    headerContainer: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 1000,
+        backgroundColor: '#FFFFFF',
         ...Platform.select({
             ios: {
                 shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.1,
+                shadowOpacity: 0.08,
                 shadowRadius: 3,
             },
             android: {
-                elevation: 999,
+                elevation: 4,
             },
         }),
-    },
-    safeContainer: {
-        flex: 1,
-        backgroundColor: '#FFFFFF',
-    },
-    container: {
-        flex: 1,
-        backgroundColor: '#F7F7F7',
-    },
-    headerWrapper: {
-        backgroundColor: '#FFFFFF',
-        zIndex: 1000,
-        elevation: 100,
     },
     feed: {
         flex: 1,

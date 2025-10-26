@@ -2,15 +2,13 @@
 // FILE: components/FeedHeader.jsx
 // ============================================
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Settings } from 'lucide-react-native';
 import BlackLogo from '../../../assets/images/blackLogo.svg';
 
 export const FeedHeader = ({ navigation }) => {
     return (
-        <>
-            {/* Solid white background layer */}
-            <View style={headerStyles.solidBackground} />
+        <View style={headerStyles.wrapper}>
             <View style={headerStyles.container}>
                 <View style={headerStyles.content}>
                     <View style={headerStyles.logoContainer}>
@@ -28,11 +26,25 @@ export const FeedHeader = ({ navigation }) => {
                     </TouchableOpacity>
                 </View>
             </View>
-        </>
+        </View>
     );
 };
 
 const headerStyles = StyleSheet.create({
+    wrapper: {
+        backgroundColor: '#FFFFFF',
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 1 },
+                shadowOpacity: 0.05,
+                shadowRadius: 2,
+            },
+            android: {
+                elevation: 2,
+            },
+        }),
+    },
     container: {
         flexDirection: 'row',
         justifyContent: 'space-between',
