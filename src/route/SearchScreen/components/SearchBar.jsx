@@ -125,16 +125,13 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
     if (focused || expanded) {
       Keyboard.dismiss();
       setFocused(false);
-      // Hide history when tapping outside
     }
   };
 
-    // Hide history dropdown only
   const hideHistory = () => {
     setFocused(false);
   };
 
-  // Collapse visually but keep text
   const collapseKeepText = () => {
     setFocused(false);
     setExpanded(false);
@@ -143,22 +140,19 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
     Keyboard.dismiss();
   };
 
-
   useEffect(() => {
     setQuery(initialQuery);
   }, [initialQuery]);
 
-    useImperativeHandle(ref, () => ({
+  useImperativeHandle(ref, () => ({
     collapse: handleCollapse,
     expandVisual: handleExpandVisual,
     hideHistory,
     collapseKeepText,
   }));
 
-
   return (
     <>
-      {/* Transparent overlay when search bar is active */}
       {focused && (
         <Pressable
           onPress={handleOutsidePress}
@@ -175,11 +169,11 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
         >
           {!focused ? (
             <TouchableOpacity onPress={handleExpand} style={{ zIndex: 10 }}>
-              <Search size={20} color="#4f8cff" />
+              <Search size={18} color="#4f8cff" />
             </TouchableOpacity>
           ) : (
             <>
-              <Search size={20} color="#4f8cff" style={styles.icon} />
+              <Search size={18} color="#4f8cff" style={styles.icon} />
               <TextInput
                 ref={inputRef}
                 value={query}
@@ -196,14 +190,13 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
                 onPress={handleCrossPress}
                 style={[styles.closeButton, { zIndex: 15 }]}
               >
-                <X size={20} color="#4f8cff" />
+                <X size={18} color="#4f8cff" />
               </TouchableOpacity>
             </>
           )}
         </LinearGradient>
       </Animated.View>
 
-      {/* Search History only when focused/typing */}
       {expanded && focused && query.length >= 0 && history.length > 0 && (
         <View style={styles.historyContainer}>
           <View style={styles.historyHeader}>
@@ -222,7 +215,7 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
                     setQuery(item);
                     onSearch && onSearch(item);
                     inputRef.current?.blur();
-                    setFocused(false); // hide history
+                    setFocused(false);
                   }}
                 >
                   <Text style={styles.historyText}>{item}</Text>
@@ -273,30 +266,31 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 25,
+    borderRadius: 20,
     overflow: "hidden",
     alignSelf: "center",
-    marginVertical: 10,
+    marginVertical: 4,
+    marginTop: 6,
     shadowColor: "#4f8cff",
-    shadowOffset: { width: 0, height: 3 },
-    shadowRadius: 8,
-    shadowOpacity: 0.15,
-    elevation: 6,
+    shadowOffset: { width: 0, height: 2 },
+    shadowRadius: 6,
+    shadowOpacity: 0.12,
+    elevation: 4,
     backgroundColor: "#fff",
   },
   gradientBox: {
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 25,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderWidth: 0.6,
     borderColor: "rgba(79,140,255,0.25)",
   },
   icon: { marginRight: 8 },
   input: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     color: "#111",
     fontWeight: "500",
     paddingVertical: 0,
@@ -304,7 +298,7 @@ const styles = StyleSheet.create({
   closeButton: { marginLeft: 10 },
   historyContainer: {
     position: "absolute",
-    top: 70,
+    top: 55,
     left: 10,
     right: 10,
     backgroundColor: "#f0f4ff",

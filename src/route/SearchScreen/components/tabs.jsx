@@ -1,9 +1,13 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
 
 const Tabs = ({ categories, activeTab, onTabPress }) => {
   return (
-    <View style={styles.tabsRow}>
+    <ScrollView 
+      horizontal 
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.tabsRow}
+    >
       {categories.map((cat, idx) => {
         const isActive = activeTab === cat;
         return (
@@ -18,32 +22,38 @@ const Tabs = ({ categories, activeTab, onTabPress }) => {
           </TouchableOpacity>
         );
       })}
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   tabsRow: {
     flexDirection: "row",
-    marginBottom: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 4,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
   },
   tab: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    backgroundColor: "#f2f2f2",
-    borderRadius: 20,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    backgroundColor: "#F1F5F9",
+    borderRadius: 4,
     marginRight: 8,
   },
   tabText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#000",
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#64748B",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
   activeTab: {
-    backgroundColor: "#000",
+    backgroundColor: "#0F172A",
   },
   activeTabText: {
-    color: "#fff",
+    color: "#FFFFFF",
   },
 });
 

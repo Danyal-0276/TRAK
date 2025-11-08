@@ -1,7 +1,9 @@
+
 // ============================================
 // FILE: screens/ArticleDetailScreen.jsx
 // ============================================
-import React, { useState } from 'react';
+import React from 'react';
+import { useState } from 'react';
 import {
     View,
     StyleSheet,
@@ -17,6 +19,7 @@ import { ArticleActions } from './components/ArticleActions';
 const ArticleDetailScreen = ({ navigation, route }) => {
     const { article } = route.params;
     const [isLiked, setIsLiked] = useState(false);
+    const [isDisliked, setIsDisliked] = useState(false);
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [likeCount, setLikeCount] = useState(article.votes || 24);
     const [dislikeCount, setDislikeCount] = useState(3);
@@ -26,12 +29,21 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     };
 
     const handleLike = () => {
+        if (isDisliked) {
+            setIsDisliked(false);
+            setDislikeCount(dislikeCount - 1);
+        }
         setIsLiked(!isLiked);
         setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
     };
 
     const handleDislike = () => {
-        setDislikeCount(dislikeCount + 1);
+        if (isLiked) {
+            setIsLiked(false);
+            setLikeCount(likeCount - 1);
+        }
+        setIsDisliked(!isDisliked);
+        setDislikeCount(isDisliked ? dislikeCount - 1 : dislikeCount + 1);
     };
 
     const handleBookmark = () => {
@@ -45,7 +57,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
 
     return (
         <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
             
             {/* Header */}
             <ArticleDetailHeader onBackPress={handleBackPress} />
@@ -62,6 +74,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                         source={article.source}
                         time={article.time}
                         verified={article.verified}
+                        trending={article.trending}
                     />
 
                     {/* Article Content */}
@@ -81,6 +94,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 likeCount={likeCount}
                 dislikeCount={dislikeCount}
                 isLiked={isLiked}
+                isDisliked={isDisliked}
                 isBookmarked={isBookmarked}
                 onLike={handleLike}
                 onDislike={handleDislike}
@@ -94,10 +108,11 @@ const ArticleDetailScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: '#FFFFFF',
     },
     scrollContainer: {
         flex: 1,
+        backgroundColor: '#FFFFFF',
     },
     scrollContent: {
         paddingBottom: 100,

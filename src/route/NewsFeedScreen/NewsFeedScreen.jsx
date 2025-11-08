@@ -1,5 +1,5 @@
 // ============================================
-// NewsFeedScreen.jsx - HEADER SLIDES BEHIND STATUS BAR
+// NewsFeedScreen.jsx - WITH SKELETON LOADING
 // ============================================
 import React, { useState, useEffect, useRef } from 'react';
 import {
@@ -7,21 +7,91 @@ import {
     ScrollView,
     StyleSheet,
     StatusBar,
-    ActivityIndicator,
     RefreshControl,
-    Text,
     Animated,
     Platform,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FeedHeader } from './components/FeedHeader';
 import { TabBar } from './components/TabBar';
-import { NewsCard } from './components/NewsCard';
-import { mockApi } from './Service/mockApi';
+import { NewsCard } from '../../components/NewsCard';
+import { mockApi } from '../../utils/Service/mockApi';
 
 const HEADER_HEIGHT = 60;
 const TAB_HEIGHT = 50;
 const TOTAL_HEADER_HEIGHT = HEADER_HEIGHT + TAB_HEIGHT;
+
+// Skeleton Card Component
+const SkeletonCard = () => {
+    const shimmerAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.loop(
+            Animated.sequence([
+                Animated.timing(shimmerAnim, {
+                    toValue: 1,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(shimmerAnim, {
+                    toValue: 0,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+            ])
+        ).start();
+    }, [shimmerAnim]);
+
+    const opacity = shimmerAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0.3, 0.7],
+    });
+
+    return (
+        <View style={skeletonStyles.container}>
+            <View style={skeletonStyles.card}>
+                {/* Header */}
+                <View style={skeletonStyles.header}>
+                    <View style={skeletonStyles.sourceContainer}>
+                        <Animated.View style={[skeletonStyles.sourceIcon, { opacity }]} />
+                        <View style={skeletonStyles.sourceInfo}>
+                            <Animated.View style={[skeletonStyles.sourceName, { opacity }]} />
+                            <Animated.View style={[skeletonStyles.timeText, { opacity }]} />
+                        </View>
+                    </View>
+                </View>
+
+                {/* Title */}
+                <Animated.View style={[skeletonStyles.title, { opacity }]} />
+                <Animated.View style={[skeletonStyles.titleShort, { opacity }]} />
+
+                {/* Excerpt */}
+                <Animated.View style={[skeletonStyles.excerpt, { opacity }]} />
+                <Animated.View style={[skeletonStyles.excerpt, { opacity }]} />
+                <Animated.View style={[skeletonStyles.excerptShort, { opacity }]} />
+
+                {/* Meta */}
+                <View style={skeletonStyles.metaRow}>
+                    <Animated.View style={[skeletonStyles.badge, { opacity }]} />
+                    <Animated.View style={[skeletonStyles.badge, { opacity }]} />
+                </View>
+
+                {/* Actions */}
+                <View style={skeletonStyles.actionsContainer}>
+                    <View style={skeletonStyles.actionsLeft}>
+                        <Animated.View style={[skeletonStyles.actionCircle, { opacity }]} />
+                        <Animated.View style={[skeletonStyles.voteCount, { opacity }]} />
+                        <Animated.View style={[skeletonStyles.actionCircle, { opacity }]} />
+                    </View>
+                    <View style={skeletonStyles.actionsRight}>
+                        <Animated.View style={[skeletonStyles.actionCircle, { opacity }]} />
+                        <Animated.View style={[skeletonStyles.actionCircle, { opacity }]} />
+                    </View>
+                </View>
+            </View>
+        </View>
+    );
+};
 
 const NewsFeedScreen = ({ navigation }) => {
     const [activeTab, setActiveTab] = useState('For you');
@@ -141,20 +211,6 @@ const NewsFeedScreen = ({ navigation }) => {
         }
     };
 
-    if (loading) {
-        return (
-            <View style={styles.outerContainer}>
-                <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent />
-                <SafeAreaView style={styles.container}>
-                    <View style={styles.loadingContainer}>
-                        <ActivityIndicator size="large" color="#FF4500" />
-                        <Text style={styles.loadingText}>Loading stories...</Text>
-                    </View>
-                </SafeAreaView>
-            </View>
-        );
-    }
-
     return (
         <View style={styles.outerContainer}>
             {/* Translucent status bar - header slides behind this area */}
@@ -198,8 +254,8 @@ const NewsFeedScreen = ({ navigation }) => {
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={handleRefresh}
-                            tintColor="#FF4500"
-                            colors={['#FF4500']}
+                            tintColor="#2563EB"
+                            colors={['#2563EB']}
                             progressViewOffset={TOTAL_HEADER_HEIGHT + insets.top}
                         />
                     }
@@ -207,17 +263,29 @@ const NewsFeedScreen = ({ navigation }) => {
                     {/* Spacer for header + status bar */}
                     <View style={{ height: TOTAL_HEADER_HEIGHT + insets.top }} />
 
-                    {newsData.map((item) => (
-                        <NewsCard
-                            key={item.id}
-                            item={item}
-                            onPress={() => handleArticlePress(item)}
-                            votedItems={votedItems}
-                            bookmarkedItems={bookmarkedItems}
-                            onVote={handleVote}
-                            onBookmark={handleBookmark}
-                        />
-                    ))}
+                    {loading ? (
+                        // Show skeleton cards while loading
+                        <>
+                            <SkeletonCard />
+                            <SkeletonCard />
+                            <SkeletonCard />
+                            <SkeletonCard />
+                            <SkeletonCard />
+                        </>
+                    ) : (
+                        // Show actual news cards
+                        newsData.map((item) => (
+                            <NewsCard
+                                key={item.id}
+                                item={item}
+                                onPress={() => handleArticlePress(item)}
+                                votedItems={votedItems}
+                                bookmarkedItems={bookmarkedItems}
+                                onVote={handleVote}
+                                onBookmark={handleBookmark}
+                            />
+                        ))
+                    )}
                     <View style={styles.endPadding} />
                 </Animated.ScrollView>
             </View>
@@ -269,20 +337,125 @@ const styles = StyleSheet.create({
     feedContent: {
         backgroundColor: '#F7F7F7',
     },
-    loadingContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: '#F7F7F7',
-    },
-    loadingText: {
-        color: '#6B7280',
-        fontSize: 16,
-        fontWeight: '600',
-        marginTop: 12,
-    },
     endPadding: {
         height: 20,
+    },
+});
+
+const skeletonStyles = StyleSheet.create({
+    container: {
+        marginBottom: 1,
+    },
+    card: {
+        backgroundColor: '#FFFFFF',
+        padding: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E2E8F0',
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 12,
+    },
+    sourceContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flex: 1,
+    },
+    sourceIcon: {
+        width: 42,
+        height: 42,
+        borderRadius: 4,
+        backgroundColor: '#E2E8F0',
+        marginRight: 12,
+    },
+    sourceInfo: {
+        flex: 1,
+        justifyContent: 'center',
+    },
+    sourceName: {
+        width: 120,
+        height: 14,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 4,
+        marginBottom: 6,
+    },
+    timeText: {
+        width: 80,
+        height: 12,
+        backgroundColor: '#F1F5F9',
+        borderRadius: 4,
+    },
+    title: {
+        width: '100%',
+        height: 16,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 4,
+        marginBottom: 8,
+    },
+    titleShort: {
+        width: '70%',
+        height: 16,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 4,
+        marginBottom: 12,
+    },
+    excerpt: {
+        width: '100%',
+        height: 12,
+        backgroundColor: '#F1F5F9',
+        borderRadius: 4,
+        marginBottom: 6,
+    },
+    excerptShort: {
+        width: '85%',
+        height: 12,
+        backgroundColor: '#F1F5F9',
+        borderRadius: 4,
+        marginBottom: 14,
+    },
+    metaRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 14,
+        gap: 8,
+    },
+    badge: {
+        width: 70,
+        height: 24,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 4,
+    },
+    actionsContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingTop: 14,
+        borderTopWidth: 1,
+        borderTopColor: '#F1F5F9',
+    },
+    actionsLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    actionsRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    actionCircle: {
+        width: 28,
+        height: 28,
+        borderRadius: 14,
+        backgroundColor: '#E2E8F0',
+    },
+    voteCount: {
+        width: 32,
+        height: 16,
+        backgroundColor: '#E2E8F0',
+        borderRadius: 4,
     },
 });
 
