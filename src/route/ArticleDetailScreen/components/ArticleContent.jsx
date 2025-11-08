@@ -1,3 +1,4 @@
+
 // ============================================
 // FILE: components/ArticleContent.jsx
 // ============================================
@@ -27,31 +28,34 @@ const styles = StyleSheet.create({
     },
     categoryBadge: {
         alignSelf: 'flex-start',
-        backgroundColor: '#F7F7F7',
-        paddingHorizontal: 14,
-        paddingVertical: 6,
-        borderRadius: 16,
+        backgroundColor: '#F1F5F9',
+        paddingHorizontal: 12,
+        paddingVertical: 5,
+        borderRadius: 4,
+        borderLeftWidth: 3,
+        borderLeftColor: '#2563EB',
         marginBottom: 16,
     },
     categoryText: {
-        color: '#6B7280',
+        color: '#334155',
         fontSize: 12,
-        fontWeight: '600',
+        fontWeight: '700',
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 0.8,
     },
     title: {
-        color: '#1F2937',
-        fontSize: 26,
+        color: '#0F172A',
+        fontSize: 24,
         fontWeight: '800',
-        lineHeight: 34,
+        lineHeight: 32,
         marginBottom: 20,
-        letterSpacing: -0.5,
+        letterSpacing: -0.4,
     },
     content: {
-        color: '#374151',
+        color: '#475569',
         fontSize: 16,
-        lineHeight: 26,
-        textAlign: 'justify',
+        lineHeight: 28,
+        fontWeight: '400',
     },
 });
+

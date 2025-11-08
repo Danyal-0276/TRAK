@@ -9,6 +9,7 @@ export const ArticleActions = ({
     likeCount,
     dislikeCount,
     isLiked,
+    isDisliked,
     isBookmarked,
     onLike,
     onDislike,
@@ -20,20 +21,17 @@ export const ArticleActions = ({
             <View style={styles.actions}>
                 {/* Like Button */}
                 <TouchableOpacity 
-                    style={[
-                        styles.actionButton,
-                        isLiked && styles.actionButtonLiked
-                    ]}
+                    style={styles.actionButton}
                     onPress={onLike}
                 >
                     <ChevronUp 
-                        size={20} 
-                        color={isLiked ? '#FF4500' : '#6B7280'} 
+                        size={22} 
+                        color={isLiked ? '#0F172A' : '#94A3B8'} 
                         strokeWidth={2.5}
                     />
                     <Text style={[
                         styles.actionText,
-                        isLiked && styles.actionTextLiked
+                        isLiked && styles.actionTextActive
                     ]}>
                         {likeCount}
                     </Text>
@@ -45,30 +43,32 @@ export const ArticleActions = ({
                     onPress={onDislike}
                 >
                     <ChevronDown 
-                        size={20} 
-                        color="#6B7280" 
+                        size={22} 
+                        color={isDisliked ? '#0F172A' : '#94A3B8'} 
                         strokeWidth={2.5}
                     />
-                    <Text style={styles.actionText}>{dislikeCount}</Text>
+                    <Text style={[
+                        styles.actionText,
+                        isDisliked && styles.actionTextActive
+                    ]}>
+                        {dislikeCount}
+                    </Text>
                 </TouchableOpacity>
 
                 {/* Bookmark Button */}
                 <TouchableOpacity 
-                    style={[
-                        styles.actionButton,
-                        isBookmarked && styles.actionButtonBookmarked
-                    ]}
+                    style={styles.actionButton}
                     onPress={onBookmark}
                 >
                     <Bookmark 
                         size={20} 
-                        color={isBookmarked ? '#F59E0B' : '#6B7280'}
-                        fill={isBookmarked ? '#F59E0B' : 'none'}
+                        color={isBookmarked ? '#0F172A' : '#94A3B8'}
+                        fill={isBookmarked ? '#0F172A' : 'none'}
                         strokeWidth={2}
                     />
                     <Text style={[
                         styles.actionText,
-                        isBookmarked && styles.actionTextBookmarked
+                        isBookmarked && styles.actionTextActive
                     ]}>
                         Save
                     </Text>
@@ -80,11 +80,11 @@ export const ArticleActions = ({
                     onPress={onShare}
                 >
                     <Share 
-                        size={18} 
-                        color="#6B7280" 
+                        size={20} 
+                        color="#0F172A" 
                         strokeWidth={2}
                     />
-                    <Text style={styles.actionText}>Share</Text>
+                    <Text style={styles.actionTextActive}>Share</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -97,18 +97,18 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: '#fff',
-        paddingTop: 12,
+        backgroundColor: '#FFFFFF',
+        paddingTop: 14,
         paddingBottom: 20,
         paddingHorizontal: 16,
         borderTopWidth: 1,
-        borderTopColor: '#F0F0F0',
+        borderTopColor: '#E2E8F0',
         shadowColor: '#000',
         shadowOffset: {
             width: 0,
             height: -2,
         },
-        shadowOpacity: 0.08,
+        shadowOpacity: 0.06,
         shadowRadius: 8,
         elevation: 8,
     },
@@ -116,37 +116,25 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        backgroundColor: '#F7F7F7',
-        borderRadius: 16,
-        paddingVertical: 8,
-        paddingHorizontal: 8,
+        paddingVertical: 4,
     },
     actionButton: {
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 8,
-        paddingHorizontal: 14,
-        borderRadius: 12,
+        paddingHorizontal: 12,
+        borderRadius: 4,
         backgroundColor: 'transparent',
-        minWidth: 70,
-    },
-    actionButtonLiked: {
-        backgroundColor: '#FFF5F0',
-    },
-    actionButtonBookmarked: {
-        backgroundColor: '#FFFBEB',
+        flex: 1,
     },
     actionText: {
-        color: '#6B7280',
-        fontSize: 12,
+        color: '#94A3B8',
+        fontSize: 13,
         fontWeight: '700',
         textAlign: 'center',
-        marginTop: 2,
+        marginTop: 4,
     },
-    actionTextLiked: {
-        color: '#FF4500',
-    },
-    actionTextBookmarked: {
-        color: '#F59E0B',
+    actionTextActive: {
+        color: '#0F172A',
     },
 });

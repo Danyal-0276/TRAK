@@ -12,10 +12,10 @@ export const ArticleDetailHeader = ({ onBackPress }) => {
                 style={styles.backButton}
                 onPress={onBackPress}
             >
-                <ChevronLeft size={24} color="#1F2937" strokeWidth={2} />
+                <ChevronLeft size={24} color="#0F172A" strokeWidth={2.5} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.moreButton}>
-                <MoreHorizontal size={20} color="#1F2937" />
+                <MoreHorizontal size={22} color="#64748B" />
             </TouchableOpacity>
         </View>
     );
@@ -29,17 +29,13 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
-        backgroundColor: '#fff',
+        borderBottomColor: '#E2E8F0',
+        backgroundColor: '#FFFFFF',
     },
     backButton: {
-        padding: 8,
-        borderRadius: 20,
-        backgroundColor: '#F7F7F7',
+        padding: 6,
     },
     moreButton: {
-        padding: 8,
-        borderRadius: 20,
-        backgroundColor: '#F7F7F7',
+        padding: 6,
     },
 });
