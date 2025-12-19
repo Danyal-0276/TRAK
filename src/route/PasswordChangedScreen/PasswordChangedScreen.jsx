@@ -8,7 +8,9 @@ import {
     StatusBar,
     Animated,
 } from 'react-native';
+import { LinearGradient } from 'react-native-linear-gradient';
 import { CommonActions } from '@react-navigation/native';
+import colors from '../../utils/colors';
 
 const PasswordChangedScreen = ({ navigation }) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -43,45 +45,89 @@ const PasswordChangedScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-            <View style={styles.content}>
-                <Animated.View
-                    style={[
-                        styles.messageContainer,
-                        {
-                            opacity: fadeAnim,
-                            transform: [{ scale: scaleAnim }]
-                        }
-                    ]}
-                >
-                    <View style={styles.checkmarkContainer}>
-                        <Text style={styles.checkmark}>✓</Text>
-                    </View>
+        <View style={styles.fullContainer}>
+            <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+            
+            {/* Subtle gradient background */}
+            <LinearGradient
+                colors={[colors.background, colors.backgroundSecondary, colors.background]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gradientBackground}
+            />
+            
+            {/* Decorative accent circles */}
+            <View style={styles.accentCircle1} />
+            <View style={styles.accentCircle2} />
 
-                    <Text style={styles.title}>Password changed</Text>
-                    <Text style={styles.subtitle}>
-                        Your password has been changed successfully.
-                    </Text>
-                </Animated.View>
-
-                <View style={styles.buttonContainer}>
-                    <TouchableOpacity
-                        style={styles.primaryButton}
-                        onPress={handleBackToLogin}
+            <SafeAreaView style={styles.container}>
+                <View style={styles.content}>
+                    <Animated.View
+                        style={[
+                            styles.messageContainer,
+                            {
+                                opacity: fadeAnim,
+                                transform: [{ scale: scaleAnim }]
+                            }
+                        ]}
                     >
-                        <Text style={styles.primaryButtonText}>Back to login</Text>
-                    </TouchableOpacity>
+                        <View style={styles.checkmarkContainer}>
+                            <Text style={styles.checkmark}>✓</Text>
+                        </View>
+
+                        <Text style={styles.title}>Password changed</Text>
+                        <Text style={styles.subtitle}>
+                            Your password has been changed successfully.
+                        </Text>
+                    </Animated.View>
+
+                    <View style={styles.buttonContainer}>
+                        <TouchableOpacity
+                            style={styles.primaryButton}
+                            onPress={handleBackToLogin}
+                        >
+                            <Text style={styles.primaryButtonText}>Back to login</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
-        </SafeAreaView>
+            </SafeAreaView>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    fullContainer: {
+        flex: 1,
+        backgroundColor: colors.background,
+    },
+    gradientBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+    },
+    accentCircle1: {
+        position: 'absolute',
+        width: 350,
+        height: 350,
+        borderRadius: 175,
+        backgroundColor: 'rgba(37, 99, 235, 0.04)',
+        top: -100,
+        right: -100,
+    },
+    accentCircle2: {
+        position: 'absolute',
+        width: 280,
+        height: 280,
+        borderRadius: 140,
+        backgroundColor: 'rgba(37, 99, 235, 0.03)',
+        bottom: 80,
+        left: -80,
+    },
     container: {
         flex: 1,
-        backgroundColor: '#fff',
+        backgroundColor: 'transparent',
     },
     content: {
         flex: 1,
@@ -94,45 +140,63 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     checkmarkContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: '#000',
+        width: 90,
+        height: 90,
+        borderRadius: 45,
+        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
-        marginBottom: 30,
+        marginBottom: 32,
+        shadowColor: colors.primary,
+        shadowOffset: {
+            width: 0,
+            height: 8,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 16,
+        elevation: 12,
     },
     checkmark: {
-        color: '#fff',
-        fontSize: 40,
+        color: colors.surface,
+        fontSize: 48,
         fontWeight: 'bold',
     },
     title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#000',
-        marginBottom: 15,
+        fontSize: 40,
+        fontWeight: '800',
+        color: colors.textPrimary,
+        marginBottom: 16,
         textAlign: 'center',
+        letterSpacing: -1.2,
     },
     subtitle: {
         fontSize: 16,
-        color: '#666',
-        lineHeight: 22,
+        color: colors.textSecondary,
+        lineHeight: 24,
         textAlign: 'center',
     },
     buttonContainer: {
         paddingBottom: 30,
     },
     primaryButton: {
-        backgroundColor: '#000',
-        paddingVertical: 15,
-        borderRadius: 8,
+        backgroundColor: colors.primary,
+        paddingVertical: 18,
+        borderRadius: 16,
         alignItems: 'center',
+        shadowColor: colors.primary,
+        shadowOffset: {
+            width: 0,
+            height: 6,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 8,
     },
     primaryButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
+        color: colors.surface,
+        fontSize: 17,
+        fontWeight: '700',
+        letterSpacing: 0.2,
     },
 });
 

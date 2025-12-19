@@ -1,25 +1,49 @@
 import React from 'react';
-import { TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
+import colors from '../../../utils/colors';
 
-export const SocialButton = ({ icon, onPress }) => (
-    <TouchableOpacity style={styles.socialButton} onPress={onPress}>
-        <Text style={styles.socialButtonText}>{icon}</Text>
+export const SocialButton = ({ iconSource, onPress, style, loading }) => (
+    <TouchableOpacity 
+        style={[styles.socialButton, style]} 
+        onPress={onPress}
+        activeOpacity={0.7}
+        disabled={loading}
+    >
+        {loading ? (
+            <ActivityIndicator size="small" color={colors.primary} />
+        ) : (
+            iconSource && (
+                <Image 
+                    source={iconSource} 
+                    style={styles.iconImage}
+                    resizeMode="contain"
+                />
+            )
+        )}
     </TouchableOpacity>
 );
 
 const styles = StyleSheet.create({
     socialButton: {
-        width: 45,
-        height: 45,
-        borderRadius: 22.5,
-        backgroundColor: '#f5f5f5',
-        justifyContent: 'center',
+        width: 56,
+        height: 56,
+        borderRadius: 16,
+        backgroundColor: colors.surface,
         alignItems: 'center',
-        borderWidth: 1,
-        borderColor: '#ddd',
+        justifyContent: 'center',
+        borderWidth: 1.5,
+        borderColor: colors.border,
+        shadowColor: colors.shadow,
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
-    socialButtonText: {
-        fontSize: 16,
-        fontWeight: 'bold',
+    iconImage: {
+        width: 24,
+        height: 24,
     },
 });

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
+import colors from '../../../utils/colors';
 
 export const Header = ({ onBackPress }) => (
     <View style={styles.header}>
@@ -8,22 +9,24 @@ export const Header = ({ onBackPress }) => (
             style={styles.backButton}
             onPress={onBackPress}
         >
-            <ChevronLeft size={24} color="#fff" />
+            <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.5} />
         </TouchableOpacity>
     </View>
 );
 
 const styles = StyleSheet.create({
     header: {
-        paddingTop: 10,
-        paddingBottom: 15,
+        paddingTop: 4,
+        paddingBottom: 4,
     },
     backButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: colors.backgroundSecondary,
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: colors.border,
     },
 });
