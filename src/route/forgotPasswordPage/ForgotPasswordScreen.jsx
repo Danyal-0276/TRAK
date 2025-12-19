@@ -6,79 +6,87 @@ import {
     TouchableOpacity,
     StyleSheet,
     StatusBar,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { LinearGradient } from 'react-native-linear-gradient';
 import { ChevronLeft } from 'lucide-react-native';
-import WhiteLogo from '../../assets/images/whiteLogo.svg';
+import colors from '../../utils/colors';
 
 const ForgotPasswordScreen = ({ navigation }) => {
     const [email, setEmail] = useState('');
 
     return (
         <View style={styles.fullContainer}>
-            <StatusBar barStyle="light-content" backgroundColor="#000" />
+            <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
             
+            {/* Subtle gradient background */}
+            <LinearGradient
+                colors={[colors.background, colors.backgroundSecondary, colors.background]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gradientBackground}
+            />
+            
+            {/* Decorative accent circles */}
+            <View style={styles.accentCircle1} />
+            <View style={styles.accentCircle2} />
+
             <SafeAreaView style={styles.safeContainer}>
-                {/* Black Background Section */}
-                <View style={styles.blackSection}>
-                    {/* Back Button */}
-                    <View style={styles.header}>
-                        <TouchableOpacity 
-                            style={styles.backButton}
-                            onPress={() => navigation.goBack()}
-                        >
-                            <ChevronLeft size={24} color="#fff" />
-                        </TouchableOpacity>
-                    </View>
+                <KeyboardAvoidingView 
+                    style={styles.contentContainer}
+                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                >
+                    <View style={styles.contentWrapper}>
+                        <View style={styles.header}>
+                            <TouchableOpacity 
+                                style={styles.backButton}
+                                onPress={() => navigation.goBack()}
+                            >
+                                <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.5} />
+                            </TouchableOpacity>
+                        </View>
 
-                    {/* Logo Section */}
-                    <View style={styles.logoSection}>
-                        <View style={styles.logoContainer}>
-                            <WhiteLogo width={80} height={80} />
-                            <Text style={styles.brandName}>TRAK</Text>
+                        <View style={styles.headerSection}>
+                            <Text style={styles.title}>Forgot password?</Text>
+                            <Text style={styles.subtitle}>
+                                Don't worry! It happens. Please enter the email associated with your account.
+                            </Text>
+                        </View>
+
+                        <View style={styles.formCard}>
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Email address</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Enter your email address"
+                                    placeholderTextColor={colors.textTertiary}
+                                    value={email}
+                                    onChangeText={setEmail}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                />
+                            </View>
+
+                            <TouchableOpacity
+                                style={styles.primaryButton}
+                                onPress={() => navigation.navigate('ForgotPasswordCode', { email })}
+                            >
+                                <Text style={styles.primaryButtonText}>Send code</Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={styles.footer}>
+                            <Text style={styles.footerText}>Remember password? </Text>
+                            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+                                <Text style={styles.linkText}>Log in</Text>
+                            </TouchableOpacity>
                         </View>
                     </View>
-                </View>
+                </KeyboardAvoidingView>
             </SafeAreaView>
-
-            {/* White Bottom Section with Form */}
-            <View style={styles.bottomSection}>
-                <View style={styles.contentWrapper}>
-                    <Text style={styles.title}>Forgot password?</Text>
-                    <Text style={styles.subtitle}>
-                        Don't worry! It happens. Please enter the email associated with your account.
-                    </Text>
-
-                    <View style={styles.formContainer}>
-                        <View style={styles.inputGroup}>
-                            <Text style={styles.label}>Email address</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Enter your email address"
-                                placeholderTextColor="#999"
-                                value={email}
-                                onChangeText={setEmail}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                            />
-                        </View>
-
-                        <TouchableOpacity
-                            style={styles.primaryButton}
-                            onPress={() => navigation.navigate('ForgotPasswordCode', { email })}
-                        >
-                            <Text style={styles.primaryButtonText}>Send code</Text>
-                        </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.footer}>
-                        <Text style={styles.footerText}>Remember password? </Text>
-                        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                            <Text style={styles.linkText}>Log in</Text>
-                        </TouchableOpacity>
-                    </View>
-                </View>
-            </View>
         </View>
     );
 };
@@ -86,126 +94,149 @@ const ForgotPasswordScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     fullContainer: {
         flex: 1,
-        backgroundColor: '#000',
+        backgroundColor: colors.background,
+    },
+    gradientBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+    },
+    accentCircle1: {
+        position: 'absolute',
+        width: 350,
+        height: 350,
+        borderRadius: 175,
+        backgroundColor: 'rgba(37, 99, 235, 0.04)',
+        top: -100,
+        right: -100,
+    },
+    accentCircle2: {
+        position: 'absolute',
+        width: 280,
+        height: 280,
+        borderRadius: 140,
+        backgroundColor: 'rgba(37, 99, 235, 0.03)',
+        bottom: 80,
+        left: -80,
     },
     safeContainer: {
-        backgroundColor: '#000',
-        paddingBottom: 0,
+        flex: 1,
+        backgroundColor: 'transparent',
     },
-    blackSection: {
-        backgroundColor: '#000',
-        paddingHorizontal: 20,
-        paddingBottom: 20,
-        height: 200,
+    contentContainer: {
+        flex: 1,
+    },
+    contentWrapper: {
+        flex: 1,
+        paddingHorizontal: 24,
+        paddingTop: 16,
+        paddingBottom: 24,
     },
     header: {
-        paddingTop: 10,
-        paddingBottom: 15,
+        paddingTop: 4,
+        paddingBottom: 4,
+        marginBottom: 24,
     },
     backButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: 'rgba(255, 255, 255, 0.2)',
+        backgroundColor: colors.backgroundSecondary,
         justifyContent: 'center',
         alignItems: 'center',
+        borderWidth: 1,
+        borderColor: colors.border,
     },
-    logoSection: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    logoContainer: {
-        alignItems: 'center',
-    },
-    brandName: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#fff',
-        letterSpacing: 3,
-        marginTop: 8,
-    },
-    bottomSection: {
-        flex: 1,
-        backgroundColor: '#fff',
-        borderTopLeftRadius: 30,
-        borderTopRightRadius: 30,
-    },
-    contentWrapper: {
-        flex: 1,
-        paddingHorizontal: 30,
-        paddingTop: 30,
-        paddingBottom: 20,
-        justifyContent: 'space-between',
+    headerSection: {
+        marginBottom: 32,
     },
     title: {
-        fontSize: 26,
-        fontWeight: 'bold',
-        color: '#000',
+        fontSize: 40,
+        fontWeight: '800',
+        color: colors.textPrimary,
         marginBottom: 12,
-        textAlign: 'left',
+        letterSpacing: -1.2,
     },
     subtitle: {
         fontSize: 16,
-        color: '#666',
-        lineHeight: 22,
-        marginBottom: 30,
+        color: colors.textSecondary,
+        lineHeight: 24,
     },
-    formContainer: {
-        flex: 1,
-    },
-    inputGroup: {
-        marginBottom: 25,
-    },
-    label: {
-        fontSize: 14,
-        color: '#000',
-        marginBottom: 8,
-        fontWeight: '500',
-    },
-    input: {
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
-        fontSize: 16,
-        color: '#000',
-        backgroundColor: '#f8f9fa',
-    },
-    primaryButton: {
-        backgroundColor: '#000',
-        paddingVertical: 16,
-        borderRadius: 25,
-        alignItems: 'center',
-        shadowColor: '#000',
+    formCard: {
+        backgroundColor: colors.surface,
+        borderRadius: 24,
+        padding: 28,
+        marginBottom: 20,
+        shadowColor: colors.shadow,
         shadowOffset: {
             width: 0,
-            height: 2,
+            height: 8,
         },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 4,
+        shadowOpacity: 0.12,
+        shadowRadius: 20,
+        elevation: 8,
+        borderWidth: 1,
+        borderColor: colors.borderLight,
+    },
+    inputGroup: {
+        marginBottom: 24,
+    },
+    label: {
+        fontSize: 15,
+        color: colors.textPrimary,
+        marginBottom: 10,
+        fontWeight: '600',
+        letterSpacing: -0.3,
+    },
+    input: {
+        borderWidth: 1.5,
+        borderColor: colors.border,
+        borderRadius: 14,
+        paddingHorizontal: 18,
+        paddingVertical: 16,
+        fontSize: 16,
+        color: colors.textPrimary,
+        backgroundColor: colors.backgroundSecondary,
+    },
+    primaryButton: {
+        backgroundColor: colors.primary,
+        paddingVertical: 18,
+        borderRadius: 16,
+        alignItems: 'center',
+        marginTop: 8,
+        shadowColor: colors.primary,
+        shadowOffset: {
+            width: 0,
+            height: 6,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 8,
     },
     primaryButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
+        color: colors.surface,
+        fontSize: 17,
+        fontWeight: '700',
+        letterSpacing: 0.2,
     },
     footer: {
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingTop: 10,
+        paddingTop: 16,
     },
     footerText: {
-        color: '#666',
+        color: colors.textSecondary,
         fontSize: 14,
+        fontWeight: '400',
     },
     linkText: {
-        color: '#000',
+        color: colors.primary,
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: '700',
+        letterSpacing: -0.2,
     },
 });
 

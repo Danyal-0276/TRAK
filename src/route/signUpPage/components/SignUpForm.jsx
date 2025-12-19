@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { InputField } from './InputField';
 import { SocialButtons } from './SocialButtons';
+import colors from '../../../utils/colors';
 
 export const SignUpForm = ({ 
     fullName,
@@ -76,30 +77,33 @@ export const SignUpForm = ({
 
 const styles = StyleSheet.create({
     formContainer: {
-        flex: 1,
+        width: '100%',
     },
     primaryButton: {
-        backgroundColor: '#000',
+        backgroundColor: colors.primary,
         paddingVertical: 16,
-        borderRadius: 25,
+        borderRadius: 16,
         alignItems: 'center',
-        marginTop: 10,
+        marginTop: 4,
         marginBottom: 20,
-        shadowColor: '#000',
+        shadowColor: colors.primary,
         shadowOffset: {
             width: 0,
-            height: 2,
+            height: 6,
         },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 4,
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 8,
     },
     primaryButtonDisabled: {
-        opacity: 0.6,
+        backgroundColor: colors.textTertiary,
+        shadowOpacity: 0,
+        elevation: 0,
     },
     primaryButtonText: {
-        color: '#fff',
-        fontSize: 16,
-        fontWeight: '600',
+        color: colors.surface,
+        fontSize: 17,
+        fontWeight: '700',
+        letterSpacing: 0.2,
     },
 });

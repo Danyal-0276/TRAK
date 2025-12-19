@@ -5,7 +5,9 @@ import WhiteLogo from '../../../assets/images/whiteLogo.svg';
 export const LogoSection = () => (
     <View style={styles.logoSection}>
         <View style={styles.logoContainer}>
-            <WhiteLogo width={80} height={80} />
+            <View style={styles.logoWrapper}>
+                <WhiteLogo width={90} height={90} />
+            </View>
             <Text style={styles.brandName}>TRAK</Text>
         </View>
     </View>
@@ -16,15 +18,19 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
+        paddingTop: 20,
     },
     logoContainer: {
         alignItems: 'center',
     },
+    logoWrapper: {
+        marginBottom: 4,
+    },
     brandName: {
-        fontSize: 20,
-        fontWeight: 'bold',
+        fontSize: 24,
+        fontWeight: '700',
         color: '#fff',
-        letterSpacing: 3,
-        marginTop: 8,
+        letterSpacing: 4,
+        marginTop: 12,
     },
 });

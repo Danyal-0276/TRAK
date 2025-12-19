@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import colors from '../../../utils/colors';
 
 export const Footer = ({ onSignInPress }) => (
     <View style={styles.footer}>
@@ -15,15 +16,17 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'center',
         alignItems: 'center',
-        paddingTop: 10,
+        paddingTop: 8,
     },
     footerText: {
-        color: '#666',
+        color: colors.textSecondary,
         fontSize: 14,
+        fontWeight: '400',
     },
     linkText: {
-        color: '#000',
+        color: colors.primary,
         fontSize: 14,
-        fontWeight: '600',
+        fontWeight: '700',
+        letterSpacing: -0.2,
     },
 });
