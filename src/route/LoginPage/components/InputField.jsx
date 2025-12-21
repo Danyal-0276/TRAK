@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import colors from '../../../utils/colors';
 
-export const InputField = ({ 
-    label, 
-    value, 
-    onChangeText, 
-    placeholder, 
-    secureTextEntry, 
-    keyboardType 
-}) => {
+export const InputField = forwardRef(({
+    label,
+    value,
+    onChangeText,
+    placeholder,
+    secureTextEntry,
+    keyboardType,
+    returnKeyType,
+    onSubmitEditing,
+    blurOnSubmit
+}, ref) => {
     const [isFocused, setIsFocused] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = secureTextEntry;
@@ -20,6 +23,7 @@ export const InputField = ({
             <Text style={styles.label}>{label}</Text>
             <View style={[styles.inputContainer, isFocused && styles.inputContainerFocused]}>
                 <TextInput
+                    ref={ref}
                     style={styles.input}
                     placeholder={placeholder}
                     placeholderTextColor={colors.textTertiary}
@@ -27,6 +31,9 @@ export const InputField = ({
                     onChangeText={onChangeText}
                     secureTextEntry={isPassword && !showPassword}
                     keyboardType={keyboardType}
+                    returnKeyType={returnKeyType}
+                    onSubmitEditing={onSubmitEditing}
+                    blurOnSubmit={blurOnSubmit}
                     autoCapitalize="none"
                     onFocus={() => setIsFocused(true)}
                     onBlur={() => setIsFocused(false)}
@@ -49,7 +56,7 @@ export const InputField = ({
             </View>
         </View>
     );
-};
+});
 
 const styles = StyleSheet.create({
     inputGroup: {

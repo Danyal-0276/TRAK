@@ -123,10 +123,11 @@ const SignUpScreen = ({ navigation }) => {
             <View style={styles.accentCircle2} />
 
             <SafeAreaView style={styles.safeContainer}>
-                <KeyboardAvoidingView 
+                <KeyboardAvoidingView
                     style={styles.contentContainer}
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+                    enabled={true}
                 >
                     <View style={styles.contentWrapper}>
                         <Header onBackPress={() => navigation.navigate('OpeningScreen')} />
