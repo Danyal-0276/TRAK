@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 4,
     },
     forgotText: {
-        color: colors.primary,
+        color: '#000000',
         fontSize: 15,
         fontWeight: '600',
         letterSpacing: -0.2,
@@ -156,12 +156,12 @@ const styles = StyleSheet.create({
         marginTop: 20,
     },
     primaryButton: {
-        backgroundColor: colors.primary,
+        backgroundColor: '#000000',
         paddingVertical: 18,
         borderRadius: 16,
         alignItems: 'center',
         marginBottom: 24,
-        shadowColor: colors.primary,
+        shadowColor: '#000000',
         shadowOffset: {
             width: 0,
             height: 6,

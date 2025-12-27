@@ -5,13 +5,13 @@ import {
     TextInput,
     TouchableOpacity,
     StyleSheet,
-    SafeAreaView,
     StatusBar,
     ScrollView,
     Alert,
     KeyboardAvoidingView,
     Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'react-native-linear-gradient';
 import { ChevronLeft, Eye, EyeOff } from 'lucide-react-native';
 import colors from '../../utils/colors';
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
         width: 350,
         height: 350,
         borderRadius: 175,
-        backgroundColor: 'rgba(37, 99, 235, 0.04)',
+        backgroundColor: 'rgba(0, 0, 0, 0.04)',
         top: -100,
         right: -100,
     },
@@ -189,7 +189,7 @@ const styles = StyleSheet.create({
         width: 280,
         height: 280,
         borderRadius: 140,
-        backgroundColor: 'rgba(37, 99, 235, 0.03)',
+        backgroundColor: 'rgba(0, 0, 0, 0.03)',
         bottom: 80,
         left: -80,
     },
@@ -282,12 +282,12 @@ const styles = StyleSheet.create({
         marginLeft: 8,
     },
     primaryButton: {
-        backgroundColor: colors.primary,
+        backgroundColor: '#000000',
         paddingVertical: 18,
         borderRadius: 16,
         alignItems: 'center',
         marginTop: 8,
-        shadowColor: colors.primary,
+        shadowColor: '#000000',
         shadowOffset: {
             width: 0,
             height: 6,
@@ -314,7 +314,7 @@ const styles = StyleSheet.create({
         fontWeight: '400',
     },
     linkText: {
-        color: colors.primary,
+        color: '#000000',
         fontSize: 14,
         fontWeight: '700',
         letterSpacing: -0.2,

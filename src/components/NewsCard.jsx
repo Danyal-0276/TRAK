@@ -27,7 +27,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                     <View style={cardStyles.sourceContainer}>
                         <View style={[
                             cardStyles.sourceIcon,
-                            { backgroundColor: item.trending ? '#DC2626' : '#1E40AF' }
+                                { backgroundColor: item.trending ? '#2563EB' : '#1F2937' }
                         ]}>
                             <Text style={cardStyles.sourceIconText}>
                                 {item.source.substring(0, 2).toUpperCase()}
@@ -36,9 +36,9 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                         <View style={cardStyles.sourceInfo}>
                             <View style={cardStyles.sourceNameRow}>
                                 <Text style={cardStyles.sourceName}>{item.source}</Text>
-                                {item.verified && (
-                                    <CheckCircle size={14} color="#2563EB" fill="#2563EB" />
-                                )}
+                                    {item.verified && (
+                                        <CheckCircle size={14} color="#2563EB" fill="#2563EB" />
+                                    )}
                             </View>
                             <View style={cardStyles.timeRow}>
                                 <Clock size={12} color="#64748B" />
@@ -123,8 +123,8 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                         >
                             <Bookmark
                                 size={18}
-                                color={bookmarkedItems.has(item.id) ? '#1E40AF' : '#94A3B8'}
-                                fill={bookmarkedItems.has(item.id) ? '#1E40AF' : 'transparent'}
+                                    color={bookmarkedItems.has(item.id) ? '#2563EB' : '#94A3B8'}
+                                    fill={bookmarkedItems.has(item.id) ? '#2563EB' : 'transparent'}
                                 strokeWidth={2}
                             />
                         </TouchableOpacity>
@@ -244,7 +244,7 @@ const cardStyles = StyleSheet.create({
         paddingVertical: 5,
         borderRadius: 4,
         borderLeftWidth: 3,
-        borderLeftColor: '#2563EB',
+            borderLeftColor: '#2563EB',
     },
     categoryText: {
         color: '#334155',

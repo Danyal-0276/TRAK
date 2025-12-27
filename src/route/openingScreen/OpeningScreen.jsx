@@ -1,14 +1,10 @@
 import React, { useEffect, useRef } from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    StatusBar,
-    Animated,
-} from 'react-native';
+import { View, StyleSheet, StatusBar, Animated } from 'react-native';
 import WhiteLogo from '../../assets/images/whiteLogo.svg';
 import colors from '../../utils/colors';
+import Screen from '../../components/ui/Screen';
+import Text from '../../components/ui/Text';
+import Button from '../../components/ui/Button';
 
 const OpeningScreen = ({ navigation }) => {
     // Animation values
@@ -91,7 +87,7 @@ const OpeningScreen = ({ navigation }) => {
     }, []);
 
     return (
-        <View style={styles.fullContainer}>
+        <Screen gradient>
             <StatusBar barStyle="light-content" backgroundColor={colors.textPrimary} />
 
             {/* Black Background Section - Top Half */}
@@ -132,8 +128,8 @@ const OpeningScreen = ({ navigation }) => {
                             },
                         ]}
                     >
-                        <Text style={styles.welcomeTitle}>Welcome</Text>
-                        <Text style={styles.welcomeSubtitle}>
+                        <Text variant="title" style={styles.welcomeTitle}>Welcome</Text>
+                        <Text variant="body" style={styles.welcomeSubtitle}>
                             A world of exceptional news{'\n'}
                             with TRAK news core...
                         </Text>
@@ -148,25 +144,17 @@ const OpeningScreen = ({ navigation }) => {
                             },
                         ]}
                     >
-                        <TouchableOpacity
-                            style={styles.primaryButton}
+                        <Button
+                            title="Sign In"
+                            variant="primary"
+                            primaryColors={["#000000", "#000000"]}
                             onPress={() => navigation.navigate('Login')}
-                            activeOpacity={0.9}
-                        >
-                            <Text style={styles.primaryButtonText}>Sign In</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.secondaryButton}
-                            onPress={() => navigation.navigate('SignUp')}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.secondaryButtonText}>Create Account</Text>
-                        </TouchableOpacity>
+                        />
+                        <Button title="Create Account" variant="outline" onPress={() => navigation.navigate('SignUp')} />
                     </Animated.View>
                 </View>
             </View>
-        </View>
+        </Screen>
     );
 };
 
@@ -212,12 +200,9 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
     },
     welcomeTitle: {
-        fontSize: 38,
-        fontWeight: '700',
         color: colors.textPrimary,
         marginBottom: 16,
         textAlign: 'left',
-        letterSpacing: -0.5,
     },
     welcomeSubtitle: {
         fontSize: 16,
@@ -229,40 +214,10 @@ const styles = StyleSheet.create({
     buttonContainer: {
         gap: 16,
     },
-    primaryButton: {
-        backgroundColor: colors.textPrimary,
-        paddingVertical: 18,
-        borderRadius: 16,
-        alignItems: 'center',
-        shadowColor: colors.shadowDark,
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 6,
-    },
-    primaryButtonText: {
-        color: colors.surface,
-        fontSize: 17,
-        fontWeight: '600',
-        letterSpacing: 0.3,
-    },
-    secondaryButton: {
-        backgroundColor: 'transparent',
-        paddingVertical: 18,
-        borderRadius: 16,
-        alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: colors.border,
-    },
-    secondaryButtonText: {
-        color: colors.textPrimary,
-        fontSize: 17,
-        fontWeight: '600',
-        letterSpacing: 0.3,
-    },
+    primaryButton: {},
+    primaryButtonText: {},
+    secondaryButton: {},
+    secondaryButtonText: {},
 });
 
 export default OpeningScreen;

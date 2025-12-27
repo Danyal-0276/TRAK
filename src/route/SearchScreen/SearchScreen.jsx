@@ -6,18 +6,21 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  Text,
   Animated,
   Pressable,
   Keyboard,
   RefreshControl,
+  StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import SearchBar from "./components/SearchBar";
 import Tabs from "./components/tabs";
 import TrendingTopics from "./components/TrendingTopics";
 import RecentSearches from "./components/RecentSearches";
 import { NewsCard } from "../../components/NewsCard";
 import { mockApi } from "../../utils/Service/mockApi";
+import { useTheme } from "../../theme/ThemeContext";
+import Text from "../../components/ui/Text";
 
 // Skeleton Card Component
 const SkeletonCard = () => {
@@ -83,6 +86,8 @@ const SkeletonCard = () => {
 };
 
 const SearchScreen = ({ navigation }) => {
+  const { theme } = useTheme();
+  const { colors } = theme;
   const [allNews, setAllNews] = useState([]);
   const [filteredNews, setFilteredNews] = useState([]);
   const [trendingTopics, setTrendingTopics] = useState([]);
@@ -264,7 +269,9 @@ const SearchScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.screenWrapper}>
+    <SafeAreaView style={[styles.screenWrapper, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+      
       <SearchBar
         ref={searchRef}
         onSearch={handleSearch}
@@ -280,7 +287,7 @@ const SearchScreen = ({ navigation }) => {
       </View>
 
       <Pressable
-        style={{ flex: 1 }}
+        style={styles.contentArea}
         onPress={() => {
           Keyboard.dismiss();
           searchRef.current?.hideHistory();
@@ -295,8 +302,8 @@ const SearchScreen = ({ navigation }) => {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                colors={['#4f8cff']}
-                tintColor="#4f8cff"
+                colors={[colors.primary]}
+                tintColor={colors.primary}
               />
             }
           >
@@ -313,14 +320,14 @@ const SearchScreen = ({ navigation }) => {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                colors={['#4f8cff']}
-                tintColor="#4f8cff"
+                colors={[colors.primary]}
+                tintColor={colors.primary}
               />
             }
           >
             <Text style={styles.noResultsEmoji}>🔍</Text>
-            <Text style={styles.noResultsText}>No news found</Text>
-            <Text style={styles.noResultsSub}>
+            <Text variant="title" color={colors.textPrimary} style={styles.noResultsText}>No news found</Text>
+            <Text variant="body" color={colors.textSecondary} style={styles.noResultsSub}>
               {searchQuery.trim() 
                 ? "Try searching with different keywords" 
                 : "No articles in this category"}
@@ -342,8 +349,8 @@ const SearchScreen = ({ navigation }) => {
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={onRefresh}
-                  colors={['#4f8cff']}
-                  tintColor="#4f8cff"
+                  colors={[colors.primary]}
+                  tintColor={colors.primary}
                 />
               }
             >
@@ -376,31 +383,30 @@ const SearchScreen = ({ navigation }) => {
           </Animated.View>
         )}
       </Pressable>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   screenWrapper: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-    paddingTop: 4,
   },
   tabsWrapper: {
     height: 40,
+  },
+  contentArea: {
+    flex: 1,
   },
   animatedList: {
     flex: 1,
   },
   scrollContainer: {
-    paddingBottom: 60,
-    backgroundColor: "#F7F7F7",
+    paddingBottom: 120,
   },
   noResultsContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F7F7F7",
     paddingHorizontal: 20,
     paddingVertical: 100,
   },
@@ -409,13 +415,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   noResultsText: {
-    fontSize: 18,
-    color: "#0F172A",
-    fontWeight: "700",
+    marginBottom: 4,
   },
   noResultsSub: {
-    fontSize: 14,
-    color: "#64748B",
     marginTop: 8,
     textAlign: "center",
   },

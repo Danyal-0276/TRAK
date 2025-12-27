@@ -213,14 +213,12 @@ const NewsFeedScreen = ({ navigation }) => {
 
     return (
         <View style={styles.outerContainer}>
-            {/* Translucent status bar - header slides behind this area */}
             <StatusBar 
                 barStyle="dark-content" 
                 backgroundColor="transparent" 
                 translucent 
             />
             
-            {/* SOLID STATUS BAR AREA - ALWAYS VISIBLE */}
             <View 
                 style={[
                     styles.statusBarCover, 
@@ -229,7 +227,6 @@ const NewsFeedScreen = ({ navigation }) => {
             />
 
             <View style={styles.container}>
-                {/* Animated Header that slides up behind status bar */}
                 <Animated.View
                     style={[
                         styles.headerContainer,
@@ -243,7 +240,6 @@ const NewsFeedScreen = ({ navigation }) => {
                     <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />
                 </Animated.View>
 
-                {/* Scrollable Content */}
                 <Animated.ScrollView
                     style={styles.feed}
                     contentContainerStyle={styles.feedContent}
@@ -260,11 +256,9 @@ const NewsFeedScreen = ({ navigation }) => {
                         />
                     }
                 >
-                    {/* Spacer for header + status bar */}
                     <View style={{ height: TOTAL_HEADER_HEIGHT + insets.top }} />
 
                     {loading ? (
-                        // Show skeleton cards while loading
                         <>
                             <SkeletonCard />
                             <SkeletonCard />
@@ -273,7 +267,6 @@ const NewsFeedScreen = ({ navigation }) => {
                             <SkeletonCard />
                         </>
                     ) : (
-                        // Show actual news cards
                         newsData.map((item) => (
                             <NewsCard
                                 key={item.id}

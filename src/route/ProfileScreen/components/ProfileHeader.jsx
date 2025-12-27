@@ -1,32 +1,40 @@
 // components/profile/ProfileHeader.jsx
 import React from "react";
-import { View, Text, Image, StyleSheet } from "react-native";
+import { View, Image, StyleSheet } from "react-native";
+import { useTheme } from "../../../theme/ThemeContext";
+import Text from "../../../components/ui/Text";
+import Card from "../../../components/ui/Card";
 
 const ProfileHeader = ({ name, username, bio, avatar }) => {
+  const { theme } = useTheme();
+  const { colors, spacing, radius } = theme;
   return (
-    <View style={styles.header}>
-      <Image source={avatar} style={styles.avatar} />
-      <View style={styles.headerText}>
-        <Text style={styles.name}>{name}</Text>
-        <Text style={styles.username}>{username}</Text>
-        <Text style={styles.bio}>{bio}</Text>
+    <Card style={{ marginBottom: spacing.lg }}>
+      <View style={styles.header}>
+        <Image source={avatar} style={[styles.avatar, { borderColor: colors.border }]} />
+        <View style={styles.headerText}>
+          <Text variant="title" style={{ color: colors.textPrimary }}>{name}</Text>
+          <Text variant="caption" color={colors.textSecondary} style={{ marginBottom: spacing.xs }}>{username}</Text>
+          <Text variant="body" color={colors.textSecondary}>{bio}</Text>
+        </View>
       </View>
-    </View>
+    </Card>
   );
 };
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row", marginBottom: 20 },
+  header: { flexDirection: "row" },
   avatar: {
     width: 90,
     height: 90,
     borderRadius: 45,
     marginRight: 15,
+    borderWidth: 1,
   },
   headerText: { flex: 1, justifyContent: "center" },
-  name: { fontSize: 22, fontWeight: "bold", color: "#000" },
-  username: { fontSize: 14, color: "#657786", marginBottom: 6 },
-  bio: { fontSize: 14, color: "#000", lineHeight: 20 },
+  name: {},
+  username: {},
+  bio: {},
 });
 
 export default ProfileHeader;

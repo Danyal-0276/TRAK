@@ -1,16 +1,23 @@
 // components/SettingsSection.jsx
 import React from "react";
 import { View, StyleSheet } from "react-native";
+import { useTheme } from "../../../theme/ThemeContext";
 
-export default function SettingsSection({ darkTheme, children }) {
+export default function SettingsSection({ children, style }) {
+  const { theme } = useTheme();
+  const { colors, spacing, radius } = theme;
   return (
     <View
       style={[
         styles.section,
         {
-          backgroundColor: darkTheme ? "#111" : "#fff",
-          shadowOpacity: darkTheme ? 0 : 0.05,
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          paddingHorizontal: spacing.md,
+          paddingVertical: spacing.sm,
+          borderRadius: radius.lg,
         },
+        style,
       ]}
     >
       {children}
@@ -20,12 +27,7 @@ export default function SettingsSection({ darkTheme, children }) {
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 24,
-    borderRadius: 12,
-    overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 2,
+    marginBottom: 16,
+    borderWidth: 1,
   },
 });

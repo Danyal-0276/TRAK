@@ -193,7 +193,7 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     primaryButton: {
-        backgroundColor: colors.primary,
+        backgroundColor: '#000000',
         paddingVertical: 16,
         borderRadius: 16,
         alignItems: 'center',

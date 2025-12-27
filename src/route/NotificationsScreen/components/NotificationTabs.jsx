@@ -77,6 +77,8 @@ const NotificationTabs = ({ notifications, onMarkAsRead }) => {
             onIndexChange={setIndex}
           />
         )}
+        lazy
+        removeClippedSubviews
         sceneContainerStyle={{ backgroundColor: "#F3F4F6" }}
       />
     </View>
