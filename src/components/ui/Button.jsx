@@ -19,7 +19,8 @@ const Button = ({ title, onPress, variant = 'primary', primaryColors, style, tex
   );
 
   if (variant === 'primary') {
-    const gradientColors = primaryColors || [colors.primaryLight, colors.primary];
+    // Use primaryGradient from theme if available, otherwise fallback to primary colors
+    const gradientColors = primaryColors || (colors.primaryGradient || [colors.primaryLight, colors.primary]);
     return (
       <TouchableOpacity onPress={onPress} activeOpacity={0.8} disabled={disabled} style={[{ borderRadius: radius.lg }, style]}>
         <LinearGradient

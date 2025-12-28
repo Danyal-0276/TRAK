@@ -4,28 +4,32 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { CheckCircle, Clock } from 'lucide-react-native';
+import { useTheme } from '../../../theme/ThemeContext';
 
 export const ArticleSourceInfo = ({ source, time, verified, trending }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    
     return (
         <View style={styles.container}>
             <View style={[
                 styles.sourceIcon,
-                { backgroundColor: trending ? '#DC2626' : '#1E40AF' }
+                { backgroundColor: trending ? colors.error : colors.info }
             ]}>
-                <Text style={styles.sourceIconText}>
+                <Text style={[styles.sourceIconText, { color: colors.textInverse }]}>
                     {source.substring(0, 2).toUpperCase()}
                 </Text>
             </View>
             <View style={styles.details}>
                 <View style={styles.nameRow}>
-                    <Text style={styles.sourceName}>{source}</Text>
+                    <Text style={[styles.sourceName, { color: colors.textPrimary }]}>{source}</Text>
                     {verified && (
-                        <CheckCircle size={14} color="#2563EB" fill="#2563EB" />
+                        <CheckCircle size={14} color={colors.info} fill={colors.info} />
                     )}
                 </View>
                 <View style={styles.timeRow}>
-                    <Clock size={12} color="#64748B" />
-                    <Text style={styles.timeText}>{time}</Text>
+                    <Clock size={12} color={colors.textSecondary} />
+                    <Text style={[styles.timeText, { color: colors.textSecondary }]}>{time}</Text>
                 </View>
             </View>
         </View>
@@ -47,7 +51,6 @@ const styles = StyleSheet.create({
         marginRight: 14,
     },
     sourceIconText: {
-        color: '#FFFFFF',
         fontSize: 16,
         fontWeight: '900',
         letterSpacing: 0.5,
@@ -61,7 +64,6 @@ const styles = StyleSheet.create({
         marginBottom: 5,
     },
     sourceName: {
-        color: '#0F172A',
         fontSize: 16,
         fontWeight: '700',
         marginRight: 6,
@@ -71,7 +73,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     timeText: {
-        color: '#64748B',
         fontSize: 14,
         fontWeight: '500',
         marginLeft: 4,

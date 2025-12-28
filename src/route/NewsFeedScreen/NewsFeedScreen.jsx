@@ -16,13 +16,14 @@ import { FeedHeader } from './components/FeedHeader';
 import { TabBar } from './components/TabBar';
 import { NewsCard } from '../../components/NewsCard';
 import { mockApi } from '../../utils/Service/mockApi';
+import { useTheme } from '../../theme/ThemeContext';
 
 const HEADER_HEIGHT = 60;
 const TAB_HEIGHT = 50;
 const TOTAL_HEADER_HEIGHT = HEADER_HEIGHT + TAB_HEIGHT;
 
 // Skeleton Card Component
-const SkeletonCard = () => {
+const SkeletonCard = ({ colors }) => {
     const shimmerAnim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
@@ -48,44 +49,44 @@ const SkeletonCard = () => {
     });
 
     return (
-        <View style={skeletonStyles.container}>
-            <View style={skeletonStyles.card}>
+        <View style={[skeletonStyles.container]}>
+            <View style={[skeletonStyles.card, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
                 {/* Header */}
                 <View style={skeletonStyles.header}>
                     <View style={skeletonStyles.sourceContainer}>
-                        <Animated.View style={[skeletonStyles.sourceIcon, { opacity }]} />
+                        <Animated.View style={[skeletonStyles.sourceIcon, { opacity, backgroundColor: colors.border }]} />
                         <View style={skeletonStyles.sourceInfo}>
-                            <Animated.View style={[skeletonStyles.sourceName, { opacity }]} />
-                            <Animated.View style={[skeletonStyles.timeText, { opacity }]} />
+                            <Animated.View style={[skeletonStyles.sourceName, { opacity, backgroundColor: colors.border }]} />
+                            <Animated.View style={[skeletonStyles.timeText, { opacity, backgroundColor: colors.borderLight }]} />
                         </View>
                     </View>
                 </View>
 
                 {/* Title */}
-                <Animated.View style={[skeletonStyles.title, { opacity }]} />
-                <Animated.View style={[skeletonStyles.titleShort, { opacity }]} />
+                <Animated.View style={[skeletonStyles.title, { opacity, backgroundColor: colors.border }]} />
+                <Animated.View style={[skeletonStyles.titleShort, { opacity, backgroundColor: colors.border }]} />
 
                 {/* Excerpt */}
-                <Animated.View style={[skeletonStyles.excerpt, { opacity }]} />
-                <Animated.View style={[skeletonStyles.excerpt, { opacity }]} />
-                <Animated.View style={[skeletonStyles.excerptShort, { opacity }]} />
+                <Animated.View style={[skeletonStyles.excerpt, { opacity, backgroundColor: colors.borderLight }]} />
+                <Animated.View style={[skeletonStyles.excerpt, { opacity, backgroundColor: colors.borderLight }]} />
+                <Animated.View style={[skeletonStyles.excerptShort, { opacity, backgroundColor: colors.borderLight }]} />
 
                 {/* Meta */}
                 <View style={skeletonStyles.metaRow}>
-                    <Animated.View style={[skeletonStyles.badge, { opacity }]} />
-                    <Animated.View style={[skeletonStyles.badge, { opacity }]} />
+                    <Animated.View style={[skeletonStyles.badge, { opacity, backgroundColor: colors.border }]} />
+                    <Animated.View style={[skeletonStyles.badge, { opacity, backgroundColor: colors.border }]} />
                 </View>
 
                 {/* Actions */}
-                <View style={skeletonStyles.actionsContainer}>
+                <View style={[skeletonStyles.actionsContainer, { borderTopColor: colors.borderLight }]}>
                     <View style={skeletonStyles.actionsLeft}>
-                        <Animated.View style={[skeletonStyles.actionCircle, { opacity }]} />
-                        <Animated.View style={[skeletonStyles.voteCount, { opacity }]} />
-                        <Animated.View style={[skeletonStyles.actionCircle, { opacity }]} />
+                        <Animated.View style={[skeletonStyles.actionCircle, { opacity, backgroundColor: colors.border }]} />
+                        <Animated.View style={[skeletonStyles.voteCount, { opacity, backgroundColor: colors.border }]} />
+                        <Animated.View style={[skeletonStyles.actionCircle, { opacity, backgroundColor: colors.border }]} />
                     </View>
                     <View style={skeletonStyles.actionsRight}>
-                        <Animated.View style={[skeletonStyles.actionCircle, { opacity }]} />
-                        <Animated.View style={[skeletonStyles.actionCircle, { opacity }]} />
+                        <Animated.View style={[skeletonStyles.actionCircle, { opacity, backgroundColor: colors.border }]} />
+                        <Animated.View style={[skeletonStyles.actionCircle, { opacity, backgroundColor: colors.border }]} />
                     </View>
                 </View>
             </View>
@@ -94,6 +95,8 @@ const SkeletonCard = () => {
 };
 
 const NewsFeedScreen = ({ navigation }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
     const [activeTab, setActiveTab] = useState('For you');
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
     const [votedItems, setVotedItems] = useState({});
@@ -212,27 +215,32 @@ const NewsFeedScreen = ({ navigation }) => {
     };
 
     return (
-        <View style={styles.outerContainer}>
+        <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
             <StatusBar 
-                barStyle="dark-content" 
+                barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} 
                 backgroundColor="transparent" 
                 translucent 
             />
             
             <View 
                 style={[
-                    styles.statusBarCover, 
-                    { height: insets.top }
+                    styles.statusBarCover,
+                    { 
+                        height: insets.top,
+                        backgroundColor: colors.background 
+                    }
                 ]}
             />
 
-            <View style={styles.container}>
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <Animated.View
                     style={[
                         styles.headerContainer,
                         { 
                             paddingTop: insets.top,
-                            transform: [{ translateY: headerTranslateY }]
+                            transform: [{ translateY: headerTranslateY }],
+                            backgroundColor: colors.background,
+                            shadowColor: colors.shadow,
                         },
                     ]}
                 >
@@ -241,8 +249,8 @@ const NewsFeedScreen = ({ navigation }) => {
                 </Animated.View>
 
                 <Animated.ScrollView
-                    style={styles.feed}
-                    contentContainerStyle={styles.feedContent}
+                    style={[styles.feed, { backgroundColor: colors.backgroundSecondary }]}
+                    contentContainerStyle={[styles.feedContent, { backgroundColor: colors.backgroundSecondary }]}
                     showsVerticalScrollIndicator={false}
                     onScroll={handleScroll}
                     scrollEventThrottle={16}
@@ -250,8 +258,8 @@ const NewsFeedScreen = ({ navigation }) => {
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={handleRefresh}
-                            tintColor="#2563EB"
-                            colors={['#2563EB']}
+                            tintColor={colors.primary}
+                            colors={[colors.primary]}
                             progressViewOffset={TOTAL_HEADER_HEIGHT + insets.top}
                         />
                     }
@@ -260,11 +268,11 @@ const NewsFeedScreen = ({ navigation }) => {
 
                     {loading ? (
                         <>
-                            <SkeletonCard />
-                            <SkeletonCard />
-                            <SkeletonCard />
-                            <SkeletonCard />
-                            <SkeletonCard />
+                            <SkeletonCard colors={colors} />
+                            <SkeletonCard colors={colors} />
+                            <SkeletonCard colors={colors} />
+                            <SkeletonCard colors={colors} />
+                            <SkeletonCard colors={colors} />
                         </>
                     ) : (
                         newsData.map((item) => (
@@ -289,20 +297,17 @@ const NewsFeedScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     outerContainer: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
     },
     statusBarCover: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
-        backgroundColor: '#FFFFFF',
         zIndex: 10000,
         elevation: 1000,
     },
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
     },
     headerContainer: {
         position: 'absolute',
@@ -310,10 +315,8 @@ const styles = StyleSheet.create({
         left: 0,
         right: 0,
         zIndex: 1000,
-        backgroundColor: '#FFFFFF',
         ...Platform.select({
             ios: {
-                shadowColor: '#000',
                 shadowOffset: { width: 0, height: 2 },
                 shadowOpacity: 0.08,
                 shadowRadius: 3,
@@ -325,11 +328,8 @@ const styles = StyleSheet.create({
     },
     feed: {
         flex: 1,
-        backgroundColor: '#F7F7F7',
     },
-    feedContent: {
-        backgroundColor: '#F7F7F7',
-    },
+    feedContent: {},
     endPadding: {
         height: 20,
     },
@@ -340,10 +340,8 @@ const skeletonStyles = StyleSheet.create({
         marginBottom: 1,
     },
     card: {
-        backgroundColor: '#FFFFFF',
         padding: 16,
         borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
     },
     header: {
         flexDirection: 'row',
@@ -360,7 +358,6 @@ const skeletonStyles = StyleSheet.create({
         width: 42,
         height: 42,
         borderRadius: 4,
-        backgroundColor: '#E2E8F0',
         marginRight: 12,
     },
     sourceInfo: {
@@ -370,41 +367,35 @@ const skeletonStyles = StyleSheet.create({
     sourceName: {
         width: 120,
         height: 14,
-        backgroundColor: '#E2E8F0',
         borderRadius: 4,
         marginBottom: 6,
     },
     timeText: {
         width: 80,
         height: 12,
-        backgroundColor: '#F1F5F9',
         borderRadius: 4,
     },
     title: {
         width: '100%',
         height: 16,
-        backgroundColor: '#E2E8F0',
         borderRadius: 4,
         marginBottom: 8,
     },
     titleShort: {
         width: '70%',
         height: 16,
-        backgroundColor: '#E2E8F0',
         borderRadius: 4,
         marginBottom: 12,
     },
     excerpt: {
         width: '100%',
         height: 12,
-        backgroundColor: '#F1F5F9',
         borderRadius: 4,
         marginBottom: 6,
     },
     excerptShort: {
         width: '85%',
         height: 12,
-        backgroundColor: '#F1F5F9',
         borderRadius: 4,
         marginBottom: 14,
     },
@@ -417,7 +408,6 @@ const skeletonStyles = StyleSheet.create({
     badge: {
         width: 70,
         height: 24,
-        backgroundColor: '#E2E8F0',
         borderRadius: 4,
     },
     actionsContainer: {
@@ -426,7 +416,6 @@ const skeletonStyles = StyleSheet.create({
         alignItems: 'center',
         paddingTop: 14,
         borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
     },
     actionsLeft: {
         flexDirection: 'row',
@@ -442,12 +431,10 @@ const skeletonStyles = StyleSheet.create({
         width: 28,
         height: 28,
         borderRadius: 14,
-        backgroundColor: '#E2E8F0',
     },
     voteCount: {
         width: 32,
         height: 16,
-        backgroundColor: '#E2E8F0',
         borderRadius: 4,
     },
 });

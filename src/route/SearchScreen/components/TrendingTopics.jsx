@@ -10,8 +10,12 @@ import {
     ScrollView,
 } from "react-native";
 import { TrendingUp, Flame } from "lucide-react-native";
+import { useTheme } from "../../../theme/ThemeContext";
 
 const TrendingTopics = ({ topics, onTopicPress, searchQuery }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    
     // Hide when user is actively searching
     if (searchQuery.trim()) return null;
 
@@ -19,26 +23,32 @@ const TrendingTopics = ({ topics, onTopicPress, searchQuery }) => {
     if (!topics || topics.length === 0) return null;
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { 
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.border 
+        }]}>
             <View style={styles.header}>
-                <Flame size={18} color="#ff6b35" />
-                <Text style={styles.title}>Trending Now</Text>
+                <Flame size={18} color={colors.warning} />
+                <Text style={[styles.title, { color: colors.textPrimary }]}>Trending Now</Text>
             </View>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {topics.map((topic) => (
                     <TouchableOpacity
                         key={topic.id}
-                        style={styles.topicCard}
+                        style={[styles.topicCard, { 
+                            backgroundColor: colors.backgroundSecondary,
+                            borderColor: colors.border 
+                        }]}
                         onPress={() => onTopicPress(topic.name)}
                     >
                         {topic.trending && (
-                            <View style={styles.trendingBadge}>
-                                <TrendingUp size={10} color="#fff" />
+                            <View style={[styles.trendingBadge, { backgroundColor: colors.warning }]}>
+                                <TrendingUp size={10} color={colors.textInverse} />
                             </View>
                         )}
                         <Text style={styles.icon}>{topic.icon}</Text>
-                        <Text style={styles.topicName}>{topic.name}</Text>
-                        <Text style={styles.topicCount}>{topic.count}</Text>
+                        <Text style={[styles.topicName, { color: colors.textPrimary }]}>{topic.name}</Text>
+                        <Text style={[styles.topicCount, { color: colors.textSecondary }]}>{topic.count}</Text>
                     </TouchableOpacity>
                 ))}
             </ScrollView>
@@ -48,11 +58,9 @@ const TrendingTopics = ({ topics, onTopicPress, searchQuery }) => {
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: "#FFFFFF",
         paddingVertical: 16,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: "#E2E8F0",
     },
     header: {
         flexDirection: "row",
@@ -62,24 +70,20 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 16,
         fontWeight: "700",
-        color: "#0F172A",
         marginLeft: 8,
     },
     topicCard: {
-        backgroundColor: "#F8FAFC",
         borderRadius: 12,
         padding: 12,
         marginRight: 12,
         width: 120,
         borderWidth: 1,
-        borderColor: "#E2E8F0",
         position: "relative",
     },
     trendingBadge: {
         position: "absolute",
         top: 8,
         right: 8,
-        backgroundColor: "#ff6b35",
         borderRadius: 10,
         padding: 4,
     },
@@ -90,12 +94,10 @@ const styles = StyleSheet.create({
     topicName: {
         fontSize: 13,
         fontWeight: "700",
-        color: "#0F172A",
         marginBottom: 4,
     },
     topicCount: {
         fontSize: 11,
-        color: "#64748B",
     },
 });
 

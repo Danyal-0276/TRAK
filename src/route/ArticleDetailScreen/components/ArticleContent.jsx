@@ -4,20 +4,27 @@
 // ============================================
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '../../../theme/ThemeContext';
 
 export const ArticleContent = ({ category, title, content }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    
     return (
         <View style={styles.container}>
             {/* Category Badge */}
-            <View style={styles.categoryBadge}>
-                <Text style={styles.categoryText}>{category}</Text>
+            <View style={[styles.categoryBadge, { 
+                backgroundColor: colors.backgroundSecondary,
+                borderLeftColor: colors.info 
+            }]}>
+                <Text style={[styles.categoryText, { color: colors.textSecondary }]}>{category}</Text>
             </View>
 
             {/* Title */}
-            <Text style={styles.title}>{title}</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
 
             {/* Full Content */}
-            <Text style={styles.content}>{content}</Text>
+            <Text style={[styles.content, { color: colors.textSecondary }]}>{content}</Text>
         </View>
     );
 };
@@ -28,23 +35,19 @@ const styles = StyleSheet.create({
     },
     categoryBadge: {
         alignSelf: 'flex-start',
-        backgroundColor: '#F1F5F9',
         paddingHorizontal: 12,
         paddingVertical: 5,
         borderRadius: 4,
         borderLeftWidth: 3,
-        borderLeftColor: '#2563EB',
         marginBottom: 16,
     },
     categoryText: {
-        color: '#334155',
         fontSize: 12,
         fontWeight: '700',
         textTransform: 'uppercase',
         letterSpacing: 0.8,
     },
     title: {
-        color: '#0F172A',
         fontSize: 24,
         fontWeight: '800',
         lineHeight: 32,
@@ -52,7 +55,6 @@ const styles = StyleSheet.create({
         letterSpacing: -0.4,
     },
     content: {
-        color: '#475569',
         fontSize: 16,
         lineHeight: 28,
         fontWeight: '400',

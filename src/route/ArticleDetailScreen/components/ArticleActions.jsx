@@ -4,6 +4,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { ChevronUp, ChevronDown, Bookmark, Share } from 'lucide-react-native';
+import { useTheme } from '../../../theme/ThemeContext';
 
 export const ArticleActions = ({
     likeCount,
@@ -16,8 +17,15 @@ export const ArticleActions = ({
     onBookmark,
     onShare,
 }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { 
+            backgroundColor: colors.surface,
+            borderTopColor: colors.border,
+            shadowColor: colors.shadow,
+        }]}>
             <View style={styles.actions}>
                 {/* Like Button */}
                 <TouchableOpacity 
@@ -26,12 +34,13 @@ export const ArticleActions = ({
                 >
                     <ChevronUp 
                         size={22} 
-                        color={isLiked ? '#0F172A' : '#94A3B8'} 
+                        color={isLiked ? colors.textPrimary : colors.textTertiary} 
                         strokeWidth={2.5}
                     />
                     <Text style={[
                         styles.actionText,
-                        isLiked && styles.actionTextActive
+                        { color: colors.textTertiary },
+                        isLiked && { color: colors.textPrimary }
                     ]}>
                         {likeCount}
                     </Text>
@@ -44,12 +53,13 @@ export const ArticleActions = ({
                 >
                     <ChevronDown 
                         size={22} 
-                        color={isDisliked ? '#0F172A' : '#94A3B8'} 
+                        color={isDisliked ? colors.textPrimary : colors.textTertiary} 
                         strokeWidth={2.5}
                     />
                     <Text style={[
                         styles.actionText,
-                        isDisliked && styles.actionTextActive
+                        { color: colors.textTertiary },
+                        isDisliked && { color: colors.textPrimary }
                     ]}>
                         {dislikeCount}
                     </Text>
@@ -62,13 +72,14 @@ export const ArticleActions = ({
                 >
                     <Bookmark 
                         size={20} 
-                        color={isBookmarked ? '#0F172A' : '#94A3B8'}
-                        fill={isBookmarked ? '#0F172A' : 'none'}
+                        color={isBookmarked ? colors.textPrimary : colors.textTertiary}
+                        fill={isBookmarked ? colors.textPrimary : 'none'}
                         strokeWidth={2}
                     />
                     <Text style={[
                         styles.actionText,
-                        isBookmarked && styles.actionTextActive
+                        { color: colors.textTertiary },
+                        isBookmarked && { color: colors.textPrimary }
                     ]}>
                         Save
                     </Text>
@@ -81,10 +92,10 @@ export const ArticleActions = ({
                 >
                     <Share 
                         size={20} 
-                        color="#0F172A" 
+                        color={colors.textPrimary} 
                         strokeWidth={2}
                     />
-                    <Text style={styles.actionTextActive}>Share</Text>
+                    <Text style={[styles.actionText, { color: colors.textPrimary }]}>Share</Text>
                 </TouchableOpacity>
             </View>
         </View>
@@ -97,13 +108,10 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        backgroundColor: '#FFFFFF',
         paddingTop: 14,
         paddingBottom: 20,
         paddingHorizontal: 16,
         borderTopWidth: 1,
-        borderTopColor: '#E2E8F0',
-        shadowColor: '#000',
         shadowOffset: {
             width: 0,
             height: -2,
@@ -128,13 +136,9 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     actionText: {
-        color: '#94A3B8',
         fontSize: 13,
         fontWeight: '700',
         textAlign: 'center',
         marginTop: 4,
-    },
-    actionTextActive: {
-        color: '#0F172A',
     },
 });

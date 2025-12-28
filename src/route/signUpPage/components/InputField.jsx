@@ -1,7 +1,8 @@
 import React, { useState, forwardRef } from 'react';
 import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
-import colors from '../../../utils/colors';
+import { useTheme } from '../../../theme/ThemeContext';
+import TextComponent from '../../../components/ui/Text';
 
 export const InputField = forwardRef(({
     label,
@@ -16,21 +17,35 @@ export const InputField = forwardRef(({
     onSubmitEditing,
     blurOnSubmit
 }, ref) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
     const [isFocused, setIsFocused] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const isPassword = secureTextEntry;
 
     return (
         <View style={styles.inputGroup}>
-            <Text style={styles.label}>{label}</Text>
+            <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>{label}</TextComponent>
             <View style={[
-                styles.inputContainer, 
-                isFocused && styles.inputContainerFocused,
-                error && styles.inputError
+                styles.inputContainer,
+                { 
+                    borderColor: colors.border,
+                    backgroundColor: colors.backgroundSecondary,
+                },
+                isFocused && {
+                    borderColor: colors.primary,
+                    backgroundColor: colors.surface,
+                    shadowColor: colors.primary,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.15,
+                    shadowRadius: 12,
+                    elevation: 4,
+                },
+                error && { borderColor: colors.error }
             ]}>
                 <TextInput
                     ref={ref}
-                    style={styles.input}
+                    style={[styles.input, { color: colors.textPrimary }]}
                     placeholder={placeholder}
                     placeholderTextColor={colors.textTertiary}
                     value={value}
@@ -58,7 +73,7 @@ export const InputField = forwardRef(({
                     </TouchableOpacity>
                 )}
             </View>
-            {error && <Text style={styles.errorText}>{error}</Text>}
+            {error && <TextComponent variant="caption" color={colors.error} style={styles.errorText}>{error}</TextComponent>}
         </View>
     );
 });
@@ -69,7 +84,6 @@ const styles = StyleSheet.create({
     },
     label: {
         fontSize: 15,
-        color: colors.textPrimary,
         marginBottom: 10,
         fontWeight: '600',
         letterSpacing: -0.3,
@@ -78,42 +92,23 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         borderWidth: 1.5,
-        borderColor: colors.border,
         borderRadius: 14,
-        backgroundColor: colors.backgroundSecondary,
         paddingHorizontal: 18,
         minHeight: 56,
         paddingVertical: 0,
     },
-    inputContainerFocused: {
-        borderColor: colors.primary,
-        backgroundColor: colors.surface,
-        shadowColor: colors.primary,
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 4,
-    },
     input: {
         flex: 1,
         fontSize: 16,
-        color: colors.textPrimary,
         padding: 0,
         paddingVertical: 16,
         textAlignVertical: 'center',
-    },
-    inputError: {
-        borderColor: colors.error,
     },
     eyeIcon: {
         padding: 4,
         marginLeft: 8,
     },
     errorText: {
-        color: colors.error,
         fontSize: 12,
         marginTop: 6,
         fontWeight: '500',

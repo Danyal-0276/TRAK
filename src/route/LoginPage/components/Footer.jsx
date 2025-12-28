@@ -1,18 +1,24 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import colors from '../../../utils/colors';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from '../../../theme/ThemeContext';
+import Text from '../../../components/ui/Text';
 
-export const Footer = ({ onSignUpPress }) => (
-    <View style={styles.footer}>
-        <Text style={styles.footerText}>Don't have an account? </Text>
-        <TouchableOpacity 
-            onPress={onSignUpPress}
-            activeOpacity={0.7}
-        >
-            <Text style={styles.linkText}>Sign up</Text>
-        </TouchableOpacity>
-    </View>
-);
+export const Footer = ({ onSignUpPress }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    
+    return (
+        <View style={styles.footer}>
+            <Text variant="caption" color={colors.textSecondary} style={styles.footerText}>Don't have an account? </Text>
+            <TouchableOpacity 
+                onPress={onSignUpPress}
+                activeOpacity={0.7}
+            >
+                <Text variant="caption" color={colors.primary} style={styles.linkText}>Sign up</Text>
+            </TouchableOpacity>
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
     footer: {
@@ -22,12 +28,10 @@ const styles = StyleSheet.create({
         paddingTop: 16,
     },
     footerText: {
-        color: colors.textSecondary,
         fontSize: 14,
         fontWeight: '400',
     },
     linkText: {
-        color: colors.primary,
         fontSize: 14,
         fontWeight: '700',
         letterSpacing: -0.2,

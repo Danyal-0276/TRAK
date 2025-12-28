@@ -1,12 +1,14 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, StatusBar, Animated } from 'react-native';
 import WhiteLogo from '../../assets/images/whiteLogo.svg';
-import colors from '../../utils/colors';
+import { useTheme } from '../../theme/ThemeContext';
 import Screen from '../../components/ui/Screen';
 import Text from '../../components/ui/Text';
 import Button from '../../components/ui/Button';
 
 const OpeningScreen = ({ navigation }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
     // Animation values
     const logoScale = useRef(new Animated.Value(0)).current;
     const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -88,10 +90,13 @@ const OpeningScreen = ({ navigation }) => {
 
     return (
         <Screen gradient>
-            <StatusBar barStyle="light-content" backgroundColor={colors.textPrimary} />
+            <StatusBar 
+                barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} 
+                backgroundColor={colors.primary} 
+            />
 
-            {/* Black Background Section - Top Half */}
-            <View style={styles.topSection}>
+            {/* Primary Background Section - Top Half */}
+            <View style={[styles.topSection, { backgroundColor: colors.primary }]}>
                 <View style={styles.logoContainer}>
                     <Animated.View
                         style={{
@@ -107,6 +112,7 @@ const OpeningScreen = ({ navigation }) => {
                             {
                                 opacity: brandNameOpacity,
                                 transform: [{ translateY: brandNameTranslateY }],
+                                color: colors.textInverse,
                             },
                         ]}
                     >
@@ -115,8 +121,8 @@ const OpeningScreen = ({ navigation }) => {
                 </View>
             </View>
 
-            {/* White Bottom Section - Bottom Half */}
-            <View style={styles.bottomSection}>
+            {/* Surface Background Section - Bottom Half */}
+            <View style={[styles.bottomSection, { backgroundColor: colors.surface }]}>
                 <View style={styles.contentWrapper}>
                     {/* Welcome Text */}
                     <Animated.View
@@ -128,8 +134,8 @@ const OpeningScreen = ({ navigation }) => {
                             },
                         ]}
                     >
-                        <Text variant="title" style={styles.welcomeTitle}>Welcome</Text>
-                        <Text variant="body" style={styles.welcomeSubtitle}>
+                        <Text variant="title" style={[styles.welcomeTitle, { color: colors.textPrimary }]}>Welcome</Text>
+                        <Text variant="body" style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
                             A world of exceptional news{'\n'}
                             with TRAK news core...
                         </Text>
@@ -147,7 +153,7 @@ const OpeningScreen = ({ navigation }) => {
                         <Button
                             title="Sign In"
                             variant="primary"
-                            primaryColors={["#000000", "#000000"]}
+                            primaryColors={[colors.primary, colors.primary]}
                             onPress={() => navigation.navigate('Login')}
                         />
                         <Button title="Create Account" variant="outline" onPress={() => navigation.navigate('SignUp')} />
@@ -161,11 +167,9 @@ const OpeningScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     fullContainer: {
         flex: 1,
-        backgroundColor: colors.textPrimary,
     },
     topSection: {
         flex: 1,
-        backgroundColor: colors.textPrimary,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 30,
@@ -176,13 +180,11 @@ const styles = StyleSheet.create({
     brandName: {
         fontSize: 48,
         fontWeight: '900',
-        color: colors.surface,
         letterSpacing: 14,
         marginTop: 20,
         textTransform: 'uppercase',
     },
     bottomSection: {
-        backgroundColor: colors.surface,
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
         paddingHorizontal: 30,
@@ -200,13 +202,11 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
     },
     welcomeTitle: {
-        color: colors.textPrimary,
         marginBottom: 16,
         textAlign: 'left',
     },
     welcomeSubtitle: {
         fontSize: 16,
-        color: colors.textSecondary,
         textAlign: 'left',
         lineHeight: 24,
         fontWeight: '400',

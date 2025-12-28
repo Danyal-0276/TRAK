@@ -15,8 +15,11 @@ import { ArticleDetailHeader } from './components/ArticleDetailHeader';
 import { ArticleSourceInfo } from './components/ArticleSourceInfo';
 import { ArticleContent } from './components/ArticleContent';
 import { ArticleActions } from './components/ArticleActions';
+import { useTheme } from '../../theme/ThemeContext';
 
 const ArticleDetailScreen = ({ navigation, route }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
     const { article } = route.params;
     const [isLiked, setIsLiked] = useState(false);
     const [isDisliked, setIsDisliked] = useState(false);
@@ -56,15 +59,18 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
-            <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
+        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+            <StatusBar 
+                barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} 
+                backgroundColor={colors.background} 
+            />
             
             {/* Header */}
             <ArticleDetailHeader onBackPress={handleBackPress} />
 
             {/* Article Content */}
             <ScrollView 
-                style={styles.scrollContainer} 
+                style={[styles.scrollContainer, { backgroundColor: colors.background }]} 
                 showsVerticalScrollIndicator={false}
                 contentContainerStyle={styles.scrollContent}
             >
@@ -108,11 +114,9 @@ const ArticleDetailScreen = ({ navigation, route }) => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
     },
     scrollContainer: {
         flex: 1,
-        backgroundColor: '#FFFFFF',
     },
     scrollContent: {
         paddingBottom: 100,
