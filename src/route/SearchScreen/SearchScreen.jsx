@@ -6,21 +6,24 @@ import {
   View,
   StyleSheet,
   ScrollView,
-  Text,
   Animated,
   Pressable,
   Keyboard,
   RefreshControl,
+  StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import SearchBar from "./components/SearchBar";
 import Tabs from "./components/tabs";
 import TrendingTopics from "./components/TrendingTopics";
 import RecentSearches from "./components/RecentSearches";
 import { NewsCard } from "../../components/NewsCard";
 import { mockApi } from "../../utils/Service/mockApi";
+import { useTheme } from "../../theme/ThemeContext";
+import Text from "../../components/ui/Text";
 
 // Skeleton Card Component
-const SkeletonCard = () => {
+const SkeletonCard = ({ colors }) => {
   const shimmerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -47,34 +50,34 @@ const SkeletonCard = () => {
 
   return (
     <View style={skeletonStyles.container}>
-      <View style={skeletonStyles.card}>
+      <View style={[skeletonStyles.card, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
         <View style={skeletonStyles.header}>
           <View style={skeletonStyles.sourceContainer}>
-            <Animated.View style={[skeletonStyles.sourceIcon, { opacity }]} />
+            <Animated.View style={[skeletonStyles.sourceIcon, { opacity, backgroundColor: colors.border }]} />
             <View style={skeletonStyles.sourceInfo}>
-              <Animated.View style={[skeletonStyles.sourceName, { opacity }]} />
-              <Animated.View style={[skeletonStyles.timeText, { opacity }]} />
+              <Animated.View style={[skeletonStyles.sourceName, { opacity, backgroundColor: colors.border }]} />
+              <Animated.View style={[skeletonStyles.timeText, { opacity, backgroundColor: colors.borderLight }]} />
             </View>
           </View>
         </View>
-        <Animated.View style={[skeletonStyles.title, { opacity }]} />
-        <Animated.View style={[skeletonStyles.titleShort, { opacity }]} />
-        <Animated.View style={[skeletonStyles.excerpt, { opacity }]} />
-        <Animated.View style={[skeletonStyles.excerpt, { opacity }]} />
-        <Animated.View style={[skeletonStyles.excerptShort, { opacity }]} />
+        <Animated.View style={[skeletonStyles.title, { opacity, backgroundColor: colors.border }]} />
+        <Animated.View style={[skeletonStyles.titleShort, { opacity, backgroundColor: colors.border }]} />
+        <Animated.View style={[skeletonStyles.excerpt, { opacity, backgroundColor: colors.borderLight }]} />
+        <Animated.View style={[skeletonStyles.excerpt, { opacity, backgroundColor: colors.borderLight }]} />
+        <Animated.View style={[skeletonStyles.excerptShort, { opacity, backgroundColor: colors.borderLight }]} />
         <View style={skeletonStyles.metaRow}>
-          <Animated.View style={[skeletonStyles.badge, { opacity }]} />
-          <Animated.View style={[skeletonStyles.badge, { opacity }]} />
+          <Animated.View style={[skeletonStyles.badge, { opacity, backgroundColor: colors.border }]} />
+          <Animated.View style={[skeletonStyles.badge, { opacity, backgroundColor: colors.border }]} />
         </View>
-        <View style={skeletonStyles.actionsContainer}>
+        <View style={[skeletonStyles.actionsContainer, { borderTopColor: colors.borderLight }]}>
           <View style={skeletonStyles.actionsLeft}>
-            <Animated.View style={[skeletonStyles.actionCircle, { opacity }]} />
-            <Animated.View style={[skeletonStyles.voteCount, { opacity }]} />
-            <Animated.View style={[skeletonStyles.actionCircle, { opacity }]} />
+            <Animated.View style={[skeletonStyles.actionCircle, { opacity, backgroundColor: colors.border }]} />
+            <Animated.View style={[skeletonStyles.voteCount, { opacity, backgroundColor: colors.border }]} />
+            <Animated.View style={[skeletonStyles.actionCircle, { opacity, backgroundColor: colors.border }]} />
           </View>
           <View style={skeletonStyles.actionsRight}>
-            <Animated.View style={[skeletonStyles.actionCircle, { opacity }]} />
-            <Animated.View style={[skeletonStyles.actionCircle, { opacity }]} />
+            <Animated.View style={[skeletonStyles.actionCircle, { opacity, backgroundColor: colors.border }]} />
+            <Animated.View style={[skeletonStyles.actionCircle, { opacity, backgroundColor: colors.border }]} />
           </View>
         </View>
       </View>
@@ -83,6 +86,8 @@ const SkeletonCard = () => {
 };
 
 const SearchScreen = ({ navigation }) => {
+  const { theme } = useTheme();
+  const { colors } = theme;
   const [allNews, setAllNews] = useState([]);
   const [filteredNews, setFilteredNews] = useState([]);
   const [trendingTopics, setTrendingTopics] = useState([]);
@@ -264,7 +269,9 @@ const SearchScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.screenWrapper}>
+    <SafeAreaView style={[styles.screenWrapper, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+      
       <SearchBar
         ref={searchRef}
         onSearch={handleSearch}
@@ -280,7 +287,7 @@ const SearchScreen = ({ navigation }) => {
       </View>
 
       <Pressable
-        style={{ flex: 1 }}
+        style={styles.contentArea}
         onPress={() => {
           Keyboard.dismiss();
           searchRef.current?.hideHistory();
@@ -295,16 +302,16 @@ const SearchScreen = ({ navigation }) => {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                colors={['#4f8cff']}
-                tintColor="#4f8cff"
+                colors={[colors.primary]}
+                tintColor={colors.primary}
               />
             }
           >
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
+            <SkeletonCard colors={colors} />
+            <SkeletonCard colors={colors} />
+            <SkeletonCard colors={colors} />
+            <SkeletonCard colors={colors} />
+            <SkeletonCard colors={colors} />
           </ScrollView>
         ) : filteredNews.length === 0 ? (
           <ScrollView
@@ -313,14 +320,14 @@ const SearchScreen = ({ navigation }) => {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                colors={['#4f8cff']}
-                tintColor="#4f8cff"
+                colors={[colors.primary]}
+                tintColor={colors.primary}
               />
             }
           >
             <Text style={styles.noResultsEmoji}>🔍</Text>
-            <Text style={styles.noResultsText}>No news found</Text>
-            <Text style={styles.noResultsSub}>
+            <Text variant="title" color={colors.textPrimary} style={styles.noResultsText}>No news found</Text>
+            <Text variant="body" color={colors.textSecondary} style={styles.noResultsSub}>
               {searchQuery.trim() 
                 ? "Try searching with different keywords" 
                 : "No articles in this category"}
@@ -342,8 +349,8 @@ const SearchScreen = ({ navigation }) => {
                 <RefreshControl
                   refreshing={refreshing}
                   onRefresh={onRefresh}
-                  colors={['#4f8cff']}
-                  tintColor="#4f8cff"
+                  colors={[colors.primary]}
+                  tintColor={colors.primary}
                 />
               }
             >
@@ -376,31 +383,30 @@ const SearchScreen = ({ navigation }) => {
           </Animated.View>
         )}
       </Pressable>
-    </View>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   screenWrapper: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
-    paddingTop: 4,
   },
   tabsWrapper: {
     height: 40,
+  },
+  contentArea: {
+    flex: 1,
   },
   animatedList: {
     flex: 1,
   },
   scrollContainer: {
-    paddingBottom: 60,
-    backgroundColor: "#F7F7F7",
+    paddingBottom: 120,
   },
   noResultsContainer: {
     flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#F7F7F7",
     paddingHorizontal: 20,
     paddingVertical: 100,
   },
@@ -409,13 +415,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   noResultsText: {
-    fontSize: 18,
-    color: "#0F172A",
-    fontWeight: "700",
+    marginBottom: 4,
   },
   noResultsSub: {
-    fontSize: 14,
-    color: "#64748B",
     marginTop: 8,
     textAlign: "center",
   },
@@ -429,10 +431,8 @@ const skeletonStyles = StyleSheet.create({
     marginBottom: 1,
   },
   card: {
-    backgroundColor: '#FFFFFF',
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
   },
   header: {
     flexDirection: 'row',
@@ -449,7 +449,6 @@ const skeletonStyles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 4,
-    backgroundColor: '#E2E8F0',
     marginRight: 12,
   },
   sourceInfo: {
@@ -459,41 +458,35 @@ const skeletonStyles = StyleSheet.create({
   sourceName: {
     width: 120,
     height: 14,
-    backgroundColor: '#E2E8F0',
     borderRadius: 4,
     marginBottom: 6,
   },
   timeText: {
     width: 80,
     height: 12,
-    backgroundColor: '#F1F5F9',
     borderRadius: 4,
   },
   title: {
     width: '100%',
     height: 16,
-    backgroundColor: '#E2E8F0',
     borderRadius: 4,
     marginBottom: 8,
   },
   titleShort: {
     width: '70%',
     height: 16,
-    backgroundColor: '#E2E8F0',
     borderRadius: 4,
     marginBottom: 12,
   },
   excerpt: {
     width: '100%',
     height: 12,
-    backgroundColor: '#F1F5F9',
     borderRadius: 4,
     marginBottom: 6,
   },
   excerptShort: {
     width: '85%',
     height: 12,
-    backgroundColor: '#F1F5F9',
     borderRadius: 4,
     marginBottom: 14,
   },
@@ -506,7 +499,6 @@ const skeletonStyles = StyleSheet.create({
   badge: {
     width: 70,
     height: 24,
-    backgroundColor: '#E2E8F0',
     borderRadius: 4,
   },
   actionsContainer: {
@@ -515,7 +507,6 @@ const skeletonStyles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 14,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
   },
   actionsLeft: {
     flexDirection: 'row',
@@ -531,12 +522,10 @@ const skeletonStyles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#E2E8F0',
   },
   voteCount: {
     width: 32,
     height: 16,
-    backgroundColor: '#E2E8F0',
     borderRadius: 4,
   },
 });

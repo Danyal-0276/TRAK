@@ -1,133 +1,127 @@
 // SettingsScreen.jsx
 import React, { useState } from "react";
-import { ScrollView, SafeAreaView, StyleSheet, View } from "react-native";
-import {
-  User,
-  Bell,
-  Lock,
-  Tag,
-  Database,
-  Info,
-  LogOut,
-  Moon,
-} from "lucide-react-native";
+import { ScrollView, SafeAreaView, StyleSheet } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { User, Bell, Lock, Tag, Database, Info, LogOut, Moon } from "lucide-react-native";
 
 import SettingsHeader from "./components/SettingsHeader";
 import SettingsSection from "./components/SettingsSection";
 import SettingsRow from "./components/SettingsRow";
 import ThemeSwitchButton from "./components/ThemeSwitchButton";
+import { useTheme } from "../../theme/ThemeContext";
+import Card from "../../components/ui/Card";
+import Text from "../../components/ui/Text";
 
 export default function SettingsScreen({ navigation }) {
   const [pushEnabled, setPushEnabled] = useState(true);
   const [keywordAlerts, setKeywordAlerts] = useState(false);
   const [quietHours, setQuietHours] = useState(false);
-  const [darkTheme, setDarkTheme] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const darkTheme = theme.mode === "dark";
+  const insets = useSafeAreaInsets();
+  const contentPaddingTop = Math.max(insets.top, theme.spacing.md);
 
   return (
-    <SafeAreaView
-      style={[
-        styles.container,
-        { backgroundColor: darkTheme ? "#000" : "#f5f5f5" },
-      ]}
-    >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <SettingsHeader darkTheme={darkTheme} />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}> 
+      <ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          {
+            paddingTop: contentPaddingTop,
+            paddingHorizontal: theme.spacing.md,
+            paddingBottom: theme.spacing.lg,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <SettingsHeader />
 
-        {/* Account Section */}
-        <SettingsSection darkTheme={darkTheme}>
+        <Card style={{ marginBottom: theme.spacing.lg }}>
+          <Text variant="subtitle" color={theme.colors.textPrimary}>
+            Your Account
+          </Text>
+          <Text
+            variant="body"
+            color={theme.colors.textSecondary}
+            style={{ marginTop: theme.spacing.xs }}
+          >
+            Manage profile, preferences, and security.
+          </Text>
+        </Card>
+
+        <SettingsSection>
           <SettingsRow
-            icon={<User size={22} color={darkTheme ? "#fff" : "#000"} />}
+            icon={<User size={22} color={theme.colors.textPrimary} />}
             label="Account"
-            darkTheme={darkTheme}
             onPress={() => navigation.navigate("ProfileScreen")}
           />
         </SettingsSection>
 
-        {/* Notification Settings */}
-        <SettingsSection darkTheme={darkTheme}>
+        <SettingsSection>
           <SettingsRow
-            icon={<Bell size={22} color={darkTheme ? "#fff" : "#000"} />}
+            icon={<Bell size={22} color={theme.colors.textPrimary} />}
             label="Push Notifications"
-            darkTheme={darkTheme}
             switchEnabled
             switchValue={pushEnabled}
             onSwitchChange={setPushEnabled}
           />
-
           <SettingsRow
-            icon={<Tag size={22} color={darkTheme ? "#fff" : "#000"} />}
+            icon={<Tag size={22} color={theme.colors.textPrimary} />}
             label="Keyword Alerts"
-            darkTheme={darkTheme}
             switchEnabled
             switchValue={keywordAlerts}
             onSwitchChange={setKeywordAlerts}
           />
-
           <SettingsRow
-            icon={<Moon size={22} color={darkTheme ? "#fff" : "#000"} />}
+            icon={<Moon size={22} color={theme.colors.textPrimary} />}
             label="Quiet Hours"
-            darkTheme={darkTheme}
             switchEnabled
             switchValue={quietHours}
             onSwitchChange={setQuietHours}
           />
         </SettingsSection>
 
-        {/* Privacy */}
-        <SettingsSection darkTheme={darkTheme}>
+        <SettingsSection>
           <SettingsRow
-            icon={<Lock size={22} color={darkTheme ? "#fff" : "#000"} />}
+            icon={<Lock size={22} color={theme.colors.textPrimary} />}
             label="Privacy & Security"
-            darkTheme={darkTheme}
             onPress={() => navigation.navigate("PrivacyScreen")}
           />
         </SettingsSection>
 
-        {/* Categories */}
-        <SettingsSection darkTheme={darkTheme}>
+        <SettingsSection>
           <SettingsRow
-            icon={<Tag size={22} color={darkTheme ? "#fff" : "#000"} />}
+            icon={<Tag size={22} color={theme.colors.textPrimary} />}
             label="Manage Categories"
-            darkTheme={darkTheme}
             onPress={() => navigation.navigate("CategoriesScreen")}
           />
         </SettingsSection>
 
-        {/* Data */}
-        <SettingsSection darkTheme={darkTheme}>
+        <SettingsSection>
           <SettingsRow
-            icon={<Database size={22} color={darkTheme ? "#fff" : "#000"} />}
+            icon={<Database size={22} color={theme.colors.textPrimary} />}
             label="Data & Storage"
-            darkTheme={darkTheme}
             onPress={() => navigation.navigate("DataScreen")}
           />
         </SettingsSection>
 
-        {/* About */}
-        <SettingsSection darkTheme={darkTheme}>
+        <SettingsSection>
           <SettingsRow
-            icon={<Info size={22} color={darkTheme ? "#fff" : "#000"} />}
+            icon={<Info size={22} color={theme.colors.textPrimary} />}
             label="About"
-            darkTheme={darkTheme}
             onPress={() => navigation.navigate("AboutScreen")}
           />
         </SettingsSection>
 
-        {/* Theme Toggle */}
-        <SettingsSection darkTheme={darkTheme}>
-          <ThemeSwitchButton
-            darkTheme={darkTheme}
-            onToggle={() => setDarkTheme(!darkTheme)}
-          />
+        <SettingsSection>
+          <ThemeSwitchButton darkTheme={darkTheme} onToggle={toggleTheme} />
         </SettingsSection>
 
-        {/* Logout */}
-        <SettingsSection darkTheme={darkTheme}>
+        <SettingsSection>
           <SettingsRow
-            icon={<LogOut size={22} color="#EF4444" />}
+            icon={<LogOut size={22} color={theme.colors.error} />}
             label="Log Out"
-            darkTheme={darkTheme}
-            labelColor="#EF4444"
+            labelColor={theme.colors.error}
             onPress={() => navigation.navigate("LoginScreen")}
           />
         </SettingsSection>
@@ -138,5 +132,5 @@ export default function SettingsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scroll: { padding: 16 },
+  scroll: {},
 });

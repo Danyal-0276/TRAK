@@ -1,15 +1,21 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import colors from '../../../utils/colors';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from '../../../theme/ThemeContext';
+import UIText from '../../../components/ui/Text';
 
-export const Footer = ({ onSignInPress }) => (
-    <View style={styles.footer}>
-        <Text style={styles.footerText}>Already have an account? </Text>
-        <TouchableOpacity onPress={onSignInPress}>
-            <Text style={styles.linkText}>Sign in</Text>
-        </TouchableOpacity>
-    </View>
-);
+export const Footer = ({ onSignInPress }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    
+    return (
+        <View style={styles.footer}>
+            <UIText variant="caption" color={colors.textSecondary} style={styles.footerText}>Already have an account? </UIText>
+            <TouchableOpacity onPress={onSignInPress}>
+                <UIText variant="caption" color={colors.primary} style={styles.linkText}>Sign in</UIText>
+            </TouchableOpacity>
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
     footer: {
@@ -19,12 +25,10 @@ const styles = StyleSheet.create({
         paddingTop: 8,
     },
     footerText: {
-        color: colors.textSecondary,
         fontSize: 14,
         fontWeight: '400',
     },
     linkText: {
-        color: colors.primary,
         fontSize: 14,
         fontWeight: '700',
         letterSpacing: -0.2,

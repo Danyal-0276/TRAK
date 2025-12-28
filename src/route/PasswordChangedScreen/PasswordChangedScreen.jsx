@@ -10,9 +10,12 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'react-native-linear-gradient';
 import { CommonActions } from '@react-navigation/native';
-import colors from '../../utils/colors';
+import { useTheme } from '../../theme/ThemeContext';
+import TextComponent from '../../components/ui/Text';
 
 const PasswordChangedScreen = ({ navigation }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
@@ -45,8 +48,11 @@ const PasswordChangedScreen = ({ navigation }) => {
     };
 
     return (
-        <View style={styles.fullContainer}>
-            <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
+        <View style={[styles.fullContainer, { backgroundColor: colors.background }]}>
+            <StatusBar 
+                barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} 
+                backgroundColor={colors.background} 
+            />
             
             {/* Subtle gradient background */}
             <LinearGradient
@@ -57,8 +63,8 @@ const PasswordChangedScreen = ({ navigation }) => {
             />
             
             {/* Decorative accent circles */}
-            <View style={styles.accentCircle1} />
-            <View style={styles.accentCircle2} />
+            <View style={[styles.accentCircle1, { backgroundColor: `${colors.info}0A` }]} />
+            <View style={[styles.accentCircle2, { backgroundColor: `${colors.info}08` }]} />
 
             <SafeAreaView style={styles.container}>
                 <View style={styles.content}>
@@ -71,22 +77,28 @@ const PasswordChangedScreen = ({ navigation }) => {
                             }
                         ]}
                     >
-                        <View style={styles.checkmarkContainer}>
-                            <Text style={styles.checkmark}>✓</Text>
+                        <View style={[styles.checkmarkContainer, { 
+                            backgroundColor: colors.primary,
+                            shadowColor: colors.primary
+                        }]}>
+                            <Text style={[styles.checkmark, { color: colors.textInverse }]}>✓</Text>
                         </View>
 
-                        <Text style={styles.title}>Password changed</Text>
-                        <Text style={styles.subtitle}>
+                        <TextComponent variant="title" color={colors.textPrimary} style={styles.title}>Password changed</TextComponent>
+                        <TextComponent variant="body" color={colors.textSecondary} style={styles.subtitle}>
                             Your password has been changed successfully.
-                        </Text>
+                        </TextComponent>
                     </Animated.View>
 
                     <View style={styles.buttonContainer}>
                         <TouchableOpacity
-                            style={styles.primaryButton}
+                            style={[styles.primaryButton, { 
+                                backgroundColor: colors.primary,
+                                shadowColor: colors.primary
+                            }]}
                             onPress={handleBackToLogin}
                         >
-                            <Text style={styles.primaryButtonText}>Back to login</Text>
+                            <TextComponent variant="button" color={colors.textInverse} style={styles.primaryButtonText}>Back to login</TextComponent>
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -98,7 +110,6 @@ const PasswordChangedScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     fullContainer: {
         flex: 1,
-        backgroundColor: colors.background,
     },
     gradientBackground: {
         position: 'absolute',
@@ -112,7 +123,6 @@ const styles = StyleSheet.create({
         width: 350,
         height: 350,
         borderRadius: 175,
-        backgroundColor: 'rgba(37, 99, 235, 0.04)',
         top: -100,
         right: -100,
     },
@@ -121,7 +131,6 @@ const styles = StyleSheet.create({
         width: 280,
         height: 280,
         borderRadius: 140,
-        backgroundColor: 'rgba(37, 99, 235, 0.03)',
         bottom: 80,
         left: -80,
     },
@@ -143,11 +152,9 @@ const styles = StyleSheet.create({
         width: 90,
         height: 90,
         borderRadius: 45,
-        backgroundColor: colors.primary,
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: 32,
-        shadowColor: colors.primary,
         shadowOffset: {
             width: 0,
             height: 8,
@@ -157,21 +164,18 @@ const styles = StyleSheet.create({
         elevation: 12,
     },
     checkmark: {
-        color: colors.surface,
         fontSize: 48,
         fontWeight: 'bold',
     },
     title: {
         fontSize: 40,
         fontWeight: '800',
-        color: colors.textPrimary,
         marginBottom: 16,
         textAlign: 'center',
         letterSpacing: -1.2,
     },
     subtitle: {
         fontSize: 16,
-        color: colors.textSecondary,
         lineHeight: 24,
         textAlign: 'center',
     },
@@ -179,11 +183,9 @@ const styles = StyleSheet.create({
         paddingBottom: 30,
     },
     primaryButton: {
-        backgroundColor: colors.primary,
         paddingVertical: 18,
         borderRadius: 16,
         alignItems: 'center',
-        shadowColor: colors.primary,
         shadowOffset: {
             width: 0,
             height: 6,
@@ -193,7 +195,6 @@ const styles = StyleSheet.create({
         elevation: 8,
     },
     primaryButtonText: {
-        color: colors.surface,
         fontSize: 17,
         fontWeight: '700',
         letterSpacing: 0.2,

@@ -1,55 +1,37 @@
 // components/profile/ProfileActions.jsx
 import React from "react";
-import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { Edit, Settings } from "lucide-react-native";
+import { useTheme } from "../../../theme/ThemeContext";
+import Button from "../../../components/ui/Button";
+import Text from "../../../components/ui/Text";
 
 const ProfileActions = ({ navigation }) => {
+  const { theme } = useTheme();
+  const { spacing } = theme;
   return (
-    <View style={styles.actions}>
-      <TouchableOpacity
-        style={styles.actionBtn}
+    <View style={[styles.actions, { marginBottom: spacing.lg }] }>
+      <Button
+        title="Edit Profile"
+        variant="primary"
+        primaryColors={["#000000", "#000000"]}
+        leftIcon={<Edit size={18} color={theme.colors.surface} />}
         onPress={() => navigation.navigate("EditProfileScreen")}
-      >
-        <Edit size={18} color="#fff" />
-        <Text style={styles.actionText}>Edit Profile</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        style={[styles.actionBtn, styles.secondaryBtn]}
+        style={{ marginRight: spacing.sm, flex: 1 }}
+      />
+      <Button
+        title="Settings"
+        variant="outline"
+        leftIcon={<Settings size={18} color={theme.colors.textPrimary} />}
         onPress={() => navigation.navigate("SettingsScreen")}
-      >
-        <Settings size={18} color="#000" />
-        <Text style={[styles.actionText, styles.secondaryText]}>
-          Settings
-        </Text>
-      </TouchableOpacity>
+        style={{ flex: 1 }}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  actions: { flexDirection: "row", marginBottom: 25 },
-  actionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#000",
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
-    marginRight: 10,
-  },
-  secondaryBtn: {
-    backgroundColor: "#fff",
-    borderWidth: 1,
-    borderColor: "#000",
-  },
-  actionText: {
-    marginLeft: 6,
-    fontSize: 14,
-    color: "#fff",
-    fontWeight: "600",
-  },
-  secondaryText: { color: "#000" },
+  actions: { flexDirection: "row" },
 });
 
 export default ProfileActions;

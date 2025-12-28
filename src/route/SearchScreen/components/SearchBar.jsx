@@ -25,12 +25,15 @@ import Animated, {
 } from "react-native-reanimated";
 import LinearGradient from "react-native-linear-gradient";
 import { Dimensions } from "react-native";
+import { useTheme } from "../../../theme/ThemeContext";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const COLLAPSED_WIDTH = 50;
 const EXPANDED_WIDTH = SCREEN_WIDTH * 0.9;
 
 const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
+  const { theme } = useTheme();
+  const { colors } = theme;
   const [focused, setFocused] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState(initialQuery);
@@ -160,29 +163,37 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
         />
       )}
 
-      <Animated.View style={[styles.container, animatedStyle, { zIndex: 10 }]}>
+      <Animated.View style={[
+        styles.container, 
+        animatedStyle, 
+        { 
+          zIndex: 10,
+          backgroundColor: colors.surface,
+          shadowColor: colors.primary,
+        }
+      ]}>
         <LinearGradient
-          colors={["#ffffff", "#f8faff"]}
+          colors={[colors.surface, colors.backgroundSecondary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.gradientBox}
+          style={[styles.gradientBox, { borderColor: `${colors.primary}40` }]}
         >
           {!focused ? (
             <TouchableOpacity onPress={handleExpand} style={{ zIndex: 10 }}>
-              <Search size={18} color="#4f8cff" />
+              <Search size={18} color={colors.primary} />
             </TouchableOpacity>
           ) : (
             <>
-              <Search size={18} color="#4f8cff" style={styles.icon} />
+              <Search size={18} color={colors.primary} style={styles.icon} />
               <TextInput
                 ref={inputRef}
                 value={query}
                 onChangeText={handleChangeText}
                 placeholder="Search latest news..."
-                placeholderTextColor="#888"
-                style={styles.input}
-                cursorColor="#4f8cff"
-                selectionColor="rgba(79,140,255,0.3)"
+                placeholderTextColor={colors.textTertiary}
+                style={[styles.input, { color: colors.textPrimary }]}
+                cursorColor={colors.primary}
+                selectionColor={`${colors.primary}4D`}
                 onFocus={() => setFocused(true)}
                 onSubmitEditing={handleSearchSubmit}
               />
@@ -190,7 +201,7 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
                 onPress={handleCrossPress}
                 style={[styles.closeButton, { zIndex: 15 }]}
               >
-                <X size={18} color="#4f8cff" />
+                <X size={18} color={colors.primary} />
               </TouchableOpacity>
             </>
           )}
@@ -198,18 +209,21 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
       </Animated.View>
 
       {expanded && focused && query.length >= 0 && history.length > 0 && (
-        <View style={styles.historyContainer}>
+        <View style={[styles.historyContainer, { 
+          backgroundColor: colors.backgroundSecondary,
+          shadowColor: colors.shadow,
+        }]}>
           <View style={styles.historyHeader}>
-            <Text style={styles.historyTitle}>Search History</Text>
+            <Text style={[styles.historyTitle, { color: colors.primary }]}>Search History</Text>
             <TouchableOpacity onPress={handleClearHistory}>
-              <Trash2 size={18} color="#ff4d4d" />
+              <Trash2 size={18} color={colors.error} />
             </TouchableOpacity>
           </View>
           <FlatList
             data={history}
             keyExtractor={(item, index) => index.toString()}
             renderItem={({ item }) => (
-              <View style={styles.historyItem}>
+              <View style={[styles.historyItem, { borderBottomColor: colors.border }]}>
                 <TouchableOpacity
                   onPress={() => {
                     setQuery(item);
@@ -218,10 +232,10 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
                     setFocused(false);
                   }}
                 >
-                  <Text style={styles.historyText}>{item}</Text>
+                  <Text style={[styles.historyText, { color: colors.textPrimary }]}>{item}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleDeleteHistoryItem(item)}>
-                  <X size={16} color="#888" />
+                  <X size={16} color={colors.textTertiary} />
                 </TouchableOpacity>
               </View>
             )}
@@ -230,31 +244,38 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
       )}
 
       {showAlert && (
-        <RNAnimated.View style={styles.modalOverlay}>
+        <RNAnimated.View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
           <RNAnimated.View
-            style={[styles.alertBox, { transform: [{ scale: popupScale }] }]}
+            style={[
+              styles.alertBox, 
+              { 
+                transform: [{ scale: popupScale }],
+                backgroundColor: colors.surface,
+                shadowColor: colors.primary,
+              }
+            ]}
           >
             <AlertCircle
               size={28}
-              color="#4f8cff"
+              color={colors.primary}
               style={{ alignSelf: "center", marginBottom: 12 }}
             />
-            <Text style={styles.alertTitle}>Clear Search History?</Text>
-            <Text style={styles.alertMessage}>
+            <Text style={[styles.alertTitle, { color: colors.primary }]}>Clear Search History?</Text>
+            <Text style={[styles.alertMessage, { color: colors.textSecondary }]}>
               This action cannot be undone.
             </Text>
             <View style={styles.alertActions}>
               <TouchableOpacity
                 onPress={cancelClearHistory}
-                style={[styles.alertButton, { backgroundColor: "#ddd" }]}
+                style={[styles.alertButton, { backgroundColor: colors.border }]}
               >
-                <Text style={{ color: "#555" }}>Cancel</Text>
+                <Text style={{ color: colors.textSecondary }}>Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={confirmClearHistory}
-                style={[styles.alertButton, { backgroundColor: "#4f8cff" }]}
+                style={[styles.alertButton, { backgroundColor: colors.primary }]}
               >
-                <Text style={{ color: "#fff" }}>Clear All</Text>
+                <Text style={{ color: colors.textInverse }}>Clear All</Text>
               </TouchableOpacity>
             </View>
           </RNAnimated.View>
@@ -271,12 +292,10 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginVertical: 4,
     marginTop: 6,
-    shadowColor: "#4f8cff",
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 6,
     shadowOpacity: 0.12,
     elevation: 4,
-    backgroundColor: "#fff",
   },
   gradientBox: {
     flexDirection: "row",
@@ -285,13 +304,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 0.6,
-    borderColor: "rgba(79,140,255,0.25)",
   },
   icon: { marginRight: 8 },
   input: {
     flex: 1,
     fontSize: 15,
-    color: "#111",
     fontWeight: "500",
     paddingVertical: 0,
   },
@@ -301,12 +318,10 @@ const styles = StyleSheet.create({
     top: 55,
     left: 10,
     right: 10,
-    backgroundColor: "#f0f4ff",
     borderRadius: 12,
     padding: 10,
     maxHeight: 200,
     zIndex: 10,
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
@@ -317,28 +332,24 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginBottom: 6,
   },
-  historyTitle: { fontWeight: "600", color: "#4f8cff" },
+  historyTitle: { fontWeight: "600" },
   historyItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     paddingVertical: 6,
     borderBottomWidth: 0.5,
-    borderBottomColor: "#ccc",
   },
-  historyText: { color: "#111" },
+  historyText: {},
   modalOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.35)",
     justifyContent: "center",
     alignItems: "center",
     zIndex: 100,
   },
   alertBox: {
-    backgroundColor: "#fff",
     padding: 20,
     borderRadius: 16,
     width: "80%",
-    shadowColor: "#4f8cff",
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -348,10 +359,9 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     fontSize: 18,
     textAlign: "center",
-    color: "#4f8cff",
     marginBottom: 6,
   },
-  alertMessage: { textAlign: "center", color: "#555", marginBottom: 15 },
+  alertMessage: { textAlign: "center", marginBottom: 15 },
   alertActions: {
     flexDirection: "row",
     justifyContent: "space-between",

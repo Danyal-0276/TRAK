@@ -1,16 +1,14 @@
 import React, { useEffect, useRef } from 'react';
-import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    StatusBar,
-    Animated,
-} from 'react-native';
+import { View, StyleSheet, StatusBar, Animated } from 'react-native';
 import WhiteLogo from '../../assets/images/whiteLogo.svg';
-import colors from '../../utils/colors';
+import { useTheme } from '../../theme/ThemeContext';
+import Screen from '../../components/ui/Screen';
+import Text from '../../components/ui/Text';
+import Button from '../../components/ui/Button';
 
 const OpeningScreen = ({ navigation }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
     // Animation values
     const logoScale = useRef(new Animated.Value(0)).current;
     const logoOpacity = useRef(new Animated.Value(0)).current;
@@ -91,11 +89,14 @@ const OpeningScreen = ({ navigation }) => {
     }, []);
 
     return (
-        <View style={styles.fullContainer}>
-            <StatusBar barStyle="light-content" backgroundColor={colors.textPrimary} />
+        <Screen gradient>
+            <StatusBar 
+                barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} 
+                backgroundColor={colors.primary} 
+            />
 
-            {/* Black Background Section - Top Half */}
-            <View style={styles.topSection}>
+            {/* Primary Background Section - Top Half */}
+            <View style={[styles.topSection, { backgroundColor: colors.primary }]}>
                 <View style={styles.logoContainer}>
                     <Animated.View
                         style={{
@@ -111,6 +112,7 @@ const OpeningScreen = ({ navigation }) => {
                             {
                                 opacity: brandNameOpacity,
                                 transform: [{ translateY: brandNameTranslateY }],
+                                color: colors.textInverse,
                             },
                         ]}
                     >
@@ -119,8 +121,8 @@ const OpeningScreen = ({ navigation }) => {
                 </View>
             </View>
 
-            {/* White Bottom Section - Bottom Half */}
-            <View style={styles.bottomSection}>
+            {/* Surface Background Section - Bottom Half */}
+            <View style={[styles.bottomSection, { backgroundColor: colors.surface }]}>
                 <View style={styles.contentWrapper}>
                     {/* Welcome Text */}
                     <Animated.View
@@ -132,8 +134,8 @@ const OpeningScreen = ({ navigation }) => {
                             },
                         ]}
                     >
-                        <Text style={styles.welcomeTitle}>Welcome</Text>
-                        <Text style={styles.welcomeSubtitle}>
+                        <Text variant="title" style={[styles.welcomeTitle, { color: colors.textPrimary }]}>Welcome</Text>
+                        <Text variant="body" style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
                             A world of exceptional news{'\n'}
                             with TRAK news core...
                         </Text>
@@ -148,36 +150,26 @@ const OpeningScreen = ({ navigation }) => {
                             },
                         ]}
                     >
-                        <TouchableOpacity
-                            style={styles.primaryButton}
+                        <Button
+                            title="Sign In"
+                            variant="primary"
+                            primaryColors={[colors.primary, colors.primary]}
                             onPress={() => navigation.navigate('Login')}
-                            activeOpacity={0.9}
-                        >
-                            <Text style={styles.primaryButtonText}>Sign In</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.secondaryButton}
-                            onPress={() => navigation.navigate('SignUp')}
-                            activeOpacity={0.8}
-                        >
-                            <Text style={styles.secondaryButtonText}>Create Account</Text>
-                        </TouchableOpacity>
+                        />
+                        <Button title="Create Account" variant="outline" onPress={() => navigation.navigate('SignUp')} />
                     </Animated.View>
                 </View>
             </View>
-        </View>
+        </Screen>
     );
 };
 
 const styles = StyleSheet.create({
     fullContainer: {
         flex: 1,
-        backgroundColor: colors.textPrimary,
     },
     topSection: {
         flex: 1,
-        backgroundColor: colors.textPrimary,
         justifyContent: 'center',
         alignItems: 'center',
         paddingHorizontal: 30,
@@ -188,13 +180,11 @@ const styles = StyleSheet.create({
     brandName: {
         fontSize: 48,
         fontWeight: '900',
-        color: colors.surface,
         letterSpacing: 14,
         marginTop: 20,
         textTransform: 'uppercase',
     },
     bottomSection: {
-        backgroundColor: colors.surface,
         borderTopLeftRadius: 32,
         borderTopRightRadius: 32,
         paddingHorizontal: 30,
@@ -212,16 +202,11 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
     },
     welcomeTitle: {
-        fontSize: 38,
-        fontWeight: '700',
-        color: colors.textPrimary,
         marginBottom: 16,
         textAlign: 'left',
-        letterSpacing: -0.5,
     },
     welcomeSubtitle: {
         fontSize: 16,
-        color: colors.textSecondary,
         textAlign: 'left',
         lineHeight: 24,
         fontWeight: '400',
@@ -229,40 +214,10 @@ const styles = StyleSheet.create({
     buttonContainer: {
         gap: 16,
     },
-    primaryButton: {
-        backgroundColor: colors.textPrimary,
-        paddingVertical: 18,
-        borderRadius: 16,
-        alignItems: 'center',
-        shadowColor: colors.shadowDark,
-        shadowOffset: {
-            width: 0,
-            height: 4,
-        },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-        elevation: 6,
-    },
-    primaryButtonText: {
-        color: colors.surface,
-        fontSize: 17,
-        fontWeight: '600',
-        letterSpacing: 0.3,
-    },
-    secondaryButton: {
-        backgroundColor: 'transparent',
-        paddingVertical: 18,
-        borderRadius: 16,
-        alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: colors.border,
-    },
-    secondaryButtonText: {
-        color: colors.textPrimary,
-        fontSize: 17,
-        fontWeight: '600',
-        letterSpacing: 0.3,
-    },
+    primaryButton: {},
+    primaryButtonText: {},
+    secondaryButton: {},
+    secondaryButtonText: {},
 });
 
 export default OpeningScreen;

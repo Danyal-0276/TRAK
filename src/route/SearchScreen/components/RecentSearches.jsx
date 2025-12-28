@@ -9,8 +9,12 @@ import {
     StyleSheet,
 } from "react-native";
 import { Clock, X } from "lucide-react-native";
+import { useTheme } from "../../../theme/ThemeContext";
 
 const RecentSearches = ({ searches, onSearchSelect, onDeleteSearch, searchQuery }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    
     // Hide when user is actively searching
     if (searchQuery.trim()) return null;
 
@@ -18,27 +22,30 @@ const RecentSearches = ({ searches, onSearchSelect, onDeleteSearch, searchQuery 
     if (!searches || searches.length === 0) return null;
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { 
+            backgroundColor: colors.surface,
+            borderBottomColor: colors.border 
+        }]}>
             <View style={styles.header}>
-                <Clock size={16} color="#64748B" />
-                <Text style={styles.title}>Recent Searches</Text>
+                <Clock size={16} color={colors.textSecondary} />
+                <Text style={[styles.title, { color: colors.textPrimary }]}>Recent Searches</Text>
             </View>
             {searches.map((item) => (
-                <View key={item.id} style={styles.item}>
+                <View key={item.id} style={[styles.item, { borderBottomColor: colors.borderLight }]}>
                     <TouchableOpacity
                         style={styles.itemLeft}
                         onPress={() => onSearchSelect(item.query)}
                     >
                         <Text style={styles.icon}>{item.icon}</Text>
-                        <Text style={styles.query}>{item.query}</Text>
+                        <Text style={[styles.query, { color: colors.textPrimary }]}>{item.query}</Text>
                     </TouchableOpacity>
                     <View style={styles.itemRight}>
-                        <Text style={styles.time}>{item.time}</Text>
+                        <Text style={[styles.time, { color: colors.textTertiary }]}>{item.time}</Text>
                         <TouchableOpacity
                             onPress={() => onDeleteSearch(item.id)}
                             style={styles.deleteButton}
                         >
-                            <X size={14} color="#94A3B8" />
+                            <X size={14} color={colors.textTertiary} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -49,11 +56,9 @@ const RecentSearches = ({ searches, onSearchSelect, onDeleteSearch, searchQuery 
 
 const styles = StyleSheet.create({
     container: {
-        backgroundColor: "#FFFFFF",
         paddingVertical: 16,
         paddingHorizontal: 16,
         borderBottomWidth: 1,
-        borderBottomColor: "#E2E8F0",
     },
     header: {
         flexDirection: "row",
@@ -63,7 +68,6 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 14,
         fontWeight: "700",
-        color: "#0F172A",
         marginLeft: 8,
     },
     item: {
@@ -72,7 +76,6 @@ const styles = StyleSheet.create({
         justifyContent: "space-between",
         paddingVertical: 10,
         borderBottomWidth: 0.5,
-        borderBottomColor: "#E2E8F0",
     },
     itemLeft: {
         flexDirection: "row",
@@ -90,13 +93,11 @@ const styles = StyleSheet.create({
     },
     query: {
         fontSize: 14,
-        color: "#0F172A",
         fontWeight: "500",
         flex: 1,
     },
     time: {
         fontSize: 12,
-        color: "#94A3B8",
     },
     deleteButton: {
         padding: 4,

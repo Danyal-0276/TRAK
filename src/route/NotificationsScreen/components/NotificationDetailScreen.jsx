@@ -7,9 +7,9 @@ import {
   TouchableOpacity, 
   StyleSheet, 
   Animated,
-  SafeAreaView,
   Dimensions 
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";     
 import { getIcon } from "../utils/getIcon";
 import mockAPI from "../services/mockNotificationAPI";        
@@ -22,6 +22,7 @@ const NotificationDetailScreen = () => {
   const [notification, setNotification] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
 
   // Animations
   const fadeAnim = useState(new Animated.Value(0))[0];
@@ -159,6 +160,7 @@ const NotificationDetailScreen = () => {
         style={[
           styles.header,
           {
+            paddingTop: insets.top,
             transform: [{ translateX: headerSlideAnim }],
           }
         ]}

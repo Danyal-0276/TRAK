@@ -1,19 +1,27 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
-import colors from '../../../utils/colors';
+import { useTheme } from '../../../theme/ThemeContext';
 
-export const Header = ({ onBackPress }) => (
-    <View style={styles.header}>
-        <TouchableOpacity 
-            style={styles.backButton}
-            onPress={onBackPress}
-            activeOpacity={0.7}
-        >
-            <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.5} />
-        </TouchableOpacity>
-    </View>
-);
+export const Header = ({ onBackPress }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    
+    return (
+        <View style={styles.header}>
+            <TouchableOpacity 
+                style={[styles.backButton, { 
+                    backgroundColor: colors.backgroundSecondary, 
+                    borderColor: colors.border 
+                }]}
+                onPress={onBackPress}
+                activeOpacity={0.7}
+            >
+                <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.5} />
+            </TouchableOpacity>
+        </View>
+    );
+};
 
 const styles = StyleSheet.create({
     header: {
@@ -24,10 +32,8 @@ const styles = StyleSheet.create({
         width: 40,
         height: 40,
         borderRadius: 20,
-        backgroundColor: colors.backgroundSecondary,
         justifyContent: 'center',
         alignItems: 'center',
         borderWidth: 1,
-        borderColor: colors.border,
     },
 });

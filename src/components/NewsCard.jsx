@@ -13,8 +13,179 @@ import {
     CheckCircle,
     Clock,
 } from 'lucide-react-native';
+import { useTheme } from '../theme/ThemeContext';
 
 export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+
+    const cardStyles = StyleSheet.create({
+        container: {
+            marginBottom: 1,
+        },
+        card: {
+            backgroundColor: colors.surface,
+            padding: 16,
+            borderBottomWidth: 1,
+            borderBottomColor: colors.border,
+        },
+        header: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            marginBottom: 12,
+        },
+        sourceContainer: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            flex: 1,
+        },
+        sourceIcon: {
+            width: 42,
+            height: 42,
+            borderRadius: 4,
+            justifyContent: 'center',
+            alignItems: 'center',
+            marginRight: 12,
+        },
+        sourceIconText: {
+            color: colors.textInverse,
+            fontSize: 15,
+            fontWeight: '900',
+            letterSpacing: 0.5,
+        },
+        sourceInfo: {
+            flex: 1,
+            justifyContent: 'center',
+        },
+        sourceNameRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 4,
+        },
+        sourceName: {
+            color: colors.textPrimary,
+            fontSize: 15,
+            fontWeight: '700',
+            marginRight: 6,
+        },
+        timeRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+        },
+        timeText: {
+            color: colors.textSecondary,
+            fontSize: 13,
+            fontWeight: '500',
+            marginLeft: 4,
+        },
+        dot: {
+            color: colors.textTertiary,
+            fontSize: 13,
+            marginHorizontal: 6,
+        },
+        readTime: {
+            color: colors.textSecondary,
+            fontSize: 13,
+            fontWeight: '500',
+        },
+        moreButton: {
+            padding: 4,
+            marginTop: 4,
+        },
+        title: {
+            color: colors.textPrimary,
+            fontSize: 18,
+            fontWeight: '700',
+            lineHeight: 26,
+            marginBottom: 10,
+            letterSpacing: -0.3,
+        },
+        excerpt: {
+            color: colors.textSecondary,
+            fontSize: 15,
+            lineHeight: 23,
+            marginBottom: 14,
+            fontWeight: '400',
+        },
+        metaRow: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            marginBottom: 14,
+            flexWrap: 'wrap',
+            gap: 8,
+        },
+        categoryBadge: {
+            backgroundColor: colors.backgroundSecondary,
+            paddingHorizontal: 12,
+            paddingVertical: 5,
+            borderRadius: 4,
+            borderLeftWidth: 3,
+            borderLeftColor: colors.primary,
+        },
+        categoryText: {
+            color: colors.textSecondary,
+            fontSize: 12,
+            fontWeight: '700',
+            textTransform: 'uppercase',
+            letterSpacing: 0.8,
+        },
+        trendingBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.errorBg,
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            borderRadius: 4,
+            borderLeftWidth: 3,
+            borderLeftColor: colors.error,
+        },
+        trendingText: {
+            color: colors.error,
+            fontSize: 11,
+            fontWeight: '800',
+            marginLeft: 4,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+        },
+        actionsContainer: {
+            flexDirection: 'row',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            paddingTop: 14,
+            borderTopWidth: 1,
+            borderTopColor: colors.borderLight,
+        },
+        actionsLeft: {
+            flexDirection: 'row',
+            alignItems: 'center',
+        },
+        voteSection: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 4,
+        },
+        voteButton: {
+            padding: 6,
+        },
+        voteCount: {
+            fontSize: 16,
+            fontWeight: '700',
+            color: colors.textPrimary,
+            marginHorizontal: 8,
+            minWidth: 32,
+            textAlign: 'center',
+        },
+        actionsRight: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+        },
+        actionButton: {
+            padding: 6,
+        },
+    });
+
     return (
         <TouchableOpacity
             style={cardStyles.container}
@@ -27,7 +198,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                     <View style={cardStyles.sourceContainer}>
                         <View style={[
                             cardStyles.sourceIcon,
-                            { backgroundColor: item.trending ? '#DC2626' : '#1E40AF' }
+                            { backgroundColor: item.trending ? colors.primary : colors.textSecondary }
                         ]}>
                             <Text style={cardStyles.sourceIconText}>
                                 {item.source.substring(0, 2).toUpperCase()}
@@ -37,11 +208,11 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             <View style={cardStyles.sourceNameRow}>
                                 <Text style={cardStyles.sourceName}>{item.source}</Text>
                                 {item.verified && (
-                                    <CheckCircle size={14} color="#2563EB" fill="#2563EB" />
+                                    <CheckCircle size={14} color={colors.verified} fill={colors.verified} />
                                 )}
                             </View>
                             <View style={cardStyles.timeRow}>
-                                <Clock size={12} color="#64748B" />
+                                <Clock size={12} color={colors.textSecondary} />
                                 <Text style={cardStyles.timeText}>{item.time}</Text>
                                 <Text style={cardStyles.dot}>•</Text>
                                 <Text style={cardStyles.readTime}>{item.readTime} min read</Text>
@@ -52,7 +223,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                         style={cardStyles.moreButton}
                         onPress={(e) => e.stopPropagation()}
                     >
-                        <MoreHorizontal size={20} color="#64748B" />
+                        <MoreHorizontal size={20} color={colors.textSecondary} />
                     </TouchableOpacity>
                 </View>
 
@@ -71,7 +242,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                     </View>
                     {item.trending && (
                         <View style={cardStyles.trendingBadge}>
-                            <TrendingUp size={11} color="#DC2626" strokeWidth={3} />
+                            <TrendingUp size={11} color={colors.error} strokeWidth={3} />
                             <Text style={cardStyles.trendingText}>Trending</Text>
                         </View>
                     )}
@@ -90,7 +261,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             >
                                 <ChevronUp
                                     size={18}
-                                    color={votedItems[item.id] === 'up' ? '#0F172A' : '#94A3B8'}
+                                    color={votedItems[item.id] === 'up' ? colors.textPrimary : colors.textSecondary}
                                     strokeWidth={2.5}
                                 />
                             </TouchableOpacity>
@@ -106,7 +277,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             >
                                 <ChevronDown
                                     size={18}
-                                    color={votedItems[item.id] === 'down' ? '#0F172A' : '#94A3B8'}
+                                    color={votedItems[item.id] === 'down' ? colors.textPrimary : colors.textSecondary}
                                     strokeWidth={2.5}
                                 />
                             </TouchableOpacity>
@@ -123,8 +294,8 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                         >
                             <Bookmark
                                 size={18}
-                                color={bookmarkedItems.has(item.id) ? '#1E40AF' : '#94A3B8'}
-                                fill={bookmarkedItems.has(item.id) ? '#1E40AF' : 'transparent'}
+                                color={bookmarkedItems.has(item.id) ? colors.primary : colors.textSecondary}
+                                fill={bookmarkedItems.has(item.id) ? colors.primary : 'transparent'}
                                 strokeWidth={2}
                             />
                         </TouchableOpacity>
@@ -133,7 +304,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             style={cardStyles.actionButton}
                             onPress={(e) => e.stopPropagation()}
                         >
-                            <Share2 size={18} color="#94A3B8" strokeWidth={2} />
+                            <Share2 size={18} color={colors.textSecondary} strokeWidth={2} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -141,170 +312,3 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
         </TouchableOpacity>
     );
 };
-
-const cardStyles = StyleSheet.create({
-    container: {
-        marginBottom: 1,
-    },
-    card: {
-        backgroundColor: '#FFFFFF',
-        padding: 16,
-        borderBottomWidth: 1,
-        borderBottomColor: '#E2E8F0',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 12,
-    },
-    sourceContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        flex: 1,
-    },
-    sourceIcon: {
-        width: 42,
-        height: 42,
-        borderRadius: 4,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginRight: 12,
-    },
-    sourceIconText: {
-        color: '#FFFFFF',
-        fontSize: 15,
-        fontWeight: '900',
-        letterSpacing: 0.5,
-    },
-    sourceInfo: {
-        flex: 1,
-        justifyContent: 'center',
-    },
-    sourceNameRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 4,
-    },
-    sourceName: {
-        color: '#0F172A',
-        fontSize: 15,
-        fontWeight: '700',
-        marginRight: 6,
-    },
-    timeRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    timeText: {
-        color: '#64748B',
-        fontSize: 13,
-        fontWeight: '500',
-        marginLeft: 4,
-    },
-    dot: {
-        color: '#CBD5E1',
-        fontSize: 13,
-        marginHorizontal: 6,
-    },
-    readTime: {
-        color: '#64748B',
-        fontSize: 13,
-        fontWeight: '500',
-    },
-    moreButton: {
-        padding: 4,
-        marginTop: 4,
-    },
-    title: {
-        color: '#0F172A',
-        fontSize: 18,
-        fontWeight: '700',
-        lineHeight: 26,
-        marginBottom: 10,
-        letterSpacing: -0.3,
-    },
-    excerpt: {
-        color: '#475569',
-        fontSize: 15,
-        lineHeight: 23,
-        marginBottom: 14,
-        fontWeight: '400',
-    },
-    metaRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginBottom: 14,
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    categoryBadge: {
-        backgroundColor: '#F1F5F9',
-        paddingHorizontal: 12,
-        paddingVertical: 5,
-        borderRadius: 4,
-        borderLeftWidth: 3,
-        borderLeftColor: '#2563EB',
-    },
-    categoryText: {
-        color: '#334155',
-        fontSize: 12,
-        fontWeight: '700',
-        textTransform: 'uppercase',
-        letterSpacing: 0.8,
-    },
-    trendingBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#FEF2F2',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 4,
-        borderLeftWidth: 3,
-        borderLeftColor: '#DC2626',
-    },
-    trendingText: {
-        color: '#DC2626',
-        fontSize: 11,
-        fontWeight: '800',
-        marginLeft: 4,
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    actionsContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        paddingTop: 14,
-        borderTopWidth: 1,
-        borderTopColor: '#F1F5F9',
-    },
-    actionsLeft: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    voteSection: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-    },
-    voteButton: {
-        padding: 6,
-    },
-    voteCount: {
-        fontSize: 16,
-        fontWeight: '700',
-        color: '#0F172A',
-        marginHorizontal: 8,
-        minWidth: 32,
-        textAlign: 'center',
-    },
-    actionsRight: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-    },
-    actionButton: {
-        padding: 6,
-    },
-});

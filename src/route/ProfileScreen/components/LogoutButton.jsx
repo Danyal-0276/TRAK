@@ -1,14 +1,20 @@
 // components/profile/LogoutButton.jsx
 import React from "react";
-import { TouchableOpacity, Text, StyleSheet } from "react-native";
+import { TouchableOpacity, StyleSheet } from "react-native";
 import { LogOut } from "lucide-react-native";
+import { useTheme } from "../../../theme/ThemeContext";
+import Text from "../../../components/ui/Text";
 
-const LogoutButton = ({ onLogout }) => (
-  <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
-    <LogOut size={18} color="#EF4444" />
-    <Text style={styles.logoutText}>Logout</Text>
-  </TouchableOpacity>
-);
+const LogoutButton = ({ onLogout }) => {
+  const { theme } = useTheme();
+  const { colors, spacing } = theme;
+  return (
+    <TouchableOpacity style={[styles.logoutBtn, { borderTopColor: colors.border }]} onPress={onLogout}>
+      <LogOut size={18} color={colors.error} />
+      <Text variant="button" color={colors.error} style={{ marginLeft: spacing.xs }}>Logout</Text>
+    </TouchableOpacity>
+  );
+};
 
 const styles = StyleSheet.create({
   logoutBtn: {
@@ -16,9 +22,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: "#e6e6e6",
   },
-  logoutText: { marginLeft: 10, fontSize: 15, color: "#EF4444" },
 });
 
 export default LogoutButton;
