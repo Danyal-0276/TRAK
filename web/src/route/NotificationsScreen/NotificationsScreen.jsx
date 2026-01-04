@@ -1,0 +1,610 @@
+import React, { useState, useEffect } from 'react';
+import { useTheme } from '../../theme/ThemeContext';
+import { 
+    Bell, 
+    Check, 
+    CheckCheck, 
+    MessageCircle, 
+    Heart, 
+    UserPlus, 
+    Hash,
+    X,
+    Clock
+} from 'lucide-react';
+import mockNotificationAPI from '../../utils/Service/mockNotificationApi';
+
+const NotificationsScreen = () => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const [notifications, setNotifications] = useState([]);
+    const [filteredNotifications, setFilteredNotifications] = useState([]);
+    const [activeTab, setActiveTab] = useState('All');
+    const [loading, setLoading] = useState(true);
+    const [selectedNotification, setSelectedNotification] = useState(null);
+
+    useEffect(() => {
+        loadNotifications();
+    }, []);
+
+    useEffect(() => {
+        filterNotifications();
+    }, [activeTab, notifications]);
+
+    const loadNotifications = async () => {
+        try {
+            setLoading(true);
+            const data = await mockNotificationAPI.getNotifications();
+            setNotifications(data);
+            setFilteredNotifications(data);
+        } catch (error) {
+            console.error("Error loading notifications:", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const filterNotifications = () => {
+        if (activeTab === 'All') {
+            setFilteredNotifications(notifications);
+        } else if (activeTab === 'Unread') {
+            setFilteredNotifications(notifications.filter(n => !n.read));
+        } else if (activeTab === 'Important') {
+            setFilteredNotifications(notifications.filter(n => n.important));
+        }
+    };
+
+    const markAsRead = async (notificationId) => {
+        try {
+            await mockNotificationAPI.markAsRead(notificationId);
+            setNotifications(prev => 
+                prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+            );
+        } catch (error) {
+            console.error("Error marking as read:", error);
+        }
+    };
+
+    const markAllAsRead = async () => {
+        try {
+            await mockNotificationAPI.markAllAsRead();
+            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        } catch (error) {
+            console.error("Error marking all as read:", error);
+        }
+    };
+
+    const handleNotificationClick = (notification) => {
+        if (!notification.read) {
+            markAsRead(notification.id);
+        }
+        setSelectedNotification(notification);
+    };
+
+    const handleCloseDetail = () => {
+        setSelectedNotification(null);
+    };
+
+    const getNotificationIcon = (type) => {
+        switch (type) {
+            case 'mention':
+                return <MessageCircle size={20} color="#3b82f6" />;
+            case 'like':
+                return <Heart size={20} color="#ef4444" />;
+            case 'comment':
+                return <MessageCircle size={20} color="#10b981" />;
+            case 'follow':
+                return <UserPlus size={20} color="#8b5cf6" />;
+            case 'keyword':
+                return <Hash size={20} color="#f59e0b" />;
+            default:
+                return <Bell size={20} color="#64748b" />;
+        }
+    };
+
+    const getNotificationColor = (type) => {
+        switch (type) {
+            case 'mention':
+                return '#3b82f6';
+            case 'like':
+                return '#ef4444';
+            case 'comment':
+                return '#10b981';
+            case 'follow':
+                return '#8b5cf6';
+            case 'keyword':
+                return '#f59e0b';
+            default:
+                return '#64748b';
+        }
+    };
+
+    const unreadCount = notifications.filter(n => !n.read).length;
+    const importantCount = notifications.filter(n => n.important).length;
+
+    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
+    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
+    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
+    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+
+    return (
+        <div style={{
+            minHeight: '100vh',
+            backgroundColor: backgroundColor,
+            paddingTop: '0',
+            marginTop: '0',
+        }}>
+            <div style={{
+                maxWidth: '900px',
+                margin: '0 auto',
+                width: '100%',
+                padding: '0 24px 24px 24px',
+            }}>
+                {/* Header Section */}
+                <div style={{
+                    marginTop: '0',
+                    marginBottom: '24px',
+                    paddingTop: '0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                }}>
+                    <div>
+                        <h1 style={{
+                            fontSize: '28px',
+                            fontWeight: '700',
+                            color: textPrimary,
+                            margin: '0 0 8px 0',
+                            paddingTop: '0',
+                            letterSpacing: '-0.5px',
+            }}>
+                Notifications
+                        </h1>
+                        <p style={{
+                            fontSize: '15px',
+                            color: textSecondary,
+                            margin: '0',
+                            lineHeight: '1.5',
+                        }}>
+                            {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : 'All caught up!'}
+                        </p>
+                    </div>
+                    {unreadCount > 0 && (
+                        <button
+                            onClick={markAllAsRead}
+                            style={{
+                                padding: '10px 20px',
+                                border: `1px solid ${borderColor}`,
+                                background: cardBackground,
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: textPrimary,
+                                transition: 'all 0.2s ease',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
+                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = borderColor;
+                                e.currentTarget.style.backgroundColor = cardBackground;
+                            }}
+                        >
+                            <CheckCheck size={16} color={textPrimary} />
+                            Mark all as read
+                        </button>
+                    )}
+                </div>
+
+                {/* Tabs */}
+                <div style={{
+                    display: 'flex',
+                    gap: '8px',
+                    marginBottom: '24px',
+                    borderBottom: `1px solid ${borderColor}`,
+                    paddingBottom: '0',
+                }}>
+                    {[
+                        { id: 'All', label: 'All', count: notifications.length },
+                        { id: 'Unread', label: 'Unread', count: unreadCount },
+                        { id: 'Important', label: 'Important', count: importantCount },
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            onClick={() => setActiveTab(tab.id)}
+                            style={{
+                                padding: '10px 16px',
+                                border: 'none',
+                                background: activeTab === tab.id 
+                                    ? (isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6')
+                                    : 'transparent',
+                                cursor: 'pointer',
+                                transition: 'all 0.2s ease',
+                                borderBottom: activeTab === tab.id 
+                                    ? `3px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`
+                                    : '2px solid transparent',
+                                marginBottom: activeTab === tab.id ? '-2px' : '-1px',
+                                borderRadius: '0',
+                                whiteSpace: 'nowrap',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                            }}
+                            onMouseEnter={(e) => {
+                                if (activeTab !== tab.id) {
+                                    e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                                }
+                            }}
+                            onMouseLeave={(e) => {
+                                if (activeTab !== tab.id) {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                }
+                            }}
+                        >
+                            <span style={{
+                                fontSize: '14px',
+                                fontWeight: activeTab === tab.id ? '700' : '500',
+                                color: activeTab === tab.id 
+                                    ? (isDark ? colors.primary || '#818CF8' : '#0f172a')
+                                    : textSecondary,
+                            }}>
+                                {tab.label}
+                            </span>
+                            <span style={{
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                color: activeTab === tab.id 
+                                    ? (isDark ? colors.primary || '#818CF8' : '#0f172a')
+                                    : textSecondary,
+                                backgroundColor: activeTab === tab.id 
+                                    ? (isDark ? colors.primary + '20' || 'rgba(129, 140, 248, 0.2)' : '#e5e7eb')
+                                    : (isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6'),
+                                padding: '3px 8px',
+                                borderRadius: '12px',
+                                minWidth: '28px',
+                                textAlign: 'center',
+                            }}>
+                                {tab.count}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+
+                {/* Notification Detail View */}
+                {selectedNotification ? (
+                    <div style={{
+                        marginBottom: '24px',
+                        backgroundColor: cardBackground,
+                        border: `1px solid ${borderColor}`,
+                        borderRadius: '8px',
+                        padding: '24px',
+                    }}>
+                        {/* Close Button */}
+                        <div style={{
+                            display: 'flex',
+                            justifyContent: 'flex-end',
+                            marginBottom: '20px',
+                        }}>
+                            <button
+                                onClick={handleCloseDetail}
+                                style={{
+                                    padding: '6px',
+                                    border: 'none',
+                                    background: 'transparent',
+                                    cursor: 'pointer',
+                                    borderRadius: '6px',
+                                    transition: 'all 0.2s ease',
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                }}
+                            >
+                                <X size={18} color={textSecondary} />
+                            </button>
+                        </div>
+
+                        {/* Notification Header */}
+                        <div style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '16px',
+                            marginBottom: '20px',
+                        }}>
+                            <div style={{
+                                width: '48px',
+                                height: '48px',
+                                borderRadius: '12px',
+                                backgroundColor: getNotificationColor(selectedNotification.type) + '20',
+                                display: 'flex',
+                                justifyContent: 'center',
+                                alignItems: 'center',
+                            }}>
+                                {getNotificationIcon(selectedNotification.type)}
+                            </div>
+                            <div style={{ flex: 1 }}>
+                                <div style={{
+                                    fontSize: '16px',
+                                    fontWeight: '600',
+                                    color: textPrimary,
+                                    marginBottom: '4px',
+                                }}>
+                                    {selectedNotification.user}
+                                </div>
+                                <div style={{
+                                    fontSize: '13px',
+                                    color: textSecondary,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '6px',
+                                }}>
+                                    <Clock size={12} color={textSecondary} />
+                                    {selectedNotification.time}
+                                </div>
+                            </div>
+                            {selectedNotification.important && (
+                                <span style={{
+                                    fontSize: '10px',
+                                    fontWeight: '600',
+                                    color: '#ef4444',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    padding: '4px 10px',
+                                    backgroundColor: '#fef2f2',
+                                    borderRadius: '4px',
+                                }}>
+                                    Important
+                                </span>
+                            )}
+                        </div>
+
+                        {/* Notification Content */}
+                        <div style={{
+                            fontSize: '16px',
+                            fontWeight: '600',
+                            color: textPrimary,
+                            marginBottom: '12px',
+                        }}>
+                            {selectedNotification.text}
+                        </div>
+
+                        {selectedNotification.postTitle && (
+                            <div style={{
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: textSecondary,
+                                marginBottom: '16px',
+                            }}>
+                                Post: {selectedNotification.postTitle}
+                            </div>
+                        )}
+
+                        {selectedNotification.keyword && (
+                            <div style={{
+                                marginBottom: '16px',
+                            }}>
+                                <span style={{
+                                    fontSize: '10px',
+                                    fontWeight: '600',
+                                    color: textSecondary,
+                                    textTransform: 'uppercase',
+                                    letterSpacing: '0.5px',
+                                    padding: '4px 10px',
+                                    backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6',
+                                    borderRadius: '4px',
+                                    display: 'inline-block',
+                                }}>
+                                    Keyword: {selectedNotification.keyword}
+                                </span>
+                            </div>
+                        )}
+
+                        <div style={{
+                            fontSize: '15px',
+                            lineHeight: '1.7',
+                            color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
+                            padding: '16px',
+                            backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f9fafb',
+                            borderRadius: '8px',
+                            border: `1px solid ${borderColor}`,
+                        }}>
+                            {selectedNotification.details}
+                        </div>
+                    </div>
+                ) : null}
+
+                {/* Notifications List */}
+                {loading ? (
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        minHeight: '400px',
+                    }}>
+                        <div style={{
+                            width: '32px',
+                            height: '32px',
+                            border: `3px solid ${borderColor}`,
+                            borderTop: `3px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`,
+                            borderRadius: '50%',
+                            animation: 'spin 0.8s linear infinite',
+                        }} />
+                    </div>
+                ) : filteredNotifications.length === 0 ? (
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '100px 20px',
+                    }}>
+                        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🎉</div>
+                        <h3 style={{
+                            fontSize: '18px',
+                            fontWeight: '600',
+                            color: textPrimary,
+                            margin: '0 0 8px 0',
+                        }}>
+                            All caught up!
+                        </h3>
+                        <p style={{
+                            fontSize: '14px',
+                            color: textSecondary,
+                            margin: '0',
+                            textAlign: 'center',
+                        }}>
+                            {activeTab === 'Unread' 
+                                ? "You don't have any unread notifications" 
+                                : activeTab === 'Important'
+                                ? "You don't have any important notifications"
+                                : "You're all up to date! New notifications will appear here"}
+                        </p>
+                    </div>
+                ) : (
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '12px',
+                    }}>
+                        {filteredNotifications.map((notification) => (
+                            <div
+                                key={notification.id}
+                                onClick={() => handleNotificationClick(notification)}
+                                style={{
+                                    padding: '16px',
+                                    border: `1px solid ${borderColor}`,
+                                    borderRadius: '8px',
+                                    backgroundColor: notification.read 
+                                        ? cardBackground 
+                                        : (isDark ? colors.surfaceElevated || '#334155' : '#f9fafb'),
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                    position: 'relative',
+                                    borderLeft: notification.read 
+                                        ? `1px solid ${borderColor}` 
+                                        : `4px solid ${getNotificationColor(notification.type)}`,
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                                    e.currentTarget.style.borderColor = isDark ? colors.borderLight || '#475569' : '#d1d5db';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = notification.read 
+                                        ? cardBackground 
+                                        : (isDark ? colors.surfaceElevated || '#334155' : '#f9fafb');
+                                    e.currentTarget.style.borderColor = borderColor;
+                                }}
+                            >
+                                <div style={{
+                                    display: 'flex',
+                                    gap: '16px',
+                                }}>
+                                    {/* Icon */}
+                                    <div style={{
+                                        width: '40px',
+                                        height: '40px',
+                                        borderRadius: '10px',
+                                        backgroundColor: getNotificationColor(notification.type) + '20',
+                                        display: 'flex',
+                                        justifyContent: 'center',
+                                        alignItems: 'center',
+                                        flexShrink: 0,
+                                    }}>
+                                        {getNotificationIcon(notification.type)}
+                                    </div>
+
+                                    {/* Content */}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{
+                                            fontSize: '15px',
+                                            fontWeight: notification.read ? '500' : '600',
+                                            color: textPrimary,
+                                            marginBottom: '6px',
+                                            lineHeight: '1.4',
+                                        }}>
+                                            {notification.text}
+                                        </div>
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '12px',
+                                            flexWrap: 'wrap',
+                                        }}>
+                                            <div style={{
+                                                fontSize: '13px',
+                                                color: textSecondary,
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                            }}>
+                                                <span>{notification.user}</span>
+                                                <span>•</span>
+                                                <span>{notification.time}</span>
+                                            </div>
+                                            {notification.keyword && (
+                                                <span style={{
+                                                    fontSize: '11px',
+                                                    fontWeight: '600',
+                                                    color: textSecondary,
+                                                    padding: '2px 8px',
+                                                    backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6',
+                                                    borderRadius: '4px',
+                                                }}>
+                                                    #{notification.keyword}
+                                                </span>
+                                            )}
+                                            {notification.important && (
+                                                <span style={{
+                                                    fontSize: '11px',
+                                                    fontWeight: '600',
+                                                    color: '#ef4444',
+                                                    padding: '2px 8px',
+                                                    backgroundColor: '#fef2f2',
+                                                    borderRadius: '4px',
+                                                }}>
+                                                    Important
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Unread Indicator */}
+                                    {!notification.read && (
+                                        <div style={{
+                                            width: '8px',
+                                            height: '8px',
+                                            borderRadius: '50%',
+                                            backgroundColor: getNotificationColor(notification.type),
+                                            flexShrink: 0,
+                                            marginTop: '4px',
+                                        }} />
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+            <style>{`
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                h1 {
+                    margin-top: 0 !important;
+                    padding-top: 0 !important;
+                }
+            `}</style>
+        </div>
+    );
+};
+
+export default NotificationsScreen;
