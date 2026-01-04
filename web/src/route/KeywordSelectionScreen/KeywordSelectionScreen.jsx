@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
+import { useResponsive } from '../../hooks/useResponsive';
 import Text from '../../components/ui/Text';
 import { ArrowLeft, Plus, X, ArrowRight } from 'lucide-react';
 
 const KeywordSelectionScreen = () => {
     const { theme } = useTheme();
+    const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
     const location = useLocation();
     const [selectedKeywords, setSelectedKeywords] = useState([]);
@@ -52,104 +56,73 @@ const KeywordSelectionScreen = () => {
         });
     };
 
+    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
+    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
+    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
+
     return (
         <div style={{
             minHeight: '100vh',
-            display: 'flex',
-            backgroundColor: '#ffffff',
+            backgroundColor: backgroundColor,
+            paddingTop: '0',
+            marginTop: '0',
         }}>
-            {/* Left Side - Branding */}
             <div style={{
-                flex: '0 0 40%',
-                backgroundColor: '#000000',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '60px',
-                position: 'relative',
-                overflow: 'hidden',
+                maxWidth: '1200px',
+                margin: '0 auto',
+                width: '100%',
+                padding: isMobile ? '0 16px 24px 16px' : isTablet ? '0 20px 24px 20px' : '0 24px 24px 24px',
             }}>
-                <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: '400px' }}>
-                    <img 
-                        src="/images/whiteLogo.svg" 
-                        alt="TRAK Logo" 
-                        style={{ 
-                            width: '100px', 
-                            height: '100px',
-                            margin: '0 auto 32px',
-                            display: 'block',
-                        }} 
-                    />
-                    <Text variant="title" style={{
-                        fontSize: '42px',
-                        fontWeight: '800',
-                        color: '#ffffff',
-                        marginBottom: '20px',
-                        letterSpacing: '-1px',
-                    }}>
-                        Add Keywords
-                    </Text>
-                    <Text variant="body" style={{
-                        fontSize: '16px',
-                        color: 'rgba(255, 255, 255, 0.8)',
-                        lineHeight: '1.6',
-                    }}>
-                        Add specific keywords to get more personalized content (optional)
-                    </Text>
-                </div>
-            </div>
+                {/* Header Section */}
+                <div style={{
+                    marginTop: '0',
+                    marginBottom: isMobile ? '16px' : '24px',
+                    paddingTop: '0',
+                }}>
+                    <button
+                        onClick={() => navigate(-1)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 0',
+                            border: 'none',
+                            background: 'transparent',
+                            color: textSecondary,
+                            fontSize: '15px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            marginBottom: '24px',
+                            alignSelf: 'flex-start',
+                        }}
+                    >
+                        <ArrowLeft size={18} />
+                        Back
+                    </button>
 
-            {/* Right Side - Keyword Selection */}
-            <div style={{
-                flex: '0 0 60%',
-                display: 'flex',
-                flexDirection: 'column',
-                padding: '40px 60px',
-                backgroundColor: '#ffffff',
-                overflowY: 'auto',
-                maxHeight: '100vh',
-            }}>
-                <button
-                    onClick={() => navigate(-1)}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 0',
-                        border: 'none',
-                        background: 'transparent',
-                        color: '#6b7280',
-                        fontSize: '15px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        marginBottom: '32px',
-                        alignSelf: 'flex-start',
-                    }}
-                >
-                    <ArrowLeft size={18} />
-                    Back
-                </button>
-
-                <div style={{ marginBottom: '24px' }}>
-                    <Text variant="body" style={{
-                        fontSize: '18px',
-                        fontWeight: '400',
-                        color: '#374151',
-                        marginBottom: '8px',
-                        letterSpacing: '0.2px',
+                    <h1 style={{
+                        fontSize: isMobile ? '22px' : isTablet ? '24px' : '28px',
+                        fontWeight: '700',
+                        color: textPrimary,
+                        margin: '0 0 8px 0',
+                        paddingTop: '0',
+                        letterSpacing: '-0.5px',
                     }}>
-                        Custom keywords
-                    </Text>
-                    <Text variant="body" style={{
+                        Add Custom Keywords
+                    </h1>
+                    <p style={{
                         fontSize: '15px',
-                        color: '#6b7280',
+                        color: textSecondary,
+                        margin: '0',
                         lineHeight: '1.5',
                     }}>
-                        Add keywords you want to track (optional)
-                    </Text>
+                        Add specific keywords to get more personalized content (optional)
+                    </p>
                 </div>
 
-                {/* Keyword Input - Compact */}
+                {/* Keyword Input */}
                 <form onSubmit={handleKeywordSubmit} style={{ marginBottom: '20px' }}>
                     <div style={{ display: 'flex', gap: '10px' }}>
                         <input
@@ -161,21 +134,21 @@ const KeywordSelectionScreen = () => {
                                 flex: 1,
                                 padding: '12px 14px',
                                 fontSize: '14px',
-                                border: '1px solid #e5e7eb',
+                                border: `1px solid ${borderColor}`,
                                 borderRadius: '8px',
                                 outline: 'none',
                                 transition: 'all 0.2s ease',
-                                color: '#111827',
-                                backgroundColor: '#f9fafb',
+                                color: textPrimary,
+                                backgroundColor: isDark ? cardBackground : '#f9fafb',
                             }}
                             onFocus={(e) => {
-                                e.target.style.backgroundColor = '#ffffff';
-                                e.target.style.borderColor = '#000000';
-                                e.target.style.boxShadow = '0 0 0 3px rgba(0, 0, 0, 0.05)';
+                                e.target.style.backgroundColor = cardBackground;
+                                e.target.style.borderColor = isDark ? colors.primary || '#3b82f6' : '#000000';
+                                e.target.style.boxShadow = `0 0 0 3px ${isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(0, 0, 0, 0.05)'}`;
                             }}
                             onBlur={(e) => {
-                                e.target.style.backgroundColor = '#f9fafb';
-                                e.target.style.borderColor = '#e5e7eb';
+                                e.target.style.backgroundColor = isDark ? cardBackground : '#f9fafb';
+                                e.target.style.borderColor = borderColor;
                                 e.target.style.boxShadow = 'none';
                             }}
                         />
@@ -184,7 +157,7 @@ const KeywordSelectionScreen = () => {
                             onClick={handleKeywordSubmit}
                             style={{
                                 padding: '12px 20px',
-                                backgroundColor: '#000000',
+                                backgroundColor: isDark ? colors.primary || '#3b82f6' : '#000000',
                                 color: '#ffffff',
                                 border: 'none',
                                 borderRadius: '8px',
@@ -197,10 +170,10 @@ const KeywordSelectionScreen = () => {
                                 transition: 'all 0.2s ease',
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#1a1a1a';
+                                e.currentTarget.style.backgroundColor = isDark ? '#2563eb' : '#1a1a1a';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = '#000000';
+                                e.currentTarget.style.backgroundColor = isDark ? colors.primary || '#3b82f6' : '#000000';
                             }}
                         >
                             <Plus size={16} />
@@ -209,31 +182,33 @@ const KeywordSelectionScreen = () => {
                     </div>
                 </form>
 
-                {/* Keyword Count - Compact */}
+                {/* Keyword Count */}
                 {selectedKeywords.length > 0 && (
                     <div style={{
-                        padding: '8px 12px',
-                        backgroundColor: '#f3f4f6',
+                        padding: '8px 14px',
+                        backgroundColor: isDark ? colors.surface || '#1E293B' : '#f3f4f6',
                         borderRadius: '8px',
                         marginBottom: '16px',
-                        display: 'inline-block',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        width: 'auto',
+                        height: 'auto',
                     }}>
-                        <Text variant="body" style={{
+                        <span style={{
                             fontSize: '13px',
                             fontWeight: '600',
-                            color: '#000000',
+                            color: textPrimary,
+                            whiteSpace: 'nowrap',
                         }}>
                             {selectedKeywords.length} keyword{selectedKeywords.length !== 1 ? 's' : ''}
-                        </Text>
+                        </span>
                     </div>
                 )}
 
-                {/* Keywords List - Compact */}
+                {/* Keywords List */}
                 <div style={{
                     marginBottom: '32px',
                     minHeight: '100px',
-                    maxHeight: '300px',
-                    overflowY: 'auto',
                 }}>
                     {selectedKeywords.length === 0 ? (
                         <div style={{
@@ -242,71 +217,76 @@ const KeywordSelectionScreen = () => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             padding: '40px 20px',
-                            border: '2px dashed #e5e7eb',
+                            border: `2px dashed ${borderColor}`,
                             borderRadius: '10px',
-                            backgroundColor: '#f9fafb',
+                            backgroundColor: isDark ? colors.surface || '#1E293B' : '#f9fafb',
                         }}>
-                            <Text variant="body" style={{
+                            <span style={{
                                 fontSize: '32px',
                                 marginBottom: '12px',
                             }}>
                                 🔍
-                            </Text>
-                            <Text variant="body" style={{
+                            </span>
+                            <span style={{
                                 fontSize: '14px',
-                                color: '#6b7280',
+                                color: textSecondary,
                                 textAlign: 'center',
                             }}>
                                 No keywords added yet
-                            </Text>
+                            </span>
                         </div>
                     ) : (
                         <div style={{
                             display: 'flex',
                             flexWrap: 'wrap',
-                            gap: '8px',
+                            gap: '10px',
+                            alignItems: 'flex-start',
                         }}>
                             {selectedKeywords.map((keyword, index) => (
                                 <div
                                     key={index}
                                     style={{
-                                        display: 'flex',
+                                        display: 'inline-flex',
                                         alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '6px 12px',
-                                        backgroundColor: '#f3f4f6',
+                                        gap: '8px',
+                                        padding: '8px 14px',
+                                        backgroundColor: isDark ? colors.surface || '#1E293B' : '#f3f4f6',
                                         borderRadius: '16px',
-                                        border: '1px solid #e5e7eb',
+                                        border: `1px solid ${borderColor}`,
+                                        width: 'auto',
+                                        height: 'auto',
                                     }}
                                 >
-                                    <Text variant="body" style={{
+                                    <span style={{
                                         fontSize: '13px',
                                         fontWeight: '500',
-                                        color: '#000000',
+                                        color: textPrimary,
+                                        whiteSpace: 'nowrap',
                                     }}>
                                         {keyword}
-                                    </Text>
+                                    </span>
                                     <button
                                         onClick={() => removeKeyword(keyword)}
                                         style={{
-                                            width: '16px',
-                                            height: '16px',
+                                            width: '18px',
+                                            height: '18px',
                                             borderRadius: '50%',
                                             border: 'none',
-                                            backgroundColor: '#d1d5db',
-                                            color: '#000000',
+                                            backgroundColor: isDark ? colors.border || '#475569' : '#d1d5db',
+                                            color: textPrimary,
                                             cursor: 'pointer',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             padding: 0,
                                             transition: 'all 0.2s ease',
+                                            flexShrink: 0,
                                         }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.backgroundColor = '#9ca3af';
+                                            e.currentTarget.style.backgroundColor = isDark ? '#64748b' : '#9ca3af';
                                         }}
                                         onMouseLeave={(e) => {
-                                            e.currentTarget.style.backgroundColor = '#d1d5db';
+                                            e.currentTarget.style.backgroundColor = isDark ? colors.border || '#475569' : '#d1d5db';
                                         }}
                                     >
                                         <X size={10} />
@@ -317,13 +297,10 @@ const KeywordSelectionScreen = () => {
                     )}
                 </div>
 
-                {/* Action Buttons - Fixed at bottom */}
+                {/* Action Buttons */}
                 <div style={{
-                    position: 'sticky',
-                    bottom: 0,
-                    backgroundColor: '#ffffff',
                     paddingTop: '20px',
-                    borderTop: '1px solid #e5e7eb',
+                    borderTop: `1px solid ${borderColor}`,
                     marginTop: 'auto',
                     display: 'flex',
                     gap: '12px',
@@ -333,7 +310,7 @@ const KeywordSelectionScreen = () => {
                         style={{
                             flex: 1,
                             padding: '14px 24px',
-                            backgroundColor: '#000000',
+                            backgroundColor: isDark ? colors.primary || '#3b82f6' : '#000000',
                             color: '#ffffff',
                             border: 'none',
                             borderRadius: '10px',
@@ -347,10 +324,10 @@ const KeywordSelectionScreen = () => {
                             transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#1a1a1a';
+                            e.currentTarget.style.backgroundColor = isDark ? '#2563eb' : '#1a1a1a';
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#000000';
+                            e.currentTarget.style.backgroundColor = isDark ? colors.primary || '#3b82f6' : '#000000';
                         }}
                     >
                         Continue to Feed
@@ -360,9 +337,9 @@ const KeywordSelectionScreen = () => {
                         onClick={handleContinue}
                         style={{
                             padding: '14px 24px',
-                            backgroundColor: '#ffffff',
-                            color: '#374151',
-                            border: '1px solid #e5e7eb',
+                            backgroundColor: cardBackground,
+                            color: textPrimary,
+                            border: `1px solid ${borderColor}`,
                             borderRadius: '10px',
                             fontSize: '15px',
                             fontWeight: '600',
@@ -370,12 +347,12 @@ const KeywordSelectionScreen = () => {
                             transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f9fafb';
-                            e.currentTarget.style.borderColor = '#d1d5db';
+                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                            e.currentTarget.style.borderColor = isDark ? colors.border || '#475569' : '#d1d5db';
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = '#ffffff';
-                            e.currentTarget.style.borderColor = '#e5e7eb';
+                            e.currentTarget.style.backgroundColor = cardBackground;
+                            e.currentTarget.style.borderColor = borderColor;
                         }}
                     >
                         Skip

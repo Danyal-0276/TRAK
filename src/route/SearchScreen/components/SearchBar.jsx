@@ -64,6 +64,16 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
   };
 
   const handleCollapse = () => {
+    // Don't collapse if there's text in the input - keep it expanded but unfocused
+    if (query.trim()) {
+      setFocused(false);
+      // Keep expanded state
+      if (!expanded) {
+        setExpanded(true);
+        width.value = EXPANDED_WIDTH;
+      }
+      return;
+    }
     setFocused(false);
     setExpanded(false);
     width.value = COLLAPSED_WIDTH;
@@ -137,14 +147,25 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
 
   const collapseKeepText = () => {
     setFocused(false);
-    setExpanded(false);
-    width.value = COLLAPSED_WIDTH;
+    // If there's text, keep it expanded visually but unfocused
+    if (query.trim()) {
+      setExpanded(true);
+      width.value = EXPANDED_WIDTH;
+    } else {
+      setExpanded(false);
+      width.value = COLLAPSED_WIDTH;
+    }
     inputRef.current?.blur();
     Keyboard.dismiss();
   };
 
   useEffect(() => {
     setQuery(initialQuery);
+    // Keep expanded if there's text
+    if (initialQuery && initialQuery.trim()) {
+      setExpanded(true);
+      width.value = EXPANDED_WIDTH;
+    }
   }, [initialQuery]);
 
   useImperativeHandle(ref, () => ({
@@ -159,7 +180,8 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
       {focused && (
         <Pressable
           onPress={handleOutsidePress}
-          style={StyleSheet.absoluteFillObject}
+          style={[StyleSheet.absoluteFillObject, { zIndex: 5 }]}
+          pointerEvents="box-none"
         />
       )}
 
@@ -167,24 +189,41 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
         styles.container, 
         animatedStyle, 
         { 
-          zIndex: 10,
+          zIndex: 100,
           backgroundColor: colors.surface,
           shadowColor: colors.primary,
+          elevation: 10,
         }
-      ]}>
+      ]}
+      >
         <LinearGradient
           colors={[colors.surface, colors.backgroundSecondary]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={[styles.gradientBox, { borderColor: `${colors.primary}40` }]}
         >
-          {!focused ? (
-            <TouchableOpacity onPress={handleExpand} style={{ zIndex: 10 }}>
+          {!expanded && !query ? (
+            <TouchableOpacity 
+              onPress={handleExpand} 
+              style={{ zIndex: 110 }}
+              activeOpacity={0.8}
+            >
               <Search size={18} color={colors.primary} />
             </TouchableOpacity>
           ) : (
             <>
-              <Search size={18} color={colors.primary} style={styles.icon} />
+              <TouchableOpacity
+                activeOpacity={1}
+                onPress={() => {
+                  // If not focused but has text, focus the input
+                  if (!focused && query.trim()) {
+                    handleExpand();
+                  }
+                }}
+                style={styles.icon}
+              >
+                <Search size={18} color={colors.primary} />
+              </TouchableOpacity>
               <TextInput
                 ref={inputRef}
                 value={query}
@@ -194,15 +233,40 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
                 style={[styles.input, { color: colors.textPrimary }]}
                 cursorColor={colors.primary}
                 selectionColor={`${colors.primary}4D`}
-                onFocus={() => setFocused(true)}
+                onFocus={() => {
+                  setFocused(true);
+                  if (!expanded) {
+                    setExpanded(true);
+                    width.value = EXPANDED_WIDTH;
+                  }
+                }}
+                onBlur={() => {
+                  if (!query.trim()) {
+                    setFocused(false);
+                    setExpanded(false);
+                    width.value = COLLAPSED_WIDTH;
+                  } else {
+                    // Keep expanded if there's text
+                    setFocused(false);
+                    if (!expanded) {
+                      setExpanded(true);
+                      width.value = EXPANDED_WIDTH;
+                    }
+                  }
+                }}
                 onSubmitEditing={handleSearchSubmit}
+                editable={true}
               />
-              <TouchableOpacity
-                onPress={handleCrossPress}
-                style={[styles.closeButton, { zIndex: 15 }]}
-              >
-                <X size={18} color={colors.primary} />
-              </TouchableOpacity>
+              {query.length > 0 && (
+                <TouchableOpacity
+                  onPress={handleCrossPress}
+                  style={[styles.closeButton, { zIndex: 115 }]}
+                  activeOpacity={0.7}
+                >
+                  <X size={16} color={colors.textSecondary} />
+                  <Text style={[styles.clearText, { color: colors.textSecondary }]}>clear</Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
         </LinearGradient>
@@ -212,6 +276,7 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
         <View style={[styles.historyContainer, { 
           backgroundColor: colors.backgroundSecondary,
           shadowColor: colors.shadow,
+          zIndex: 90,
         }]}>
           <View style={styles.historyHeader}>
             <Text style={[styles.historyTitle, { color: colors.primary }]}>Search History</Text>
@@ -244,7 +309,7 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
       )}
 
       {showAlert && (
-        <RNAnimated.View style={[styles.modalOverlay, { backgroundColor: colors.overlay }]}>
+        <RNAnimated.View style={[styles.modalOverlay, { backgroundColor: colors.overlay, zIndex: 200 }]}>
           <RNAnimated.View
             style={[
               styles.alertBox, 
@@ -312,7 +377,18 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     paddingVertical: 0,
   },
-  closeButton: { marginLeft: 10 },
+  closeButton: { 
+    marginLeft: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+  },
+  clearText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
   historyContainer: {
     position: "absolute",
     top: 55,

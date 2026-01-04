@@ -2,24 +2,36 @@
 // FILE: components/TagSelection/SelectedCount.jsx
 // ============================================
 import React from 'react';
-import { Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { useTheme } from '../../../theme/ThemeContext';
+import Text from '../../../components/ui/Text';
 
 export function SelectedCount({ count }) {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    
     if (count === 0) return null;
     
     return (
-        <Text style={styles.selectedCount}>
-            {count} categories selected
-        </Text>
+        <View style={[styles.badge, { backgroundColor: colors.primary + '15', borderColor: colors.primary + '30' }]}>
+            <Text variant="caption" color={colors.primary} style={styles.selectedCount}>
+                {count} {count === 1 ? 'category' : 'categories'} selected
+            </Text>
+        </View>
     );
 }
 
 const styles = StyleSheet.create({
-    selectedCount: {
-        color: '#64748b',
-        fontSize: 14,
-        textAlign: 'center',
+    badge: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
+        borderWidth: 1,
+        alignSelf: 'center',
         marginBottom: 20,
-        fontWeight: '500',
+    },
+    selectedCount: {
+        fontSize: 14,
+        fontWeight: '600',
     },
 });

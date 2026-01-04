@@ -5,6 +5,7 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../../theme/ThemeContext';
+import TextComponent from '../../../components/ui/Text';
 
 export const ArticleContent = ({ category, title, content }) => {
     const { theme } = useTheme();
@@ -14,17 +15,21 @@ export const ArticleContent = ({ category, title, content }) => {
         <View style={styles.container}>
             {/* Category Badge */}
             <View style={[styles.categoryBadge, { 
-                backgroundColor: colors.backgroundSecondary,
-                borderLeftColor: colors.info 
+                backgroundColor: colors.primary + '15',
+                borderLeftColor: colors.primary 
             }]}>
-                <Text style={[styles.categoryText, { color: colors.textSecondary }]}>{category}</Text>
+                <Text style={[styles.categoryText, { color: colors.primary }]}>{category}</Text>
             </View>
 
             {/* Title */}
-            <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+            <TextComponent variant="title" style={[styles.title, { color: colors.textPrimary }]}>
+                {title}
+            </TextComponent>
 
             {/* Full Content */}
-            <Text style={[styles.content, { color: colors.textSecondary }]}>{content}</Text>
+            <TextComponent variant="body" style={[styles.content, { color: colors.textSecondary }]}>
+                {content}
+            </TextComponent>
         </View>
     );
 };
@@ -35,28 +40,28 @@ const styles = StyleSheet.create({
     },
     categoryBadge: {
         alignSelf: 'flex-start',
-        paddingHorizontal: 12,
-        paddingVertical: 5,
-        borderRadius: 4,
-        borderLeftWidth: 3,
-        marginBottom: 16,
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 8,
+        borderLeftWidth: 4,
+        marginBottom: 24,
     },
     categoryText: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '700',
         textTransform: 'uppercase',
-        letterSpacing: 0.8,
+        letterSpacing: 1,
     },
     title: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: '800',
-        lineHeight: 32,
-        marginBottom: 20,
-        letterSpacing: -0.4,
+        lineHeight: 38,
+        marginBottom: 24,
+        letterSpacing: -0.5,
     },
     content: {
-        fontSize: 16,
-        lineHeight: 28,
+        fontSize: 17,
+        lineHeight: 30,
         fontWeight: '400',
     },
 });

@@ -16,65 +16,87 @@ const RecentSearches = ({ searches, onSearchSelect, onDeleteSearch, searchQuery 
     const { colors } = theme;
     
     // Hide when user is actively searching
-    if (searchQuery.trim()) return null;
-
-    // Don't render if no searches
-    if (!searches || searches.length === 0) return null;
+    if (searchQuery && searchQuery.trim()) return null;
 
     return (
         <View style={[styles.container, { 
             backgroundColor: colors.surface,
-            borderBottomColor: colors.border 
+            borderBottomColor: colors.borderLight,
         }]}>
             <View style={styles.header}>
-                <Clock size={16} color={colors.textSecondary} />
+                <View style={[styles.iconWrapper, { backgroundColor: colors.primary + '15' }]}>
+                    <Clock size={16} color={colors.primary} />
+                </View>
                 <Text style={[styles.title, { color: colors.textPrimary }]}>Recent Searches</Text>
             </View>
-            {searches.map((item) => (
-                <View key={item.id} style={[styles.item, { borderBottomColor: colors.borderLight }]}>
-                    <TouchableOpacity
-                        style={styles.itemLeft}
-                        onPress={() => onSearchSelect(item.query)}
-                    >
-                        <Text style={styles.icon}>{item.icon}</Text>
-                        <Text style={[styles.query, { color: colors.textPrimary }]}>{item.query}</Text>
-                    </TouchableOpacity>
-                    <View style={styles.itemRight}>
-                        <Text style={[styles.time, { color: colors.textTertiary }]}>{item.time}</Text>
+            {searches && Array.isArray(searches) && searches.length > 0 ? (
+                searches.map((item) => (
+                    <View key={item.id} style={[styles.item, { borderBottomColor: colors.borderLight }]}>
                         <TouchableOpacity
-                            onPress={() => onDeleteSearch(item.id)}
-                            style={styles.deleteButton}
+                            style={styles.itemLeft}
+                            onPress={() => onSearchSelect && onSearchSelect(item.query)}
+                            activeOpacity={0.7}
                         >
-                            <X size={14} color={colors.textTertiary} />
+                            <View style={[styles.iconContainer, { backgroundColor: colors.backgroundSecondary }]}>
+                                <Text style={styles.icon}>{item.icon || '🔍'}</Text>
+                            </View>
+                            <Text style={[styles.query, { color: colors.textPrimary }]} numberOfLines={1}>
+                                {item.query || 'Search'}
+                            </Text>
                         </TouchableOpacity>
+                        <View style={styles.itemRight}>
+                            <Text style={[styles.time, { color: colors.textTertiary }]}>
+                                {item.time || 'Just now'}
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => onDeleteSearch && onDeleteSearch(item.id)}
+                                style={[styles.deleteButton, { backgroundColor: colors.backgroundSecondary }]}
+                                activeOpacity={0.7}
+                            >
+                                <X size={14} color={colors.textTertiary} />
+                            </TouchableOpacity>
+                        </View>
                     </View>
+                ))
+            ) : (
+                <View style={styles.emptyState}>
+                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
+                        No recent searches
+                    </Text>
                 </View>
-            ))}
+            )}
         </View>
     );
 };
 
 const styles = StyleSheet.create({
     container: {
-        paddingVertical: 16,
-        paddingHorizontal: 16,
+        paddingVertical: 20,
+        paddingHorizontal: 20,
         borderBottomWidth: 1,
     },
     header: {
         flexDirection: "row",
         alignItems: "center",
-        marginBottom: 12,
+        marginBottom: 16,
+    },
+    iconWrapper: {
+        width: 32,
+        height: 32,
+        borderRadius: 16,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginRight: 10,
     },
     title: {
-        fontSize: 14,
+        fontSize: 18,
         fontWeight: "700",
-        marginLeft: 8,
     },
     item: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
-        paddingVertical: 10,
+        paddingVertical: 12,
         borderBottomWidth: 0.5,
     },
     itemLeft: {
@@ -85,22 +107,41 @@ const styles = StyleSheet.create({
     itemRight: {
         flexDirection: "row",
         alignItems: "center",
-        gap: 8,
+        gap: 10,
     },
-    icon: {
-        fontSize: 18,
+    iconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        justifyContent: 'center',
+        alignItems: 'center',
         marginRight: 12,
     },
+    icon: {
+        fontSize: 20,
+        textAlign: 'center',
+    },
     query: {
-        fontSize: 14,
-        fontWeight: "500",
+        fontSize: 15,
+        fontWeight: "600",
         flex: 1,
+        marginLeft: 4,
     },
     time: {
         fontSize: 12,
+        fontWeight: "500",
     },
     deleteButton: {
-        padding: 4,
+        padding: 8,
+        borderRadius: 16,
+    },
+    emptyState: {
+        paddingVertical: 20,
+        alignItems: 'center',
+    },
+    emptyText: {
+        fontSize: 14,
+        textAlign: 'center',
     },
 });
 

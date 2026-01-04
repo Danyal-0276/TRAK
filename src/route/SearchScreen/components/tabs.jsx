@@ -1,6 +1,7 @@
 import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from "react-native";
+import { View, TouchableOpacity, StyleSheet, ScrollView, Platform } from "react-native";
 import { useTheme } from "../../../theme/ThemeContext";
+import Text from "../../../components/ui/Text";
 
 const Tabs = ({ categories, activeTab, onTabPress }) => {
   const { theme } = useTheme();
@@ -12,7 +13,8 @@ const Tabs = ({ categories, activeTab, onTabPress }) => {
       showsHorizontalScrollIndicator={false}
       contentContainerStyle={[styles.tabsRow, { 
         backgroundColor: colors.surface,
-        borderBottomColor: colors.border 
+        borderBottomColor: colors.borderLight,
+        shadowColor: colors.shadowDark || '#000',
       }]}
     >
       {categories.map((cat, idx) => {
@@ -22,16 +24,29 @@ const Tabs = ({ categories, activeTab, onTabPress }) => {
             key={idx}
             style={[
               styles.tab, 
-              { backgroundColor: colors.backgroundSecondary },
-              isActive && { backgroundColor: colors.textPrimary }
+              { 
+                backgroundColor: isActive 
+                  ? (theme.mode === 'dark' ? colors.primary + '25' : colors.primary + '15')
+                  : 'transparent',
+                borderWidth: isActive ? 1.5 : 0,
+                borderColor: isActive 
+                  ? colors.primary 
+                  : 'transparent',
+              },
             ]}
             onPress={() => onTabPress(cat)}
+            activeOpacity={0.7}
           >
-            <Text style={[
-              styles.tabText, 
-              { color: colors.textSecondary },
-              isActive && { color: colors.textInverse }
-            ]}>
+            <Text 
+              variant="body"
+              style={[
+                styles.tabText, 
+                { 
+                  color: isActive ? colors.primary : colors.textPrimary,
+                },
+              ]}
+              numberOfLines={1}
+            >
               {cat}
             </Text>
           </TouchableOpacity>
@@ -45,20 +60,34 @@ const styles = StyleSheet.create({
   tabsRow: {
     flexDirection: "row",
     paddingHorizontal: 16,
-    paddingVertical: 4,
+    paddingVertical: 8,
     borderBottomWidth: 1,
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 3,
+      },
+      android: {
+        elevation: 2,
+      },
+    }),
   },
   tab: {
-    paddingVertical: 3,
-    paddingHorizontal: 10,
-    borderRadius: 4,
-    marginRight: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    marginRight: 6,
+    minWidth: 65,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 32,
   },
   tabText: {
-    fontSize: 10,
-    fontWeight: "700",
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
+    fontSize: 13,
+    fontWeight: "600",
+    letterSpacing: 0.1,
   },
 });
 

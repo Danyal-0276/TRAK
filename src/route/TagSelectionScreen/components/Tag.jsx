@@ -4,23 +4,42 @@
 // ============================================
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useTheme } from '../../../theme/ThemeContext';
 
 export function Tag({ label, isSelected, onPress, isSubTag = false }) {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    
     return (
         <TouchableOpacity
             style={[
                 styles.tag,
+                {
+                    backgroundColor: isSelected 
+                        ? (isSubTag ? colors.textSecondary : colors.primary)
+                        : colors.surface,
+                    borderColor: isSelected 
+                        ? (isSubTag ? colors.textSecondary : colors.primary)
+                        : colors.border,
+                    shadowColor: colors.shadowDark || '#000',
+                },
                 isSubTag && styles.subTag,
-                isSelected && (isSubTag ? styles.selectedSubTag : styles.selectedMainTag)
             ]}
             onPress={onPress}
             activeOpacity={0.7}
         >
-            {isSelected && <View style={styles.selectionDot} />}
+            {isSelected && !isSubTag && (
+                <View style={[styles.selectionDot, { backgroundColor: colors.success || '#22c55e', borderColor: colors.surface }]} />
+            )}
             <Text style={[
                 styles.tagText,
+                {
+                    color: isSelected 
+                        ? colors.textInverse || colors.surface
+                        : colors.textPrimary,
+                },
                 isSubTag && styles.subTagText,
-                isSelected && (isSubTag ? styles.selectedSubTagText : styles.selectedMainTagText)
+                isSelected && styles.selectedTagText,
             ]}>
                 {label}
             </Text>
@@ -30,67 +49,44 @@ export function Tag({ label, isSelected, onPress, isSubTag = false }) {
 
 const styles = StyleSheet.create({
     tag: {
-        backgroundColor: '#ffffff',
-        paddingHorizontal: 16,
-        paddingVertical: 10,
+        paddingHorizontal: 18,
+        paddingVertical: 12,
         borderRadius: 20,
-        borderWidth: 1,
-        borderColor: '#cbd5e1',
+        borderWidth: 1.5,
         position: 'relative',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#0f172a',
         shadowOffset: {
             width: 0,
-            height: 1,
+            height: 2,
         },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-        elevation: 1,
-    },
-    selectedMainTag: {
-        backgroundColor: '#2563eb',
-        borderColor: '#2563eb',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 2,
     },
     subTag: {
-        backgroundColor: '#ffffff',
-        borderColor: '#64748b',
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderWidth: 1,
-    },
-    selectedSubTag: {
-        backgroundColor: '#64748b',
-        borderColor: '#64748b',
+        paddingHorizontal: 14,
+        paddingVertical: 10,
     },
     selectionDot: {
         position: 'absolute',
         top: -4,
         right: -4,
-        width: 10,
-        height: 10,
-        borderRadius: 5,
-        backgroundColor: '#22c55e',
-        borderWidth: 2,
-        borderColor: '#ffffff',
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        borderWidth: 2.5,
         zIndex: 1,
     },
     tagText: {
-        fontSize: 14,
-        fontWeight: '500',
-        textAlign: 'center',
-        color: '#334155',
-    },
-    selectedMainTagText: {
-        color: '#ffffff',
+        fontSize: 15,
         fontWeight: '600',
+        textAlign: 'center',
     },
     subTagText: {
         fontSize: 13,
-        color: '#475569',
     },
-    selectedSubTagText: {
-        color: '#ffffff',
-        fontWeight: '600',
+    selectedTagText: {
+        fontWeight: '700',
     },
 });

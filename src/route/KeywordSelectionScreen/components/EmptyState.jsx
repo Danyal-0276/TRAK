@@ -3,15 +3,20 @@
 // FILE: components/KeywordSelection/EmptyState.jsx
 // ============================================
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { useTheme } from '../../../theme/ThemeContext';
+import Text from '../../../components/ui/Text';
 
 export function EmptyState() {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    
     return (
         <View style={styles.emptyState}>
-            <Text style={styles.emptyStateText}>
+            <Text variant="subtitle" color={colors.textPrimary} style={styles.emptyStateText}>
                 No keywords added yet
             </Text>
-            <Text style={styles.emptyStateSubtext}>
+            <Text variant="body" color={colors.textSecondary} style={styles.emptyStateSubtext}>
                 Add keywords above to see them here
             </Text>
         </View>
@@ -24,16 +29,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         paddingVertical: 40,
+        width: '100%',
     },
     emptyStateText: {
-        fontSize: 18,
-        color: '#334155',
-        fontWeight: '600',
         marginBottom: 8,
     },
     emptyStateSubtext: {
-        fontSize: 14,
-        color: '#64748b',
         textAlign: 'center',
     },
 });

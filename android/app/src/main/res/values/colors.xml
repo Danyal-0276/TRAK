@@ -1,3 +1,5 @@
 <resources>
     <color name="app_background">#f5f8ff</color>
+    <!-- Splash screen background - black -->
+    <color name="splash_background">#000000</color>
 </resources>

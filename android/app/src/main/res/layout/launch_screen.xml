@@ -3,12 +3,49 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/app_background">
+    android:background="@color/splash_background"
+    android:gravity="center">
 
+    <!-- Logo placeholder - using launcher icon as temporary logo -->
     <ImageView
+        android:id="@+id/splash_logo"
+        android:layout_width="140dp"
+        android:layout_height="140dp"
+        android:layout_centerHorizontal="true"
+        android:layout_above="@id/splash_brand"
+        android:layout_marginBottom="24dp"
+        android:src="@mipmap/ic_launcher"
+        android:scaleType="centerInside"
+        android:contentDescription="TRAK Logo" />
+
+    <!-- Brand Name -->
+    <TextView
+        android:id="@+id/splash_brand"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:src="@drawable/screen"
-        android:scaleType="centerCrop"
-        android:layout_centerInParent="true" />
+        android:layout_centerInParent="true"
+        android:text="TRAK"
+        android:textColor="#FFFFFF"
+        android:textSize="50sp"
+        android:textStyle="bold"
+        android:letterSpacing="0.12"
+        android:fontFamily="sans-serif-black"
+        android:gravity="center" />
+
+    <!-- Tagline -->
+    <TextView
+        android:id="@+id/splash_tagline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/splash_brand"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="12dp"
+        android:text="Your News, Your Way"
+        android:textColor="#FFFFFF"
+        android:textSize="18sp"
+        android:textStyle="normal"
+        android:letterSpacing="0.012"
+        android:alpha="0.95"
+        android:gravity="center" />
+
 </RelativeLayout>

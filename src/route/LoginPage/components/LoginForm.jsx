@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { SocialButtons } from './SocialButtons';
 import colors from '../../../utils/colors';
@@ -12,7 +12,8 @@ export const LoginForm = ({
     onLoginPress,
     onForgotPasswordPress,
     onSocialPress,
-    loadingProvider
+    loadingProvider,
+    loading = false
 }) => {
     const passwordRef = useRef(null);
     const [showPassword, setShowPassword] = useState(false);
@@ -75,12 +76,22 @@ export const LoginForm = ({
 
             <View style={styles.actionsSection}>
                 <TouchableOpacity
-                    style={[styles.primaryButton, (!email || !password) && styles.primaryButtonDisabled]}
+                    style={[
+                        styles.primaryButton, 
+                        (!email || !password || loading) && styles.primaryButtonDisabled
+                    ]}
                     onPress={onLoginPress}
                     activeOpacity={0.9}
-                    disabled={!email || !password}
+                    disabled={!email || !password || loading}
                 >
-                    <Text style={styles.primaryButtonText}>Sign in</Text>
+                    {loading ? (
+                        <View style={styles.loadingContainer}>
+                            <ActivityIndicator size="small" color={colors.surface} style={styles.spinner} />
+                            <Text style={styles.primaryButtonText}>Signing in...</Text>
+                        </View>
+                    ) : (
+                        <Text style={styles.primaryButtonText}>Sign in</Text>
+                    )}
                 </TouchableOpacity>
 
                 <SocialButtons
@@ -180,5 +191,13 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontWeight: '700',
         letterSpacing: 0.2,
+    },
+    loadingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    spinner: {
+        marginRight: 10,
     },
 });

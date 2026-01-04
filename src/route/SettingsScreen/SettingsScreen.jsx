@@ -1,7 +1,8 @@
 // SettingsScreen.jsx
-import React, { useState } from "react";
-import { ScrollView, SafeAreaView, StyleSheet } from "react-native";
+import React, { useState, useRef, useEffect } from "react";
+import { ScrollView, SafeAreaView, StyleSheet, StatusBar, Animated, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import LinearGradient from "react-native-linear-gradient";
 import { User, Bell, Lock, Tag, Database, Info, LogOut, Moon } from "lucide-react-native";
 
 import SettingsHeader from "./components/SettingsHeader";
@@ -12,18 +13,130 @@ import { useTheme } from "../../theme/ThemeContext";
 import Card from "../../components/ui/Card";
 import Text from "../../components/ui/Text";
 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 export default function SettingsScreen({ navigation }) {
   const [pushEnabled, setPushEnabled] = useState(true);
   const [keywordAlerts, setKeywordAlerts] = useState(false);
   const [quietHours, setQuietHours] = useState(false);
   const { theme, toggleTheme } = useTheme();
+  const { colors } = theme;
   const darkTheme = theme.mode === "dark";
   const insets = useSafeAreaInsets();
   const contentPaddingTop = Math.max(insets.top, theme.spacing.md);
+  
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const circle1Anim = useRef(new Animated.Value(0)).current;
+  const circle2Anim = useRef(new Animated.Value(0)).current;
+  const circle3Anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.timing(circle1Anim, {
+        toValue: 1,
+        duration: 1000,
+        delay: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(circle2Anim, {
+        toValue: 1,
+        duration: 1000,
+        delay: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(circle3Anim, {
+        toValue: 1,
+        duration: 1000,
+        delay: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.colors.background }]}> 
-      <ScrollView
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
+      <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+      
+      {/* Gradient background */}
+      <LinearGradient
+        colors={theme.mode === 'dark' 
+          ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
+          : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
+        }
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradientBackground}
+      />
+      
+      {/* Animated decorative circles */}
+      <Animated.View 
+        style={[
+          styles.accentCircle1, 
+          { 
+            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.12' : '0.05'})`,
+            opacity: circle1Anim,
+            transform: [
+              {
+                scale: circle1Anim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.8, 1],
+                }),
+              },
+            ],
+          }
+        ]}
+        pointerEvents="none"
+      />
+      <Animated.View 
+        style={[
+          styles.accentCircle2, 
+          { 
+            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.10' : '0.04'})`,
+            opacity: circle2Anim,
+            transform: [
+              {
+                scale: circle2Anim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.8, 1],
+                }),
+              },
+            ],
+          }
+        ]}
+        pointerEvents="none"
+      />
+      <Animated.View 
+        style={[
+          styles.accentCircle3, 
+          { 
+            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.08' : '0.03'})`,
+            opacity: circle3Anim,
+            transform: [
+              {
+                scale: circle3Anim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.8, 1],
+                }),
+              },
+            ],
+          }
+        ]}
+        pointerEvents="none"
+      />
+      
+      <Animated.ScrollView
         contentContainerStyle={[
           styles.scroll,
           {
@@ -32,6 +145,10 @@ export default function SettingsScreen({ navigation }) {
             paddingBottom: theme.spacing.lg,
           },
         ]}
+        style={{
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        }}
         showsVerticalScrollIndicator={false}
       >
         <SettingsHeader />
@@ -51,7 +168,7 @@ export default function SettingsScreen({ navigation }) {
 
         <SettingsSection>
           <SettingsRow
-            icon={<User size={22} color={theme.colors.textPrimary} />}
+            icon={<User size={22} color={colors.primary} />}
             label="Account"
             onPress={() => navigation.navigate("ProfileScreen")}
           />
@@ -59,21 +176,21 @@ export default function SettingsScreen({ navigation }) {
 
         <SettingsSection>
           <SettingsRow
-            icon={<Bell size={22} color={theme.colors.textPrimary} />}
+            icon={<Bell size={22} color={colors.primary} />}
             label="Push Notifications"
             switchEnabled
             switchValue={pushEnabled}
             onSwitchChange={setPushEnabled}
           />
           <SettingsRow
-            icon={<Tag size={22} color={theme.colors.textPrimary} />}
+            icon={<Tag size={22} color={colors.primary} />}
             label="Keyword Alerts"
             switchEnabled
             switchValue={keywordAlerts}
             onSwitchChange={setKeywordAlerts}
           />
           <SettingsRow
-            icon={<Moon size={22} color={theme.colors.textPrimary} />}
+            icon={<Moon size={22} color={colors.primary} />}
             label="Quiet Hours"
             switchEnabled
             switchValue={quietHours}
@@ -83,7 +200,7 @@ export default function SettingsScreen({ navigation }) {
 
         <SettingsSection>
           <SettingsRow
-            icon={<Lock size={22} color={theme.colors.textPrimary} />}
+            icon={<Lock size={22} color={colors.primary} />}
             label="Privacy & Security"
             onPress={() => navigation.navigate("PrivacyScreen")}
           />
@@ -91,7 +208,7 @@ export default function SettingsScreen({ navigation }) {
 
         <SettingsSection>
           <SettingsRow
-            icon={<Tag size={22} color={theme.colors.textPrimary} />}
+            icon={<Tag size={22} color={colors.primary} />}
             label="Manage Categories"
             onPress={() => navigation.navigate("CategoriesScreen")}
           />
@@ -99,7 +216,7 @@ export default function SettingsScreen({ navigation }) {
 
         <SettingsSection>
           <SettingsRow
-            icon={<Database size={22} color={theme.colors.textPrimary} />}
+            icon={<Database size={22} color={colors.primary} />}
             label="Data & Storage"
             onPress={() => navigation.navigate("DataScreen")}
           />
@@ -107,7 +224,7 @@ export default function SettingsScreen({ navigation }) {
 
         <SettingsSection>
           <SettingsRow
-            icon={<Info size={22} color={theme.colors.textPrimary} />}
+            icon={<Info size={22} color={colors.primary} />}
             label="About"
             onPress={() => navigation.navigate("AboutScreen")}
           />
@@ -119,18 +236,49 @@ export default function SettingsScreen({ navigation }) {
 
         <SettingsSection>
           <SettingsRow
-            icon={<LogOut size={22} color={theme.colors.error} />}
+            icon={<LogOut size={22} color={colors.error} />}
             label="Log Out"
-            labelColor={theme.colors.error}
+            labelColor={colors.error}
             onPress={() => navigation.navigate("LoginScreen")}
           />
         </SettingsSection>
-      </ScrollView>
+      </Animated.ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  gradientBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  accentCircle1: {
+    position: 'absolute',
+    width: 350,
+    height: 350,
+    borderRadius: 175,
+    top: -100,
+    right: -100,
+  },
+  accentCircle2: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    bottom: 200,
+    left: -80,
+  },
+  accentCircle3: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    top: SCREEN_HEIGHT * 0.4,
+    right: -50,
+  },
   scroll: {},
 });

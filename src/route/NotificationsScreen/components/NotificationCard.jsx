@@ -2,9 +2,13 @@
 import React, { useRef, useEffect } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Easing } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import LinearGradient from "react-native-linear-gradient";
+import { useTheme } from "../../../theme/ThemeContext";
 import { getIcon } from "../utils/getIcon";
 
-const NotificationCard = ({ item, index, onMarkAsRead }) => {
+const NotificationCard = ({ item, index, onMarkAsRead, onNotificationPress }) => {
+  const { theme } = useTheme();
+  const { colors } = theme;
   const navigation = useNavigation();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
@@ -82,8 +86,12 @@ const NotificationCard = ({ item, index, onMarkAsRead }) => {
         // Call the mark as read function after animation completes
         onMarkAsRead(item.id);
       });
+    }
+    
+    // Always navigate to detail screen
+    if (onNotificationPress) {
+      onNotificationPress(item.id);
     } else {
-      // Navigate to detail screen immediately if already read
       navigation.navigate('NotificationDetail', { notificationId: item.id });
     }
   };
@@ -98,6 +106,9 @@ const NotificationCard = ({ item, index, onMarkAsRead }) => {
       default: return "#6B7280";
     }
   };
+
+  const iconColor = getIconColor(item.type);
+  const isUnread = !item.read;
 
   return (
     <Animated.View
@@ -120,71 +131,92 @@ const NotificationCard = ({ item, index, onMarkAsRead }) => {
         onPress={handlePress}
         style={styles.touchable}
       >
-        {/* Unread indicator with animation - disappears when read */}
-        <Animated.View 
-          style={[
-            styles.unreadIndicator,
-            {
-              opacity: readAnim.interpolate({
-                inputRange: [0, 1],
-                outputRange: [1, 0],
-              }),
-              transform: [
-                {
-                  scale: readAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [1, 0],
-                  }),
-                },
-              ],
-            },
-          ]} 
-        />
-
-        {/* Icon */}
-        <View style={styles.iconContainer}>
-          <View 
-            style={[
-              styles.iconBox,
-              { backgroundColor: getIconColor(item.type) }
-            ]}
-          >
-            {getIcon(item.type, item.keyword)}
-          </View>
-        </View>
-
-        {/* Content */}
-        <View style={styles.content}>
-          <Text style={[
-            styles.notificationText,
-            item.read ? styles.readText : styles.unreadText
-          ]}>
-            {item.text}
-            {item.keyword && (
-              <Text style={styles.keyword}> #{item.keyword}</Text>
+        {/* Message-like bubble design */}
+        <View style={[
+          styles.messageBubble,
+          {
+            backgroundColor: isUnread ? colors.surface : colors.backgroundSecondary,
+            borderLeftWidth: isUnread ? 4 : 0,
+            borderLeftColor: isUnread ? colors.primary : 'transparent',
+          }
+        ]}>
+          {/* Avatar/Icon on left */}
+          <View style={styles.avatarContainer}>
+            <LinearGradient
+              colors={[iconColor, `${iconColor}DD`]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.avatarGradient}
+            >
+              {getIcon(item.type, item.keyword)}
+            </LinearGradient>
+            {/* Unread indicator */}
+            {isUnread && (
+              <Animated.View 
+                style={[
+                  styles.unreadDot,
+                  {
+                    backgroundColor: colors.primary,
+                    opacity: readAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 0],
+                    }),
+                    transform: [
+                      {
+                        scale: readAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1, 0],
+                        }),
+                      },
+                    ],
+                  },
+                ]} 
+              />
             )}
-          </Text>
-          
-          <View style={styles.footer}>
-            <Text style={styles.time}>{item.time}</Text>
-            <View style={[
-              styles.badge,
-              styles[`${item.type}Badge`]
-            ]}>
-              <Text style={styles.badgeText}>
-                {item.type === "mention" && "@"}
-                {item.type === "keyword" && "#"}
-                {item.type === "like" && "❤️"}
-                {item.type === "comment" && "💬"}
-                {item.type === "follow" && "👤"}
-              </Text>
-            </View>
           </View>
-        </View>
 
-        {/* Chevron for navigation */}
-        <View style={styles.chevron}>
-          <Text style={styles.chevronText}>›</Text>
+          {/* Message content */}
+          <View style={styles.messageContent}>
+            <View style={styles.messageHeader}>
+              <Text style={[styles.senderName, { color: colors.textPrimary }]}>
+                {item.type === "mention" && "Mention"}
+                {item.type === "keyword" && "Keyword Alert"}
+                {item.type === "like" && "Like"}
+                {item.type === "comment" && "Comment"}
+                {item.type === "follow" && "New Follower"}
+              </Text>
+              <Text style={[styles.messageTime, { color: colors.textTertiary }]}>{item.time}</Text>
+            </View>
+            
+            <Text 
+              style={[
+                styles.messageText,
+                { 
+                  color: isUnread ? colors.textPrimary : colors.textSecondary,
+                  fontWeight: isUnread ? '600' : '500',
+                }
+              ]}
+              numberOfLines={2}
+            >
+              {item.text}
+              {item.keyword && (
+                <Text style={[styles.keyword, { color: colors.primary }]}> #{item.keyword}</Text>
+              )}
+            </Text>
+            
+            {item.keyword && (
+              <View style={[styles.keywordBadge, { backgroundColor: `${colors.primary}15` }]}>
+                <Text style={[styles.keywordBadgeText, { color: colors.primary }]}>
+                  #{item.keyword}
+                </Text>
+              </View>
+            )}
+          </View>
+
+          {/* Arrow indicator */}
+          <View style={styles.arrowContainer}>
+            <Text style={[styles.arrow, { color: colors.textTertiary }]}>›</Text>
+          </View>
         </View>
       </TouchableOpacity>
     </Animated.View>
@@ -193,115 +225,99 @@ const NotificationCard = ({ item, index, onMarkAsRead }) => {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 20,
+    marginHorizontal: 16,
     marginBottom: 12,
     borderRadius: 16,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 4,
     overflow: "hidden",
   },
   touchable: {
+    width: "100%",
+  },
+  messageBubble: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     padding: 16,
-    position: "relative",
+    borderRadius: 16,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
     minHeight: 80,
   },
-  unreadIndicator: {
-    position: "absolute",
-    left: 8,
-    top: "50%",
-    marginTop: -4,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#3B82F6",
-    shadowColor: "#3B82F6",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  iconContainer: {
+  avatarContainer: {
     marginRight: 12,
+    position: "relative",
   },
-  iconBox: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+  avatarGradient: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     justifyContent: "center",
     alignItems: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
   },
-  content: {
+  unreadDot: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  messageContent: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  messageHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  senderName: {
+    fontSize: 15,
+    fontWeight: "700",
     flex: 1,
   },
-  notificationText: {
-    fontSize: 15,
+  messageTime: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginLeft: 8,
+  },
+  messageText: {
+    fontSize: 14,
     lineHeight: 20,
-    marginBottom: 4,
-    fontWeight: "600",
-  },
-  unreadText: {
-    color: "#1F2937",
-  },
-  readText: {
-    color: "#6B7280",
+    marginBottom: 8,
   },
   keyword: {
     fontWeight: "700",
-    color: "#3B82F6",
-  },
-  footer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  time: {
-    fontSize: 13,
-    color: "#9CA3AF",
-    fontWeight: "500",
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-  mentionBadge: {
-    backgroundColor: "#FEE2E2",
   },
   keywordBadge: {
-    backgroundColor: "#DBEAFE",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 4,
   },
-  likeBadge: {
-    backgroundColor: "#FCE7F3",
+  keywordBadgeText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
-  commentBadge: {
-    backgroundColor: "#F3E8FF",
+  arrowContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingLeft: 4,
   },
-  followBadge: {
-    backgroundColor: "#E0F2FE",
-  },
-  badgeText: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#374151",
-  },
-  chevron: {
-    marginLeft: 8,
-  },
-  chevronText: {
-    fontSize: 18,
-    color: "#D1D5DB",
-    fontWeight: "bold",
+  arrow: {
+    fontSize: 20,
+    fontWeight: "300",
   },
 });
 

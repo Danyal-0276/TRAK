@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, Alert, StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, ScrollView, Alert, StyleSheet, StatusBar, Animated, Dimensions } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
+import { useTheme } from '../../theme/ThemeContext';
 import MockAPI from './Service/MockAPI';
 import Header from './components/Header';
 import TabNavigation from './components/TabNavigation';
@@ -13,7 +15,12 @@ import SettingsTab from './screens/SettingsTab';
 import EditModal from './components/EditModal';
 import ListModal from './components/ListModal';
 
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+
 const AdminScreen = ({ navigation }) => {
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [users, setUsers] = useState([]);
   const [articles, setArticles] = useState([]);
@@ -31,6 +38,46 @@ const AdminScreen = ({ navigation }) => {
   const [listModalType, setListModalType] = useState('');
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
+
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
+  const circle1Anim = useRef(new Animated.Value(0)).current;
+  const circle2Anim = useRef(new Animated.Value(0)).current;
+  const circle3Anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+      Animated.timing(circle1Anim, {
+        toValue: 1,
+        duration: 1000,
+        delay: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(circle2Anim, {
+        toValue: 1,
+        duration: 1000,
+        delay: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(circle3Anim, {
+        toValue: 1,
+        duration: 1000,
+        delay: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -193,12 +240,84 @@ const AdminScreen = ({ navigation }) => {
   ];
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <Header />
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+      
+      {/* Gradient background */}
+      <LinearGradient
+        colors={theme.mode === 'dark' 
+          ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
+          : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
+        }
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.gradientBackground}
+      />
+      
+      {/* Animated decorative circles */}
+      <Animated.View 
+        style={[
+          styles.accentCircle1, 
+          { 
+            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.12' : '0.05'})`,
+            opacity: circle1Anim,
+            transform: [
+              {
+                scale: circle1Anim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.8, 1],
+                }),
+              },
+            ],
+          }
+        ]}
+        pointerEvents="none"
+      />
+      <Animated.View 
+        style={[
+          styles.accentCircle2, 
+          { 
+            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.10' : '0.04'})`,
+            opacity: circle2Anim,
+            transform: [
+              {
+                scale: circle2Anim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.8, 1],
+                }),
+              },
+            ],
+          }
+        ]}
+        pointerEvents="none"
+      />
+      <Animated.View 
+        style={[
+          styles.accentCircle3, 
+          { 
+            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.08' : '0.03'})`,
+            opacity: circle3Anim,
+            transform: [
+              {
+                scale: circle3Anim.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0.8, 1],
+                }),
+              },
+            ],
+          }
+        ]}
+        pointerEvents="none"
+      />
+
+      <Header navigation={navigation} />
       <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
 
-      <ScrollView
-        style={styles.mainScroll}
+      <Animated.ScrollView
+        style={[styles.mainScroll, {
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        }]}
         contentContainerStyle={styles.mainScrollContent}
         showsVerticalScrollIndicator={false}
       >
@@ -241,7 +360,7 @@ const AdminScreen = ({ navigation }) => {
           />
         )}
         <View style={styles.bottomSpacer} />
-      </ScrollView>
+      </Animated.ScrollView>
 
       <EditModal
         visible={modalVisible}
@@ -277,7 +396,37 @@ const AdminScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+  },
+  gradientBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  accentCircle1: {
+    position: 'absolute',
+    width: 350,
+    height: 350,
+    borderRadius: 175,
+    top: -100,
+    right: -100,
+  },
+  accentCircle2: {
+    position: 'absolute',
+    width: 280,
+    height: 280,
+    borderRadius: 140,
+    bottom: 200,
+    left: -80,
+  },
+  accentCircle3: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    top: SCREEN_HEIGHT * 0.4,
+    right: -50,
   },
   mainScroll: {
     flex: 1,

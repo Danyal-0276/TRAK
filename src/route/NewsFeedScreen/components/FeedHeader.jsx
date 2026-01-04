@@ -4,25 +4,32 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Settings } from 'lucide-react-native';
+import { useTheme } from '../../../theme/ThemeContext';
 import BlackLogo from '../../../assets/images/blackLogo.svg';
+import TextComponent from '../../../components/ui/Text';
 
 export const FeedHeader = ({ navigation }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    
     return (
-        <View style={headerStyles.wrapper}>
-            <View style={headerStyles.container}>
+        <View style={[headerStyles.wrapper, { backgroundColor: colors.surface }]}>
+            <View style={[headerStyles.container, { backgroundColor: colors.surface, borderBottomColor: colors.borderLight }]}>
                 <View style={headerStyles.content}>
-                    <View style={headerStyles.logoContainer}>
+                    <View style={[headerStyles.logoContainer, { backgroundColor: colors.backgroundSecondary }]}>
                         <BlackLogo width={32} height={32} />
                     </View>
-                    <Text style={headerStyles.title}>Newsfeed</Text>
+                    <TextComponent variant="title" style={[headerStyles.title, { color: colors.textPrimary }]}>
+                        Newsfeed
+                    </TextComponent>
                 </View>
                 <View style={headerStyles.actions}>
                     <TouchableOpacity
-                        style={headerStyles.iconButton}
+                        style={[headerStyles.iconButton, { backgroundColor: colors.backgroundSecondary }]}
                         onPress={() => navigation.navigate("Settings")}
                         activeOpacity={0.7}
                     >
-                        <Settings size={20} color="#1F2937" strokeWidth={2} />
+                        <Settings size={20} color={colors.textPrimary} strokeWidth={2} />
                     </TouchableOpacity>
                 </View>
             </View>
@@ -32,16 +39,15 @@ export const FeedHeader = ({ navigation }) => {
 
 const headerStyles = StyleSheet.create({
     wrapper: {
-        backgroundColor: '#FFFFFF',
         ...Platform.select({
             ios: {
                 shadowColor: '#000',
-                shadowOffset: { width: 0, height: 1 },
-                shadowOpacity: 0.05,
-                shadowRadius: 2,
+                shadowOffset: { width: 0, height: 2 },
+                shadowOpacity: 0.08,
+                shadowRadius: 4,
             },
             android: {
-                elevation: 2,
+                elevation: 3,
             },
         }),
     },
@@ -49,27 +55,25 @@ const headerStyles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-        backgroundColor: '#FFFFFF',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
     },
     content: {
         flexDirection: 'row',
         alignItems: 'center',
     },
     logoContainer: {
-        width: 32,
-        height: 32,
+        width: 40,
+        height: 40,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 10,
+        marginRight: 12,
+        borderRadius: 8,
     },
     title: {
-        fontSize: 20,
+        fontSize: 22,
         fontWeight: '700',
-        color: '#1F2937',
         letterSpacing: -0.3,
     },
     actions: {
@@ -78,8 +82,7 @@ const headerStyles = StyleSheet.create({
         gap: 8,
     },
     iconButton: {
-        padding: 8,
+        padding: 10,
         borderRadius: 20,
-        backgroundColor: '#F7F7F7',
     },
 });

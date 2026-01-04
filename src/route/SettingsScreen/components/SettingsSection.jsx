@@ -15,7 +15,7 @@ export default function SettingsSection({ children, style }) {
           borderColor: colors.border,
           paddingHorizontal: spacing.md,
           paddingVertical: spacing.sm,
-          borderRadius: radius.lg,
+          borderRadius: radius.lg || 16,
         },
         style,
       ]}
@@ -27,7 +27,12 @@ export default function SettingsSection({ children, style }) {
 
 const styles = StyleSheet.create({
   section: {
-    marginBottom: 16,
+    marginBottom: 12,
     borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
 });

@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, Mail } from 'lucide-react';
 import Text from '../../components/ui/Text';
+import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
 
 const ForgotPasswordCodeScreen = () => {
     const navigate = useNavigate();
@@ -63,10 +64,15 @@ const ForgotPasswordCodeScreen = () => {
             justifyContent: 'center',
             backgroundColor: '#ffffff',
             padding: '24px',
+            position: 'relative',
+            overflow: 'hidden',
         }}>
+            <NewsBackgroundAnimation />
             <div style={{
                 width: '100%',
                 maxWidth: '420px',
+                position: 'relative',
+                zIndex: 1,
             }}>
                 {/* Back Button */}
                 <button

@@ -10,13 +10,17 @@ import {
     RefreshControl,
     Animated,
     Platform,
+    Dimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import LinearGradient from 'react-native-linear-gradient';
 import { FeedHeader } from './components/FeedHeader';
 import { TabBar } from './components/TabBar';
 import { NewsCard } from '../../components/NewsCard';
 import { mockApi } from '../../utils/Service/mockApi';
 import { useTheme } from '../../theme/ThemeContext';
+
+const { width, height } = Dimensions.get('window');
 
 const HEADER_HEIGHT = 60;
 const TAB_HEIGHT = 50;
@@ -127,6 +131,7 @@ const NewsFeedScreen = ({ navigation }) => {
         loadNews();
     }, []);
 
+
     const handleRefresh = async () => {
         setRefreshing(true);
         // Show header on refresh
@@ -222,6 +227,17 @@ const NewsFeedScreen = ({ navigation }) => {
                 translucent 
             />
             
+            {/* Enhanced gradient background */}
+            <LinearGradient
+                colors={theme.mode === 'dark' 
+                    ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
+                    : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gradientBackground}
+            />
+            
             <View 
                 style={[
                     styles.statusBarCover,
@@ -232,15 +248,15 @@ const NewsFeedScreen = ({ navigation }) => {
                 ]}
             />
 
-            <View style={[styles.container, { backgroundColor: colors.background }]}>
+            <View style={[styles.container, { backgroundColor: 'transparent' }]}>
                 <Animated.View
                     style={[
                         styles.headerContainer,
                         { 
                             paddingTop: insets.top,
                             transform: [{ translateY: headerTranslateY }],
-                            backgroundColor: colors.background,
-                            shadowColor: colors.shadow,
+                            backgroundColor: colors.surface,
+                            shadowColor: colors.shadowDark || '#000',
                         },
                     ]}
                 >
@@ -249,8 +265,8 @@ const NewsFeedScreen = ({ navigation }) => {
                 </Animated.View>
 
                 <Animated.ScrollView
-                    style={[styles.feed, { backgroundColor: colors.backgroundSecondary }]}
-                    contentContainerStyle={[styles.feedContent, { backgroundColor: colors.backgroundSecondary }]}
+                    style={[styles.feed, { backgroundColor: 'transparent' }]}
+                    contentContainerStyle={[styles.feedContent, { backgroundColor: 'transparent', paddingTop: 8 }]}
                     showsVerticalScrollIndicator={false}
                     onScroll={handleScroll}
                     scrollEventThrottle={16}
@@ -264,7 +280,7 @@ const NewsFeedScreen = ({ navigation }) => {
                         />
                     }
                 >
-                    <View style={{ height: TOTAL_HEADER_HEIGHT + insets.top }} />
+                    <View style={{ height: TOTAL_HEADER_HEIGHT + insets.top + 8 }} />
 
                     {loading ? (
                         <>
@@ -275,7 +291,7 @@ const NewsFeedScreen = ({ navigation }) => {
                             <SkeletonCard colors={colors} />
                         </>
                     ) : (
-                        newsData.map((item) => (
+                        newsData.map((item, index) => (
                             <NewsCard
                                 key={item.id}
                                 item={item}
@@ -284,6 +300,7 @@ const NewsFeedScreen = ({ navigation }) => {
                                 bookmarkedItems={bookmarkedItems}
                                 onVote={handleVote}
                                 onBookmark={handleBookmark}
+                                index={index}
                             />
                         ))
                     )}
@@ -297,6 +314,13 @@ const NewsFeedScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
     outerContainer: {
         flex: 1,
+    },
+    gradientBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
     },
     statusBarCover: {
         position: 'absolute',
@@ -317,12 +341,12 @@ const styles = StyleSheet.create({
         zIndex: 1000,
         ...Platform.select({
             ios: {
-                shadowOffset: { width: 0, height: 2 },
-                shadowOpacity: 0.08,
-                shadowRadius: 3,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.12,
+                shadowRadius: 8,
             },
             android: {
-                elevation: 4,
+                elevation: 6,
             },
         }),
     },
@@ -331,7 +355,7 @@ const styles = StyleSheet.create({
     },
     feedContent: {},
     endPadding: {
-        height: 20,
+        height: 30,
     },
 });
 

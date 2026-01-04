@@ -40,7 +40,7 @@ const SimpleTabBar = ({ navigationState, onIndexChange, colors }) => {
   );
 };
 
-const NotificationTabs = ({ notifications, onMarkAsRead }) => {
+const NotificationTabs = ({ notifications, onMarkAsRead, onNotificationPress }) => {
   const { theme } = useTheme();
   const { colors } = theme;
   const [index, setIndex] = useState(0);
@@ -53,16 +53,18 @@ const NotificationTabs = ({ notifications, onMarkAsRead }) => {
   const renderScene = ({ route }) => {
     switch (route.key) {
       case 'all':
-        return <NotificationList data={notifications} onMarkAsRead={onMarkAsRead} />;
+        return <NotificationList data={notifications} onMarkAsRead={onMarkAsRead} onNotificationPress={onNotificationPress} />;
       case 'mentions':
         return <NotificationList 
           data={notifications.filter(n => n.type === "mention" || n.text.includes("@Shahroz"))} 
-          onMarkAsRead={onMarkAsRead} 
+          onMarkAsRead={onMarkAsRead}
+          onNotificationPress={onNotificationPress}
         />;
       case 'keywords':
         return <NotificationList 
           data={notifications.filter(n => n.type === "keyword")} 
-          onMarkAsRead={onMarkAsRead} 
+          onMarkAsRead={onMarkAsRead}
+          onNotificationPress={onNotificationPress}
         />;
       default:
         return null;

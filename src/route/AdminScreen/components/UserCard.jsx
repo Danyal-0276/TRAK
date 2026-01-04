@@ -1,26 +1,69 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Edit2, Trash2 } from 'lucide-react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { Edit2, Trash2, User } from 'lucide-react-native';
+import { useTheme } from '../../../theme/ThemeContext';
+import Text from '../../../components/ui/Text';
+import LinearGradient from 'react-native-linear-gradient';
 
 const UserCard = ({ user, onEdit, onDelete }) => {
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const isActive = user.status === 'active';
+
   return (
-    <View style={styles.itemCard}>
+    <View style={[styles.itemCard, {
+      backgroundColor: colors.surface,
+      borderColor: colors.border,
+    }]}>
       <View style={styles.itemInfo}>
-        <Text style={styles.itemTitle}>{user.name}</Text>
-        <Text style={styles.itemSubtitle}>{user.email}</Text>
-        <View style={styles.itemMeta}>
-          <View style={[styles.statusBadge, user.status === 'active' ? styles.statusActive : styles.statusInactive]}>
-            <Text style={styles.statusText}>{user.status}</Text>
+        <View style={styles.itemHeader}>
+          <View style={[styles.avatarContainer, { backgroundColor: `${colors.primary}15` }]}>
+            <User size={20} color={colors.primary} />
           </View>
-          <Text style={styles.itemDate}>Joined: {user.joinDate}</Text>
+          <View style={styles.itemTitleContainer}>
+            <Text variant="body" color={colors.textPrimary} style={styles.itemTitle}>
+              {user.name}
+            </Text>
+            <Text variant="caption" color={colors.textSecondary} style={styles.itemSubtitle}>
+              {user.email}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.itemMeta}>
+          <View style={[
+            styles.statusBadge, 
+            { backgroundColor: isActive ? `${colors.primary}20` : `${colors.textSecondary}20` }
+          ]}>
+            <View style={[
+              styles.statusDot,
+              { backgroundColor: isActive ? colors.primary : colors.textSecondary }
+            ]} />
+            <Text variant="caption" style={[
+              styles.statusText,
+              { color: isActive ? colors.primary : colors.textSecondary }
+            ]}>
+              {user.status}
+            </Text>
+          </View>
+          <Text variant="caption" color={colors.textTertiary} style={styles.itemDate}>
+            Joined: {user.joinDate}
+          </Text>
         </View>
       </View>
       <View style={styles.itemActions}>
-        <TouchableOpacity style={styles.actionButton} onPress={() => onEdit(user)}>
-          <Edit2 size={18} color="#2196F3" />
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: `${colors.primary}15` }]} 
+          onPress={() => onEdit(user)}
+          activeOpacity={0.7}
+        >
+          <Edit2 size={18} color={colors.primary} />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionButton} onPress={() => onDelete(user.id)}>
-          <Trash2 size={18} color="#ff4444" />
+        <TouchableOpacity 
+          style={[styles.actionButton, { backgroundColor: `${colors.error}15` }]} 
+          onPress={() => onDelete(user.id)}
+          activeOpacity={0.7}
+        >
+          <Trash2 size={18} color={colors.error} />
         </TouchableOpacity>
       </View>
     </View>
@@ -30,64 +73,82 @@ const UserCard = ({ user, onEdit, onDelete }) => {
 const styles = StyleSheet.create({
   itemCard: {
     flexDirection: 'row',
-    backgroundColor: '#fff',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     justifyContent: 'space-between',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   itemInfo: {
+    flex: 1,
+  },
+  itemHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  avatarContainer: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  itemTitleContainer: {
     flex: 1,
   },
   itemTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#000',
     marginBottom: 4,
   },
   itemSubtitle: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 8,
   },
   itemMeta: {
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
+    gap: 8,
   },
   statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginRight: 8,
-    marginBottom: 4,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
-  statusActive: {
-    backgroundColor: '#4CAF50',
-  },
-  statusInactive: {
-    backgroundColor: '#999',
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    marginRight: 6,
   },
   statusText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
-    color: '#fff',
     textTransform: 'capitalize',
   },
   itemDate: {
     fontSize: 12,
-    color: '#999',
-    marginBottom: 4,
   },
   itemActions: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 8,
   },
   actionButton: {
-    padding: 8,
-    marginLeft: 8,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

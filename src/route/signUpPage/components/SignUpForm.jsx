@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { SocialButtons } from './SocialButtons';
+import { useTheme } from '../../../theme/ThemeContext';
 import colors from '../../../utils/colors';
 
 export const SignUpForm = ({
@@ -19,6 +20,8 @@ export const SignUpForm = ({
     loadingProvider,
     errors
 }) => {
+    const { theme } = useTheme();
+    const { colors: themeColors } = theme;
     const emailRef = useRef(null);
     const passwordRef = useRef(null);
     const confirmPasswordRef = useRef(null);
@@ -120,14 +123,35 @@ export const SignUpForm = ({
             </View>
 
             <TouchableOpacity
-                style={[styles.primaryButton, loading && styles.primaryButtonDisabled]}
+                style={[
+                    styles.primaryButton,
+                    {
+                        backgroundColor: (!fullName || !email || !password || !confirmPassword || loading) 
+                            ? themeColors.textTertiary 
+                            : themeColors.primary,
+                        shadowColor: themeColors.shadowDark || '#000',
+                        opacity: (!fullName || !email || !password || !confirmPassword || loading) ? 0.7 : 1,
+                    },
+                ]}
                 onPress={onSignUpPress}
-                disabled={loading}
+                disabled={!fullName || !email || !password || !confirmPassword || loading}
+                activeOpacity={0.8}
             >
                 {loading ? (
-                    <ActivityIndicator color="#fff" />
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator 
+                            size="small" 
+                            color={themeColors.textInverse || colors.surface}
+                            style={styles.spinner}
+                        />
+                        <Text style={[styles.primaryButtonText, { color: themeColors.textInverse || colors.surface }]}>
+                            Creating account...
+                        </Text>
+                    </View>
                 ) : (
-                    <Text style={styles.primaryButtonText}>Create account</Text>
+                    <Text style={[styles.primaryButtonText, { color: themeColors.textInverse || colors.surface }]}>
+                        Create account
+                    </Text>
                 )}
             </TouchableOpacity>
 
@@ -193,13 +217,11 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     primaryButton: {
-        backgroundColor: '#000000',
         paddingVertical: 16,
         borderRadius: 16,
         alignItems: 'center',
         marginTop: 4,
         marginBottom: 20,
-        shadowColor: colors.primary,
         shadowOffset: {
             width: 0,
             height: 6,
@@ -208,15 +230,17 @@ const styles = StyleSheet.create({
         shadowRadius: 12,
         elevation: 8,
     },
-    primaryButtonDisabled: {
-        backgroundColor: colors.textTertiary,
-        shadowOpacity: 0,
-        elevation: 0,
-    },
     primaryButtonText: {
-        color: colors.surface,
         fontSize: 17,
         fontWeight: '700',
         letterSpacing: 0.2,
+    },
+    loadingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    spinner: {
+        marginRight: 10,
     },
 });

@@ -2,22 +2,51 @@
 // ============================================
 // FILE: components/KeywordSelection/KeywordInput.jsx
 // ============================================
-import React from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, TextInput, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import { Plus } from 'lucide-react-native';
+import { useTheme } from '../../../theme/ThemeContext';
 
 export function KeywordInput({ value, onChangeText, onSubmit, onAdd }) {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    const [isFocused, setIsFocused] = useState(false);
     const isDisabled = !value.trim();
+    const borderColorAnim = React.useRef(new Animated.Value(0)).current;
+
+    React.useEffect(() => {
+        Animated.timing(borderColorAnim, {
+            toValue: isFocused ? 1 : 0,
+            duration: 200,
+            useNativeDriver: false,
+        }).start();
+    }, [isFocused]);
+
+    const borderColor = borderColorAnim.interpolate({
+        inputRange: [0, 1],
+        outputRange: [colors.border, colors.primary],
+    });
     
     return (
-        <View style={styles.inputContainer}>
+        <Animated.View 
+            style={[
+                styles.inputContainer,
+                {
+                    backgroundColor: colors.surface,
+                    borderColor: borderColor,
+                    shadowColor: colors.shadowDark || '#000',
+                }
+            ]}
+        >
             <TextInput
-                style={styles.keywordInput}
+                style={[styles.keywordInput, { color: colors.textPrimary }]}
                 placeholder="Enter a keyword..."
-                placeholderTextColor="#94a3b8"
+                placeholderTextColor={colors.textTertiary}
                 value={value}
                 onChangeText={onChangeText}
                 onSubmitEditing={onSubmit}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
                 returnKeyType="done"
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -25,15 +54,19 @@ export function KeywordInput({ value, onChangeText, onSubmit, onAdd }) {
             <TouchableOpacity
                 style={[
                     styles.addButton,
-                    isDisabled && styles.disabledAddButton
+                    {
+                        backgroundColor: isDisabled ? colors.textTertiary : colors.primary,
+                        shadowColor: colors.shadowDark || '#000',
+                        opacity: isDisabled ? 0.7 : 1,
+                    }
                 ]}
                 onPress={onAdd}
                 disabled={isDisabled}
                 activeOpacity={0.7}
             >
-                <Plus size={20} color={isDisabled ? "#94a3b8" : "#ffffff"} />
+                <Plus size={20} color={colors.textInverse || colors.surface} />
             </TouchableOpacity>
-        </View>
+        </Animated.View>
     );
 }
 
@@ -41,48 +74,37 @@ const styles = StyleSheet.create({
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#ffffff',
-        borderRadius: 12,
-        paddingHorizontal: 16,
+        borderRadius: 16,
+        paddingHorizontal: 18,
         paddingVertical: 4,
         marginBottom: 20,
-        borderWidth: 1,
-        borderColor: '#e2e8f0',
-        shadowColor: '#0f172a',
+        borderWidth: 1.5,
         shadowOffset: {
             width: 0,
             height: 2,
         },
-        shadowOpacity: 0.05,
-        shadowRadius: 3,
-        elevation: 2,
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 3,
     },
     keywordInput: {
         flex: 1,
         fontSize: 16,
-        color: '#0f172a',
-        paddingVertical: 12,
+        paddingVertical: 14,
     },
     addButton: {
-        backgroundColor: '#2563eb',
-        width: 36,
-        height: 36,
-        borderRadius: 18,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        marginLeft: 10,
-        shadowColor: '#2563eb',
+        marginLeft: 12,
         shadowOffset: {
             width: 0,
-            height: 2,
+            height: 3,
         },
-        shadowOpacity: 0.3,
-        shadowRadius: 3,
-        elevation: 3,
-    },
-    disabledAddButton: {
-        backgroundColor: '#e2e8f0',
-        shadowOpacity: 0,
-        elevation: 0,
+        shadowOpacity: 0.25,
+        shadowRadius: 6,
+        elevation: 4,
     },
 });

@@ -1,6 +1,7 @@
 // components/profile/ProfileHeader.jsx
 import React from "react";
 import { View, Image, StyleSheet } from "react-native";
+import LinearGradient from "react-native-linear-gradient";
 import { useTheme } from "../../../theme/ThemeContext";
 import Text from "../../../components/ui/Text";
 import Card from "../../../components/ui/Card";
@@ -8,14 +9,41 @@ import Card from "../../../components/ui/Card";
 const ProfileHeader = ({ name, username, bio, avatar }) => {
   const { theme } = useTheme();
   const { colors, spacing, radius } = theme;
+  
+  const getInitials = (name) => {
+    if (!name) return "U";
+    const parts = name.trim().split(" ");
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
   return (
-    <Card style={{ marginBottom: spacing.lg }}>
+    <Card style={{ marginBottom: spacing.lg, overflow: 'hidden' }}>
       <View style={styles.header}>
-        <Image source={avatar} style={[styles.avatar, { borderColor: colors.border }]} />
+        <View style={styles.avatarContainer}>
+          <LinearGradient
+            colors={[colors.primary, `${colors.primary}DD`]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.avatarGradient}
+          >
+            {avatar ? (
+              <Image source={avatar} style={styles.avatar} />
+            ) : (
+              <View style={[styles.avatarPlaceholder, { backgroundColor: colors.surface }]}>
+                <Text variant="title" color={colors.primary} style={styles.avatarText}>
+                  {getInitials(name)}
+                </Text>
+              </View>
+            )}
+          </LinearGradient>
+        </View>
         <View style={styles.headerText}>
-          <Text variant="title" style={{ color: colors.textPrimary }}>{name}</Text>
-          <Text variant="caption" color={colors.textSecondary} style={{ marginBottom: spacing.xs }}>{username}</Text>
-          <Text variant="body" color={colors.textSecondary}>{bio}</Text>
+          <Text variant="title" style={[styles.name, { color: colors.textPrimary }]}>{name}</Text>
+          <Text variant="caption" color={colors.textSecondary} style={styles.username}>{username}</Text>
+          <Text variant="body" color={colors.textSecondary} style={styles.bio}>{bio}</Text>
         </View>
       </View>
     </Card>
@@ -23,18 +51,65 @@ const ProfileHeader = ({ name, username, bio, avatar }) => {
 };
 
 const styles = StyleSheet.create({
-  header: { flexDirection: "row" },
-  avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    marginRight: 15,
-    borderWidth: 1,
+  header: { 
+    flexDirection: "row",
+    padding: 4,
   },
-  headerText: { flex: 1, justifyContent: "center" },
-  name: {},
-  username: {},
-  bio: {},
+  avatarContainer: {
+    marginRight: 16,
+  },
+  avatarGradient: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    padding: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  avatar: {
+    width: 94,
+    height: 94,
+    borderRadius: 47,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+  },
+  avatarPlaceholder: {
+    width: 94,
+    height: 94,
+    borderRadius: 47,
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 36,
+    fontWeight: '700',
+  },
+  headerText: { 
+    flex: 1, 
+    justifyContent: "center",
+    paddingVertical: 4,
+  },
+  name: {
+    fontSize: 24,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  username: {
+    fontSize: 14,
+    marginBottom: 8,
+    fontWeight: '500',
+  },
+  bio: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
 });
 
 export default ProfileHeader;
