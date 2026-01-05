@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
     View,
     Text,
@@ -8,16 +8,94 @@ import {
     StatusBar,
     KeyboardAvoidingView,
     Platform,
+    Animated,
+    Dimensions,
+    Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'react-native-linear-gradient';
-import { ChevronLeft } from 'lucide-react-native';
+import { ChevronLeft, Mail } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
+
+const { width, height } = Dimensions.get('window');
 
 const ForgotPasswordScreen = ({ navigation }) => {
     const { theme } = useTheme();
     const { colors } = theme;
     const [email, setEmail] = useState('');
+    const [loading, setLoading] = useState(false);
+    
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(50)).current;
+    const scaleAnim = useRef(new Animated.Value(0.95)).current;
+    const iconScale = useRef(new Animated.Value(0)).current;
+    const iconRotate = useRef(new Animated.Value(0)).current;
+    const circle1Anim = useRef(new Animated.Value(0)).current;
+    const circle2Anim = useRef(new Animated.Value(0)).current;
+    const glowAnim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 800,
+                useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                friction: 8,
+                tension: 50,
+                useNativeDriver: true,
+            }),
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 7,
+                tension: 40,
+                useNativeDriver: true,
+            }),
+            Animated.spring(iconScale, {
+                toValue: 1,
+                friction: 6,
+                tension: 40,
+                delay: 300,
+                useNativeDriver: true,
+            }),
+            Animated.timing(iconRotate, {
+                toValue: 1,
+                duration: 1000,
+                delay: 400,
+                useNativeDriver: true,
+            }),
+            Animated.parallel([
+                Animated.timing(circle1Anim, {
+                    toValue: 1,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(circle2Anim, {
+                    toValue: 1,
+                    duration: 1200,
+                    delay: 100,
+                    useNativeDriver: true,
+                }),
+            ]),
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(glowAnim, {
+                        toValue: 1,
+                        duration: 2000,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(glowAnim, {
+                        toValue: 0,
+                        duration: 2000,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ),
+        ]).start();
+    }, []);
 
     return (
         <View style={[styles.fullContainer, { backgroundColor: colors.background }]}>
@@ -26,17 +104,74 @@ const ForgotPasswordScreen = ({ navigation }) => {
                 backgroundColor={colors.background} 
             />
             
-            {/* Subtle gradient background */}
+            {/* Enhanced gradient background */}
             <LinearGradient
-                colors={[colors.background, colors.backgroundSecondary, colors.background]}
+                colors={theme.mode === 'dark' 
+                    ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
+                    : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.gradientBackground}
             />
             
-            {/* Decorative accent circles */}
-            <View style={[styles.accentCircle1, { backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.08' : '0.04'})` }]} />
-            <View style={[styles.accentCircle2, { backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.06' : '0.03'})` }]} />
+            {/* Animated decorative circles */}
+            <Animated.View 
+                style={[
+                    styles.accentCircle1, 
+                    { 
+                        backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.12' : '0.05'})`,
+                        opacity: circle1Anim,
+                        transform: [
+                            {
+                                scale: circle1Anim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0.8, 1],
+                                }),
+                            },
+                        ],
+                    }
+                ]} 
+            />
+            <Animated.View 
+                style={[
+                    styles.accentCircle2, 
+                    { 
+                        backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.10' : '0.04'})`,
+                        opacity: circle2Anim,
+                        transform: [
+                            {
+                                scale: circle2Anim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0.8, 1],
+                                }),
+                            },
+                        ],
+                    }
+                ]} 
+            />
+            
+            {/* Animated glow effect */}
+            <Animated.View
+                style={[
+                    styles.glowEffect,
+                    {
+                        backgroundColor: theme.mode === 'dark' ? 'rgba(129, 140, 248, 0.15)' : 'rgba(0, 0, 0, 0.05)',
+                        opacity: glowAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.3, 0.6],
+                        }),
+                        transform: [
+                            {
+                                scale: glowAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [1, 1.1],
+                                }),
+                            },
+                        ],
+                    },
+                ]}
+            />
 
             <SafeAreaView style={styles.safeContainer}>
                 <KeyboardAvoidingView 
@@ -44,8 +179,27 @@ const ForgotPasswordScreen = ({ navigation }) => {
                     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
                     keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
                 >
-                    <View style={styles.contentWrapper}>
-                        <View style={styles.header}>
+                    <Animated.View 
+                        style={[
+                            styles.contentWrapper,
+                            {
+                                opacity: fadeAnim,
+                                transform: [
+                                    { translateY: slideAnim },
+                                    { scale: scaleAnim },
+                                ],
+                            },
+                        ]}
+                    >
+                        <Animated.View
+                            style={[
+                                styles.header,
+                                {
+                                    opacity: fadeAnim,
+                                    transform: [{ translateY: slideAnim }],
+                                },
+                            ]}
+                        >
                             <TouchableOpacity 
                                 style={[styles.backButton, { 
                                     backgroundColor: colors.backgroundSecondary, 
@@ -55,20 +209,68 @@ const ForgotPasswordScreen = ({ navigation }) => {
                             >
                                 <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.5} />
                             </TouchableOpacity>
-                        </View>
+                        </Animated.View>
 
-                        <View style={styles.headerSection}>
+                        <Animated.View 
+                            style={[
+                                styles.headerSection,
+                                {
+                                    opacity: fadeAnim,
+                                    transform: [
+                                        {
+                                            translateY: slideAnim.interpolate({
+                                                inputRange: [0, 50],
+                                                outputRange: [0, 20],
+                                            }),
+                                        },
+                                    ],
+                                },
+                            ]}
+                        >
+                            <View style={styles.iconContainer}>
+                                <Animated.View
+                                    style={{
+                                        transform: [
+                                            {
+                                                scale: iconScale,
+                                            },
+                                            {
+                                                rotate: iconRotate.interpolate({
+                                                    inputRange: [0, 1],
+                                                    outputRange: ['-10deg', '0deg'],
+                                                }),
+                                            },
+                                        ],
+                                    }}
+                                >
+                                    <Mail size={48} color={colors.primary} strokeWidth={2} />
+                                </Animated.View>
+                            </View>
                             <Text style={[styles.title, { color: colors.textPrimary }]}>Forgot password?</Text>
                             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                                 Don't worry! It happens. Please enter the email associated with your account.
                             </Text>
-                        </View>
+                        </Animated.View>
 
-                        <View style={[styles.formCard, { 
-                            backgroundColor: colors.surface, 
-                            borderColor: colors.borderLight,
-                            shadowColor: colors.shadow
-                        }]}>
+                        <Animated.View 
+                            style={[
+                                styles.formCard, 
+                                { 
+                                    backgroundColor: colors.surface, 
+                                    borderColor: colors.borderLight,
+                                    shadowColor: colors.shadow,
+                                    opacity: fadeAnim,
+                                    transform: [
+                                        {
+                                            translateY: slideAnim.interpolate({
+                                                inputRange: [0, 50],
+                                                outputRange: [0, 30],
+                                            }),
+                                        },
+                                    ],
+                                }
+                            ]}
+                        >
                             <View style={styles.inputGroup}>
                                 <Text style={[styles.label, { color: colors.textPrimary }]}>Email address</Text>
                                 <TextInput
@@ -87,23 +289,79 @@ const ForgotPasswordScreen = ({ navigation }) => {
                             </View>
 
                             <TouchableOpacity
-                                style={[styles.primaryButton, { 
-                                    backgroundColor: colors.primary,
-                                    shadowColor: colors.shadowDark
-                                }]}
-                                onPress={() => navigation.navigate('ForgotPasswordCode', { email })}
+                                style={[
+                                    styles.primaryButton, 
+                                    { 
+                                        backgroundColor: (!email || !email.includes('@') || loading) 
+                                            ? colors.textTertiary 
+                                            : colors.primary,
+                                        shadowColor: colors.shadowDark,
+                                        opacity: (!email || !email.includes('@') || loading) ? 0.6 : 1,
+                                    }
+                                ]}
+                                onPress={async () => {
+                                    if (!email) {
+                                        Alert.alert('Error', 'Please enter your email address');
+                                        return;
+                                    }
+                                    if (!email.includes('@') || !email.includes('.')) {
+                                        Alert.alert('Error', 'Please enter a valid email address');
+                                        return;
+                                    }
+                                    setLoading(true);
+                                    try {
+                                        // Simulate API call
+                                        await new Promise(resolve => setTimeout(resolve, 1500));
+                                        navigation.navigate('ForgotPasswordCode', { email });
+                                    } catch (error) {
+                                        Alert.alert('Error', 'Failed to send code. Please try again.');
+                                        setLoading(false);
+                                    }
+                                }}
+                                activeOpacity={0.8}
+                                disabled={!email || !email.includes('@') || loading}
                             >
-                                <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>Send code</Text>
+                                {loading ? (
+                                    <View style={styles.loadingContainer}>
+                                        <ActivityIndicator 
+                                            size="small" 
+                                            color={colors.textInverse}
+                                            style={styles.spinner}
+                                        />
+                                        <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
+                                            Sending...
+                                        </Text>
+                                    </View>
+                                ) : (
+                                    <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
+                                        Send code
+                                    </Text>
+                                )}
                             </TouchableOpacity>
-                        </View>
+                        </Animated.View>
 
-                        <View style={styles.footer}>
+                        <Animated.View 
+                            style={[
+                                styles.footer,
+                                {
+                                    opacity: fadeAnim,
+                                    transform: [
+                                        {
+                                            translateY: slideAnim.interpolate({
+                                                inputRange: [0, 50],
+                                                outputRange: [0, 40],
+                                            }),
+                                        },
+                                    ],
+                                },
+                            ]}
+                        >
                             <Text style={[styles.footerText, { color: colors.textSecondary }]}>Remember password? </Text>
                             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
                                 <Text style={[styles.linkText, { color: colors.primary }]}>Log in</Text>
                             </TouchableOpacity>
-                        </View>
-                    </View>
+                        </Animated.View>
+                    </Animated.View>
                 </KeyboardAvoidingView>
             </SafeAreaView>
         </View>
@@ -123,19 +381,31 @@ const styles = StyleSheet.create({
     },
     accentCircle1: {
         position: 'absolute',
-        width: 350,
-        height: 350,
-        borderRadius: 175,
-        top: -100,
-        right: -100,
+        width: 400,
+        height: 400,
+        borderRadius: 200,
+        top: -150,
+        right: -120,
     },
     accentCircle2: {
         position: 'absolute',
-        width: 280,
-        height: 280,
-        borderRadius: 140,
-        bottom: 80,
-        left: -80,
+        width: 320,
+        height: 320,
+        borderRadius: 160,
+        bottom: 100,
+        left: -100,
+    },
+    glowEffect: {
+        position: 'absolute',
+        width: 300,
+        height: 300,
+        borderRadius: 150,
+        top: height * 0.25,
+        left: width * 0.5 - 150,
+    },
+    iconContainer: {
+        alignItems: 'center',
+        marginBottom: 24,
     },
     safeContainer: {
         flex: 1,
@@ -222,6 +492,14 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontWeight: '700',
         letterSpacing: 0.2,
+    },
+    loadingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    spinner: {
+        marginRight: 10,
     },
     footer: {
         flexDirection: 'row',

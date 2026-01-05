@@ -2,10 +2,14 @@
 // FILE: components/TabBar.jsx
 // ============================================
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated } from 'react-native';
 import { TrendingUp, Bookmark } from 'lucide-react-native';
+import { useTheme } from '../../../theme/ThemeContext';
 
 export const TabBar = ({ activeTab, setActiveTab }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    
     const tabItems = [
         { name: 'For you', icon: null },
         { name: 'Following', icon: null },
@@ -14,7 +18,7 @@ export const TabBar = ({ activeTab, setActiveTab }) => {
     ];
 
     return (
-        <View style={tabStyles.container}>
+        <View style={[tabStyles.container, { backgroundColor: colors.surface, borderBottomColor: colors.borderLight }]}>
             <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -29,7 +33,9 @@ export const TabBar = ({ activeTab, setActiveTab }) => {
                             key={tab.name}
                             style={[
                                 tabStyles.tab,
-                                isActive && tabStyles.activeTab
+                                {
+                                    backgroundColor: isActive ? colors.primary + '15' : 'transparent',
+                                }
                             ]}
                             onPress={() => setActiveTab(tab.name)}
                             activeOpacity={0.7}
@@ -37,14 +43,17 @@ export const TabBar = ({ activeTab, setActiveTab }) => {
                             {Icon && (
                                 <Icon
                                     size={14}
-                                    color={isActive ? '#FF4500' : '#6B7280'}
+                                    color={isActive ? colors.primary : colors.textSecondary}
                                     style={tabStyles.icon}
                                     strokeWidth={2.5}
                                 />
                             )}
                             <Text style={[
                                 tabStyles.text,
-                                isActive && tabStyles.activeText
+                                {
+                                    color: isActive ? colors.primary : colors.textSecondary,
+                                    fontWeight: isActive ? '700' : '600',
+                                }
                             ]}>
                                 {tab.name}
                             </Text>
@@ -58,13 +67,11 @@ export const TabBar = ({ activeTab, setActiveTab }) => {
 
 const tabStyles = StyleSheet.create({
     container: {
-        backgroundColor: '#FFFFFF',
-        paddingVertical: 10,
+        paddingVertical: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#F0F0F0',
     },
     scroll: {
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
     },
     content: {
         alignItems: 'center',
@@ -72,25 +79,15 @@ const tabStyles = StyleSheet.create({
     tab: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 16,
-        paddingVertical: 6,
+        paddingHorizontal: 18,
+        paddingVertical: 8,
         marginRight: 8,
         borderRadius: 20,
-        backgroundColor: 'transparent',
-    },
-    activeTab: {
-        backgroundColor: '#FFF5F0',
     },
     icon: {
-        marginRight: 4,
+        marginRight: 6,
     },
     text: {
-        color: '#6B7280',
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    activeText: {
-        color: '#FF4500',
-        fontWeight: '700',
+        fontSize: 15,
     },
 });

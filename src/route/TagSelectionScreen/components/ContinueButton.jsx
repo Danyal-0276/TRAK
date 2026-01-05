@@ -2,28 +2,45 @@
 // FILE: components/TagSelection/ContinueButton.jsx
 // ============================================
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { useTheme } from '../../../theme/ThemeContext';
 
-export function ContinueButton({ onPress, selectedCount }) {
-    const isDisabled = selectedCount === 0;
+export function ContinueButton({ onPress, selectedCount, loading = false }) {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    const isDisabled = selectedCount === 0 || loading;
     
     return (
         <View style={styles.buttonContainer}>
             <TouchableOpacity
                 style={[
                     styles.continueButton,
-                    isDisabled && styles.disabledButton
+                    {
+                        backgroundColor: isDisabled ? colors.textTertiary : colors.primary,
+                        shadowColor: colors.shadowDark || '#000',
+                        opacity: isDisabled ? 0.7 : 1,
+                    }
                 ]}
                 onPress={onPress}
                 disabled={isDisabled}
-                activeOpacity={isDisabled ? 1 : 0.8}
+                activeOpacity={0.8}
             >
-                <Text style={[
-                    styles.continueButtonText,
-                    isDisabled && styles.disabledButtonText
-                ]}>
-                    Continue ({selectedCount})
-                </Text>
+                {loading ? (
+                    <View style={styles.loadingContainer}>
+                        <ActivityIndicator 
+                            size="small" 
+                            color={colors.textInverse || colors.surface}
+                            style={styles.spinner}
+                        />
+                        <Text style={[styles.continueButtonText, { color: colors.textInverse || colors.surface }]}>
+                            Loading...
+                        </Text>
+                    </View>
+                ) : (
+                    <Text style={[styles.continueButtonText, { color: colors.textInverse || colors.surface }]}>
+                        Continue ({selectedCount})
+                    </Text>
+                )}
             </TouchableOpacity>
         </View>
     );
@@ -32,33 +49,31 @@ export function ContinueButton({ onPress, selectedCount }) {
 const styles = StyleSheet.create({
     buttonContainer: {
         marginTop: 20,
-        paddingHorizontal: 10,
+        paddingHorizontal: 4,
     },
     continueButton: {
-        backgroundColor: '#1e293b',
         paddingVertical: 16,
-        borderRadius: 12,
+        borderRadius: 16,
         alignItems: 'center',
-        shadowColor: '#0f172a',
         shadowOffset: {
             width: 0,
-            height: 3,
+            height: 6,
         },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 4,
-    },
-    disabledButton: {
-        backgroundColor: '#e2e8f0',
-        shadowOpacity: 0,
-        elevation: 0,
+        shadowOpacity: 0.25,
+        shadowRadius: 12,
+        elevation: 8,
     },
     continueButtonText: {
-        color: '#ffffff',
-        fontSize: 16,
-        fontWeight: '600',
+        fontSize: 17,
+        fontWeight: '700',
+        letterSpacing: 0.2,
     },
-    disabledButtonText: {
-        color: '#94a3b8',
+    loadingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    spinner: {
+        marginRight: 10,
     },
 });

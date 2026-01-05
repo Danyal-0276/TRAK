@@ -1,7 +1,11 @@
 import React from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { View, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { Settings as SettingsIcon, Plus, Trash2 } from 'lucide-react-native';
+import { useTheme } from '../../../theme/ThemeContext';
 import ToggleSwitch from '../components/ToggleSwitch';
 import SettingRow from '../components/SettingRow';
+import Text from '../../../components/ui/Text';
+import LinearGradient from 'react-native-linear-gradient';
 
 const SettingsTab = ({
   settings,
@@ -18,14 +22,29 @@ const SettingsTab = ({
   onRemoveConnection,
   onOpenListModal,
 }) => {
+  const { theme } = useTheme();
+  const { colors } = theme;
+
   return (
     <View style={styles.managementSection}>
       <View style={styles.managementHeader}>
-        <Text style={styles.sectionTitle}>Settings</Text>
+        <View style={styles.headerLeft}>
+          <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
+            <SettingsIcon size={20} color={colors.primary} />
+          </View>
+          <Text variant="title" color={colors.textPrimary} style={styles.sectionTitle}>
+            Settings
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.settingsSection}>
-        <Text style={styles.settingsSectionTitle}>Notification Setting</Text>
+      <View style={[styles.settingsSection, {
+        backgroundColor: colors.surface,
+        borderColor: colors.border,
+      }]}>
+        <Text variant="subtitle" color={colors.textPrimary} style={styles.settingsSectionTitle}>
+          Notification Setting
+        </Text>
         
         <SettingRow label="Push Notification">
           <ToggleSwitch
@@ -49,103 +68,164 @@ const SettingsTab = ({
         </SettingRow>
       </View>
 
-      <View style={styles.settingsSection}>
-        <Text style={styles.settingsSectionTitle}>Language & Region</Text>
+      <View style={[styles.settingsSection, {
+        backgroundColor: colors.surface,
+        borderColor: colors.border,
+      }]}>
+        <Text variant="subtitle" color={colors.textPrimary} style={styles.settingsSectionTitle}>
+          Language & Region
+        </Text>
         <SettingRow label="Language">
-          <View style={styles.settingValueButton}>
-            <Text style={styles.settingValueText}>{settings.language}</Text>
+          <View style={[styles.settingValueButton, { backgroundColor: colors.primary }]}>
+            <Text variant="caption" color={colors.surface} style={styles.settingValueText}>
+              {settings.language}
+            </Text>
           </View>
         </SettingRow>
         <SettingRow label="Timezone">
-          <View style={styles.settingValueButton}>
-            <Text style={styles.settingValueText}>{settings.timezone}</Text>
+          <View style={[styles.settingValueButton, { backgroundColor: colors.primary }]}>
+            <Text variant="caption" color={colors.surface} style={styles.settingValueText}>
+              {settings.timezone}
+            </Text>
           </View>
         </SettingRow>
       </View>
 
-      <View style={styles.settingsSection}>
+      <View style={[styles.settingsSection, {
+        backgroundColor: colors.surface,
+        borderColor: colors.border,
+      }]}>
         <View style={styles.settingsSectionHeader}>
-          <Text style={styles.settingsSectionTitle}>Manage Category</Text>
+          <Text variant="subtitle" color={colors.textPrimary} style={styles.settingsSectionTitle}>
+            Manage Category
+          </Text>
           <TouchableOpacity
-            style={styles.listButton}
+            style={[styles.listButton, { backgroundColor: colors.primary }]}
             onPress={() => onOpenListModal('category')}
+            activeOpacity={0.8}
           >
-            <Text style={styles.listButtonText}>List</Text>
+            <Text variant="caption" color={colors.surface} style={styles.listButtonText}>
+              List
+            </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.inputRow}>
           <TextInput
-            style={styles.settingInput}
+            style={[styles.settingInput, {
+              backgroundColor: colors.backgroundSecondary,
+              borderColor: colors.border,
+              color: colors.textPrimary,
+            }]}
             placeholder="Enter Category"
             value={categoryInput}
             onChangeText={setCategoryInput}
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textTertiary}
+            cursorColor={colors.primary}
           />
-          <TouchableOpacity style={styles.addBtn} onPress={onAddCategory}>
-            <Text style={styles.addBtnText}>ADD</Text>
+          <TouchableOpacity 
+            style={[styles.addBtn, { backgroundColor: colors.primary }]} 
+            onPress={onAddCategory}
+            activeOpacity={0.8}
+          >
+            <Plus size={18} color={colors.surface} />
           </TouchableOpacity>
         </View>
 
         {categories.map((category) => (
           <View key={category.id} style={styles.inputRow}>
-            <View style={styles.settingInput}>
-              <Text style={styles.inputText}>{category.name}</Text>
+            <View style={[styles.settingInput, {
+              backgroundColor: colors.backgroundSecondary,
+              borderColor: colors.border,
+            }]}>
+              <Text variant="body" color={colors.textPrimary} style={styles.inputText}>
+                {category.name}
+              </Text>
             </View>
             <TouchableOpacity
-              style={styles.removeBtn}
+              style={[styles.removeBtn, { backgroundColor: `${colors.error}15` }]}
               onPress={() => onRemoveCategory(category.id)}
+              activeOpacity={0.8}
             >
-              <Text style={styles.removeBtnText}>Remove</Text>
+              <Trash2 size={18} color={colors.error} />
             </TouchableOpacity>
           </View>
         ))}
       </View>
 
-      <View style={styles.settingsSection}>
+      <View style={[styles.settingsSection, {
+        backgroundColor: colors.surface,
+        borderColor: colors.border,
+      }]}>
         <View style={styles.settingsSectionHeader}>
-          <Text style={styles.settingsSectionTitle}>Manage Connection</Text>
+          <Text variant="subtitle" color={colors.textPrimary} style={styles.settingsSectionTitle}>
+            Manage Connection
+          </Text>
           <TouchableOpacity
-            style={styles.listButton}
+            style={[styles.listButton, { backgroundColor: colors.primary }]}
             onPress={() => onOpenListModal('connection')}
+            activeOpacity={0.8}
           >
-            <Text style={styles.listButtonText}>List</Text>
+            <Text variant="caption" color={colors.surface} style={styles.listButtonText}>
+              List
+            </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.inputRow}>
           <TextInput
-            style={styles.settingInput}
+            style={[styles.settingInput, {
+              backgroundColor: colors.backgroundSecondary,
+              borderColor: colors.border,
+              color: colors.textPrimary,
+            }]}
             placeholder="Enter Connection"
             value={connectionInput}
             onChangeText={setConnectionInput}
-            placeholderTextColor="#999"
+            placeholderTextColor={colors.textTertiary}
+            cursorColor={colors.primary}
           />
-          <TouchableOpacity style={styles.addBtn} onPress={onAddConnection}>
-            <Text style={styles.addBtnText}>ADD</Text>
+          <TouchableOpacity 
+            style={[styles.addBtn, { backgroundColor: colors.primary }]} 
+            onPress={onAddConnection}
+            activeOpacity={0.8}
+          >
+            <Plus size={18} color={colors.surface} />
           </TouchableOpacity>
         </View>
 
         {connections.map((connection) => (
           <View key={connection.id} style={styles.inputRow}>
-            <View style={styles.settingInput}>
-              <Text style={styles.inputText}>{connection.name}</Text>
+            <View style={[styles.settingInput, {
+              backgroundColor: colors.backgroundSecondary,
+              borderColor: colors.border,
+            }]}>
+              <Text variant="body" color={colors.textPrimary} style={styles.inputText}>
+                {connection.name}
+              </Text>
             </View>
             <TouchableOpacity
-              style={styles.removeBtn}
+              style={[styles.removeBtn, { backgroundColor: `${colors.error}15` }]}
               onPress={() => onRemoveConnection(connection.id)}
+              activeOpacity={0.8}
             >
-              <Text style={styles.removeBtnText}>Remove</Text>
+              <Trash2 size={18} color={colors.error} />
             </TouchableOpacity>
           </View>
         ))}
       </View>
 
       <TouchableOpacity
-        style={styles.logoutButton}
+        style={[styles.logoutButton, {
+          backgroundColor: colors.backgroundSecondary,
+          borderColor: colors.border,
+        }]}
         onPress={() => Alert.alert('Logout', 'Are you sure you want to logout?')}
+        activeOpacity={0.8}
       >
-        <Text style={styles.logoutButtonText}>LOGOUT</Text>
+        <Text variant="body" color={colors.error} style={styles.logoutButtonText}>
+          LOGOUT
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -154,23 +234,40 @@ const SettingsTab = ({
 const styles = StyleSheet.create({
   managementSection: {
     paddingHorizontal: 20,
+    paddingTop: 8,
   },
   managementHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#000',
   },
   settingsSection: {
-    backgroundColor: '#f8f8f8',
-    borderRadius: 12,
-    padding: 16,
+    borderRadius: 16,
+    padding: 20,
     marginBottom: 16,
+    borderWidth: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   settingsSectionHeader: {
     flexDirection: 'row',
@@ -181,89 +278,72 @@ const styles = StyleSheet.create({
   settingsSectionTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#000',
     marginBottom: 16,
   },
   listButton: {
-    backgroundColor: '#000',
     paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   listButtonText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#fff',
   },
   settingValueButton: {
-    backgroundColor: '#000',
     paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 6,
+    paddingVertical: 8,
+    borderRadius: 8,
   },
   settingValueText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#fff',
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 12,
+    gap: 12,
   },
   settingInput: {
     flex: 1,
-    backgroundColor: '#fff',
-    borderRadius: 8,
+    borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 15,
-    color: '#000',
-    marginRight: 12,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderWidth: 1.5,
   },
   inputText: {
     fontSize: 15,
-    color: '#000',
   },
   addBtn: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  addBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#000',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   removeBtn: {
-    backgroundColor: '#fff',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-  },
-  removeBtnText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#666',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logoutButton: {
-    backgroundColor: '#e0e0e0',
     paddingVertical: 16,
     borderRadius: 12,
     alignItems: 'center',
     marginTop: 24,
+    borderWidth: 1.5,
   },
   logoutButtonText: {
     fontSize: 15,
     fontWeight: '700',
-    color: '#666',
   },
 });
 

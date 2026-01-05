@@ -10,48 +10,69 @@ import {
     Alert,
     KeyboardAvoidingView,
     Platform,
+    Dimensions,
+    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'react-native-linear-gradient';
-import { ChevronLeft, Eye, EyeOff } from 'lucide-react-native';
+import { ChevronLeft, Eye, EyeOff, Lock } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
 
-const ResetPasswordScreen = ({ navigation }) => {
+const { width, height } = Dimensions.get('window');
+
+const ResetPasswordScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
     const { colors } = theme;
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState({});
 
-    const handleResetPassword = () => {
-        // Validate passwords
-        if (!newPassword || !confirmPassword) {
-            Alert.alert('Error', 'Please fill in all fields');
+    const validateForm = () => {
+        const newErrors = {};
+
+        if (!newPassword) {
+            newErrors.newPassword = 'Password is required';
+        } else if (newPassword.length < 8) {
+            newErrors.newPassword = 'Password must be at least 8 characters';
+        }
+
+        if (!confirmPassword) {
+            newErrors.confirmPassword = 'Please confirm your password';
+        } else if (newPassword !== confirmPassword) {
+            newErrors.confirmPassword = 'Passwords do not match';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
+    const handleResetPassword = async () => {
+        // Clear previous errors
+        setErrors({});
+
+        // Validate form
+        if (!validateForm()) {
             return;
         }
 
-        if (newPassword.length < 8) {
-            Alert.alert('Error', 'Password must be at least 8 characters');
-            return;
+        setLoading(true);
+
+        try {
+            // TODO: Add your password reset API call here
+            // await resetPasswordAPI(newPassword);
+            
+            // Simulate API call - minimum 2 seconds to show loading animation
+            await new Promise(resolve => setTimeout(resolve, 2000));
+            
+            navigation.navigate('PasswordChanged');
+        } catch (error) {
+            Alert.alert('Error', 'Failed to reset password. Please try again.');
+            setLoading(false);
         }
-
-        if (newPassword !== confirmPassword) {
-            Alert.alert('Error', 'Passwords do not match');
-            return;
-        }
-
-        // TODO: Add your password reset API call here
-        // try {
-        //     await resetPasswordAPI(newPassword);
-        //     navigation.navigate('PasswordChanged');
-        // } catch (error) {
-        //     Alert.alert('Error', 'Failed to reset password. Please try again.');
-        // }
-
-        // For now, just navigate to PasswordChanged screen
-        navigation.navigate('PasswordChanged');
     };
 
     return (
@@ -61,17 +82,45 @@ const ResetPasswordScreen = ({ navigation }) => {
                 backgroundColor={colors.background} 
             />
             
-            {/* Subtle gradient background */}
+            {/* Enhanced gradient background */}
             <LinearGradient
-                colors={[colors.background, colors.backgroundSecondary, colors.background]}
+                colors={theme.mode === 'dark' 
+                    ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
+                    : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.gradientBackground}
             />
             
-            {/* Decorative accent circles */}
-            <View style={[styles.accentCircle1, { backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.08' : '0.04'})` }]} />
-            <View style={[styles.accentCircle2, { backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.06' : '0.03'})` }]} />
+            {/* Static decorative circles - no animation to prevent blinking */}
+            <View 
+                style={[
+                    styles.accentCircle1, 
+                    { 
+                        backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.12' : '0.05'})`,
+                    }
+                ]} 
+            />
+            <View 
+                style={[
+                    styles.accentCircle2, 
+                    { 
+                        backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.10' : '0.04'})`,
+                    }
+                ]} 
+            />
+            
+            {/* Static glow effect - no animation to prevent blinking */}
+            <View
+                style={[
+                    styles.glowEffect,
+                    {
+                        backgroundColor: theme.mode === 'dark' ? 'rgba(129, 140, 248, 0.08)' : 'rgba(0, 0, 0, 0.03)',
+                        opacity: 0.4,
+                    },
+                ]}
+            />
 
             <SafeAreaView style={styles.container}>
                 <KeyboardAvoidingView 
@@ -95,34 +144,56 @@ const ResetPasswordScreen = ({ navigation }) => {
                             </TouchableOpacity>
 
                             <View style={styles.headerSection}>
-                                <TextComponent variant="title" color={colors.textPrimary} style={styles.title}>Reset password</TextComponent>
+                                <View style={styles.iconContainer}>
+                                    <Lock size={48} color={colors.primary} strokeWidth={2} />
+                                </View>
+                                <TextComponent variant="title" color={colors.textPrimary} style={styles.title}>
+                                    Reset password
+                                </TextComponent>
                                 <TextComponent variant="body" color={colors.textSecondary} style={styles.subtitle}>
                                     Please type something you'll remember
                                 </TextComponent>
                             </View>
 
-                            <View style={[styles.formCard, { 
-                                backgroundColor: colors.surface, 
-                                borderColor: colors.borderLight,
-                                shadowColor: colors.shadow
-                            }]}>
+                            <View 
+                                style={[
+                                    styles.formCard, 
+                                    { 
+                                        backgroundColor: colors.surface, 
+                                        borderColor: colors.borderLight,
+                                        shadowColor: colors.shadow,
+                                    }
+                                ]}
+                            >
                                 <View style={styles.inputGroup}>
-                                    <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>New password</TextComponent>
-                                    <View style={[styles.inputContainer, { 
-                                        borderColor: colors.border,
-                                        backgroundColor: colors.backgroundSecondary
-                                    }]}>
+                                    <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>
+                                        New password
+                                    </TextComponent>
+                                    <View style={[
+                                        styles.inputContainer, 
+                                        { 
+                                            borderColor: errors.newPassword ? colors.error : colors.border,
+                                            backgroundColor: colors.backgroundSecondary
+                                        }
+                                    ]}>
                                         <TextInput
                                             style={[styles.input, { color: colors.textPrimary }]}
                                             placeholder="must be 8 characters"
                                             placeholderTextColor={colors.textTertiary}
                                             value={newPassword}
-                                            onChangeText={setNewPassword}
+                                            onChangeText={(text) => {
+                                                setNewPassword(text);
+                                                if (errors.newPassword) {
+                                                    setErrors({ ...errors, newPassword: '' });
+                                                }
+                                            }}
                                             secureTextEntry={!showNewPassword}
+                                            editable={!loading}
                                         />
                                         <TouchableOpacity 
                                             style={styles.eyeIcon}
                                             onPress={() => setShowNewPassword(!showNewPassword)}
+                                            disabled={loading}
                                         >
                                             {showNewPassword ? (
                                                 <EyeOff size={20} color={colors.textSecondary} />
@@ -131,25 +202,42 @@ const ResetPasswordScreen = ({ navigation }) => {
                                             )}
                                         </TouchableOpacity>
                                     </View>
+                                    {errors.newPassword && (
+                                        <Text style={[styles.errorText, { color: colors.error }]}>
+                                            {errors.newPassword}
+                                        </Text>
+                                    )}
                                 </View>
 
                                 <View style={styles.inputGroup}>
-                                    <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>Confirm new password</TextComponent>
-                                    <View style={[styles.inputContainer, { 
-                                        borderColor: colors.border,
-                                        backgroundColor: colors.backgroundSecondary
-                                    }]}>
+                                    <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>
+                                        Confirm new password
+                                    </TextComponent>
+                                    <View style={[
+                                        styles.inputContainer, 
+                                        { 
+                                            borderColor: errors.confirmPassword ? colors.error : colors.border,
+                                            backgroundColor: colors.backgroundSecondary
+                                        }
+                                    ]}>
                                         <TextInput
                                             style={[styles.input, { color: colors.textPrimary }]}
                                             placeholder="repeat password"
                                             placeholderTextColor={colors.textTertiary}
                                             value={confirmPassword}
-                                            onChangeText={setConfirmPassword}
+                                            onChangeText={(text) => {
+                                                setConfirmPassword(text);
+                                                if (errors.confirmPassword) {
+                                                    setErrors({ ...errors, confirmPassword: '' });
+                                                }
+                                            }}
                                             secureTextEntry={!showConfirmPassword}
+                                            editable={!loading}
                                         />
                                         <TouchableOpacity 
                                             style={styles.eyeIcon}
                                             onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                                            disabled={loading}
                                         >
                                             {showConfirmPassword ? (
                                                 <EyeOff size={20} color={colors.textSecondary} />
@@ -158,23 +246,55 @@ const ResetPasswordScreen = ({ navigation }) => {
                                             )}
                                         </TouchableOpacity>
                                     </View>
+                                    {errors.confirmPassword && (
+                                        <Text style={[styles.errorText, { color: colors.error }]}>
+                                            {errors.confirmPassword}
+                                        </Text>
+                                    )}
                                 </View>
 
                                 <TouchableOpacity
-                                    style={[styles.primaryButton, { 
-                                        backgroundColor: colors.primary,
-                                        shadowColor: colors.shadowDark
-                                    }]}
+                                    style={[
+                                        styles.primaryButton, 
+                                        { 
+                                            backgroundColor: (!newPassword || !confirmPassword || loading) 
+                                                ? colors.textTertiary 
+                                                : colors.primary,
+                                            shadowColor: colors.shadowDark,
+                                            opacity: (!newPassword || !confirmPassword || loading) ? 0.6 : 1,
+                                        }
+                                    ]}
                                     onPress={handleResetPassword}
+                                    disabled={!newPassword || !confirmPassword || loading}
+                                    activeOpacity={0.8}
                                 >
-                                    <TextComponent variant="button" color={colors.textInverse} style={styles.primaryButtonText}>Reset password</TextComponent>
+                                    {loading ? (
+                                        <View style={styles.loadingContainer}>
+                                            <ActivityIndicator 
+                                                size="small" 
+                                                color={colors.textInverse}
+                                                style={styles.spinner}
+                                            />
+                                            <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
+                                                Resetting...
+                                            </Text>
+                                        </View>
+                                    ) : (
+                                        <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
+                                            Reset password
+                                        </Text>
+                                    )}
                                 </TouchableOpacity>
                             </View>
 
                             <View style={styles.footer}>
-                                <TextComponent variant="caption" color={colors.textSecondary} style={styles.footerText}>Already have an account? </TextComponent>
+                                <TextComponent variant="caption" color={colors.textSecondary} style={styles.footerText}>
+                                    Already have an account? 
+                                </TextComponent>
                                 <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                                    <TextComponent variant="caption" color={colors.primary} style={styles.linkText}>Log in</TextComponent>
+                                    <TextComponent variant="caption" color={colors.primary} style={styles.linkText}>
+                                        Log in
+                                    </TextComponent>
                                 </TouchableOpacity>
                             </View>
                         </View>
@@ -198,19 +318,31 @@ const styles = StyleSheet.create({
     },
     accentCircle1: {
         position: 'absolute',
-        width: 350,
-        height: 350,
-        borderRadius: 175,
-        top: -100,
-        right: -100,
+        width: 400,
+        height: 400,
+        borderRadius: 200,
+        top: -150,
+        right: -120,
     },
     accentCircle2: {
         position: 'absolute',
-        width: 280,
-        height: 280,
-        borderRadius: 140,
-        bottom: 80,
-        left: -80,
+        width: 320,
+        height: 320,
+        borderRadius: 160,
+        bottom: 100,
+        left: -100,
+    },
+    glowEffect: {
+        position: 'absolute',
+        width: 300,
+        height: 300,
+        borderRadius: 150,
+        top: height * 0.25,
+        left: width * 0.5 - 150,
+    },
+    iconContainer: {
+        alignItems: 'center',
+        marginBottom: 24,
     },
     container: {
         flex: 1,
@@ -245,10 +377,12 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         marginBottom: 12,
         letterSpacing: -1.2,
+        textAlign: 'center',
     },
     subtitle: {
         fontSize: 16,
         lineHeight: 24,
+        textAlign: 'center',
     },
     formCard: {
         borderRadius: 24,
@@ -289,6 +423,11 @@ const styles = StyleSheet.create({
         padding: 4,
         marginLeft: 8,
     },
+    errorText: {
+        fontSize: 12,
+        marginTop: 6,
+        fontWeight: '500',
+    },
     primaryButton: {
         paddingVertical: 18,
         borderRadius: 16,
@@ -306,6 +445,14 @@ const styles = StyleSheet.create({
         fontSize: 17,
         fontWeight: '700',
         letterSpacing: 0.2,
+    },
+    loadingContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    spinner: {
+        marginRight: 10,
     },
     footer: {
         flexDirection: 'row',

@@ -1,32 +1,51 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { iconMap } from '../config/tabBarConfig.js';
 import { useTheme } from '../../theme/ThemeContext';
 
 const CustomTabBar = ({ state, descriptors, navigation }) => {
     const { theme } = useTheme();
     const { colors, radius, spacing } = theme;
+    const insets = useSafeAreaInsets();
+
+    const renderTabIcon = (routeName, isFocused) => {
+        const IconComponent = iconMap[routeName] || iconMap.Home;
+        return (
+            <IconComponent
+                size={isFocused ? 24 : 22}
+                color={isFocused ? colors.textPrimary : colors.textSecondary}
+                strokeWidth={2}
+            />
+        );
+    };
+
     const styles = StyleSheet.create({
         tabBarContainer: {
             position: 'absolute',
-            bottom: 20,
+            bottom: Math.max(insets.bottom, 20),
             left: 20,
             right: 20,
             alignItems: 'center',
             justifyContent: 'center',
         },
         tabBarBackground: {
-            backgroundColor: colors.textPrimary,
+            backgroundColor: theme.mode === 'dark' 
+                ? 'rgba(15, 23, 42, 0.8)' 
+                : 'rgba(0, 0, 0, 0.8)',
             borderRadius: radius.pill,
             paddingVertical: spacing.sm,
             paddingHorizontal: spacing.md,
-            shadowColor: colors.shadow,
+            shadowColor: colors.shadow || '#000',
             shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.15,
+            shadowOpacity: 0.3,
             shadowRadius: 12,
-            elevation: 8,
+            elevation: 10,
             borderWidth: 1,
-            borderColor: colors.border,
+            borderColor: theme.mode === 'dark' 
+                ? 'rgba(255, 255, 255, 0.1)' 
+                : 'rgba(255, 255, 255, 0.1)',
+            backdropFilter: 'blur(10px)',
         },
         tabBarContent: {
             flexDirection: 'row',
@@ -49,16 +68,6 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             justifyContent: 'center',
         },
     });
-    const renderTabIcon = (routeName, isFocused) => {
-        const IconComponent = iconMap[routeName] || iconMap.Home;
-        return (
-            <IconComponent
-                size={isFocused ? 24 : 22}
-                color={isFocused ? colors.textPrimary : colors.textSecondary}
-                strokeWidth={2}
-            />
-        );
-    };
 
     return (
         <View style={styles.tabBarContainer}>

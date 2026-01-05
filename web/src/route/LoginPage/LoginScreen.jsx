@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Text from '../../components/ui/Text';
+import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
 
 const LoginScreen = () => {
     const navigate = useNavigate();
@@ -72,10 +73,15 @@ const LoginScreen = () => {
                 justifyContent: 'center',
                 backgroundColor: '#ffffff',
                 padding: '24px',
+                position: 'relative',
+                overflow: 'hidden',
             }}>
+            <NewsBackgroundAnimation />
             <div style={{
                 width: '100%',
                 maxWidth: '420px',
+                position: 'relative',
+                zIndex: 1,
             }}>
                 {/* Logo */}
                 <div style={{ marginBottom: '48px', textAlign: 'left' }}>

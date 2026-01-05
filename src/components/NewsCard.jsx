@@ -1,8 +1,8 @@
 // ============================================
 // FILE: components/NewsCard.jsx
 // ============================================
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
 import {
     ChevronUp,
     ChevronDown,
@@ -15,19 +15,54 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 
-export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark }) => {
+export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark, index = 0 }) => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(20)).current;
+
+    useEffect(() => {
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 400,
+                delay: index * 50,
+                useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                friction: 8,
+                tension: 40,
+                delay: index * 50,
+                useNativeDriver: true,
+            }),
+        ]).start();
+    }, []);
 
     const cardStyles = StyleSheet.create({
         container: {
-            marginBottom: 1,
+            marginBottom: 8,
+            marginHorizontal: 4,
         },
         card: {
             backgroundColor: colors.surface,
-            padding: 16,
-            borderBottomWidth: 1,
-            borderBottomColor: colors.border,
+            padding: 22,
+            marginHorizontal: 2,
+            marginVertical: 4,
+            borderRadius: 16,
+            borderWidth: 1,
+            borderColor: colors.borderLight,
+            ...Platform.select({
+                ios: {
+                    shadowColor: colors.shadowDark || '#000',
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 8,
+                },
+                android: {
+                    elevation: 3,
+                },
+            }),
         },
         header: {
             flexDirection: 'row',
@@ -41,9 +76,9 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
             flex: 1,
         },
         sourceIcon: {
-            width: 42,
-            height: 42,
-            borderRadius: 4,
+            width: 44,
+            height: 44,
+            borderRadius: 8,
             justifyContent: 'center',
             alignItems: 'center',
             marginRight: 12,
@@ -95,10 +130,10 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
         },
         title: {
             color: colors.textPrimary,
-            fontSize: 18,
+            fontSize: 19,
             fontWeight: '700',
-            lineHeight: 26,
-            marginBottom: 10,
+            lineHeight: 27,
+            marginBottom: 12,
             letterSpacing: -0.3,
         },
         excerpt: {
@@ -117,9 +152,9 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
         },
         categoryBadge: {
             backgroundColor: colors.backgroundSecondary,
-            paddingHorizontal: 12,
-            paddingVertical: 5,
-            borderRadius: 4,
+            paddingHorizontal: 14,
+            paddingVertical: 6,
+            borderRadius: 6,
             borderLeftWidth: 3,
             borderLeftColor: colors.primary,
         },
@@ -187,12 +222,20 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     });
 
     return (
-        <TouchableOpacity
-            style={cardStyles.container}
-            onPress={onPress}
-            activeOpacity={0.98}
+        <Animated.View
+            style={[
+                cardStyles.container,
+                {
+                    opacity: fadeAnim,
+                    transform: [{ translateY: slideAnim }],
+                },
+            ]}
         >
-            <View style={cardStyles.card}>
+            <TouchableOpacity
+                onPress={onPress}
+                activeOpacity={0.95}
+            >
+                <View style={cardStyles.card}>
                 {/* Header */}
                 <View style={cardStyles.header}>
                     <View style={cardStyles.sourceContainer}>
@@ -310,5 +353,6 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                 </View>
             </View>
         </TouchableOpacity>
+        </Animated.View>
     );
 };

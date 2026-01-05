@@ -6,6 +6,7 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnable
 import com.facebook.react.defaults.DefaultReactActivityDelegate
 import android.os.Bundle;
     import org.devio.rn.splashscreen.SplashScreen;
+
 class MainActivity : ReactActivity() {
 
   /**
@@ -13,7 +14,10 @@ class MainActivity : ReactActivity() {
    * rendering of the component.
    */
   override fun getMainComponentName(): String = "TRAK"
+  
  override fun onCreate(savedInstanceState: Bundle?) {
+        // Show native splash immediately - before super.onCreate
+        // This ensures splash is visible from the very start
         SplashScreen.show(this)
         super.onCreate(savedInstanceState)
     }

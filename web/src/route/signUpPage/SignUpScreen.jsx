@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Lock, ArrowRight, Eye, EyeOff, X } from 'lucide-react';
 import Text from '../../components/ui/Text';
+import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
 
 const SignUpScreen = () => {
     const navigate = useNavigate();
@@ -89,10 +90,15 @@ const SignUpScreen = () => {
                 justifyContent: 'center',
                 backgroundColor: '#ffffff',
                 padding: '24px',
+                position: 'relative',
+                overflow: 'hidden',
             }}>
+            <NewsBackgroundAnimation />
             <div style={{
                 width: '100%',
                 maxWidth: '420px',
+                position: 'relative',
+                zIndex: 1,
             }}>
                 {/* Logo */}
                 <div style={{ marginBottom: '48px', textAlign: 'left' }}>

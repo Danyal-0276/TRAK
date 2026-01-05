@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, StatusBar, ScrollView, Platform, Alert, Animated } from 'react-native';
+import { View, StyleSheet, StatusBar, ScrollView, Platform, Alert, Animated, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { Header } from './components/Header';
@@ -8,31 +8,79 @@ import { Footer } from './components/Footer';
 import { useTheme } from '../../theme/ThemeContext';
 import Text from '../../components/ui/Text';
 
+const { width, height } = Dimensions.get('window');
+
 const LoginScreen = ({ navigation }) => {
     const { theme } = useTheme();
     const { colors } = theme;
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loadingProvider, setLoadingProvider] = useState(null);
+    const [loading, setLoading] = useState(false);
     
     const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(30)).current;
+    const slideAnim = useRef(new Animated.Value(50)).current;
+    const scaleAnim = useRef(new Animated.Value(0.95)).current;
+    const glowAnim = useRef(new Animated.Value(0)).current;
+    const circle1Anim = useRef(new Animated.Value(0)).current;
+    const circle2Anim = useRef(new Animated.Value(0)).current;
+    const circle3Anim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
+        // Staggered entrance animations
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
-                duration: 600,
+                duration: 800,
                 useNativeDriver: true,
             }),
             Animated.spring(slideAnim, {
                 toValue: 0,
                 friction: 8,
+                tension: 50,
+                useNativeDriver: true,
+            }),
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 7,
                 tension: 40,
                 useNativeDriver: true,
             }),
+            Animated.loop(
+                Animated.sequence([
+                    Animated.timing(glowAnim, {
+                        toValue: 1,
+                        duration: 2000,
+                        useNativeDriver: true,
+                    }),
+                    Animated.timing(glowAnim, {
+                        toValue: 0,
+                        duration: 2000,
+                        useNativeDriver: true,
+                    }),
+                ])
+            ),
+            Animated.parallel([
+                Animated.timing(circle1Anim, {
+                    toValue: 1,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(circle2Anim, {
+                    toValue: 1,
+                    duration: 1200,
+                    delay: 100,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(circle3Anim, {
+                    toValue: 1,
+                    duration: 1400,
+                    delay: 200,
+                    useNativeDriver: true,
+                }),
+            ]),
         ]).start();
-    }, [fadeAnim, slideAnim]);
+    }, []);
 
     const handleSocialLogin = async (provider) => {
         setLoadingProvider(provider);
@@ -55,45 +103,198 @@ const LoginScreen = ({ navigation }) => {
         <SafeAreaView style={[styles.safeContainer, { backgroundColor: colors.background }]}>
             <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
             
-            {/* Subtle gradient background */}
+            {/* Enhanced gradient background */}
             <LinearGradient
-                colors={[colors.background, colors.backgroundSecondary, colors.background]}
+                colors={theme.mode === 'dark' 
+                    ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
+                    : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
+                }
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.gradientBackground}
             />
             
-            {/* Decorative accent circles */}
-            <View style={[styles.accentCircle1, { backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.08' : '0.04'})` }]} />
-            <View style={[styles.accentCircle2, { backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.06' : '0.03'})` }]} />
+            {/* Animated decorative circles with glow */}
+            <Animated.View 
+                style={[
+                    styles.accentCircle1, 
+                    { 
+                        backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.12' : '0.05'})`,
+                        opacity: circle1Anim,
+                        transform: [
+                            {
+                                scale: circle1Anim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0.8, 1],
+                                }),
+                            },
+                        ],
+                    }
+                ]} 
+            />
+            <Animated.View 
+                style={[
+                    styles.accentCircle2, 
+                    { 
+                        backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.10' : '0.04'})`,
+                        opacity: circle2Anim,
+                        transform: [
+                            {
+                                scale: circle2Anim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0.8, 1],
+                                }),
+                            },
+                        ],
+                    }
+                ]} 
+            />
+            <Animated.View 
+                style={[
+                    styles.accentCircle3, 
+                    { 
+                        backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.08' : '0.03'})`,
+                        opacity: circle3Anim,
+                        transform: [
+                            {
+                                scale: circle3Anim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0.8, 1],
+                                }),
+                            },
+                        ],
+                    }
+                ]} 
+            />
+            
+            {/* Animated glow effect */}
+            <Animated.View
+                style={[
+                    styles.glowEffect,
+                    {
+                        backgroundColor: theme.mode === 'dark' ? 'rgba(129, 140, 248, 0.15)' : 'rgba(0, 0, 0, 0.05)',
+                        opacity: glowAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0.3, 0.6],
+                        }),
+                        transform: [
+                            {
+                                scale: glowAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [1, 1.1],
+                                }),
+                            },
+                        ],
+                    },
+                ]}
+            />
 
             <ScrollView
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
             >
-                <Animated.View style={[styles.contentWrapper, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-                    <Header onBackPress={() => navigation.navigate('OpeningScreen')} />
+                <Animated.View 
+                    style={[
+                        styles.contentWrapper, 
+                        { 
+                            opacity: fadeAnim, 
+                            transform: [
+                                { translateY: slideAnim },
+                                { scale: scaleAnim },
+                            ],
+                        }
+                    ]}
+                >
+                    <Animated.View
+                        style={{
+                            opacity: fadeAnim,
+                            transform: [{ translateY: slideAnim }],
+                        }}
+                    >
+                        <Header onBackPress={() => navigation.navigate('OpeningScreen')} />
+                    </Animated.View>
                     
-                    <View style={styles.headerSection}>
+                    <Animated.View 
+                        style={[
+                            styles.headerSection,
+                            {
+                                opacity: fadeAnim,
+                                transform: [
+                                    {
+                                        translateY: slideAnim.interpolate({
+                                            inputRange: [0, 50],
+                                            outputRange: [0, 20],
+                                        }),
+                                    },
+                                ],
+                            },
+                        ]}
+                    >
                         <Text variant="title" style={styles.title}>Welcome back</Text>
-                        <Text variant="body" color={colors.textSecondary} style={styles.subtitle}>Sign in to continue your journey</Text>
-                    </View>
+                        <Text variant="body" color={colors.textSecondary} style={styles.subtitle}>
+                            Sign in to continue your journey
+                        </Text>
+                    </Animated.View>
 
-                    <View style={[styles.formCard, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
+                    <Animated.View 
+                        style={[
+                            styles.formCard, 
+                            { 
+                                backgroundColor: colors.surface, 
+                                borderColor: colors.borderLight,
+                                opacity: fadeAnim,
+                                transform: [
+                                    {
+                                        translateY: slideAnim.interpolate({
+                                            inputRange: [0, 50],
+                                            outputRange: [0, 30],
+                                        }),
+                                    },
+                                ],
+                            }
+                        ]}
+                    >
                         <LoginForm
                             email={email}
                             setEmail={setEmail}
                             password={password}
                             setPassword={setPassword}
-                            onLoginPress={() => navigation.navigate('NewsFeed')}
+                            onLoginPress={async () => {
+                                if (!email || !password) return;
+                                setLoading(true);
+                                try {
+                                    // Simulate API call
+                                    await new Promise(resolve => setTimeout(resolve, 1500));
+                                    navigation.navigate('NewsFeed');
+                                } catch (error) {
+                                    Alert.alert('Error', 'Failed to sign in. Please try again.');
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}
                             onForgotPasswordPress={() => navigation.navigate('ForgotPassword')}
                             onSocialPress={handleSocialLogin}
                             loadingProvider={loadingProvider}
+                            loading={loading}
                         />
-                    </View>
+                    </Animated.View>
 
-                    <Footer onSignUpPress={() => navigation.navigate('SignUp')} />
+                    <Animated.View
+                        style={{
+                            opacity: fadeAnim,
+                            transform: [
+                                {
+                                    translateY: slideAnim.interpolate({
+                                        inputRange: [0, 50],
+                                        outputRange: [0, 40],
+                                    }),
+                                },
+                            ],
+                        }}
+                    >
+                        <Footer onSignUpPress={() => navigation.navigate('SignUp')} />
+                    </Animated.View>
                 </Animated.View>
             </ScrollView>
         </SafeAreaView>
@@ -113,19 +314,35 @@ const styles = StyleSheet.create({
     },
     accentCircle1: {
         position: 'absolute',
-        width: 350,
-        height: 350,
-        borderRadius: 175,
-        top: -100,
-        right: -100,
+        width: 400,
+        height: 400,
+        borderRadius: 200,
+        top: -150,
+        right: -120,
     },
     accentCircle2: {
         position: 'absolute',
-        width: 280,
-        height: 280,
-        borderRadius: 140,
-        bottom: 80,
-        left: -80,
+        width: 320,
+        height: 320,
+        borderRadius: 160,
+        bottom: 100,
+        left: -100,
+    },
+    accentCircle3: {
+        position: 'absolute',
+        width: 250,
+        height: 250,
+        borderRadius: 125,
+        top: height * 0.3,
+        right: -50,
+    },
+    glowEffect: {
+        position: 'absolute',
+        width: 300,
+        height: 300,
+        borderRadius: 150,
+        top: height * 0.2,
+        left: width * 0.5 - 150,
     },
     scrollContent: {
         flexGrow: 1,

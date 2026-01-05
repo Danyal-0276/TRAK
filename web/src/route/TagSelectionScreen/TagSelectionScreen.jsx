@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
+import { useResponsive } from '../../hooks/useResponsive';
 import Text from '../../components/ui/Text';
 import { ArrowLeft, Search, Check, X } from 'lucide-react';
 import { newsTagsWithSubcategories } from './constants/newsCategories';
@@ -8,6 +9,8 @@ import { newsTagsWithSubcategories } from './constants/newsCategories';
 const TagSelectionScreen = () => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
     const [selectedTags, setSelectedTags] = useState([]);
     const [searchText, setSearchText] = useState('');
@@ -50,111 +53,81 @@ const TagSelectionScreen = () => {
         navigate('/keyword-selection', { state: { selectedTags } });
     };
 
+    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
+    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
+    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
+
     return (
         <div style={{
             minHeight: '100vh',
-            display: 'flex',
-            backgroundColor: '#ffffff',
+            backgroundColor: backgroundColor,
+            paddingTop: '0',
+            marginTop: '0',
         }}>
-            {/* Left Side - Branding */}
             <div style={{
-                flex: '0 0 40%',
-                backgroundColor: '#000000',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '60px',
-                position: 'relative',
-                overflow: 'hidden',
+                maxWidth: '1200px',
+                margin: '0 auto',
+                width: '100%',
+                padding: isMobile ? '0 16px 24px 16px' : isTablet ? '0 20px 24px 20px' : '0 24px 24px 24px',
             }}>
-                <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', maxWidth: '400px' }}>
-                    <img 
-                        src="/images/whiteLogo.svg" 
-                        alt="TRAK Logo" 
-                        style={{ 
-                            width: '100px', 
-                            height: '100px',
-                            margin: '0 auto 32px',
-                            display: 'block',
-                        }} 
-                    />
-                    <Text variant="title" style={{
-                        fontSize: '42px',
-                        fontWeight: '800',
-                        color: '#ffffff',
-                        marginBottom: '20px',
-                        letterSpacing: '-1px',
-                    }}>
-                        Select Interests
-                    </Text>
-                    <Text variant="body" style={{
-                        fontSize: '16px',
-                        color: 'rgba(255, 255, 255, 0.8)',
-                        lineHeight: '1.6',
-                    }}>
-                        Choose categories to personalize your news feed
-                    </Text>
-                </div>
-            </div>
+                {/* Header Section */}
+                <div style={{
+                    marginTop: '0',
+                    marginBottom: isMobile ? '16px' : '24px',
+                    paddingTop: '0',
+                }}>
+                    <button
+                        onClick={() => navigate(-1)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 0',
+                            border: 'none',
+                            background: 'transparent',
+                            color: textSecondary,
+                            fontSize: '15px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            marginBottom: '24px',
+                            alignSelf: 'flex-start',
+                        }}
+                    >
+                        <ArrowLeft size={18} />
+                        Back
+                    </button>
 
-            {/* Right Side - Tag Selection */}
-            <div style={{
-                flex: '0 0 60%',
-                display: 'flex',
-                flexDirection: 'column',
-                padding: '40px 60px',
-                backgroundColor: '#ffffff',
-                overflowY: 'auto',
-                maxHeight: '100vh',
-            }}>
-                <button
-                    onClick={() => navigate(-1)}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        padding: '8px 0',
-                        border: 'none',
-                        background: 'transparent',
-                        color: '#6b7280',
-                        fontSize: '15px',
-                        fontWeight: '500',
-                        cursor: 'pointer',
-                        marginBottom: '32px',
-                        alignSelf: 'flex-start',
-                    }}
-                >
-                    <ArrowLeft size={18} />
-                    Back
-                </button>
-
-                <div style={{ marginBottom: '24px' }}>
-                    <Text variant="body" style={{
-                        fontSize: '18px',
-                        fontWeight: '400',
-                        color: '#374151',
-                        marginBottom: '8px',
-                        letterSpacing: '0.2px',
+                    <h1 style={{
+                        fontSize: isMobile ? '22px' : isTablet ? '24px' : '28px',
+                        fontWeight: '700',
+                        color: textPrimary,
+                        margin: '0 0 8px 0',
+                        paddingTop: '0',
+                        letterSpacing: '-0.5px',
                     }}>
-                        Select your interests
-                    </Text>
-                    <Text variant="body" style={{
+                        Select Your Interests
+                    </h1>
+                    <p style={{
                         fontSize: '15px',
-                        color: '#6b7280',
+                        color: textSecondary,
+                        margin: '0',
                         lineHeight: '1.5',
                     }}>
-                        Select at least one category to continue
-                    </Text>
+                        Choose categories to personalize your news feed
+                    </p>
                 </div>
 
                 {/* Search */}
                 <div style={{ marginBottom: '20px', position: 'relative' }}>
-                    <Search size={18} color="#9ca3af" style={{
+                    <Search size={18} color={textSecondary} style={{
                         position: 'absolute',
                         left: '14px',
                         top: '50%',
                         transform: 'translateY(-50%)',
                         pointerEvents: 'none',
+                        zIndex: 1,
                     }} />
                     <input
                         type="text"
@@ -165,50 +138,54 @@ const TagSelectionScreen = () => {
                             width: '100%',
                             padding: '12px 14px 12px 44px',
                             fontSize: '14px',
-                            border: '1px solid #e5e7eb',
+                            border: `1px solid ${borderColor}`,
                             borderRadius: '8px',
                             outline: 'none',
                             transition: 'all 0.2s ease',
-                            color: '#111827',
-                            backgroundColor: '#f9fafb',
+                            color: textPrimary,
+                            backgroundColor: isDark ? cardBackground : '#f9fafb',
                         }}
                         onFocus={(e) => {
-                            e.target.style.backgroundColor = '#ffffff';
-                            e.target.style.borderColor = '#000000';
-                            e.target.style.boxShadow = '0 0 0 3px rgba(0, 0, 0, 0.05)';
+                            e.target.style.backgroundColor = cardBackground;
+                            e.target.style.borderColor = isDark ? colors.primary || '#3b82f6' : '#000000';
+                            e.target.style.boxShadow = `0 0 0 3px ${isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(0, 0, 0, 0.05)'}`;
                         }}
                         onBlur={(e) => {
-                            e.target.style.backgroundColor = '#f9fafb';
-                            e.target.style.borderColor = '#e5e7eb';
+                            e.target.style.backgroundColor = isDark ? cardBackground : '#f9fafb';
+                            e.target.style.borderColor = borderColor;
                             e.target.style.boxShadow = 'none';
                         }}
                     />
                 </div>
 
-                {/* Selected Count - Compact */}
+                {/* Selected Count */}
                 {selectedTags.length > 0 && (
                     <div style={{
-                        padding: '8px 12px',
-                        backgroundColor: '#f3f4f6',
+                        padding: '8px 14px',
+                        backgroundColor: isDark ? colors.surface || '#1E293B' : '#f3f4f6',
                         borderRadius: '8px',
                         marginBottom: '20px',
-                        display: 'inline-block',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        width: 'auto',
+                        height: 'auto',
                     }}>
-                        <Text variant="body" style={{
+                        <span style={{
                             fontSize: '13px',
                             fontWeight: '600',
-                            color: '#000000',
+                            color: textPrimary,
+                            whiteSpace: 'nowrap',
                         }}>
                             {selectedTags.length} selected
-                        </Text>
+                        </span>
                     </div>
                 )}
 
-                {/* Tags - Compact Grid */}
+                {/* Tags Grid */}
                 <div style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))',
-                    gap: '8px',
+                    gridTemplateColumns: isMobile ? '1fr' : isTablet ? 'repeat(auto-fill, minmax(180px, 1fr))' : 'repeat(auto-fill, minmax(200px, 1fr))',
+                    gap: '12px',
                     marginBottom: '32px',
                 }}>
                     {filteredTags.map((tag, index) => {
@@ -221,10 +198,10 @@ const TagSelectionScreen = () => {
                                     onClick={() => toggleMainTag(tag)}
                                     style={{
                                         width: '100%',
-                                        padding: '10px 12px',
-                                        border: isSelected ? '2px solid #000000' : '1px solid #e5e7eb',
+                                        padding: '12px 16px',
+                                        border: isSelected ? `2px solid ${isDark ? colors.primary || '#3b82f6' : '#000000'}` : `1px solid ${borderColor}`,
                                         borderRadius: '8px',
-                                        backgroundColor: isSelected ? '#f9fafb' : '#ffffff',
+                                        backgroundColor: isSelected ? (isDark ? colors.surface || '#1E293B' : '#f9fafb') : cardBackground,
                                         cursor: 'pointer',
                                         textAlign: 'left',
                                         transition: 'all 0.15s ease',
@@ -233,18 +210,18 @@ const TagSelectionScreen = () => {
                                         justifyContent: 'space-between',
                                         fontSize: '14px',
                                         fontWeight: isSelected ? 600 : 500,
-                                        color: isSelected ? '#000000' : '#374151',
+                                        color: textPrimary,
                                     }}
                                     onMouseEnter={(e) => {
                                         if (!isSelected) {
-                                            e.currentTarget.style.borderColor = '#d1d5db';
-                                            e.currentTarget.style.backgroundColor = '#f9fafb';
+                                            e.currentTarget.style.borderColor = isDark ? colors.border || '#475569' : '#d1d5db';
+                                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
                                         }
                                     }}
                                     onMouseLeave={(e) => {
                                         if (!isSelected) {
-                                            e.currentTarget.style.borderColor = '#e5e7eb';
-                                            e.currentTarget.style.backgroundColor = '#ffffff';
+                                            e.currentTarget.style.borderColor = borderColor;
+                                            e.currentTarget.style.backgroundColor = cardBackground;
                                         }
                                     }}
                                 >
@@ -254,7 +231,7 @@ const TagSelectionScreen = () => {
                                             width: '18px',
                                             height: '18px',
                                             borderRadius: '4px',
-                                            backgroundColor: '#000000',
+                                            backgroundColor: isDark ? colors.primary || '#3b82f6' : '#000000',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
@@ -268,10 +245,10 @@ const TagSelectionScreen = () => {
                                 {/* Subcategories - Inline Pills */}
                                 {isSelected && subcategories.length > 0 && (
                                     <div style={{
-                                        marginTop: '6px',
+                                        marginTop: '8px',
                                         display: 'flex',
                                         flexWrap: 'wrap',
-                                        gap: '4px',
+                                        gap: '6px',
                                     }}>
                                         {subcategories.map((subTag, subIndex) => {
                                             const isSubSelected = selectedTags.includes(subTag);
@@ -283,24 +260,24 @@ const TagSelectionScreen = () => {
                                                         toggleSubTag(tag, subTag);
                                                     }}
                                                     style={{
-                                                        padding: '4px 10px',
-                                                        border: isSubSelected ? '1px solid #000000' : '1px solid #e5e7eb',
+                                                        padding: '6px 12px',
+                                                        border: isSubSelected ? `1px solid ${isDark ? colors.primary || '#3b82f6' : '#000000'}` : `1px solid ${borderColor}`,
                                                         borderRadius: '12px',
-                                                        backgroundColor: isSubSelected ? '#f9fafb' : '#ffffff',
+                                                        backgroundColor: isSubSelected ? (isDark ? colors.surface || '#1E293B' : '#f9fafb') : cardBackground,
                                                         cursor: 'pointer',
                                                         fontSize: '12px',
                                                         fontWeight: isSubSelected ? 600 : 500,
-                                                        color: isSubSelected ? '#000000' : '#6b7280',
+                                                        color: isSubSelected ? textPrimary : textSecondary,
                                                         transition: 'all 0.15s ease',
                                                     }}
                                                     onMouseEnter={(e) => {
                                                         if (!isSubSelected) {
-                                                            e.currentTarget.style.borderColor = '#d1d5db';
+                                                            e.currentTarget.style.borderColor = isDark ? colors.border || '#475569' : '#d1d5db';
                                                         }
                                                     }}
                                                     onMouseLeave={(e) => {
                                                         if (!isSubSelected) {
-                                                            e.currentTarget.style.borderColor = '#e5e7eb';
+                                                            e.currentTarget.style.borderColor = borderColor;
                                                         }
                                                     }}
                                                 >
@@ -315,13 +292,10 @@ const TagSelectionScreen = () => {
                     })}
                 </div>
 
-                {/* Continue Button - Fixed at bottom */}
+                {/* Continue Button */}
                 <div style={{
-                    position: 'sticky',
-                    bottom: 0,
-                    backgroundColor: '#ffffff',
                     paddingTop: '20px',
-                    borderTop: '1px solid #e5e7eb',
+                    borderTop: `1px solid ${borderColor}`,
                     marginTop: 'auto',
                 }}>
                     <button
@@ -330,7 +304,7 @@ const TagSelectionScreen = () => {
                         style={{
                             width: '100%',
                             padding: '14px 24px',
-                            backgroundColor: selectedTags.length > 0 ? '#000000' : '#d1d5db',
+                            backgroundColor: selectedTags.length > 0 ? (isDark ? colors.primary || '#3b82f6' : '#000000') : (isDark ? '#475569' : '#d1d5db'),
                             color: '#ffffff',
                             border: 'none',
                             borderRadius: '10px',
@@ -341,12 +315,12 @@ const TagSelectionScreen = () => {
                         }}
                         onMouseEnter={(e) => {
                             if (selectedTags.length > 0) {
-                                e.currentTarget.style.backgroundColor = '#1a1a1a';
+                                e.currentTarget.style.backgroundColor = isDark ? '#2563eb' : '#1a1a1a';
                             }
                         }}
                         onMouseLeave={(e) => {
                             if (selectedTags.length > 0) {
-                                e.currentTarget.style.backgroundColor = '#000000';
+                                e.currentTarget.style.backgroundColor = isDark ? colors.primary || '#3b82f6' : '#000000';
                             }
                         }}
                     >

@@ -6,7 +6,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { CheckCircle, Clock } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 
-export const ArticleSourceInfo = ({ source, time, verified, trending }) => {
+export const ArticleSourceInfo = ({ source, time, verified, trending, readTime }) => {
     const { theme } = useTheme();
     const { colors } = theme;
     
@@ -14,7 +14,7 @@ export const ArticleSourceInfo = ({ source, time, verified, trending }) => {
         <View style={styles.container}>
             <View style={[
                 styles.sourceIcon,
-                { backgroundColor: trending ? colors.error : colors.info }
+                { backgroundColor: trending ? colors.primary : colors.textSecondary }
             ]}>
                 <Text style={[styles.sourceIconText, { color: colors.textInverse }]}>
                     {source.substring(0, 2).toUpperCase()}
@@ -24,12 +24,18 @@ export const ArticleSourceInfo = ({ source, time, verified, trending }) => {
                 <View style={styles.nameRow}>
                     <Text style={[styles.sourceName, { color: colors.textPrimary }]}>{source}</Text>
                     {verified && (
-                        <CheckCircle size={14} color={colors.info} fill={colors.info} />
+                        <CheckCircle size={14} color={colors.verified || colors.info} fill={colors.verified || colors.info} />
                     )}
                 </View>
                 <View style={styles.timeRow}>
                     <Clock size={12} color={colors.textSecondary} />
                     <Text style={[styles.timeText, { color: colors.textSecondary }]}>{time}</Text>
+                    {readTime && (
+                        <>
+                            <Text style={[styles.dot, { color: colors.textTertiary }]}>•</Text>
+                            <Text style={[styles.readTime, { color: colors.textSecondary }]}>{readTime} min read</Text>
+                        </>
+                    )}
                 </View>
             </View>
         </View>
@@ -43,15 +49,15 @@ const styles = StyleSheet.create({
         marginBottom: 20,
     },
     sourceIcon: {
-        width: 50,
-        height: 50,
-        borderRadius: 4,
+        width: 44,
+        height: 44,
+        borderRadius: 8,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 14,
+        marginRight: 12,
     },
     sourceIconText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '900',
         letterSpacing: 0.5,
     },
@@ -64,7 +70,7 @@ const styles = StyleSheet.create({
         marginBottom: 5,
     },
     sourceName: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '700',
         marginRight: 6,
     },
@@ -73,8 +79,16 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     timeText: {
-        fontSize: 14,
+        fontSize: 13,
         fontWeight: '500',
         marginLeft: 4,
+    },
+    dot: {
+        fontSize: 13,
+        marginHorizontal: 6,
+    },
+    readTime: {
+        fontSize: 13,
+        fontWeight: '500',
     },
 });

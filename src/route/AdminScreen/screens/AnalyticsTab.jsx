@@ -1,10 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { TrendingUp } from 'lucide-react-native';
+import { useTheme } from '../../../theme/ThemeContext';
 import PercentageCard from '../components/PercentageCard';
 import ChartSection from '../components/ChartSection';
 import StatRow from '../components/StatRow';
+import Text from '../../../components/ui/Text';
 
 const AnalyticsTab = ({ analytics }) => {
+  const { theme } = useTheme();
+  const { colors } = theme;
+  
   if (!analytics) return null;
 
   const { newsStats, weeklyData, monthlyTrend } = analytics;
@@ -59,10 +65,21 @@ const AnalyticsTab = ({ analytics }) => {
   ];
 
   return (
-    <>
+    <View style={styles.container}>
       <View style={styles.analyticsHeader}>
-        <Text style={styles.sectionTitle}>News Analytics</Text>
-        <Text style={styles.analyticsSubtitle}>Comprehensive news verification statistics</Text>
+        <View style={styles.headerLeft}>
+          <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
+            <TrendingUp size={20} color={colors.primary} />
+          </View>
+          <View>
+            <Text variant="title" color={colors.textPrimary} style={styles.sectionTitle}>
+              News Analytics
+            </Text>
+            <Text variant="caption" color={colors.textSecondary} style={styles.analyticsSubtitle}>
+              Comprehensive news verification statistics
+            </Text>
+          </View>
+        </View>
       </View>
 
       <View style={styles.percentageCards}>
@@ -108,8 +125,10 @@ const AnalyticsTab = ({ analytics }) => {
         }}
       />
 
-      <View style={styles.statsBreakdown}>
-        <Text style={styles.sectionTitle}>Detailed Statistics</Text>
+        <View style={styles.statsBreakdown}>
+        <Text variant="subtitle" color={colors.textPrimary} style={styles.sectionTitle}>
+          Detailed Statistics
+        </Text>
         
         <StatRow
           label="Verified Real News"
@@ -130,30 +149,46 @@ const AnalyticsTab = ({ analytics }) => {
           color="#FF9800"
         />
 
-        <View style={styles.totalRow}>
-          <Text style={styles.totalLabel}>Total Articles Analyzed</Text>
-          <Text style={styles.totalValue}>{total}</Text>
+        <View style={[styles.totalRow, { borderTopColor: colors.border }]}>
+          <Text variant="body" color={colors.textPrimary} style={styles.totalLabel}>
+            Total Articles Analyzed
+          </Text>
+          <Text variant="title" color={colors.primary} style={styles.totalValue}>
+            {total}
+          </Text>
         </View>
       </View>
-    </>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    paddingTop: 8,
+  },
   analyticsHeader: {
     paddingHorizontal: 20,
     marginBottom: 24,
   },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  iconContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#000',
-    marginBottom: 16,
+    marginBottom: 4,
   },
   analyticsSubtitle: {
     fontSize: 14,
-    color: '#666',
-    marginTop: 4,
   },
   percentageCards: {
     flexDirection: 'row',
@@ -172,17 +207,14 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     marginTop: 12,
     borderTopWidth: 2,
-    borderTopColor: '#000',
   },
   totalLabel: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#000',
   },
   totalValue: {
-    fontSize: 24,
+    fontSize: 28,
     fontWeight: '700',
-    color: '#000',
   },
 });
 

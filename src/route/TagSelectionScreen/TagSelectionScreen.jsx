@@ -1,10 +1,11 @@
 // ============================================
 // FILE: screens/TagSelectionScreen.jsx
 // ============================================
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, StatusBar, ScrollView } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, StatusBar, ScrollView, Animated, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'react-native-linear-gradient';
+import LinearGradient from 'react-native-linear-gradient';
+import { Tags } from 'lucide-react-native';
 
 import { Header } from './components/Header';
 import { SearchBar } from './components/SearchBar';
@@ -13,10 +14,82 @@ import { Tag } from './components/Tag';
 import { SubcategoriesContainer } from './components/SubcategoriesContainer';
 import { ContinueButton } from './components/ContinueButton';
 import { newsTagsWithSubcategories } from './constants/newsCategories';
+import { useTheme } from '../../theme/ThemeContext';
+import TextComponent from '../../components/ui/Text';
+
+const { width, height } = Dimensions.get('window');
 
 const TagSelectionScreen = ({ navigation }) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
     const [selectedTags, setSelectedTags] = useState([]);
     const [searchText, setSearchText] = useState('');
+    const [loading, setLoading] = useState(false);
+
+    // Animation refs
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(50)).current;
+    const scaleAnim = useRef(new Animated.Value(0.95)).current;
+    const iconScale = useRef(new Animated.Value(0)).current;
+    const iconRotate = useRef(new Animated.Value(0)).current;
+    const circle1Anim = useRef(new Animated.Value(0)).current;
+    const circle2Anim = useRef(new Animated.Value(0)).current;
+    const circle3Anim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        // Staggered entrance animations
+        Animated.parallel([
+            Animated.timing(fadeAnim, {
+                toValue: 1,
+                duration: 800,
+                useNativeDriver: true,
+            }),
+            Animated.spring(slideAnim, {
+                toValue: 0,
+                friction: 8,
+                tension: 50,
+                useNativeDriver: true,
+            }),
+            Animated.spring(scaleAnim, {
+                toValue: 1,
+                friction: 7,
+                tension: 40,
+                useNativeDriver: true,
+            }),
+            Animated.spring(iconScale, {
+                toValue: 1,
+                friction: 6,
+                tension: 40,
+                delay: 300,
+                useNativeDriver: true,
+            }),
+            Animated.timing(iconRotate, {
+                toValue: 1,
+                duration: 1000,
+                delay: 400,
+                useNativeDriver: true,
+            }),
+            Animated.parallel([
+                Animated.timing(circle1Anim, {
+                    toValue: 1,
+                    duration: 1000,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(circle2Anim, {
+                    toValue: 1,
+                    duration: 1200,
+                    delay: 100,
+                    useNativeDriver: true,
+                }),
+                Animated.timing(circle3Anim, {
+                    toValue: 1,
+                    duration: 1400,
+                    delay: 200,
+                    useNativeDriver: true,
+                }),
+            ]),
+        ]).start();
+    }, []);
 
     const mainTags = Object.keys(newsTagsWithSubcategories);
 
@@ -56,111 +129,321 @@ const TagSelectionScreen = ({ navigation }) => {
     };
 
     // Navigate to next screen with selected tags
-    const handleContinue = () => {
-        console.log('Selected tags:', selectedTags);
-        navigation.navigate('KeywordSelection', { selectedTags });
+    const handleContinue = async () => {
+        if (selectedTags.length === 0) {
+            return;
+        }
+        setLoading(true);
+        try {
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, 500));
+            navigation.navigate('KeywordSelection', { selectedTags });
+        } catch (error) {
+            console.error('Error:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
-        <LinearGradient
-            colors={['#f8fafc', '#e2e8f0', '#cbd5e1']}
-            style={styles.container}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-        >
-            <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
-            <SafeAreaView style={styles.safeArea}>
-                
-                <Header onBack={() => navigation.goBack()} />
+        <SafeAreaView style={[styles.safeContainer, { backgroundColor: colors.background }]}>
+            <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+            
+            {/* Enhanced gradient background */}
+            <LinearGradient
+                colors={theme.mode === 'dark' 
+                    ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
+                    : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
+                }
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.gradientBackground}
+            />
+            
+            {/* Animated decorative circles */}
+            <Animated.View 
+                style={[
+                    styles.accentCircle1, 
+                    { 
+                        backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.12' : '0.05'})`,
+                        opacity: circle1Anim,
+                        transform: [
+                            {
+                                scale: circle1Anim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0.8, 1],
+                                }),
+                            },
+                        ],
+                    }
+                ]} 
+            />
+            <Animated.View 
+                style={[
+                    styles.accentCircle2, 
+                    { 
+                        backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.10' : '0.04'})`,
+                        opacity: circle2Anim,
+                        transform: [
+                            {
+                                scale: circle2Anim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0.8, 1],
+                                }),
+                            },
+                        ],
+                    }
+                ]} 
+            />
+            <Animated.View 
+                style={[
+                    styles.accentCircle3, 
+                    { 
+                        backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.08' : '0.03'})`,
+                        opacity: circle3Anim,
+                        transform: [
+                            {
+                                scale: circle3Anim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0.8, 1],
+                                }),
+                            },
+                        ],
+                    }
+                ]} 
+            />
 
-                <ScrollView 
-                    contentContainerStyle={styles.scrollContent} 
-                    showsVerticalScrollIndicator={false}
+            <ScrollView 
+                contentContainerStyle={styles.scrollContent} 
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+            >
+                <Animated.View 
+                    style={[
+                        styles.contentWrapper, 
+                        { 
+                            opacity: fadeAnim, 
+                            transform: [
+                                { translateY: slideAnim },
+                                { scale: scaleAnim },
+                            ],
+                        }
+                    ]}
                 >
-                    <View style={styles.content}>
-                        <Text style={styles.title}>
-                            Pick tags that are{'\n'}relevant to you
-                        </Text>
-                        
-                        <Text style={styles.subtitle}>
-                            Select news categories you're interested in to personalize your feed
-                        </Text>
+                    <Animated.View
+                        style={{
+                            opacity: fadeAnim,
+                            transform: [{ translateY: slideAnim }],
+                        }}
+                    >
+                        <Header onBack={() => navigation.goBack()} />
+                    </Animated.View>
 
+                    <Animated.View 
+                        style={[
+                            styles.headerSection,
+                            {
+                                opacity: fadeAnim,
+                                transform: [
+                                    {
+                                        translateY: slideAnim.interpolate({
+                                            inputRange: [0, 50],
+                                            outputRange: [0, 20],
+                                        }),
+                                    },
+                                ],
+                            },
+                        ]}
+                    >
+                        <View style={styles.iconContainer}>
+                            <Animated.View
+                                style={{
+                                    transform: [
+                                        {
+                                            scale: iconScale,
+                                        },
+                                        {
+                                            rotate: iconRotate.interpolate({
+                                                inputRange: [0, 1],
+                                                outputRange: ['-10deg', '0deg'],
+                                            }),
+                                        },
+                                    ],
+                                }}
+                            >
+                                <Tags size={48} color={colors.primary} strokeWidth={2} />
+                            </Animated.View>
+                        </View>
+                        <TextComponent variant="title" style={styles.title}>
+                            Pick tags that are{'\n'}relevant to you
+                        </TextComponent>
+                        <TextComponent variant="body" color={colors.textSecondary} style={styles.subtitle}>
+                            Select news categories you're interested in to personalize your feed
+                        </TextComponent>
+                    </Animated.View>
+
+                    <Animated.View 
+                        style={{
+                            opacity: fadeAnim,
+                            transform: [
+                                {
+                                    translateY: slideAnim.interpolate({
+                                        inputRange: [0, 50],
+                                        outputRange: [0, 30],
+                                    }),
+                                },
+                            ],
+                        }}
+                    >
                         <SearchBar 
                             value={searchText}
                             onChangeText={setSearchText}
                         />
+                    </Animated.View>
 
+                    <Animated.View
+                        style={{
+                            opacity: fadeAnim,
+                            transform: [
+                                {
+                                    translateY: slideAnim.interpolate({
+                                        inputRange: [0, 50],
+                                        outputRange: [0, 30],
+                                    }),
+                                },
+                            ],
+                        }}
+                    >
                         <SelectedCount count={selectedTags.length} />
+                    </Animated.View>
 
-                        {/* Tags Container */}
-                        <View style={styles.tagsContainer}>
-                            {filteredTags.map((tag, index) => {
-                                const isSelected = selectedTags.includes(tag);
-                                return (
-                                    <React.Fragment key={index}>
-                                        {/* Main Tag */}
-                                        <Tag
-                                            label={tag}
-                                            isSelected={isSelected}
-                                            onPress={() => toggleMainTag(tag)}
+                    {/* Tags Container */}
+                    <Animated.View 
+                        style={[
+                            styles.tagsContainer,
+                            {
+                                opacity: fadeAnim,
+                                transform: [
+                                    {
+                                        translateY: slideAnim.interpolate({
+                                            inputRange: [0, 50],
+                                            outputRange: [0, 40],
+                                        }),
+                                    },
+                                ],
+                            },
+                        ]}
+                    >
+                        {filteredTags.map((tag, index) => {
+                            const isSelected = selectedTags.includes(tag);
+                            return (
+                                <React.Fragment key={index}>
+                                    {/* Main Tag */}
+                                    <Tag
+                                        label={tag}
+                                        isSelected={isSelected}
+                                        onPress={() => toggleMainTag(tag)}
+                                    />
+
+                                    {/* Subcategories */}
+                                    {isSelected && (
+                                        <SubcategoriesContainer
+                                            mainTag={tag}
+                                            subcategories={newsTagsWithSubcategories[tag]}
+                                            selectedTags={selectedTags}
+                                            onSubTagPress={toggleSubTag}
                                         />
+                                    )}
+                                </React.Fragment>
+                            );
+                        })}
+                    </Animated.View>
 
-                                        {/* Subcategories */}
-                                        {isSelected && (
-                                            <SubcategoriesContainer
-                                                mainTag={tag}
-                                                subcategories={newsTagsWithSubcategories[tag]}
-                                                selectedTags={selectedTags}
-                                                onSubTagPress={toggleSubTag}
-                                            />
-                                        )}
-                                    </React.Fragment>
-                                );
-                            })}
-                        </View>
-
+                    <Animated.View
+                        style={{
+                            opacity: fadeAnim,
+                            transform: [
+                                {
+                                    translateY: slideAnim.interpolate({
+                                        inputRange: [0, 50],
+                                        outputRange: [0, 50],
+                                    }),
+                                },
+                            ],
+                        }}
+                    >
                         <ContinueButton 
                             onPress={handleContinue}
                             selectedCount={selectedTags.length}
+                            loading={loading}
                         />
-                    </View>
-                </ScrollView>
-            </SafeAreaView>
-        </LinearGradient>
+                    </Animated.View>
+                </Animated.View>
+            </ScrollView>
+        </SafeAreaView>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
+    safeContainer: {
         flex: 1,
     },
-    safeArea: {
-        flex: 1,
+    gradientBackground: {
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+    },
+    accentCircle1: {
+        position: 'absolute',
+        width: 400,
+        height: 400,
+        borderRadius: 200,
+        top: -150,
+        right: -120,
+    },
+    accentCircle2: {
+        position: 'absolute',
+        width: 320,
+        height: 320,
+        borderRadius: 160,
+        bottom: 100,
+        left: -100,
+    },
+    accentCircle3: {
+        position: 'absolute',
+        width: 250,
+        height: 250,
+        borderRadius: 125,
+        top: height * 0.3,
+        right: -50,
     },
     scrollContent: {
         flexGrow: 1,
-        paddingBottom: 20,
+        paddingBottom: 30,
     },
-    content: {
+    contentWrapper: {
         flex: 1,
-        paddingHorizontal: 20,
-        paddingTop: 20,
+        paddingHorizontal: 24,
+        paddingTop: 8,
+    },
+    headerSection: {
+        marginTop: 32,
+        marginBottom: 32,
+        alignItems: 'center',
+    },
+    iconContainer: {
+        alignItems: 'center',
+        marginBottom: 24,
     },
     title: {
-        fontSize: 28,
-        fontWeight: 'bold',
-        color: '#0f172a',
-        marginBottom: 10,
+        marginBottom: 12,
         textAlign: 'center',
-        lineHeight: 36,
     },
     subtitle: {
-        fontSize: 16,
-        color: '#475569',
+        lineHeight: 24,
         textAlign: 'center',
-        marginBottom: 30,
-        lineHeight: 22,
     },
     tagsContainer: {
         flexDirection: 'row',
