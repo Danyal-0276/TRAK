@@ -5,6 +5,10 @@
   "scripts": {
     "android": "react-native run-android",
     "ios": "react-native run-ios",
+    "ios:device": "react-native run-ios --device",
+    "ios:simulator": "react-native run-ios --simulator=\"iPhone 15 Pro\"",
+    "pod:install": "cd ios && pod install && cd ..",
+    "pod:update": "cd ios && pod update && cd ..",
     "lint": "eslint .",
     "start": "react-native start",
     "test": "jest"
