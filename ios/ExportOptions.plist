@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Export method: app-store, ad-hoc, enterprise, or development -->
+    <key>method</key>
+    <string>app-store</string>
+    
+    <!-- Your Apple Developer Team ID (get from https://developer.apple.com/account) -->
+    <!-- Uncomment and add your Team ID if using manual signing -->
+    <!-- <key>teamID</key> -->
+    <!-- <string>YOUR_TEAM_ID</string> -->
+    
+    <!-- Upload bitcode (usually set to false for React Native) -->
+    <key>uploadBitcode</key>
+    <false/>
+    
+    <!-- Upload symbols for crash reporting -->
+    <key>uploadSymbols</key>
+    <true/>
+    
+    <!-- Compile bitcode (usually set to false for React Native) -->
+    <key>compileBitcode</key>
+    <false/>
+    
+    <!-- Signing style: automatic or manual -->
+    <!-- Automatic signing is recommended if you have Xcode configured -->
+    <key>signingStyle</key>
+    <string>automatic</string>
+    
+    <!-- For ad-hoc builds, specify provisioning profile -->
+    <!-- <key>provisioningProfiles</key> -->
+    <!-- <dict> -->
+    <!--     <key>com.trak</key> -->
+    <!--     <string>Your Provisioning Profile Name</string> -->
+    <!-- </dict> -->
+</dict>
+</plist>
+
