@@ -18,6 +18,8 @@ import { useTheme } from '../theme/ThemeContext';
 export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark, index = 0 }) => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const isBookmarked =
+        bookmarkedItems?.has?.(item.id) || bookmarkedItems?.has?.(String(item.id));
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -183,6 +185,21 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
             textTransform: 'uppercase',
             letterSpacing: 0.5,
         },
+        credibilityBadge: {
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: 10,
+            paddingVertical: 5,
+            borderRadius: 4,
+            borderLeftWidth: 3,
+        },
+        credibilityText: {
+            fontSize: 11,
+            fontWeight: '800',
+            marginLeft: 4,
+            textTransform: 'uppercase',
+            letterSpacing: 0.5,
+        },
         actionsContainer: {
             flexDirection: 'row',
             justifyContent: 'space-between',
@@ -220,6 +237,13 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
             padding: 6,
         },
     });
+
+    const credLabel = String(item.credibilityLabel || '').toLowerCase();
+    const isFake = !!item.isFake;
+    const isLowCred = !!item.isLowCredibility;
+    const credBg = isFake || isLowCred ? colors.errorBg : colors.successBg;
+    const credFg = isFake || isLowCred ? colors.error : colors.success;
+    const credText = isFake ? 'Fake / Low credibility' : credLabel === 'real' ? 'Verified / Higher credibility' : credLabel || 'Credibility';
 
     return (
         <Animated.View
@@ -283,6 +307,10 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                     <View style={cardStyles.categoryBadge}>
                         <Text style={cardStyles.categoryText}>{item.category}</Text>
                     </View>
+                    <View style={[cardStyles.credibilityBadge, { backgroundColor: credBg, borderLeftColor: credFg }]}>
+                        <CheckCircle size={11} color={credFg} />
+                        <Text style={[cardStyles.credibilityText, { color: credFg }]}>{credText}</Text>
+                    </View>
                     {item.trending && (
                         <View style={cardStyles.trendingBadge}>
                             <TrendingUp size={11} color={colors.error} strokeWidth={3} />
@@ -337,8 +365,8 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                         >
                             <Bookmark
                                 size={18}
-                                color={bookmarkedItems.has(item.id) ? colors.primary : colors.textSecondary}
-                                fill={bookmarkedItems.has(item.id) ? colors.primary : 'transparent'}
+                                color={isBookmarked ? colors.primary : colors.textSecondary}
+                                fill={isBookmarked ? colors.primary : 'transparent'}
                                 strokeWidth={2}
                             />
                         </TouchableOpacity>

@@ -21,6 +21,7 @@ const SettingsTab = ({
   onAddConnection,
   onRemoveConnection,
   onOpenListModal,
+  onLogout,
 }) => {
   const { theme } = useTheme();
   const { colors } = theme;
@@ -220,7 +221,7 @@ const SettingsTab = ({
           backgroundColor: colors.backgroundSecondary,
           borderColor: colors.border,
         }]}
-        onPress={() => Alert.alert('Logout', 'Are you sure you want to logout?')}
+        onPress={onLogout}
         activeOpacity={0.8}
       >
         <Text variant="body" color={colors.error} style={styles.logoutButtonText}>

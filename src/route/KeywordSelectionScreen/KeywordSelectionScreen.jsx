@@ -25,6 +25,9 @@ import { EmptyState } from './components/EmptyState';
 import { ActionButtons } from './components/ActionButtons';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
+import { trackKeywords } from '../../api/newsApi';
+import { getAccessToken } from '../../api/client';
+import { getUserKeywords, setUserKeywords } from '../../utils/userKeywordsStorage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -36,7 +39,7 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
     const [loading, setLoading] = useState(false);
     
     // Get selected tags from previous screen
-    const { selectedTags } = route.params || { selectedTags: [] };
+    const { selectedTags = [], fromSettings = false } = route.params || {};
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -103,6 +106,13 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
         ]).start();
     }, []);
 
+    useEffect(() => {
+        (async () => {
+            const saved = await getUserKeywords();
+            if (saved.length) setSelectedKeywords(saved);
+        })();
+    }, []);
+
     const addKeyword = () => {
         const trimmedKeyword = keywordInput.trim();
         
@@ -138,14 +148,27 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
     const handleContinue = async () => {
         setLoading(true);
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 500));
-            console.log('Selected tags:', selectedTags);
-            console.log('Selected keywords:', selectedKeywords);
-            navigation.navigate('NewsFeed', { 
-                selectedTags, 
-                selectedKeywords 
-            });
+            const merged = [...selectedKeywords, ...selectedTags]
+                .map((k) => String(k || '').trim().toLowerCase())
+                .filter(Boolean)
+                .filter((k, idx, arr) => arr.indexOf(k) === idx);
+            const token = await getAccessToken();
+            if (token && merged.length) {
+                try {
+                    await trackKeywords(merged);
+                    await setUserKeywords(merged);
+                } catch (e) {
+                    console.warn('track-keywords:', e?.message);
+                }
+            }
+            if (fromSettings) {
+                navigation.goBack();
+            } else {
+                navigation.navigate('NewsFeed', {
+                    selectedTags,
+                    selectedKeywords: merged,
+                });
+            }
         } catch (error) {
             console.error('Error:', error);
         } finally {

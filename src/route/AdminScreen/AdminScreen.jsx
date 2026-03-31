@@ -3,6 +3,13 @@ import { View, ScrollView, Alert, StyleSheet, StatusBar, Animated, Dimensions } 
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../../theme/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
+import {
+  getAdminAnalytics,
+  getAdminArticles,
+  getAdminModelMetrics,
+  postAdminPipelineRun,
+} from '../../api/adminApi';
 import MockAPI from './Service/MockAPI';
 import Header from './components/Header';
 import TabNavigation from './components/TabNavigation';
@@ -17,13 +24,37 @@ import ListModal from './components/ListModal';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+function mapAdminArticleRow(doc) {
+  const dateStr = doc.fetched_at || doc.processed_at || '';
+  const shortDate =
+    typeof dateStr === 'string' ? dateStr.slice(0, 16).replace('T', ' ') : String(dateStr || '');
+  const status =
+    doc.scope === 'raw'
+      ? String(doc.pipeline_status ?? 'pending')
+      : String(doc.credibility_label ?? '—');
+  const published = doc.scope === 'processed' && doc.credibility_label != null && doc.credibility_label !== '';
+  return {
+    id: doc.id,
+    title: doc.title || '(no title)',
+    author: doc.source_key || (doc.canonical_url ? String(doc.canonical_url).slice(0, 48) : '—'),
+    category: doc.scope === 'raw' ? 'Raw' : 'Processed',
+    status: published ? 'published' : status,
+    date: shortDate || '—',
+    fromApi: true,
+  };
+}
+
 const AdminScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { user, isAdmin, bootstrapped, logout } = useAuth();
   const { colors } = theme;
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [users, setUsers] = useState([]);
-  const [articles, setArticles] = useState([]);
+  const [apiArticles, setApiArticles] = useState([]);
+  const [serverAnalytics, setServerAnalytics] = useState(null);
+  const [modelMetrics, setModelMetrics] = useState(null);
+  const [pipelineRunning, setPipelineRunning] = useState(false);
   const [keywords, setKeywords] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [settings, setSettings] = useState({});
@@ -80,13 +111,47 @@ const AdminScreen = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
+    if (!bootstrapped) return;
+    if (!user) {
+      navigation.reset({ index: 0, routes: [{ name: 'OpeningScreen' }] });
+      return;
+    }
+    if (!isAdmin) {
+      Alert.alert('Access denied', 'Only administrators can open the admin panel.');
+      navigation.reset({ index: 0, routes: [{ name: 'NewsFeed' }] });
+    }
+  }, [bootstrapped, user, isAdmin, navigation]);
+
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin) return;
     loadData();
-  }, []);
+  }, [bootstrapped, isAdmin]);
 
   const loadData = async () => {
+    let svr = null;
+    let arts = [];
+    try {
+      svr = await getAdminAnalytics();
+    } catch (e) {
+      Alert.alert('Admin API', e?.message || 'Could not load analytics.');
+    }
+    try {
+      const res = await getAdminArticles({ page: 1, pageSize: 50, scope: 'all' });
+      arts = (res.results || []).map(mapAdminArticleRow);
+    } catch (e) {
+      Alert.alert('Admin API', e?.message || 'Could not load articles.');
+    }
+    try {
+      const mm = await getAdminModelMetrics();
+      setModelMetrics(mm);
+    } catch {
+      setModelMetrics(null);
+    }
+    setServerAnalytics(svr);
+    setApiArticles(arts);
+
     const [
       usersData,
-      articlesData,
       keywordsData,
       notificationsData,
       settingsData,
@@ -95,7 +160,6 @@ const AdminScreen = ({ navigation }) => {
       analyticsData,
     ] = await Promise.all([
       MockAPI.getUsers(),
-      MockAPI.getArticles(),
       MockAPI.getKeywords(),
       MockAPI.getNotifications(),
       MockAPI.getSettings(),
@@ -104,7 +168,6 @@ const AdminScreen = ({ navigation }) => {
       MockAPI.getAnalytics(),
     ]);
     setUsers(usersData);
-    setArticles(articlesData);
     setKeywords(keywordsData);
     setNotifications(notificationsData);
     setSettings(settingsData);
@@ -113,12 +176,53 @@ const AdminScreen = ({ navigation }) => {
     setAnalytics(analyticsData);
   };
 
-  const stats = [
-    { label: 'Total Users', value: users.length.toString() },
-    { label: 'Active Users', value: users.filter(u => u.status === 'active').length.toString() },
-    { label: 'Articles', value: articles.length.toString() },
-    { label: 'Keywords', value: keywords.length.toString() },
-  ];
+  const runPipeline = async () => {
+    setPipelineRunning(true);
+    try {
+      const result = await postAdminPipelineRun(15);
+      Alert.alert('Pipeline', JSON.stringify(result).slice(0, 800));
+      await loadData();
+    } catch (e) {
+      Alert.alert('Pipeline', e?.message || 'Run failed.');
+    } finally {
+      setPipelineRunning(false);
+    }
+  };
+
+  const handleLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Logout',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await logout();
+            navigation.reset({ index: 0, routes: [{ name: 'OpeningScreen' }] });
+          } catch {
+            Alert.alert('Logout', 'Could not logout. Please try again.');
+          }
+        },
+      },
+    ]);
+  };
+
+  const stats = serverAnalytics
+    ? [
+        { label: 'Raw articles', value: String(serverAnalytics.raw_total ?? 0) },
+        { label: 'Processed', value: String(serverAnalytics.processed_total ?? 0) },
+        { label: 'In feed list', value: String(apiArticles.length) },
+        {
+          label: 'Pipeline states',
+          value: String(Object.keys(serverAnalytics.raw_by_pipeline_status || {}).length),
+        },
+      ]
+    : [
+        { label: 'Total Users', value: users.length.toString() },
+        { label: 'Active Users', value: users.filter(u => u.status === 'active').length.toString() },
+        { label: 'Keywords (mock)', value: keywords.length.toString() },
+        { label: 'Articles (mock)', value: '—' },
+      ];
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -126,12 +230,23 @@ const AdminScreen = ({ navigation }) => {
   };
 
   const handleEdit = (item) => {
+    if (item?.fromApi) {
+      Alert.alert('Read-only', 'This article is loaded from the API; editing is not available in the app yet.');
+      return;
+    }
     setEditingItem(item);
     setFormData(item);
     setModalVisible(true);
   };
 
   const handleDelete = (id, type) => {
+    if (type === 'article') {
+      const row = apiArticles.find(a => String(a.id) === String(id));
+      if (row?.fromApi) {
+        Alert.alert('Read-only', 'Articles come from the database; delete is not exposed here yet.');
+        return;
+      }
+    }
     Alert.alert('Confirm Delete', 'Are you sure you want to delete this item?', [
       { text: 'Cancel', style: 'cancel' },
       {
@@ -220,10 +335,11 @@ const AdminScreen = ({ navigation }) => {
       u.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const filteredArticles = articles.filter(
+  const filteredArticles = apiArticles.filter(
     a =>
       a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.author.toLowerCase().includes(searchQuery.toLowerCase())
+      a.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      String(a.status).toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const userFields = [
@@ -238,6 +354,10 @@ const AdminScreen = ({ navigation }) => {
     { name: 'category', label: 'Category', type: 'text', placeholder: 'Enter category' },
     { name: 'status', label: 'Status', type: 'select', options: ['published', 'pending'] },
   ];
+
+  if (!bootstrapped || !isAdmin) {
+    return null;
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -310,7 +430,7 @@ const AdminScreen = ({ navigation }) => {
         pointerEvents="none"
       />
 
-      <Header navigation={navigation} />
+      <Header />
       <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
 
       <Animated.ScrollView
@@ -321,8 +441,17 @@ const AdminScreen = ({ navigation }) => {
         contentContainerStyle={styles.mainScrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {activeTab === 'dashboard' && <DashboardTab stats={stats} keywords={keywords} />}
-        {activeTab === 'analytics' && <AnalyticsTab analytics={analytics} />}
+        {activeTab === 'dashboard' && (
+          <DashboardTab
+            stats={stats}
+            keywords={keywords}
+            onRunPipeline={runPipeline}
+            pipelineRunning={pipelineRunning}
+          />
+        )}
+        {activeTab === 'analytics' && (
+          <AnalyticsTab analytics={analytics} serverAnalytics={serverAnalytics} modelMetrics={modelMetrics} />
+        )}
         {activeTab === 'users' && (
           <UsersTab
             users={filteredUsers}
@@ -339,6 +468,7 @@ const AdminScreen = ({ navigation }) => {
             onSearchChange={setSearchQuery}
             onEdit={handleEdit}
             onDelete={(id) => handleDelete(id, 'article')}
+            articleReadOnly={(a) => !!a?.fromApi}
           />
         )}
         {activeTab === 'notifications' && <NotificationsTab notifications={notifications} />}
@@ -357,6 +487,7 @@ const AdminScreen = ({ navigation }) => {
             onAddConnection={handleAddConnection}
             onRemoveConnection={handleRemoveConnection}
             onOpenListModal={openListModal}
+            onLogout={handleLogout}
           />
         )}
         <View style={styles.bottomSpacer} />

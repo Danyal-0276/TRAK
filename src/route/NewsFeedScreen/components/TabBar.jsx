@@ -2,19 +2,20 @@
 // FILE: components/TabBar.jsx
 // ============================================
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Animated } from 'react-native';
-import { TrendingUp, Bookmark } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { TrendingUp, Bookmark, Clock } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 
-export const TabBar = ({ activeTab, setActiveTab }) => {
+export const TabBar = ({ activeTab, setActiveTab, navigation }) => {
     const { theme } = useTheme();
     const { colors } = theme;
     
     const tabItems = [
-        { name: 'For you', icon: null },
-        { name: 'Following', icon: null },
-        { name: 'Trending', icon: TrendingUp },
-        { name: 'Bookmarks', icon: Bookmark },
+        { name: 'For you', icon: null, stackScreen: null },
+        { name: 'Following', icon: null, stackScreen: null },
+        { name: 'Trending', icon: TrendingUp, stackScreen: 'Trending' },
+        { name: 'Bookmarks', icon: Bookmark, stackScreen: 'Bookmarks' },
+        { name: 'Recent', icon: Clock, stackScreen: 'Recent' },
     ];
 
     return (
@@ -37,7 +38,13 @@ export const TabBar = ({ activeTab, setActiveTab }) => {
                                     backgroundColor: isActive ? colors.primary + '15' : 'transparent',
                                 }
                             ]}
-                            onPress={() => setActiveTab(tab.name)}
+                            onPress={() => {
+                                if (tab.stackScreen && navigation) {
+                                    navigation.getParent()?.navigate(tab.stackScreen);
+                                    return;
+                                }
+                                setActiveTab(tab.name);
+                            }}
                             activeOpacity={0.7}
                         >
                             {Icon && (

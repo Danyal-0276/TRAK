@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Mail, ArrowRight, ArrowLeft } from 'lucide-react';
 import Text from '../../components/ui/Text';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
+import { requestPasswordReset } from '../../api/authPasswordApi';
 
 const ForgotPasswordScreen = () => {
     const navigate = useNavigate();
@@ -24,10 +25,14 @@ const ForgotPasswordScreen = () => {
         }
 
         setLoading(true);
-        setTimeout(() => {
+        try {
+            await requestPasswordReset(email.trim());
+            navigate('/forgot-password-code', { state: { email: email.trim().toLowerCase() } });
+        } catch {
+            setErrors((prev) => ({ ...prev, email: 'Could not start reset. Try again.' }));
+        } finally {
             setLoading(false);
-            navigate('/forgot-password-code', { state: { email } });
-        }, 1000);
+        }
     };
 
     return (

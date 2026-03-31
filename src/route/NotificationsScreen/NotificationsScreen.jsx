@@ -8,6 +8,7 @@ import NotificationTabs from "./components/NotificationTabs";
 import mockAPI from "./services/mockNotificationAPI";
 import { useTheme } from "../../theme/ThemeContext";
 import Text from "../../components/ui/Text";
+import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -18,6 +19,7 @@ const NotificationsScreen = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const buttonScale = useRef(new Animated.Value(1)).current;
+  const lastScrollY = useRef(0);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const circle1Anim = useRef(new Animated.Value(0)).current;
@@ -61,6 +63,21 @@ const NotificationsScreen = () => {
       }),
     ]).start();
   }, []);
+
+  useEffect(() => {
+    resetTabBarVisibility();
+    return () => resetTabBarVisibility();
+  }, []);
+
+  const handleListScroll = (event) => {
+    const currentY = event.nativeEvent.contentOffset.y;
+    const diff = currentY - lastScrollY.current;
+    if (Math.abs(diff) > 6) {
+      if (diff > 0 && currentY > 40) setTabBarHidden(true);
+      if (diff < 0) setTabBarHidden(false);
+    }
+    lastScrollY.current = currentY;
+  };
 
   const loadNotifications = async () => {
     try {
@@ -255,6 +272,7 @@ const NotificationsScreen = () => {
           notifications={notifications}
           onMarkAsRead={markAsRead}
           onNotificationPress={handleNotificationPress}
+          onListScroll={handleListScroll}
         />
       </Animated.View>
     </SafeAreaView>

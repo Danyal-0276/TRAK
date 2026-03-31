@@ -1,11 +1,15 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Lock, ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import Text from '../../components/ui/Text';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
+import { confirmPasswordReset } from '../../api/authPasswordApi';
 
 const ResetPasswordScreen = () => {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const [uid, setUid] = useState('');
+    const [token, setToken] = useState('');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showNewPassword, setShowNewPassword] = useState(false);
@@ -13,10 +17,25 @@ const ResetPasswordScreen = () => {
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
 
+    useEffect(() => {
+        const u = searchParams.get('uid') || '';
+        const t = searchParams.get('token') || '';
+        setUid(u);
+        setToken(t);
+    }, [searchParams]);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrors({});
 
+        if (!uid.trim()) {
+            setErrors((prev) => ({ ...prev, uid: 'Paste the code from your reset email (uid)' }));
+            return;
+        }
+        if (!token.trim()) {
+            setErrors((prev) => ({ ...prev, token: 'Paste the token from your reset link' }));
+            return;
+        }
         if (!newPassword) {
             setErrors(prev => ({ ...prev, newPassword: 'Password is required' }));
             return;
@@ -35,10 +54,22 @@ const ResetPasswordScreen = () => {
         }
 
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
+        try {
+            await confirmPasswordReset({
+                uid: uid.trim(),
+                token: token.trim(),
+                password: newPassword,
+                password_confirm: confirmPassword,
+            });
             navigate('/password-changed');
-        }, 1000);
+        } catch (err) {
+            setErrors((prev) => ({
+                ...prev,
+                form: err?.message || 'Could not reset password. The link may have expired.',
+            }));
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -128,6 +159,83 @@ const ResetPasswordScreen = () => {
                 </div>
 
                 <form onSubmit={handleSubmit}>
+                    <div style={{ marginBottom: '20px' }}>
+                        <p style={{
+                            fontSize: '13px',
+                            color: '#64748b',
+                            margin: '0 0 12px 0',
+                            lineHeight: '1.5',
+                        }}>
+                            If you opened this page from the email link, the fields below are filled automatically. Otherwise paste the values from the link.
+                        </p>
+                        <label style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: '#0f172a',
+                            marginBottom: '8px',
+                        }}>
+                            Reset code (uid)
+                        </label>
+                        <input
+                            type="text"
+                            value={uid}
+                            onChange={(e) => setUid(e.target.value)}
+                            autoComplete="off"
+                            spellCheck={false}
+                            placeholder="From email link"
+                            style={{
+                                width: '100%',
+                                padding: '11px 14px',
+                                fontSize: '15px',
+                                border: errors.uid ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                borderRadius: '6px',
+                                outline: 'none',
+                                color: '#0f172a',
+                                backgroundColor: '#ffffff',
+                                boxSizing: 'border-box',
+                                fontFamily: 'inherit',
+                                marginBottom: errors.uid ? '6px' : '16px',
+                            }}
+                        />
+                        {errors.uid && (
+                            <p style={{ color: '#ef4444', fontSize: '13px', margin: '0 0 12px 0' }}>{errors.uid}</p>
+                        )}
+                        <label style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: '#0f172a',
+                            marginBottom: '8px',
+                        }}>
+                            Token
+                        </label>
+                        <input
+                            type="text"
+                            value={token}
+                            onChange={(e) => setToken(e.target.value)}
+                            autoComplete="off"
+                            spellCheck={false}
+                            placeholder="From email link"
+                            style={{
+                                width: '100%',
+                                padding: '11px 14px',
+                                fontSize: '15px',
+                                border: errors.token ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                borderRadius: '6px',
+                                outline: 'none',
+                                color: '#0f172a',
+                                backgroundColor: '#ffffff',
+                                boxSizing: 'border-box',
+                                fontFamily: 'inherit',
+                                marginBottom: errors.token ? '6px' : '20px',
+                            }}
+                        />
+                        {errors.token && (
+                            <p style={{ color: '#ef4444', fontSize: '13px', margin: '0 0 20px 0' }}>{errors.token}</p>
+                        )}
+                    </div>
+
                     {/* New Password */}
                     <div style={{ marginBottom: '20px' }}>
                         <label style={{
@@ -273,6 +381,17 @@ const ResetPasswordScreen = () => {
                             </p>
                         )}
                     </div>
+
+                    {errors.form && (
+                        <p style={{
+                            color: '#ef4444',
+                            fontSize: '14px',
+                            margin: '0 0 16px 0',
+                            lineHeight: '1.4',
+                        }}>
+                            {errors.form}
+                        </p>
+                    )}
 
                     <button
                         type="submit"

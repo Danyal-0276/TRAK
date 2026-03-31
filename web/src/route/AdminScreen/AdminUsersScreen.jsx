@@ -38,7 +38,7 @@ const AdminUsersScreen = () => {
             // Mock user data
             const mockUsers = [
                 { id: 1, name: 'Ali', email: 'ali@user.com', status: 'inactive', joinDate: '2024-01-15', isAdmin: false },
-                { id: 2, name: 'Daniyal', email: 'daniya@admin.com', status: 'active', joinDate: '2024-01-10', isAdmin: true },
+                { id: 2, name: 'Danyal', email: 'danyal@admin.com', status: 'active', joinDate: '2024-01-10', isAdmin: true },
                 { id: 3, name: 'Shahroz', email: 'shahroz@admin.com', status: 'active', joinDate: '2024-01-08', isAdmin: true },
                 { id: 4, name: 'Abdullah', email: 'abdullah@admin.com', status: 'active', joinDate: '2024-01-05', isAdmin: true },
                 { id: 5, name: 'Zain', email: 'zain@user.com', status: 'active', joinDate: '2024-01-20', isAdmin: false },

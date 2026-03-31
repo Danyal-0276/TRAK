@@ -7,12 +7,14 @@ import { LoginForm } from './components/LoginForm';
 import { Footer } from './components/Footer';
 import { useTheme } from '../../theme/ThemeContext';
 import Text from '../../components/ui/Text';
+import { useAuth } from '../../context/AuthContext';
 
 const { width, height } = Dimensions.get('window');
 
 const LoginScreen = ({ navigation }) => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const { login } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loadingProvider, setLoadingProvider] = useState(null);
@@ -91,7 +93,7 @@ const LoginScreen = ({ navigation }) => {
             // Simulate API call
             await new Promise(resolve => setTimeout(resolve, 1000));
             
-            navigation.navigate('NewsFeed');
+            Alert.alert('Social login', 'OAuth is not wired yet. Use email and password.');
         } catch (error) {
             Alert.alert('Error', error.message || 'Failed to login with social provider');
         } finally {
@@ -264,11 +266,15 @@ const LoginScreen = ({ navigation }) => {
                                 if (!email || !password) return;
                                 setLoading(true);
                                 try {
-                                    // Simulate API call
-                                    await new Promise(resolve => setTimeout(resolve, 1500));
-                                    navigation.navigate('NewsFeed');
+                                    const user = await login(email, password);
+                                    const dest =
+                                        user?.role === 'admin' ? 'AdminScreen' : 'NewsFeed';
+                                    navigation.reset({
+                                        index: 0,
+                                        routes: [{ name: dest }],
+                                    });
                                 } catch (error) {
-                                    Alert.alert('Error', 'Failed to sign in. Please try again.');
+                                    Alert.alert('Error', error.message || 'Failed to sign in.');
                                 } finally {
                                     setLoading(false);
                                 }

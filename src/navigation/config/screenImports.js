@@ -20,6 +20,10 @@ import AboutScreen from '../../route/AboutScreen/AboutScreen.jsx';
 import AdminScreen from '../../route/AdminScreen/AdminScreen.jsx';
 import SearchScreen from '../../route/SearchScreen/SearchScreen.jsx';
 import ArticleDetailScreen from '../../route/ArticleDetailScreen/ArticleDetailScreen.jsx';
+import TrendingScreen from '../../route/TrendingScreen/TrendingScreen.jsx';
+import BookmarksScreen from '../../route/BookmarksScreen/BookmarksScreen.jsx';
+import RecentScreen from '../../route/RecentScreen/RecentScreen.jsx';
+import TermsScreen from '../../route/TermsScreen/TermsScreen.jsx';
 
 // OPTIONAL SCREENS - With fallback
 const FallbackScreen = ({ title }) => (
@@ -30,7 +34,7 @@ const FallbackScreen = ({ title }) => (
 );
 
 // Try to import optional screens - STATIC imports only
-let NewsFeedScreen, NotificationsScreen, ProfileScreen, BookmarksScreen;
+let NewsFeedScreen, NotificationsScreen, ProfileScreen;
 
 try {
     NewsFeedScreen = require('../../route/NewsFeedScreen/NewsFeedScreen.jsx').default;
@@ -48,12 +52,6 @@ try {
     ProfileScreen = require('../../route/ProfileScreen/ProfileScreen.jsx').default;
 } catch (e) {
     ProfileScreen = (props) => <FallbackScreen title="Profile" {...props} />;
-}
-
-try {
-    BookmarksScreen = require('../../route/BookmarksScreen/BookmarksScreen.jsx').default;
-} catch (e) {
-    BookmarksScreen = (props) => <FallbackScreen title="Bookmarks" {...props} />;
 }
 
 export {
@@ -78,5 +76,8 @@ export {
     NewsFeedScreen,
     NotificationsScreen,
     ProfileScreen,
+    TrendingScreen,
     BookmarksScreen,
+    RecentScreen,
+    TermsScreen,
 };

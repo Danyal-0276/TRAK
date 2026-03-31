@@ -1,12 +1,12 @@
 import { StyleSheet } from 'react-native';
-import { Home, Search, Grid, Bell, User } from 'lucide-react-native';
+import { Home, Search, Bell, User, Settings } from 'lucide-react-native';
 
 export const iconMap = {
     Home: Home,
     Search: Search,
-    AdminScreen: Grid,
     Notifications: Bell,
     Profile: User,
+    Settings: Settings,
 };
 
 export const tabBarStyles = StyleSheet.create({

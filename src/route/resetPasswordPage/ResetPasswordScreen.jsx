@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
     View,
     Text,
@@ -18,12 +18,15 @@ import { LinearGradient } from 'react-native-linear-gradient';
 import { ChevronLeft, Eye, EyeOff, Lock } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
+import { confirmPasswordReset } from '../../api/authPasswordApi';
 
 const { width, height } = Dimensions.get('window');
 
 const ResetPasswordScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const [uid, setUid] = useState(route.params?.uid || '');
+    const [token, setToken] = useState(route.params?.token || '');
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showNewPassword, setShowNewPassword] = useState(false);
@@ -31,8 +34,21 @@ const ResetPasswordScreen = ({ navigation, route }) => {
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
 
+    useEffect(() => {
+        const p = route.params;
+        if (p?.uid) setUid(p.uid);
+        if (p?.token) setToken(p.token);
+    }, [route.params?.uid, route.params?.token]);
+
     const validateForm = () => {
         const newErrors = {};
+
+        if (!uid.trim()) {
+            newErrors.uid = 'Copy the uid value from the reset link';
+        }
+        if (!token.trim()) {
+            newErrors.token = 'Copy the token value from the reset link';
+        }
 
         if (!newPassword) {
             newErrors.newPassword = 'Password is required';
@@ -62,15 +78,16 @@ const ResetPasswordScreen = ({ navigation, route }) => {
         setLoading(true);
 
         try {
-            // TODO: Add your password reset API call here
-            // await resetPasswordAPI(newPassword);
-            
-            // Simulate API call - minimum 2 seconds to show loading animation
-            await new Promise(resolve => setTimeout(resolve, 2000));
-            
+            await confirmPasswordReset({
+                uid: uid.trim(),
+                token: token.trim(),
+                password: newPassword,
+                password_confirm: confirmPassword,
+            });
             navigation.navigate('PasswordChanged');
         } catch (error) {
-            Alert.alert('Error', 'Failed to reset password. Please try again.');
+            Alert.alert('Error', error?.message || 'Failed to reset password.');
+        } finally {
             setLoading(false);
         }
     };
@@ -155,7 +172,7 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                                 </TextComponent>
                             </View>
 
-                            <View 
+                                <View 
                                 style={[
                                     styles.formCard, 
                                     { 
@@ -165,6 +182,68 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                                     }
                                 ]}
                             >
+                                <View style={styles.inputGroup}>
+                                    <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>
+                                        Reset uid (from email link)
+                                    </TextComponent>
+                                    <View
+                                        style={[
+                                            styles.inputContainer,
+                                            {
+                                                borderColor: errors.uid ? colors.error : colors.border,
+                                                backgroundColor: colors.backgroundSecondary,
+                                            },
+                                        ]}
+                                    >
+                                        <TextInput
+                                            style={[styles.input, { color: colors.textPrimary }]}
+                                            placeholder="uid query param"
+                                            placeholderTextColor={colors.textTertiary}
+                                            value={uid}
+                                            onChangeText={(t) => {
+                                                setUid(t);
+                                                if (errors.uid) setErrors({ ...errors, uid: '' });
+                                            }}
+                                            autoCapitalize="none"
+                                            editable={!loading}
+                                        />
+                                    </View>
+                                    {errors.uid ? (
+                                        <Text style={[styles.errorText, { color: colors.error }]}>{errors.uid}</Text>
+                                    ) : null}
+                                </View>
+
+                                <View style={styles.inputGroup}>
+                                    <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>
+                                        Reset token (from email link)
+                                    </TextComponent>
+                                    <View
+                                        style={[
+                                            styles.inputContainer,
+                                            {
+                                                borderColor: errors.token ? colors.error : colors.border,
+                                                backgroundColor: colors.backgroundSecondary,
+                                            },
+                                        ]}
+                                    >
+                                        <TextInput
+                                            style={[styles.input, { color: colors.textPrimary }]}
+                                            placeholder="token query param"
+                                            placeholderTextColor={colors.textTertiary}
+                                            value={token}
+                                            onChangeText={(t) => {
+                                                setToken(t);
+                                                if (errors.token) setErrors({ ...errors, token: '' });
+                                            }}
+                                            autoCapitalize="none"
+                                            editable={!loading}
+                                        />
+                                    </View>
+                                    {errors.token ? (
+                                        <Text style={[styles.errorText, { color: colors.error }]}>{errors.token}</Text>
+                                    ) : null}
+                                </View>
+
                                 <View style={styles.inputGroup}>
                                     <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>
                                         New password
@@ -257,15 +336,15 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                                     style={[
                                         styles.primaryButton, 
                                         { 
-                                            backgroundColor: (!newPassword || !confirmPassword || loading) 
+                                            backgroundColor: (!uid.trim() || !token.trim() || !newPassword || !confirmPassword || loading) 
                                                 ? colors.textTertiary 
                                                 : colors.primary,
                                             shadowColor: colors.shadowDark,
-                                            opacity: (!newPassword || !confirmPassword || loading) ? 0.6 : 1,
+                                            opacity: (!uid.trim() || !token.trim() || !newPassword || !confirmPassword || loading) ? 0.6 : 1,
                                         }
                                     ]}
                                     onPress={handleResetPassword}
-                                    disabled={!newPassword || !confirmPassword || loading}
+                                    disabled={!uid.trim() || !token.trim() || !newPassword || !confirmPassword || loading}
                                     activeOpacity={0.8}
                                 >
                                     {loading ? (

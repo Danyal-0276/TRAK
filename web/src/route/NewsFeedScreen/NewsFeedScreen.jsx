@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
+import { loadFeedItems } from '../../utils/loadFeed';
 import { mockApi } from '../../utils/Service/mockApi';
 import Text from '../../components/ui/Text';
 import { useTheme } from '../../theme/ThemeContext';
@@ -40,10 +41,11 @@ const NewsFeedScreen = () => {
     const loadNews = async () => {
         try {
             setLoading(true);
-            const response = await mockApi.getNewsFeed();
-            setNewsData(response.data);
+            const rows = await loadFeedItems();
+            setNewsData(rows);
         } catch (error) {
             console.error('Error loading news:', error);
+            setNewsData([]);
         } finally {
             setLoading(false);
         }

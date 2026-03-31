@@ -7,7 +7,14 @@ import ArticleCard from '../components/ArticleCard';
 import Text from '../../../components/ui/Text';
 import EmptyState from '../components/EmptyState';
 
-const ArticlesTab = ({ articles, searchQuery, onSearchChange, onEdit, onDelete }) => {
+const ArticlesTab = ({
+  articles,
+  searchQuery,
+  onSearchChange,
+  onEdit,
+  onDelete,
+  articleReadOnly = () => false,
+}) => {
   const { theme } = useTheme();
   const { colors } = theme;
 
@@ -43,6 +50,7 @@ const ArticlesTab = ({ articles, searchQuery, onSearchChange, onEdit, onDelete }
             article={article}
             onEdit={onEdit}
             onDelete={onDelete}
+            readOnly={articleReadOnly(article)}
           />
         ))
       )}

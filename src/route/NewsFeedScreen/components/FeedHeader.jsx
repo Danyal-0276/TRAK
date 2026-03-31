@@ -26,7 +26,9 @@ export const FeedHeader = ({ navigation }) => {
                 <View style={headerStyles.actions}>
                     <TouchableOpacity
                         style={[headerStyles.iconButton, { backgroundColor: colors.backgroundSecondary }]}
-                        onPress={() => navigation.navigate("Settings")}
+                        onPress={() =>
+                            navigation.getParent()?.navigate('MainTabs', { screen: 'Settings' })
+                        }
                         activeOpacity={0.7}
                     >
                         <Settings size={20} color={colors.textPrimary} strokeWidth={2} />

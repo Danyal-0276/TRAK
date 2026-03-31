@@ -21,12 +21,38 @@ import Tabs from "./components/tabs";
 import TrendingTopics from "./components/TrendingTopics";
 import RecentSearches from "./components/RecentSearches";
 import { NewsCard } from "../../components/NewsCard";
-import { mockApi } from "../../utils/Service/mockApi";
 import { useTheme } from "../../theme/ThemeContext";
+import { loadFeedItems } from "../../utils/loadFeed";
+import {
+  getRecentSearches,
+  addRecentSearch,
+  deleteRecentSearch,
+} from "../../utils/recentSearchesStorage";
 import Text from "../../components/ui/Text";
 import { Search } from "lucide-react-native";
+import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
 
 const { width, height } = Dimensions.get('window');
+
+function deriveTrendingFromArticles(articles) {
+  const counts = {};
+  for (const a of articles) {
+    for (const k of a.topic_keywords || []) {
+      const key = String(k).toLowerCase();
+      counts[key] = (counts[key] || 0) + 1;
+    }
+  }
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([name, count], i) => ({
+      id: `${i}-${name}`,
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      count: `${count} in feed`,
+      icon: "🔥",
+      trending: count >= 2,
+    }));
+}
 
 // Skeleton Card Component
 const SkeletonCard = ({ colors }) => {
@@ -115,29 +141,26 @@ const SearchScreen = ({ navigation }) => {
 
   const categories = ["All", "Sports", "Technology", "Environment", "Business", "Wildlife"];
 
-  const loadNews = async () => {
-    try {
-      setLoading(true);
-      const [newsResponse, trendingResponse, searchesResponse] = await Promise.all([
-        mockApi.getNewsFeed(),
-        mockApi.getTrendingTopics(),
-        mockApi.getRecentSearches(),
-      ]);
-      
-      setAllNews(newsResponse.data);
-      setFilteredNews(newsResponse.data);
-      setTrendingTopics(trendingResponse.data);
-      setRecentSearches(searchesResponse.data);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadNews();
-  }, []);
+    const q = searchQuery.trim();
+    const delayMs = q ? 360 : 0;
+    const timer = setTimeout(async () => {
+      try {
+        setLoading(true);
+        const items = await loadFeedItems({ q });
+        setAllNews(items);
+        if (!q) {
+          setTrendingTopics(deriveTrendingFromArticles(items));
+          setRecentSearches(await getRecentSearches());
+        }
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      } finally {
+        setLoading(false);
+      }
+    }, delayMs);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     // Entrance animations
@@ -173,6 +196,11 @@ const SearchScreen = ({ navigation }) => {
         }),
       ]),
     ]).start();
+  }, []);
+
+  useEffect(() => {
+    resetTabBarVisibility();
+    return () => resetTabBarVisibility();
   }, []);
 
   useEffect(() => {
@@ -235,9 +263,8 @@ const SearchScreen = ({ navigation }) => {
     
     // Update recent searches
     try {
-      await mockApi.addRecentSearch(query);
-      const response = await mockApi.getRecentSearches();
-      setRecentSearches(response.data);
+      const next = await addRecentSearch(query);
+      setRecentSearches(next);
     } catch (error) {
       console.error("Error updating recent searches:", error);
     }
@@ -252,9 +279,8 @@ const SearchScreen = ({ navigation }) => {
 
   const handleDeleteSearch = async (searchId) => {
     try {
-      await mockApi.deleteRecentSearch(searchId);
-      const response = await mockApi.getRecentSearches();
-      setRecentSearches(response.data);
+      const next = await deleteRecentSearch(searchId);
+      setRecentSearches(next);
     } catch (error) {
       console.error("Error deleting search:", error);
     }
@@ -308,6 +334,8 @@ const SearchScreen = ({ navigation }) => {
             if (item.content && matchesTerm(item.content)) return true;
             // Check full content
             if (item.fullContent && matchesTerm(item.fullContent)) return true;
+            if (item.topic_keywords && item.topic_keywords.some((k) => matchesTerm(k)))
+              return true;
             return false;
           }
         );
@@ -320,16 +348,32 @@ const SearchScreen = ({ navigation }) => {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await loadNews();
-    setRefreshing(false);
+    try {
+      const q = searchQuery.trim();
+      const items = await loadFeedItems({ q });
+      setAllNews(items);
+      if (!q) {
+        setTrendingTopics(deriveTrendingFromArticles(items));
+        setRecentSearches(await getRecentSearches());
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const handleScroll = (event) => {
     const currentOffset = event.nativeEvent.contentOffset.y;
+    const diff = currentOffset - scrollOffset.current;
     const direction = currentOffset > scrollOffset.current ? "down" : "up";
     scrollOffset.current = currentOffset;
     if (direction === "down") searchRef.current?.collapse();
     else if (direction === "up") searchRef.current?.expandVisual();
+    if (Math.abs(diff) > 6) {
+      if (direction === "down" && currentOffset > 40) setTabBarHidden(true);
+      if (direction === "up") setTabBarHidden(false);
+    }
   };
 
   const handleArticlePress = (article) => {
@@ -346,7 +390,7 @@ const SearchScreen = ({ navigation }) => {
     }));
 
     try {
-      await mockApi.voteArticle(itemId, newVote);
+      /* votes not persisted — API TBD */
     } catch (error) {
       setVotedItems(prev => ({
         ...prev,
@@ -367,7 +411,7 @@ const SearchScreen = ({ navigation }) => {
     });
 
     try {
-      await mockApi.bookmarkArticle(itemId);
+      /* bookmarks not persisted — API TBD */
     } catch (error) {
       console.error('Error bookmarking:', error);
     }

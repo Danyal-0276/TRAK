@@ -13,6 +13,7 @@ import {
     AdminScreen,
     LoginScreen,
     SettingsScreen,
+    TermsScreen,
 } from './config/screenImports.js';
 
 const Stack = createNativeStackNavigator();
@@ -46,6 +47,7 @@ const RootStack = () => (
         <Stack.Screen name="DataScreen" component={DataScreen} options={{ title: 'Data & Storage' }} />
         <Stack.Screen name="CategoriesScreen" component={CategoriesScreen} options={{ title: 'Manage Categories' }} />
         <Stack.Screen name="AboutScreen" component={AboutScreen} options={{ title: 'About' }} />
+        <Stack.Screen name="TermsScreen" component={TermsScreen} options={{ title: 'Terms of Service' }} />
     </Stack.Navigator>
 );
 

@@ -3,16 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import { getResponsivePadding, getResponsiveMaxWidth, getResponsiveGridColumns, getResponsiveGap, getResponsiveFontSize } from '../../utils/responsiveStyles';
-import { 
-    Users, 
-    FileText, 
-    TrendingUp, 
+import {
+    FileText,
     Hash,
     BarChart3,
     Activity,
-    ArrowRight
+    ArrowRight,
+    Play,
 } from 'lucide-react';
-import { mockApi } from '../../utils/Service/mockApi';
+import { getAdminAnalytics, postAdminPipelineRun } from '../../api/adminApi';
 
 const AdminDashboardScreen = () => {
     const { theme } = useTheme();
@@ -20,13 +19,9 @@ const AdminDashboardScreen = () => {
     const isDark = theme.mode === 'dark';
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
-    const [stats, setStats] = useState({
-        totalUsers: 0,
-        activeUsers: 0,
-        totalArticles: 0,
-        totalKeywords: 0,
-    });
+    const [snapshot, setSnapshot] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [pipelineBusy, setPipelineBusy] = useState(false);
 
     const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
     const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
@@ -41,59 +36,66 @@ const AdminDashboardScreen = () => {
     const loadStats = async () => {
         try {
             setLoading(true);
-            const newsResponse = await mockApi.getNewsFeed();
-            const articles = newsResponse.data || [];
-            
-            // Mock user data
-            const totalUsers = 1250;
-            const activeUsers = 892;
-            
-            // Extract unique keywords/categories
-            const categories = new Set(articles.map(a => a.category).filter(Boolean));
-            
-            setStats({
-                totalUsers,
-                activeUsers,
-                totalArticles: articles.length,
-                totalKeywords: categories.size,
-            });
+            const data = await getAdminAnalytics();
+            setSnapshot(data);
         } catch (error) {
-            console.error('Error loading stats:', error);
+            console.error('Error loading admin stats:', error);
+            setSnapshot(null);
         } finally {
             setLoading(false);
         }
     };
 
+    const pipelineKeyCount = snapshot?.raw_by_pipeline_status
+        ? Object.keys(snapshot.raw_by_pipeline_status).length
+        : 0;
+    const credKeyCount = snapshot?.processed_by_credibility_label
+        ? Object.keys(snapshot.processed_by_credibility_label).length
+        : 0;
+
     const statCards = [
         {
-            icon: Users,
-            label: 'Total Users',
-            value: stats.totalUsers.toLocaleString(),
-            color: '#3b82f6',
-            path: '/admin/users',
-        },
-        {
-            icon: Activity,
-            label: 'Active Users',
-            value: stats.activeUsers.toLocaleString(),
-            color: '#10b981',
-            path: '/admin/users',
-        },
-        {
             icon: FileText,
-            label: 'Total Articles',
-            value: stats.totalArticles.toLocaleString(),
+            label: 'Raw articles',
+            value: snapshot != null ? String(snapshot.raw_total ?? 0) : '—',
             color: '#f59e0b',
             path: '/admin/articles',
         },
         {
+            icon: BarChart3,
+            label: 'Processed',
+            value: snapshot != null ? String(snapshot.processed_total ?? 0) : '—',
+            color: '#10b981',
+            path: '/admin/analytics',
+        },
+        {
+            icon: Activity,
+            label: 'Pipeline states',
+            value: snapshot != null ? String(pipelineKeyCount) : '—',
+            color: '#3b82f6',
+            path: '/admin/analytics',
+        },
+        {
             icon: Hash,
-            label: 'Categories',
-            value: stats.totalKeywords.toLocaleString(),
+            label: 'Credibility labels',
+            value: snapshot != null ? String(credKeyCount) : '—',
             color: '#8b5cf6',
-            path: '/admin/articles',
+            path: '/admin/analytics',
         },
     ];
+
+    const runPipeline = async () => {
+        setPipelineBusy(true);
+        try {
+            const result = await postAdminPipelineRun(15);
+            window.alert(typeof result === 'object' ? JSON.stringify(result, null, 2).slice(0, 1200) : String(result));
+            await loadStats();
+        } catch (e) {
+            window.alert(e?.message || 'Pipeline run failed');
+        } finally {
+            setPipelineBusy(false);
+        }
+    };
 
     return (
         <>
@@ -343,10 +345,47 @@ const AdminDashboardScreen = () => {
                                 Platform analytics and insights
                             </div>
                         </button>
+                        <button
+                            type="button"
+                            onClick={runPipeline}
+                            disabled={pipelineBusy}
+                            style={{
+                                padding: '16px',
+                                border: `1px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`,
+                                background: isDark ? 'rgba(129, 140, 248, 0.12)' : '#f8fafc',
+                                borderRadius: '8px',
+                                cursor: pipelineBusy ? 'wait' : 'pointer',
+                                textAlign: 'left',
+                                transition: 'all 0.2s ease',
+                                opacity: pipelineBusy ? 0.75 : 1,
+                            }}
+                        >
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                marginBottom: '4px',
+                            }}>
+                                <Play size={18} color={textPrimary} />
+                                <span style={{
+                                    fontSize: '15px',
+                                    fontWeight: '600',
+                                    color: textPrimary,
+                                }}>
+                                    {pipelineBusy ? 'Running pipeline…' : 'Run AI pipeline'}
+                                </span>
+                            </div>
+                            <div style={{
+                                fontSize: '13px',
+                                color: textSecondary,
+                            }}>
+                                Process a batch of pending raw articles on the server
+                            </div>
+                        </button>
                     </div>
                 </div>
 
-                {/* Recent Activity */}
+                {/* DB snapshot */}
                 <div style={{
                     backgroundColor: cardBackground,
                     borderRadius: '12px',
@@ -357,47 +396,35 @@ const AdminDashboardScreen = () => {
                         fontSize: '20px',
                         fontWeight: '700',
                         color: textPrimary,
-                        margin: '0 0 20px 0',
+                        margin: '0 0 12px 0',
                     }}>
-                        Recent Activity
+                        Database snapshot
                     </h2>
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '12px',
+                    <p style={{
+                        fontSize: '14px',
+                        color: textSecondary,
+                        margin: '0 0 16px 0',
+                        lineHeight: 1.5,
                     }}>
-                        {[
-                            { action: 'New user registered', time: '2 hours ago', type: 'user' },
-                            { action: 'Article published', time: '4 hours ago', type: 'article' },
-                            { action: 'User account activated', time: '6 hours ago', type: 'user' },
-                            { action: 'Article updated', time: '8 hours ago', type: 'article' },
-                        ].map((activity, index) => (
-                            <div
-                                key={index}
-                                style={{
-                                    padding: '12px',
-                                    backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f9fafb',
-                                    borderRadius: '8px',
-                                    border: `1px solid ${borderColor}`,
-                                }}
-                            >
-                                <div style={{
-                                    fontSize: '14px',
-                                    fontWeight: '500',
-                                    color: textPrimary,
-                                    marginBottom: '4px',
-                                }}>
-                                    {activity.action}
-                                </div>
-                                <div style={{
-                                    fontSize: '12px',
-                                    color: textSecondary,
-                                }}>
-                                    {activity.time}
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                        {snapshot == null && !loading
+                            ? 'Could not load analytics. Check that you are logged in as an admin and the API is running.'
+                            : 'Counts come from MongoDB (raw_articles / processed_articles), same as the admin API.'}
+                    </p>
+                    {snapshot != null && (
+                        <pre style={{
+                            margin: 0,
+                            padding: '12px',
+                            borderRadius: '8px',
+                            backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f9fafb',
+                            border: `1px solid ${borderColor}`,
+                            fontSize: '12px',
+                            color: textPrimary,
+                            overflow: 'auto',
+                            maxHeight: '280px',
+                        }}>
+                            {JSON.stringify(snapshot, null, 2)}
+                        </pre>
+                    )}
                 </div>
             </div>
         </div>

@@ -7,12 +7,15 @@ import ProfileActions from "./components/ProfileActions";
 import BookmarkList from "./components/BookmarkList";
 import LogoutButton from "./components/LogoutButton";
 import { useTheme } from "../../theme/ThemeContext";
+import { useAuth } from "../../context/AuthContext";
+import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const UserProfileScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { colors } = theme;
+  const { logout } = useAuth();
   const [bookmarks] = useState([
     {
       id: 1,
@@ -38,6 +41,7 @@ const UserProfileScreen = ({ navigation }) => {
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
+  const lastScrollY = useRef(0);
   const circle1Anim = useRef(new Animated.Value(0)).current;
   const circle2Anim = useRef(new Animated.Value(0)).current;
   const circle3Anim = useRef(new Animated.Value(0)).current;
@@ -75,6 +79,21 @@ const UserProfileScreen = ({ navigation }) => {
       }),
     ]).start();
   }, [fadeAnim, slideAnim]);
+
+  useEffect(() => {
+    resetTabBarVisibility();
+    return () => resetTabBarVisibility();
+  }, []);
+
+  const handleScroll = (event) => {
+    const currentY = event.nativeEvent.contentOffset.y;
+    const diff = currentY - lastScrollY.current;
+    if (Math.abs(diff) > 6) {
+      if (diff > 0 && currentY > 40) setTabBarHidden(true);
+      if (diff < 0) setTabBarHidden(false);
+    }
+    lastScrollY.current = currentY;
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -151,6 +170,8 @@ const UserProfileScreen = ({ navigation }) => {
         contentContainerStyle={styles.scrollContent}
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         <ProfileHeader
           name="Shahroz"
@@ -163,7 +184,12 @@ const UserProfileScreen = ({ navigation }) => {
         </View>
         <ProfileActions navigation={navigation} />
         <BookmarkList bookmarks={bookmarks} />
-        <LogoutButton onLogout={() => navigation.navigate("LoginScreen")} />
+        <LogoutButton
+          onLogout={async () => {
+            await logout();
+            navigation.reset({ index: 0, routes: [{ name: "OpeningScreen" }] });
+          }}
+        />
       </Animated.ScrollView>
     </SafeAreaView>
   );

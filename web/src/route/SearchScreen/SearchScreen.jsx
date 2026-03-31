@@ -6,7 +6,32 @@ import Tabs from "./components/tabs";
 import TrendingTopics from "./components/TrendingTopics";
 import RecentSearches from "./components/RecentSearches";
 import { NewsCard } from "../../components/NewsCard";
-import { mockApi } from "../../utils/Service/mockApi";
+import { loadFeedItems } from "../../utils/loadFeed";
+import {
+  getRecentSearches,
+  addRecentSearch,
+  deleteRecentSearch,
+} from "../../utils/recentSearchesStorage";
+
+function deriveTrendingFromArticles(articles) {
+  const counts = {};
+  for (const a of articles) {
+    for (const k of a.topic_keywords || []) {
+      const key = String(k).toLowerCase();
+      counts[key] = (counts[key] || 0) + 1;
+    }
+  }
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([name, count], i) => ({
+      id: `${i}-${name}`,
+      name: name.charAt(0).toUpperCase() + name.slice(1),
+      count: `${count} in feed`,
+      icon: "🔥",
+      trending: count >= 2,
+    }));
+}
 import { 
     ChevronUp, 
     ChevronDown, 
@@ -42,50 +67,36 @@ const SearchScreen = () => {
 
     const [categories, setCategories] = useState(["All"]);
 
-    const loadNews = async () => {
-        try {
-            setLoading(true);
-            const [newsResponse, trendingResponse, searchesResponse] = await Promise.all([
-                mockApi.getNewsFeed(),
-                mockApi.getTrendingTopics(),
-                mockApi.getRecentSearches(),
-            ]);
-            
-            const newsData = newsResponse.data || [];
-            setAllNews(newsData);
-            
-            // Extract unique categories from articles
-            const uniqueCategories = ["All"];
-            const categorySet = new Set();
-            
-            newsData.forEach(article => {
-                if (article.category && !categorySet.has(article.category)) {
-                    categorySet.add(article.category);
-                    uniqueCategories.push(article.category);
-                }
-            });
-            
-            // Sort categories alphabetically (except "All" which stays first)
-            const sortedCategories = ["All", ...Array.from(categorySet).sort()];
-            setCategories(sortedCategories);
-            
-            setTrendingTopics(trendingResponse.data || []);
-            setRecentSearches(searchesResponse.data || []);
-            
-            // Set initial filtered news - show all articles by default
-            setFilteredNews([...newsData]);
-        } catch (error) {
-            console.error("Error fetching data:", error);
-            setAllNews([]);
-            setFilteredNews([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        loadNews();
-    }, []);
+        const q = searchQuery.trim();
+        const delayMs = q ? 360 : 0;
+        const timer = setTimeout(async () => {
+            try {
+                setLoading(true);
+                const newsData = await loadFeedItems({ q });
+                setAllNews(newsData);
+                const categorySet = new Set();
+                newsData.forEach((article) => {
+                    if (article.category && !categorySet.has(article.category)) {
+                        categorySet.add(article.category);
+                    }
+                });
+                setCategories(["All", ...Array.from(categorySet).sort()]);
+                if (!q) {
+                    setTrendingTopics(deriveTrendingFromArticles(newsData));
+                    setRecentSearches(await getRecentSearches());
+                }
+                setFilteredNews([...newsData]);
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                setAllNews([]);
+                setFilteredNews([]);
+            } finally {
+                setLoading(false);
+            }
+        }, delayMs);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
 
     // Read query parameter from URL on mount and when URL changes
     useEffect(() => {
@@ -118,9 +129,8 @@ const SearchScreen = () => {
         searchRef.current?.collapseKeepText();
         
         try {
-            await mockApi.addRecentSearch(query);
-            const response = await mockApi.getRecentSearches();
-            setRecentSearches(response.data);
+            const next = await addRecentSearch(query);
+            setRecentSearches(next);
         } catch (error) {
             console.error("Error updating recent searches:", error);
         }
@@ -137,9 +147,8 @@ const SearchScreen = () => {
 
     const handleDeleteSearch = async (searchId) => {
         try {
-            await mockApi.deleteRecentSearch(searchId);
-            const response = await mockApi.getRecentSearches();
-            setRecentSearches(response.data);
+            const next = await deleteRecentSearch(searchId);
+            setRecentSearches(next);
         } catch (error) {
             console.error("Error deleting search:", error);
         }
@@ -179,6 +188,7 @@ const SearchScreen = () => {
                         item.description || '',
                         item.source || '',
                         item.category || '',
+                        (item.topic_keywords || []).join(' '),
                     ].join(' ').toLowerCase();
                     
                     // Check if all search terms are found in the searchable text
@@ -257,7 +267,7 @@ const SearchScreen = () => {
         }));
 
         try {
-            await mockApi.voteArticle(itemId, newVote);
+            /* votes API TBD */
         } catch (error) {
             setVotedItems(prev => ({
                 ...prev,
@@ -278,7 +288,7 @@ const SearchScreen = () => {
         });
 
         try {
-            await mockApi.bookmarkArticle(itemId);
+            /* bookmarks API TBD */
         } catch (error) {
             console.error('Error bookmarking:', error);
         }

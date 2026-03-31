@@ -7,6 +7,7 @@ import CustomSplashScreen from './src/components/SplashScreen';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from './src/theme/ThemeContext';
+import { AuthProvider } from './src/context/AuthContext';
 
 const App = () => {
     const [showSplash, setShowSplash] = useState(true);
@@ -63,7 +64,9 @@ const App = () => {
     return (
         <ThemeProvider>
             <SafeAreaProvider>
-                <AppNavigation />
+                <AuthProvider>
+                    <AppNavigation />
+                </AuthProvider>
             </SafeAreaProvider>
         </ThemeProvider>
     );

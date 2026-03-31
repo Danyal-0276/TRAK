@@ -2,8 +2,7 @@
 // ============================================
 // FILE: screens/ArticleDetailScreen.jsx
 // ============================================
-import React, { useRef, useEffect } from 'react';
-import { useState } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
     View,
     StyleSheet,
@@ -19,13 +18,16 @@ import { ArticleSourceInfo } from './components/ArticleSourceInfo';
 import { ArticleContent } from './components/ArticleContent';
 import { ArticleActions } from './components/ArticleActions';
 import { useTheme } from '../../theme/ThemeContext';
+import { fetchArticle } from '../../api/newsApi';
+import { mapApiItem } from '../../utils/loadFeed';
+import { getAccessToken } from '../../api/client';
 
 const { width, height } = Dimensions.get('window');
 
 const ArticleDetailScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
     const { colors } = theme;
-    const { article } = route.params;
+    const [article, setArticle] = useState(route.params?.article || {});
     const [isLiked, setIsLiked] = useState(false);
     const [isDisliked, setIsDisliked] = useState(false);
     const [isBookmarked, setIsBookmarked] = useState(false);
@@ -38,6 +40,30 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     const scaleAnim = useRef(new Animated.Value(0.95)).current;
     const circle1Anim = useRef(new Animated.Value(0)).current;
     const circle2Anim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        const fromNav = route.params?.article;
+        if (fromNav && Object.keys(fromNav).length) {
+            setArticle(fromNav);
+        }
+        const id = route.params?.articleId || fromNav?.id;
+        let cancelled = false;
+        (async () => {
+            if (!id) return;
+            const token = await getAccessToken();
+            if (!token) return;
+            try {
+                const doc = await fetchArticle(String(id));
+                if (cancelled) return;
+                setArticle((prev) => ({ ...prev, ...mapApiItem(doc) }));
+            } catch (e) {
+                console.warn('Article fetch:', e?.message);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [route.params?.article?.id, route.params?.articleId]);
 
     useEffect(() => {
         Animated.parallel([

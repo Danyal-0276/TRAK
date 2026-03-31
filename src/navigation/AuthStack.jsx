@@ -10,6 +10,7 @@ import {
     PasswordChangedScreen,
     TagSelectionScreen,
     KeywordSelectionScreen,
+    TermsScreen,
 } from './config/screenImports';
 
 const Stack = createNativeStackNavigator();
@@ -24,6 +25,7 @@ const authScreens = [
     { name: 'ForgotPasswordCode', component: ForgotPasswordCodeScreen },
     { name: 'ResetPassword', component: ResetPasswordScreen },
     { name: 'PasswordChanged', component: PasswordChangedScreen },
+    { name: 'TermsOfService', component: TermsScreen },
 ];
 
 const AuthStack = () => (
