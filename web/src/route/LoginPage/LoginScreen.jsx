@@ -29,21 +29,18 @@ const LoginScreen = () => {
         }
 
         setLoading(true);
-        setTimeout(() => {
-            try {
-                const userData = login(email, password);
-                setLoading(false);
-                // Navigate to admin dashboard if admin, otherwise to newsfeed
-                if (userData.isAdmin) {
-                    navigate('/admin/dashboard');
-                } else {
-                    navigate('/newsfeed');
-                }
-            } catch (error) {
-                setLoading(false);
-                setErrors(prev => ({ ...prev, password: error.message || 'Invalid email or password' }));
+        try {
+            const userData = await login(email, password);
+            if (userData?.role === 'admin') {
+                navigate('/admin/dashboard');
+            } else {
+                navigate('/newsfeed');
             }
-        }, 1000);
+        } catch (error) {
+            setErrors(prev => ({ ...prev, password: error.message || 'Invalid email or password' }));
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (

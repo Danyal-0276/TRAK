@@ -30,7 +30,7 @@ const Navigation = () => {
     const isActive = (path) => location.pathname === path;
 
     // Don't show navigation on auth pages
-    const hideNavPaths = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection'];
+    const hideNavPaths = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'];
     if (hideNavPaths.includes(location.pathname)) {
         return null;
     }

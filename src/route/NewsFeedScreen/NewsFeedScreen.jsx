@@ -1,7 +1,7 @@
 // ============================================
 // NewsFeedScreen.jsx - WITH SKELETON LOADING
 // ============================================
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
     View,
     ScrollView,
@@ -19,6 +19,9 @@ import { TabBar } from './components/TabBar';
 import { NewsCard } from '../../components/NewsCard';
 import { mockApi } from '../../utils/Service/mockApi';
 import { useTheme } from '../../theme/ThemeContext';
+import { loadFeedItems } from '../../utils/loadFeed';
+import { getBookmarkIds, toggleBookmarkId } from '../../utils/bookmarksStorage';
+import { resetTabBarVisibility, setTabBarHidden } from '../../navigation/tabBarVisibility';
 
 const { width, height } = Dimensions.get('window');
 
@@ -118,10 +121,11 @@ const NewsFeedScreen = ({ navigation }) => {
     const loadNews = async () => {
         try {
             setLoading(true);
-            const response = await mockApi.getNewsFeed();
-            setNewsData(response.data);
+            const rows = await loadFeedItems();
+            setNewsData(rows);
         } catch (error) {
             console.error('Error loading news:', error);
+            setNewsData([]);
         } finally {
             setLoading(false);
         }
@@ -131,9 +135,22 @@ const NewsFeedScreen = ({ navigation }) => {
         loadNews();
     }, []);
 
+    useEffect(() => {
+        resetTabBarVisibility();
+        return () => resetTabBarVisibility();
+    }, []);
+
+    useEffect(() => {
+        (async () => {
+            const ids = await getBookmarkIds();
+            setBookmarkedItems(new Set(ids));
+        })();
+    }, []);
+
 
     const handleRefresh = async () => {
         setRefreshing(true);
+        setTabBarHidden(false);
         // Show header on refresh
         Animated.spring(headerTranslateY, {
             toValue: 0,
@@ -155,6 +172,7 @@ const NewsFeedScreen = ({ navigation }) => {
                 // Only trigger animation if scroll change is significant
                 if (Math.abs(diff) > 5) {
                     if (diff > 0 && currentScrollY > 50) {
+                        setTabBarHidden(true);
                         // Scrolling down - hide header behind status bar
                         Animated.spring(headerTranslateY, {
                             toValue: -TOTAL_HEADER_HEIGHT,
@@ -163,6 +181,7 @@ const NewsFeedScreen = ({ navigation }) => {
                             tension: 40,
                         }).start();
                     } else if (diff < 0) {
+                        setTabBarHidden(false);
                         // Scrolling up - show header
                         Animated.spring(headerTranslateY, {
                             toValue: 0,
@@ -202,15 +221,8 @@ const NewsFeedScreen = ({ navigation }) => {
     };
 
     const handleBookmark = async (itemId) => {
-        setBookmarkedItems(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(itemId)) {
-                newSet.delete(itemId);
-            } else {
-                newSet.add(itemId);
-            }
-            return newSet;
-        });
+        const next = await toggleBookmarkId(itemId);
+        setBookmarkedItems(next);
 
         try {
             await mockApi.bookmarkArticle(itemId);
@@ -218,6 +230,13 @@ const NewsFeedScreen = ({ navigation }) => {
             console.error('Error bookmarking:', error);
         }
     };
+
+    const filteredNews = useMemo(() => {
+        if (activeTab === 'Following') {
+            return newsData.filter((_, i) => i % 2 === 0);
+        }
+        return newsData;
+    }, [newsData, activeTab]);
 
     return (
         <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
@@ -261,7 +280,7 @@ const NewsFeedScreen = ({ navigation }) => {
                     ]}
                 >
                     <FeedHeader navigation={navigation} />
-                    <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />
+                    <TabBar activeTab={activeTab} setActiveTab={setActiveTab} navigation={navigation} />
                 </Animated.View>
 
                 <Animated.ScrollView
@@ -291,7 +310,7 @@ const NewsFeedScreen = ({ navigation }) => {
                             <SkeletonCard colors={colors} />
                         </>
                     ) : (
-                        newsData.map((item, index) => (
+                        filteredNews.map((item, index) => (
                             <NewsCard
                                 key={item.id}
                                 item={item}

@@ -47,6 +47,10 @@ const CategoriesScreen = ({ navigation }) => {
   const categoryAnims = useRef({}).current;
 
   useEffect(() => {
+    navigation.replace('KeywordSelection', { fromSettings: true, selectedTags: [] });
+  }, [navigation]);
+
+  useEffect(() => {
     // Initialize animations for existing categories
     categories.forEach((cat) => {
       if (!categoryAnims[cat]) {

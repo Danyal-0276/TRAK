@@ -1,99 +1,123 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { AUTH_PREFIX, API_BASE } from '../config/api';
+
+const ACCESS_KEY = 'trak_access';
+const REFRESH_KEY = 'trak_refresh';
 
 const AuthContext = createContext(null);
 
+async function storeTokens(access, refresh) {
+  localStorage.setItem(ACCESS_KEY, access);
+  if (refresh) localStorage.setItem(REFRESH_KEY, refresh);
+}
+
+function clearStoredTokens() {
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+}
+
+function getAccess() {
+  return localStorage.getItem(ACCESS_KEY);
+}
+
 export const AuthProvider = ({ children }) => {
-    const [user, setUser] = useState(null);
-    const [isAdmin, setIsAdmin] = useState(false);
-    const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-    // User credentials (email: password)
-    const userCredentials = {
-        // Admins
-        'daniyal@admin.com': 'admin123',
-        'shahroz@admin.com': 'admin123',
-        'abdullah@admin.com': 'admin123',
-        // Regular user
-        'ali@user.com': 'user123',
-    };
+  const fetchMe = useCallback(async (token) => {
+    const res = await fetch(`${AUTH_PREFIX}/me/`, {
+      headers: {
+        Accept: 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    if (!res.ok) return null;
+    return res.json();
+  }, []);
 
-    // Admin emails
-    const adminEmails = [
-        'daniyal@admin.com',
-        'shahroz@admin.com',
-        'abdullah@admin.com'
-    ];
-
-    useEffect(() => {
-        // Load user from localStorage on mount
-        const savedUser = localStorage.getItem('user');
-        if (savedUser) {
-            try {
-                const userData = JSON.parse(savedUser);
-                setUser(userData);
-                setIsAdmin(userData.isAdmin || false);
-            } catch (error) {
-                console.error('Error loading user:', error);
-            }
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const token = getAccess();
+      if (!token) {
+        if (!cancelled) {
+          setUser(null);
+          setLoading(false);
         }
+        return;
+      }
+      const me = await fetchMe(token);
+      if (!cancelled) {
+        setUser(me);
         setLoading(false);
-    }, []);
-
-    const login = (email, password) => {
-        const emailLower = email.toLowerCase().trim();
-        
-        // Check if user exists and password matches
-        if (!userCredentials[emailLower]) {
-            throw new Error('Invalid email or password');
-        }
-        
-        if (userCredentials[emailLower] !== password) {
-            throw new Error('Invalid email or password');
-        }
-        
-        // Check if email is admin
-        const isAdminUser = adminEmails.includes(emailLower) || emailLower.endsWith('@admin.com');
-        
-        const userData = {
-            email: emailLower,
-            name: emailLower.split('@')[0],
-            isAdmin: isAdminUser,
-            loginTime: new Date().toISOString()
-        };
-
-        setUser(userData);
-        setIsAdmin(isAdminUser);
-        localStorage.setItem('user', JSON.stringify(userData));
-        
-        return userData;
+      }
+    })();
+    return () => {
+      cancelled = true;
     };
+  }, [fetchMe]);
 
-    const logout = () => {
-        setUser(null);
-        setIsAdmin(false);
-        localStorage.removeItem('user');
-    };
+  const login = async (email, password) => {
+    const res = await fetch(`${AUTH_PREFIX}/login/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ email: email.toLowerCase().trim(), password }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data.detail || data.non_field_errors?.[0] || 'Invalid email or password');
+    }
+    await storeTokens(data.access, data.refresh);
+    const u = data.user || (await fetchMe(data.access));
+    setUser(u);
+    return u;
+  };
 
-    const value = {
-        user,
-        isAdmin,
-        loading,
-        login,
-        logout
-    };
+  const register = async (email, password, password_confirm) => {
+    const res = await fetch(`${AUTH_PREFIX}/register/`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        email: email.toLowerCase().trim(),
+        password,
+        password_confirm,
+      }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const msg =
+        (typeof data === 'object' &&
+          (data.email?.[0] || data.password?.[0] || data.detail || data.non_field_errors?.[0])) ||
+        'Registration failed';
+      throw new Error(msg);
+    }
+    await storeTokens(data.access, data.refresh);
+    const u = data.user || (await fetchMe(data.access));
+    setUser(u);
+    return u;
+  };
 
-    return (
-        <AuthContext.Provider value={value}>
-            {children}
-        </AuthContext.Provider>
-    );
+  const logout = () => {
+    clearStoredTokens();
+    setUser(null);
+  };
+
+  const value = {
+    user,
+    isAdmin: user?.role === 'admin',
+    loading,
+    login,
+    register,
+    logout,
+    apiBase: API_BASE,
+    getAccessToken: getAccess,
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {
-    const context = useContext(AuthContext);
-    if (!context) {
-        throw new Error('useAuth must be used within AuthProvider');
-    }
-    return context;
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider');
+  return ctx;
 };
-

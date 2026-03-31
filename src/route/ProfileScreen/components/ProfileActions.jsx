@@ -2,13 +2,24 @@
 import React from "react";
 import { View, StyleSheet, TouchableOpacity } from "react-native";
 import LinearGradient from "react-native-linear-gradient";
-import { Edit, Settings } from "lucide-react-native";
+import { Edit, Settings, Shield } from "lucide-react-native";
 import { useTheme } from "../../../theme/ThemeContext";
+import { useAuth } from "../../../context/AuthContext";
 import Text from "../../../components/ui/Text";
 
 const ProfileActions = ({ navigation }) => {
   const { theme } = useTheme();
   const { colors, spacing } = theme;
+  const { isAdmin } = useAuth();
+
+  const openSettingsTab = () => {
+    navigation.getParent()?.navigate("MainTabs", { screen: "Settings" });
+  };
+
+  const openAdmin = () => {
+    navigation.getParent()?.getParent()?.navigate("AdminScreen");
+  };
+
   return (
     <View style={[styles.actions, { marginBottom: spacing.lg }] }>
       <TouchableOpacity
@@ -30,7 +41,7 @@ const ProfileActions = ({ navigation }) => {
       </TouchableOpacity>
       
       <TouchableOpacity
-        onPress={() => navigation.navigate("SettingsScreen")}
+        onPress={openSettingsTab}
         activeOpacity={0.8}
         style={[styles.secondaryButton, { 
           backgroundColor: colors.surface,
@@ -42,6 +53,22 @@ const ProfileActions = ({ navigation }) => {
           Settings
         </Text>
       </TouchableOpacity>
+
+      {isAdmin ? (
+        <TouchableOpacity
+          onPress={openAdmin}
+          activeOpacity={0.8}
+          style={[styles.adminButton, {
+            backgroundColor: colors.surface,
+            borderColor: colors.primary,
+          }]}
+        >
+          <Shield size={18} color={colors.primary} />
+          <Text variant="body" color={colors.primary} style={styles.buttonText}>
+            Admin
+          </Text>
+        </TouchableOpacity>
+      ) : null}
     </View>
   );
 };
@@ -49,10 +76,12 @@ const ProfileActions = ({ navigation }) => {
 const styles = StyleSheet.create({
   actions: { 
     flexDirection: "row",
+    flexWrap: "wrap",
     gap: 12,
   },
   primaryButton: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: "42%",
     borderRadius: 14,
     overflow: 'hidden',
     shadowColor: "#000",
@@ -69,7 +98,23 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   secondaryButton: {
-    flex: 1,
+    flexGrow: 1,
+    minWidth: "42%",
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  adminButton: {
+    flexBasis: "100%",
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { BarChart3 } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import StatCard from '../components/StatCard';
@@ -7,7 +7,7 @@ import ChartSection from '../components/ChartSection';
 import KeywordTable from '../components/KeywordTable';
 import Text from '../../../components/ui/Text';
 
-const DashboardTab = ({ stats, keywords }) => {
+const DashboardTab = ({ stats, keywords, onRunPipeline, pipelineRunning = false }) => {
   const { theme } = useTheme();
   const { colors } = theme;
   
@@ -48,6 +48,34 @@ const DashboardTab = ({ stats, keywords }) => {
       />
 
       <KeywordTable keywords={keywords} />
+
+      {onRunPipeline ? (
+        <View style={{ paddingHorizontal: 20, marginTop: 24, marginBottom: 16 }}>
+          <TouchableOpacity
+            onPress={onRunPipeline}
+            disabled={pipelineRunning}
+            style={{
+              backgroundColor: colors.primary,
+              paddingVertical: 14,
+              borderRadius: 10,
+              alignItems: 'center',
+              opacity: pipelineRunning ? 0.7 : 1,
+            }}
+            activeOpacity={0.85}
+          >
+            {pipelineRunning ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text variant="body" style={{ color: '#fff', fontWeight: '600' }}>
+                Run AI pipeline (batch)
+              </Text>
+            )}
+          </TouchableOpacity>
+          <Text variant="caption" color={colors.textSecondary} style={{ marginTop: 8, textAlign: 'center' }}>
+            Processes pending raw articles on the server (admin only).
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 };

@@ -7,10 +7,121 @@ import ChartSection from '../components/ChartSection';
 import StatRow from '../components/StatRow';
 import Text from '../../../components/ui/Text';
 
-const AnalyticsTab = ({ analytics }) => {
+function ServerAnalyticsView({ data, colors, modelMetrics }) {
+  const rawBy = data.raw_by_pipeline_status || {};
+  const credBy = data.processed_by_credibility_label || {};
+  const rawEntries = Object.entries(rawBy).sort((a, b) => b[1] - a[1]);
+  const credEntries = Object.entries(credBy).sort((a, b) => b[1] - a[1]);
+
+  return (
+    <View style={[styles.container, { paddingHorizontal: 20 }]}>
+      <Text variant="title" color={colors.textPrimary} style={styles.sectionTitle}>
+        Live data (Mongo)
+      </Text>
+      <Text variant="caption" color={colors.textSecondary} style={{ marginBottom: 16 }}>
+        Totals: {data.raw_total ?? 0} raw · {data.processed_total ?? 0} processed
+      </Text>
+      <Text variant="subtitle" color={colors.textPrimary} style={{ marginBottom: 8 }}>
+        Raw by pipeline_status
+      </Text>
+      {rawEntries.length === 0 ? (
+        <Text variant="caption" color={colors.textSecondary} style={{ marginBottom: 20 }}>
+          No raw articles or status not set.
+        </Text>
+      ) : (
+        rawEntries.map(([k, v]) => (
+          <StatRow key={k} label={String(k)} value={String(v)} percentage={100} color={colors.primary} />
+        ))
+      )}
+      <Text variant="subtitle" color={colors.textPrimary} style={{ marginTop: 16, marginBottom: 8 }}>
+        Processed by credibility_label
+      </Text>
+      {credEntries.length === 0 ? (
+        <Text variant="caption" color={colors.textSecondary}>
+          No processed articles yet.
+        </Text>
+      ) : (
+        credEntries.map(([k, v]) => (
+          <StatRow key={k} label={String(k)} value={String(v)} percentage={100} color="#4CAF50" />
+        ))
+      )}
+      {modelMetrics ? (
+        <View style={{ marginTop: 20 }}>
+          <Text variant="subtitle" color={colors.textPrimary} style={{ marginBottom: 8 }}>
+            Model performance
+          </Text>
+          <StatRow
+            label="Accuracy"
+            value={Number(modelMetrics.accuracy ?? 0).toFixed(4)}
+            percentage={100}
+            color={colors.primary}
+          />
+          <StatRow
+            label="Macro F1"
+            value={Number(modelMetrics.macro_avg?.['f1-score'] ?? 0).toFixed(4)}
+            percentage={100}
+            color="#4CAF50"
+          />
+          <StatRow
+            label="Weighted F1"
+            value={Number(modelMetrics.weighted_avg?.['f1-score'] ?? 0).toFixed(4)}
+            percentage={100}
+            color="#FF9800"
+          />
+          <Text variant="subtitle" color={colors.textPrimary} style={{ marginTop: 14, marginBottom: 8 }}>
+            Confusion matrix (rows=true, cols=pred)
+          </Text>
+          <Text variant="caption" color={colors.textSecondary} style={{ marginBottom: 6 }}>
+            Labels order: 0=real, 1=fake, 2=suspicious
+          </Text>
+          <View style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, overflow: 'hidden' }}>
+            {(modelMetrics.confusion_matrix?.matrix || []).map((row, rIdx) => {
+              const rowMax = Math.max(...(row || [1]), 1);
+              return (
+                <View key={`cm-row-${rIdx}`} style={{ flexDirection: 'row' }}>
+                  {(row || []).map((v, cIdx) => {
+                    const intensity = Math.max(0.15, Number(v || 0) / rowMax);
+                    return (
+                      <View
+                        key={`cm-cell-${rIdx}-${cIdx}`}
+                        style={{
+                          flex: 1,
+                          minHeight: 52,
+                          borderRightWidth: cIdx < 2 ? 1 : 0,
+                          borderBottomWidth: rIdx < 2 ? 1 : 0,
+                          borderColor: colors.border,
+                          backgroundColor: `rgba(59, 130, 246, ${intensity})`,
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <Text variant="caption" color={colors.textInverse || '#fff'} style={{ fontWeight: '700' }}>
+                          {String(v)}
+                        </Text>
+                        <Text variant="caption" color={colors.textInverse || '#fff'} style={{ fontSize: 11 }}>
+                          {`r${rIdx}->c${cIdx}`}
+                        </Text>
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+const AnalyticsTab = ({ analytics, serverAnalytics, modelMetrics }) => {
   const { theme } = useTheme();
   const { colors } = theme;
-  
+
+  if (serverAnalytics) {
+    return <ServerAnalyticsView data={serverAnalytics} colors={colors} modelMetrics={modelMetrics} />;
+  }
+
   if (!analytics) return null;
 
   const { newsStats, weeklyData, monthlyTrend } = analytics;

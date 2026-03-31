@@ -4,7 +4,7 @@ import { Edit2, Trash2, FileText } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import Text from '../../../components/ui/Text';
 
-const ArticleCard = ({ article, onEdit, onDelete }) => {
+const ArticleCard = ({ article, onEdit, onDelete, readOnly = false }) => {
   const { theme } = useTheme();
   const { colors } = theme;
   const isPublished = article.status === 'published';
@@ -55,22 +55,24 @@ const ArticleCard = ({ article, onEdit, onDelete }) => {
           </Text>
         </View>
       </View>
-      <View style={styles.itemActions}>
-        <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: `${colors.primary}15` }]} 
-          onPress={() => onEdit(article)}
-          activeOpacity={0.7}
-        >
-          <Edit2 size={18} color={colors.primary} />
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: `${colors.error}15` }]} 
-          onPress={() => onDelete(article.id)}
-          activeOpacity={0.7}
-        >
-          <Trash2 size={18} color={colors.error} />
-        </TouchableOpacity>
-      </View>
+      {!readOnly && (
+        <View style={styles.itemActions}>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: `${colors.primary}15` }]}
+            onPress={() => onEdit(article)}
+            activeOpacity={0.7}
+          >
+            <Edit2 size={18} color={colors.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, { backgroundColor: `${colors.error}15` }]}
+            onPress={() => onDelete(article.id)}
+            activeOpacity={0.7}
+          >
+            <Trash2 size={18} color={colors.error} />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 };

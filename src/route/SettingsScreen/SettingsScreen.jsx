@@ -3,15 +3,17 @@ import React, { useState, useRef, useEffect } from "react";
 import { ScrollView, SafeAreaView, StyleSheet, StatusBar, Animated, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
-import { User, Bell, Lock, Tag, Database, Info, LogOut, Moon } from "lucide-react-native";
+import { User, Bell, Lock, Tag, Database, Info, LogOut, Moon, FileText } from "lucide-react-native";
 
 import SettingsHeader from "./components/SettingsHeader";
 import SettingsSection from "./components/SettingsSection";
 import SettingsRow from "./components/SettingsRow";
 import ThemeSwitchButton from "./components/ThemeSwitchButton";
 import { useTheme } from "../../theme/ThemeContext";
+import { useAuth } from "../../context/AuthContext";
 import Card from "../../components/ui/Card";
 import Text from "../../components/ui/Text";
+import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -21,12 +23,14 @@ export default function SettingsScreen({ navigation }) {
   const [quietHours, setQuietHours] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { colors } = theme;
+  const { logout } = useAuth();
   const darkTheme = theme.mode === "dark";
   const insets = useSafeAreaInsets();
   const contentPaddingTop = Math.max(insets.top, theme.spacing.md);
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
+  const lastScrollY = useRef(0);
   const circle1Anim = useRef(new Animated.Value(0)).current;
   const circle2Anim = useRef(new Animated.Value(0)).current;
   const circle3Anim = useRef(new Animated.Value(0)).current;
@@ -64,6 +68,21 @@ export default function SettingsScreen({ navigation }) {
       }),
     ]).start();
   }, []);
+
+  useEffect(() => {
+    resetTabBarVisibility();
+    return () => resetTabBarVisibility();
+  }, []);
+
+  const handleScroll = (event) => {
+    const currentY = event.nativeEvent.contentOffset.y;
+    const diff = currentY - lastScrollY.current;
+    if (Math.abs(diff) > 6) {
+      if (diff > 0 && currentY > 40) setTabBarHidden(true);
+      if (diff < 0) setTabBarHidden(false);
+    }
+    lastScrollY.current = currentY;
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
@@ -150,6 +169,8 @@ export default function SettingsScreen({ navigation }) {
           transform: [{ translateY: slideAnim }],
         }}
         showsVerticalScrollIndicator={false}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
       >
         <SettingsHeader />
 
@@ -204,13 +225,18 @@ export default function SettingsScreen({ navigation }) {
             label="Privacy & Security"
             onPress={() => navigation.navigate("PrivacyScreen")}
           />
+          <SettingsRow
+            icon={<FileText size={22} color={colors.primary} />}
+            label="Terms of Service"
+            onPress={() => navigation.getParent()?.navigate("TermsScreen")}
+          />
         </SettingsSection>
 
         <SettingsSection>
           <SettingsRow
             icon={<Tag size={22} color={colors.primary} />}
             label="Manage Categories"
-            onPress={() => navigation.navigate("CategoriesScreen")}
+            onPress={() => navigation.navigate("KeywordSelection", { fromSettings: true, selectedTags: [] })}
           />
         </SettingsSection>
 
@@ -239,7 +265,11 @@ export default function SettingsScreen({ navigation }) {
             icon={<LogOut size={22} color={colors.error} />}
             label="Log Out"
             labelColor={colors.error}
-            onPress={() => navigation.navigate("LoginScreen")}
+            onPress={async () => {
+              await logout();
+              const root = navigation.getParent()?.getParent();
+              root?.reset({ index: 0, routes: [{ name: "OpeningScreen" }] });
+            }}
           />
         </SettingsSection>
       </Animated.ScrollView>

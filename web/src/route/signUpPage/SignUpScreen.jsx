@@ -3,9 +3,11 @@ import { useNavigate, Link } from 'react-router-dom';
 import { User, Mail, Lock, ArrowRight, Eye, EyeOff, X } from 'lucide-react';
 import Text from '../../components/ui/Text';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
+import { useAuth } from '../../context/AuthContext';
 
 const SignUpScreen = () => {
     const navigate = useNavigate();
+    const { register } = useAuth();
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -57,10 +59,15 @@ const SignUpScreen = () => {
         if (!validateForm()) return;
 
         setLoading(true);
-        setTimeout(() => {
-            setLoading(false);
+        setErrors({});
+        try {
+            await register(email.trim().toLowerCase(), password, confirmPassword);
             navigate('/tag-selection');
-        }, 1000);
+        } catch (err) {
+            setErrors((prev) => ({ ...prev, form: err.message || 'Could not create account' }));
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -464,6 +471,16 @@ const SignUpScreen = () => {
                             </p>
                         )}
                     </div>
+
+                    {errors.form && (
+                        <p style={{
+                            color: '#ef4444',
+                            fontSize: '14px',
+                            margin: '0 0 12px 0',
+                        }}>
+                            {errors.form}
+                        </p>
+                    )}
 
                     {/* Submit Button */}
                     <button

@@ -19,7 +19,7 @@ const Header = () => {
     const [showMobileMenu, setShowMobileMenu] = useState(false);
 
     // Don't show header on auth pages
-    const hideHeaderPaths = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection'];
+    const hideHeaderPaths = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'];
     if (hideHeaderPaths.includes(location.pathname)) {
         return null;
     }

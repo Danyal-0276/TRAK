@@ -3,17 +3,15 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import { getResponsivePadding, getResponsiveMaxWidth, getResponsiveGridColumns, getResponsiveGap, getResponsiveFontSize } from '../../utils/responsiveStyles';
-import { 
-    FileText, 
-    Search, 
-    Edit, 
-    Trash2, 
+import {
+    FileText,
+    Search,
     Eye,
     CheckCircle,
     Clock,
-    Tag
+    Tag,
 } from 'lucide-react';
-import { mockApi } from '../../utils/Service/mockApi';
+import { getAdminArticles } from '../../api/adminApi';
 
 const AdminArticlesScreen = () => {
     const { theme } = useTheme();
@@ -24,6 +22,7 @@ const AdminArticlesScreen = () => {
     const [articles, setArticles] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
+    const [scope, setScope] = useState('all');
 
     const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
     const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
@@ -33,30 +32,45 @@ const AdminArticlesScreen = () => {
 
     useEffect(() => {
         loadArticles();
-    }, []);
+    }, [scope]);
+
+    const mapApiDoc = (doc) => {
+        const dateStr = doc.fetched_at || doc.processed_at || '';
+        const time = typeof dateStr === 'string' ? dateStr.slice(0, 16).replace('T', ' ') : '';
+        return {
+            id: doc.id,
+            title: doc.title,
+            source: doc.source_key || '—',
+            time,
+            category: doc.scope === 'raw' ? 'Raw' : 'Processed',
+            excerpt: doc.canonical_url ? String(doc.canonical_url).slice(0, 140) : '',
+            verified: doc.scope === 'processed' && doc.credibility_label != null && doc.credibility_label !== '',
+            upvotes: 0,
+            credibility_label: doc.credibility_label,
+            pipeline_status: doc.pipeline_status,
+            canonical_url: doc.canonical_url,
+        };
+    };
 
     const loadArticles = async () => {
         try {
             setLoading(true);
-            const response = await mockApi.getNewsFeed();
-            setArticles(response.data || []);
+            const response = await getAdminArticles({ page: 1, pageSize: 80, scope });
+            setArticles((response.results || []).map(mapApiDoc));
         } catch (error) {
             console.error('Error loading articles:', error);
+            setArticles([]);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleDelete = (articleId) => {
-        if (window.confirm('Are you sure you want to delete this article?')) {
-            setArticles(articles.filter(a => a.id !== articleId));
         }
     };
 
     const filteredArticles = articles.filter(article =>
         article.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         article.source?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        article.category?.toLowerCase().includes(searchQuery.toLowerCase())
+        article.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(article.credibility_label ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        String(article.pipeline_status ?? '').toLowerCase().includes(searchQuery.toLowerCase())
     );
 
     return (
@@ -101,8 +115,37 @@ const AdminArticlesScreen = () => {
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
-                        Manage all articles and content on the platform
+                        Live list from MongoDB (admin API). Edit/delete are not exposed in the API yet.
                     </p>
+                    <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '8px',
+                        marginTop: '16px',
+                    }}>
+                        {['all', 'raw', 'processed'].map((s) => (
+                            <button
+                                key={s}
+                                type="button"
+                                onClick={() => setScope(s)}
+                                style={{
+                                    padding: '8px 14px',
+                                    borderRadius: '8px',
+                                    border: `1px solid ${scope === s ? (isDark ? colors.primary || '#818CF8' : '#0f172a') : borderColor}`,
+                                    background: scope === s
+                                        ? (isDark ? 'rgba(129, 140, 248, 0.15)' : '#f1f5f9')
+                                        : 'transparent',
+                                    color: textPrimary,
+                                    cursor: 'pointer',
+                                    fontWeight: scope === s ? 600 : 500,
+                                    textTransform: 'capitalize',
+                                    fontSize: '14px',
+                                }}
+                            >
+                                {s}
+                            </button>
+                        ))}
+                    </div>
                 </div>
 
                 {/* Search Bar */}
@@ -335,6 +378,7 @@ const AdminArticlesScreen = () => {
                                         gap: '8px',
                                     }}>
                                         <button
+                                            type="button"
                                             onClick={() => navigate(`/article/${article.id}`)}
                                             style={{
                                                 padding: '6px 12px',
@@ -360,50 +404,26 @@ const AdminArticlesScreen = () => {
                                             }}
                                         >
                                             <Eye size={12} />
-                                            View
+                                            In app
                                         </button>
-                                        <button
-                                            onClick={() => {}}
-                                            style={{
-                                                padding: '6px',
-                                                border: `1px solid ${borderColor}`,
-                                                background: 'transparent',
-                                                borderRadius: '6px',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease',
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
-                                                e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.backgroundColor = 'transparent';
-                                                e.currentTarget.style.borderColor = borderColor;
-                                            }}
-                                        >
-                                            <Edit size={14} color={textPrimary} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(article.id)}
-                                            style={{
-                                                padding: '6px',
-                                                border: `1px solid ${borderColor}`,
-                                                background: 'transparent',
-                                                borderRadius: '6px',
-                                                cursor: 'pointer',
-                                                transition: 'all 0.2s ease',
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.backgroundColor = '#ef444420';
-                                                e.currentTarget.style.borderColor = '#ef4444';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.backgroundColor = 'transparent';
-                                                e.currentTarget.style.borderColor = borderColor;
-                                            }}
-                                        >
-                                            <Trash2 size={14} color="#ef4444" />
-                                        </button>
+                                        {article.canonical_url ? (
+                                            <a
+                                                href={article.canonical_url}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                style={{
+                                                    padding: '6px 12px',
+                                                    border: `1px solid ${borderColor}`,
+                                                    borderRadius: '6px',
+                                                    fontSize: '12px',
+                                                    fontWeight: '600',
+                                                    color: textPrimary,
+                                                    textDecoration: 'none',
+                                                }}
+                                            >
+                                                Source URL
+                                            </a>
+                                        ) : null}
                                     </div>
                                     <div style={{
                                         fontSize: '12px',
@@ -412,8 +432,11 @@ const AdminArticlesScreen = () => {
                                         alignItems: 'center',
                                         gap: '4px',
                                     }}>
-                                        <span>{article.upvotes || 0}</span>
-                                        <span>votes</span>
+                                        {article.category === 'Processed' && article.credibility_label != null
+                                            ? `label: ${article.credibility_label}`
+                                            : article.pipeline_status
+                                                ? `status: ${article.pipeline_status}`
+                                                : '—'}
                                     </div>
                                 </div>
                             </div>

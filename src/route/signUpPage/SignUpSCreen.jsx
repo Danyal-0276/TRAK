@@ -5,8 +5,8 @@ import LinearGradient from 'react-native-linear-gradient';
 import { Header } from './components/Header';
 import { SignUpForm } from './components/SignUpForm';
 import { Footer } from './components/Footer';
-import { mockAuthAPI } from './services/mockAuthAPI';
 import { useTheme } from '../../theme/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
 import Text from '../../components/ui/Text';
 import { UserPlus } from 'lucide-react-native';
 
@@ -15,6 +15,7 @@ const { width, height } = Dimensions.get('window');
 const SignUpScreen = ({ navigation }) => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const { register } = useAuth();
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -102,8 +103,8 @@ const SignUpScreen = ({ navigation }) => {
         
         if (!password) {
             newErrors.password = 'Password is required';
-        } else if (password.length < 6) {
-            newErrors.password = 'Password must be at least 6 characters';
+        } else if (password.length < 8) {
+            newErrors.password = 'Password must be at least 8 characters';
         }
         
         if (!confirmPassword) {
@@ -125,25 +126,13 @@ const SignUpScreen = ({ navigation }) => {
         setErrors({});
 
         try {
-            const response = await mockAuthAPI.signUp({
-                fullName,
-                email,
-                password,
-                confirmPassword
-            });
-
-            console.log('Sign up successful:', response);
-            
-            Alert.alert(
-                'Success!',
-                'Account created successfully',
-                [
-                    {
-                        text: 'Continue',
-                        onPress: () => navigation.navigate('TagSelection')
-                    }
-                ]
-            );
+            await register(email, password, confirmPassword);
+            Alert.alert('Success!', 'Account created successfully', [
+                {
+                    text: 'Continue',
+                    onPress: () => navigation.navigate('TagSelection'),
+                },
+            ]);
         } catch (error) {
             Alert.alert('Error', error.message);
         } finally {
@@ -155,20 +144,7 @@ const SignUpScreen = ({ navigation }) => {
         setLoadingProvider(provider);
         
         try {
-            const response = await mockAuthAPI.socialSignUp(provider);
-            
-            console.log(`${provider} sign up successful:`, response);
-            
-            Alert.alert(
-                'Success!',
-                `Signed up with ${provider}`,
-                [
-                    {
-                        text: 'Continue',
-                        onPress: () => navigation.navigate('TagSelection')
-                    }
-                ]
-            );
+            Alert.alert('Social sign-up', 'OAuth is not wired yet. Register with email.');
         } catch (error) {
             Alert.alert('Error', error.message);
         } finally {

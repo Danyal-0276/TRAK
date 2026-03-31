@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'react-native-linear-gradient';
 import { ChevronLeft, Mail } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import { requestPasswordReset } from '../../api/authPasswordApi';
 
 const { width, height } = Dimensions.get('window');
 
@@ -310,11 +311,11 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                     }
                                     setLoading(true);
                                     try {
-                                        // Simulate API call
-                                        await new Promise(resolve => setTimeout(resolve, 1500));
-                                        navigation.navigate('ForgotPasswordCode', { email });
+                                        await requestPasswordReset(email.trim());
+                                        navigation.navigate('ForgotPasswordCode', { email: email.trim().toLowerCase() });
                                     } catch (error) {
-                                        Alert.alert('Error', 'Failed to send code. Please try again.');
+                                        Alert.alert('Error', error?.message || 'Could not send reset email.');
+                                    } finally {
                                         setLoading(false);
                                     }
                                 }}
@@ -334,7 +335,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                     </View>
                                 ) : (
                                     <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
-                                        Send code
+                                        Send reset link
                                     </Text>
                                 )}
                             </TouchableOpacity>

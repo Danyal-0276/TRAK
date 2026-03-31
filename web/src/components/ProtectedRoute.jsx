@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const ProtectedRoute = ({ children, requireAdmin = false }) => {
-    const { user, isAdmin, loading } = useAuth();
+    const { user, loading } = useAuth();
 
     if (loading) {
         return (
@@ -37,7 +37,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
         return <Navigate to="/login" replace />;
     }
 
-    if (requireAdmin && !isAdmin) {
+    if (requireAdmin && user?.role !== 'admin') {
         return <Navigate to="/newsfeed" replace />;
     }
 

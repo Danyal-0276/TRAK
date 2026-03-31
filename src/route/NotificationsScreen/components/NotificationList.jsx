@@ -4,7 +4,7 @@ import { FlatList, Text, View, StyleSheet } from "react-native";
 import { useTheme } from "../../../theme/ThemeContext";
 import NotificationCard from "./NotificationCard";
 
-const NotificationList = ({ data, onMarkAsRead, onNotificationPress }) => {
+const NotificationList = ({ data, onMarkAsRead, onNotificationPress, onListScroll }) => {
   const { theme } = useTheme();
   const { colors } = theme;
 
@@ -32,6 +32,7 @@ const NotificationList = ({ data, onMarkAsRead, onNotificationPress }) => {
       }
       showsVerticalScrollIndicator={false}
       scrollEventThrottle={16}
+      onScroll={onListScroll}
     />
   );
 };

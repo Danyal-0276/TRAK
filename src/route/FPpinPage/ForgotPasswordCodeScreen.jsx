@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
     View,
     Text,
-    TextInput,
     TouchableOpacity,
     StyleSheet,
     StatusBar,
@@ -10,29 +9,21 @@ import {
     Platform,
     Animated,
     Dimensions,
-    ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'react-native-linear-gradient';
 import { ChevronLeft, Mail, Shield } from 'lucide-react-native';
 import { Alert } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import { requestPasswordReset } from '../../api/authPasswordApi';
 
 const { width, height } = Dimensions.get('window');
 
 const ForgotPasswordCodeScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
     const { colors } = theme;
-    const [code, setCode] = useState(['', '', '', '']);
     const [timer, setTimer] = useState(60);
-    const [loading, setLoading] = useState(false);
-    const inputRefs = useRef([]);
-    const inputAnims = useRef([
-        new Animated.Value(0),
-        new Animated.Value(0),
-        new Animated.Value(0),
-        new Animated.Value(0),
-    ]).current;
+    const [resendLoading, setResendLoading] = useState(false);
 
     const { email } = route.params || {};
 
@@ -111,67 +102,8 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
                     }),
                 ])
             ),
-            // Stagger code input animations
-            Animated.stagger(100, [
-                Animated.spring(inputAnims[0], {
-                    toValue: 1,
-                    friction: 7,
-                    tension: 40,
-                    useNativeDriver: true,
-                }),
-                Animated.spring(inputAnims[1], {
-                    toValue: 1,
-                    friction: 7,
-                    tension: 40,
-                    useNativeDriver: true,
-                }),
-                Animated.spring(inputAnims[2], {
-                    toValue: 1,
-                    friction: 7,
-                    tension: 40,
-                    useNativeDriver: true,
-                }),
-                Animated.spring(inputAnims[3], {
-                    toValue: 1,
-                    friction: 7,
-                    tension: 40,
-                    useNativeDriver: true,
-                }),
-            ]),
         ]).start();
     }, []);
-
-    const handleCodeChange = (text, index) => {
-        const newCode = [...code];
-        newCode[index] = text.replace(/[^0-9]/g, '');
-        setCode(newCode);
-
-        // Animate input on change
-        Animated.sequence([
-            Animated.timing(inputAnims[index], {
-                toValue: 1.1,
-                duration: 100,
-                useNativeDriver: true,
-            }),
-            Animated.timing(inputAnims[index], {
-                toValue: 1,
-                duration: 100,
-                useNativeDriver: true,
-            }),
-        ]).start();
-
-        // Auto focus next input
-        if (newCode[index] && index < 3) {
-            inputRefs.current[index + 1]?.focus();
-        }
-    };
-
-    const handleKeyPress = (e, index) => {
-        // Handle backspace
-        if (e.nativeEvent.key === 'Backspace' && !code[index] && index > 0) {
-            inputRefs.current[index - 1].focus();
-        }
-    };
 
     return (
         <View style={[styles.fullContainer, { backgroundColor: colors.background }]}>
@@ -324,7 +256,7 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
                             </View>
                             <Text style={[styles.title, { color: colors.textPrimary }]}>Please check your email</Text>
                             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                                We've sent a code to {email || 'hello@trak.com'}
+                                We sent a reset link to {email || 'your email'}. Open it to finish on the web, or continue here to enter the link details.
                             </Text>
                         </Animated.View>
 
@@ -347,104 +279,57 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
                                 }
                             ]}
                         >
-                            <View style={styles.codeInputContainer}>
-                                {code.map((digit, index) => (
-                                    <Animated.View
-                                        key={index}
-                                        style={{
-                                            transform: [
-                                                {
-                                                    scale: inputAnims[index].interpolate({
-                                                        inputRange: [0, 1, 1.1],
-                                                        outputRange: [0, 1, 1.05],
-                                                    }),
-                                                },
-                                            ],
-                                            opacity: inputAnims[index],
-                                        }}
-                                    >
-                                        <TextInput
-                                            ref={(ref) => (inputRefs.current[index] = ref)}
-                                            style={[
-                                                styles.codeInput,
-                                                {
-                                                    borderColor: digit ? colors.primary : colors.border,
-                                                    backgroundColor: colors.backgroundSecondary,
-                                                    color: colors.textPrimary,
-                                                }
-                                            ]}
-                                            value={digit}
-                                            onChangeText={(text) => handleCodeChange(text, index)}
-                                            onKeyPress={(e) => handleKeyPress(e, index)}
-                                            maxLength={1}
-                                            keyboardType="numeric"
-                                            textAlign="center"
-                                        />
-                                    </Animated.View>
-                                ))}
-                            </View>
+                            <Text style={[styles.instructions, { color: colors.textSecondary }]}>
+                                The email contains a link with a secure token. On this device you can open that link in a browser, or tap below and paste the token values from the URL (uid=…&token=…) on the next screen.
+                            </Text>
 
                             <TouchableOpacity
                                 style={[
-                                    styles.primaryButton, 
+                                    styles.primaryButton,
                                     {
-                                        backgroundColor: (code.some(digit => !digit) || loading) 
-                                            ? colors.textTertiary 
-                                            : colors.primary,
+                                        backgroundColor: colors.primary,
                                         shadowColor: colors.shadowDark,
-                                        opacity: (code.some(digit => !digit) || loading) ? 0.6 : 1,
-                                    }
+                                    },
                                 ]}
-                                onPress={async () => {
-                                    if (code.some(digit => !digit)) return;
-                                    setLoading(true);
-                                    try {
-                                        // Simulate API call
-                                        await new Promise(resolve => setTimeout(resolve, 1500));
-                                        navigation.navigate('ResetPassword');
-                                    } catch (error) {
-                                        Alert.alert('Error', 'Failed to verify code. Please try again.');
-                                        setLoading(false);
-                                    }
-                                }}
+                                onPress={() => navigation.navigate('ResetPassword', { email })}
                                 activeOpacity={0.8}
-                                disabled={code.some(digit => !digit) || loading}
                             >
-                                {loading ? (
-                                    <View style={styles.loadingContainer}>
-                                        <ActivityIndicator 
-                                            size="small" 
-                                            color={colors.textInverse}
-                                            style={styles.spinner}
-                                        />
-                                        <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
-                                            Verifying...
-                                        </Text>
-                                    </View>
-                                ) : (
-                                    <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
-                                        Verify
-                                    </Text>
-                                )}
+                                <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
+                                    Choose new password
+                                </Text>
                             </TouchableOpacity>
 
-                            <TouchableOpacity 
-                                disabled={timer > 0}
-                                onPress={() => {
-                                    if (timer === 0) {
+                            <TouchableOpacity
+                                disabled={timer > 0 || resendLoading || !email}
+                                onPress={async () => {
+                                    if (timer > 0 || !email) return;
+                                    setResendLoading(true);
+                                    try {
+                                        await requestPasswordReset(email);
                                         setTimer(60);
+                                        Alert.alert('Sent', 'If an account exists, another email was sent.');
+                                    } catch (e) {
+                                        Alert.alert('Error', e?.message || 'Could not resend');
+                                    } finally {
+                                        setResendLoading(false);
                                     }
                                 }}
                                 activeOpacity={0.7}
                             >
-                                <Text style={[
-                                    styles.resendText, 
-                                    { color: timer > 0 ? colors.textTertiary : colors.primary }
-                                ]}>
-                                    {timer > 0 
-                                        ? `Send code again 00:${timer.toString().padStart(2, '0')}`
-                                        : 'Send code again'
-                                    }
+                                <Text
+                                    style={[
+                                        styles.resendText,
+                                        {
+                                            color:
+                                                timer > 0 || resendLoading ? colors.textTertiary : colors.primary,
+                                        },
+                                    ]}
+                                >
+                                    {resendLoading
+                                        ? 'Sending…'
+                                        : timer > 0
+                                          ? `Resend email 00:${timer.toString().padStart(2, '0')}`
+                                          : 'Resend reset email'}
                                 </Text>
                             </TouchableOpacity>
                         </Animated.View>
@@ -556,6 +441,11 @@ const styles = StyleSheet.create({
         fontSize: 16,
         lineHeight: 24,
         textAlign: 'center',
+    },
+    instructions: {
+        fontSize: 14,
+        lineHeight: 22,
+        marginBottom: 20,
     },
     formCard: {
         borderRadius: 24,
