@@ -12,6 +12,7 @@ import {
   addRecentSearch,
   deleteRecentSearch,
 } from "../../utils/recentSearchesStorage";
+import { useUIFeedback } from "../../components/ui/UIFeedback";
 
 function deriveTrendingFromArticles(articles) {
   const counts = {};
@@ -63,6 +64,7 @@ const SearchScreen = () => {
     const [articleBookmarked, setArticleBookmarked] = useState(false);
     const [articleLikeCount, setArticleLikeCount] = useState(0);
     const [articleDislikeCount, setArticleDislikeCount] = useState(0);
+    const { success } = useUIFeedback();
     const searchRef = useRef(null);
 
     const [categories, setCategories] = useState(["All"]);
@@ -127,7 +129,7 @@ const SearchScreen = () => {
         setSearchQuery(query);
         setActiveTab("All"); // Reset to All tab when searching
         searchRef.current?.collapseKeepText();
-        
+
         try {
             const next = await addRecentSearch(query);
             setRecentSearches(next);
@@ -253,7 +255,7 @@ const SearchScreen = () => {
             });
         } else if (selectedArticle) {
             navigator.clipboard.writeText(window.location.href);
-            alert('Link copied to clipboard!');
+            success('Link copied to clipboard!');
         }
     };
 

@@ -10,7 +10,6 @@ import {
     Platform,
     Animated,
     Dimensions,
-    Alert,
     ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -18,11 +17,13 @@ import { LinearGradient } from 'react-native-linear-gradient';
 import { ChevronLeft, Mail } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { requestPasswordReset } from '../../api/authPasswordApi';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
 
 const { width, height } = Dimensions.get('window');
 
 const ForgotPasswordScreen = ({ navigation }) => {
     const { theme } = useTheme();
+    const { error: showError } = useFeedback();
     const { colors } = theme;
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
@@ -302,11 +303,11 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                 ]}
                                 onPress={async () => {
                                     if (!email) {
-                                        Alert.alert('Error', 'Please enter your email address');
+                                        showError('Please enter your email address');
                                         return;
                                     }
                                     if (!email.includes('@') || !email.includes('.')) {
-                                        Alert.alert('Error', 'Please enter a valid email address');
+                                        showError('Please enter a valid email address');
                                         return;
                                     }
                                     setLoading(true);
@@ -314,7 +315,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                         await requestPasswordReset(email.trim());
                                         navigation.navigate('ForgotPasswordCode', { email: email.trim().toLowerCase() });
                                     } catch (error) {
-                                        Alert.alert('Error', error?.message || 'Could not send reset email.');
+                                        showError(error?.message || 'Could not send reset email.');
                                     } finally {
                                         setLoading(false);
                                     }

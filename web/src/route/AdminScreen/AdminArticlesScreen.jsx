@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
+import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { useResponsive } from '../../hooks/useResponsive';
 import { getResponsivePadding, getResponsiveMaxWidth, getResponsiveGridColumns, getResponsiveGap, getResponsiveFontSize } from '../../utils/responsiveStyles';
 import {
@@ -20,6 +21,7 @@ const AdminArticlesScreen = () => {
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
     const [articles, setArticles] = useState([]);
+    const { confirm } = useUIFeedback();
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const [scope, setScope] = useState('all');
@@ -62,6 +64,18 @@ const AdminArticlesScreen = () => {
             setArticles([]);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleDelete = async (articleId) => {
+        const accepted = await confirm({
+            title: 'Delete article?',
+            message: 'Are you sure you want to delete this article?',
+            confirmText: 'Delete',
+            danger: true,
+        });
+        if (accepted) {
+            setArticles(articles.filter(a => a.id !== articleId));
         }
     };
 

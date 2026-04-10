@@ -1,12 +1,13 @@
 // components/profile/ProfileHeader.jsx
 import React from "react";
 import { View, Image, StyleSheet } from "react-native";
+import { CheckCircle2 } from "lucide-react-native";
 import LinearGradient from "react-native-linear-gradient";
 import { useTheme } from "../../../theme/ThemeContext";
 import Text from "../../../components/ui/Text";
 import Card from "../../../components/ui/Card";
 
-const ProfileHeader = ({ name, username, bio, avatar }) => {
+const ProfileHeader = ({ name, username, bio, avatar, verified }) => {
   const { theme } = useTheme();
   const { colors, spacing, radius } = theme;
   
@@ -41,7 +42,10 @@ const ProfileHeader = ({ name, username, bio, avatar }) => {
           </LinearGradient>
         </View>
         <View style={styles.headerText}>
-          <Text variant="title" style={[styles.name, { color: colors.textPrimary }]}>{name}</Text>
+          <View style={styles.nameRow}>
+            <Text variant="title" style={[styles.name, { color: colors.textPrimary }]}>{name}</Text>
+            {verified ? <CheckCircle2 size={18} color="#2563EB" /> : null}
+          </View>
           <Text variant="caption" color={colors.textSecondary} style={styles.username}>{username}</Text>
           <Text variant="body" color={colors.textSecondary} style={styles.bio}>{bio}</Text>
         </View>
@@ -54,6 +58,11 @@ const styles = StyleSheet.create({
   header: { 
     flexDirection: "row",
     padding: 4,
+  },
+  nameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
   avatarContainer: {
     marginRight: 16,

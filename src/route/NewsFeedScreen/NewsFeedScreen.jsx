@@ -17,9 +17,8 @@ import LinearGradient from 'react-native-linear-gradient';
 import { FeedHeader } from './components/FeedHeader';
 import { TabBar } from './components/TabBar';
 import { NewsCard } from '../../components/NewsCard';
-import { mockApi } from '../../utils/Service/mockApi';
+import { getUserFeed } from '../../utils/Service/api';
 import { useTheme } from '../../theme/ThemeContext';
-import { loadFeedItems } from '../../utils/loadFeed';
 import { getBookmarkIds, toggleBookmarkId } from '../../utils/bookmarksStorage';
 import { resetTabBarVisibility, setTabBarHidden } from '../../navigation/tabBarVisibility';
 
@@ -121,8 +120,25 @@ const NewsFeedScreen = ({ navigation }) => {
     const loadNews = async () => {
         try {
             setLoading(true);
-            const rows = await loadFeedItems();
-            setNewsData(rows);
+            const response = await getUserFeed();
+            const mapped = (response.results || []).map((item, idx) => ({
+                ...item,
+                id: item.id || item.canonical_url || String(idx),
+                source: item.source || 'Source',
+                time: item.published_at
+                    ? new Date(item.published_at).toLocaleString()
+                    : 'Recently',
+                title: item.title || 'Untitled',
+                excerpt: item.excerpt || item.content || '',
+                content: item.content || item.excerpt || '',
+                fullContent: item.content || item.excerpt || '',
+                category: item.topic_keywords?.[0] || 'General',
+                verified: item.credibility?.label === 'real',
+                trending: Boolean(item.topic_keywords?.length),
+                votes: 0,
+                readTime: 4,
+            }));
+            setNewsData(mapped);
         } catch (error) {
             console.error('Error loading news:', error);
             setNewsData([]);
@@ -211,7 +227,7 @@ const NewsFeedScreen = ({ navigation }) => {
         }));
 
         try {
-            await mockApi.voteArticle(itemId, newVote);
+            await Promise.resolve({ ok: true });
         } catch (error) {
             setVotedItems(prev => ({
                 ...prev,
@@ -225,7 +241,7 @@ const NewsFeedScreen = ({ navigation }) => {
         setBookmarkedItems(next);
 
         try {
-            await mockApi.bookmarkArticle(itemId);
+            await Promise.resolve({ ok: true });
         } catch (error) {
             console.error('Error bookmarking:', error);
         }

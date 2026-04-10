@@ -5,6 +5,7 @@ import { useResponsive } from '../../hooks/useResponsive';
 import Text from '../../components/ui/Text';
 import { ArrowLeft, Search, Check, X } from 'lucide-react';
 import { newsTagsWithSubcategories } from './constants/newsCategories';
+import { useUIFeedback } from '../../components/ui/UIFeedback';
 
 const TagSelectionScreen = () => {
     const { theme } = useTheme();
@@ -12,6 +13,7 @@ const TagSelectionScreen = () => {
     const isDark = theme.mode === 'dark';
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
+    const { error } = useUIFeedback();
     const [selectedTags, setSelectedTags] = useState([]);
     const [searchText, setSearchText] = useState('');
 
@@ -47,7 +49,7 @@ const TagSelectionScreen = () => {
 
     const handleContinue = () => {
         if (selectedTags.length === 0) {
-            alert('Please select at least one tag');
+            error('Please select at least one tag');
             return;
         }
         navigate('/keyword-selection', { state: { selectedTags } });

@@ -7,7 +7,6 @@ import {
     StyleSheet,
     StatusBar,
     ScrollView,
-    Alert,
     KeyboardAvoidingView,
     Platform,
     Dimensions,
@@ -19,11 +18,13 @@ import { ChevronLeft, Eye, EyeOff, Lock } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
 import { confirmPasswordReset } from '../../api/authPasswordApi';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
 
 const { width, height } = Dimensions.get('window');
 
 const ResetPasswordScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
+    const { error: showError } = useFeedback();
     const { colors } = theme;
     const [uid, setUid] = useState(route.params?.uid || '');
     const [token, setToken] = useState(route.params?.token || '');
@@ -86,7 +87,7 @@ const ResetPasswordScreen = ({ navigation, route }) => {
             });
             navigation.navigate('PasswordChanged');
         } catch (error) {
-            Alert.alert('Error', error?.message || 'Failed to reset password.');
+            showError(error?.message || 'Failed to reset password.');
         } finally {
             setLoading(false);
         }

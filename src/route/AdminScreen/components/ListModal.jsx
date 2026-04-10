@@ -1,32 +1,29 @@
 import React from 'react';
-import { Modal, View, Text, TouchableOpacity, ScrollView, Alert, StyleSheet } from 'react-native';
+import { Modal, View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { X } from 'lucide-react-native';
+import { useFeedback } from '../../../components/ui/FeedbackProvider';
 
 const ListModal = ({ visible, onClose, title, items, onDeleteItem, onDeleteAll, itemType }) => {
-  const handleDeleteItem = (item) => {
-    Alert.alert(
-      `Delete ${itemType}`,
-      `Are you sure you want to delete "${item.name}"?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => onDeleteItem(item.id),
-        },
-      ]
-    );
+  const { confirm } = useFeedback();
+
+  const handleDeleteItem = async (item) => {
+    const accepted = await confirm({
+      title: `Delete ${itemType}`,
+      message: `Are you sure you want to delete "${item.name}"?`,
+      confirmText: 'Delete',
+      danger: true,
+    });
+    if (accepted) onDeleteItem(item.id);
   };
 
-  const handleDeleteAll = () => {
-    Alert.alert(
-      'Delete All',
-      `Are you sure you want to delete all ${itemType}s?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: onDeleteAll },
-      ]
-    );
+  const handleDeleteAll = async () => {
+    const accepted = await confirm({
+      title: 'Delete All',
+      message: `Are you sure you want to delete all ${itemType}s?`,
+      confirmText: 'Delete',
+      danger: true,
+    });
+    if (accepted) onDeleteAll();
   };
 
   return (

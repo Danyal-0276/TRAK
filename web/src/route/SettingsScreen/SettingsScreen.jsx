@@ -20,11 +20,13 @@ import {
 } from "lucide-react";
 import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
+import { useUIFeedback } from "../../components/ui/UIFeedback";
 
 export default function SettingsScreen() {
     const { theme, toggleTheme } = useTheme();
     const { colors } = theme;
     const { logout } = useAuth();
+    const { confirm } = useUIFeedback();
     const navigate = useNavigate();
     const darkTheme = theme.mode === "dark";
 
@@ -66,8 +68,14 @@ export default function SettingsScreen() {
         setTimeout(() => setShowSaveSuccess(false), 2000);
     };
 
-    const handleLogout = () => {
-        if (window.confirm('Are you sure you want to log out?')) {
+    const handleLogout = async () => {
+        const shouldLogout = await confirm({
+            title: 'Log out?',
+            message: 'Are you sure you want to log out?',
+            confirmText: 'Log out',
+            danger: true,
+        });
+        if (shouldLogout) {
             // Clear user data
             localStorage.removeItem('userProfile');
             localStorage.removeItem('userAvatar');

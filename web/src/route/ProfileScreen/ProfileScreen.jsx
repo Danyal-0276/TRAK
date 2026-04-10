@@ -15,7 +15,8 @@ import {
     Users,
     BookOpen
 } from "lucide-react";
-import { mockApi } from "../../utils/Service/mockApi";
+import { clearAuthTokens, getExploreFeed, getProfile } from "../../utils/Service/api";
+import { useUIFeedback } from "../../components/ui/UIFeedback";
 
 const UserProfileScreen = () => {
     const { theme } = useTheme();
@@ -24,6 +25,8 @@ const UserProfileScreen = () => {
     const navigate = useNavigate();
     const [bookmarks, setBookmarks] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [profile, setProfile] = useState(null);
+    const { confirm } = useUIFeedback();
     const [userStats, setUserStats] = useState({
         following: 180,
         followers: '2.4k',
@@ -37,12 +40,14 @@ const UserProfileScreen = () => {
     const loadBookmarks = async () => {
         try {
             setLoading(true);
+            const profileData = await getProfile();
+            setProfile(profileData);
             // Get bookmarks from localStorage
             const savedBookmarks = localStorage.getItem('bookmarks');
             if (savedBookmarks) {
                 const bookmarkIds = JSON.parse(savedBookmarks);
-                const allNews = await mockApi.getNewsFeed();
-                const bookmarkedArticles = allNews.data.filter(article => 
+                const allNews = await getExploreFeed();
+                const bookmarkedArticles = (allNews.results || []).filter(article => 
                     bookmarkIds.includes(article.id)
                 );
                 setBookmarks(bookmarkedArticles);
@@ -55,8 +60,15 @@ const UserProfileScreen = () => {
         }
     };
 
-    const handleLogout = () => {
-        if (window.confirm('Are you sure you want to log out?')) {
+    const handleLogout = async () => {
+        const shouldLogout = await confirm({
+            title: 'Log out?',
+            message: 'Are you sure you want to log out?',
+            confirmText: 'Log out',
+            danger: true,
+        });
+        if (shouldLogout) {
+            clearAuthTokens();
             navigate('/login');
         }
     };
@@ -164,16 +176,18 @@ const UserProfileScreen = () => {
                                     margin: '0',
                                     letterSpacing: '-0.5px',
                                 }}>
-                                    Shahroz Butt
+                                    {profile?.full_name || profile?.email?.split('@')[0] || 'User'}
                                 </h2>
-                                <CheckCircle size={18} color="#10b981" fill="#10b981" />
+                                {(profile?.email_verified || profile?.phone_verified) && (
+                                    <CheckCircle size={18} color="#2563eb" fill="#2563eb" />
+                                )}
                             </div>
                             <div style={{
                                 fontSize: '15px',
                                 color: textSecondary,
                                 marginBottom: '12px',
                             }}>
-                                @shahroz_butt
+                                @{(profile?.email || "user").split("@")[0]}
                             </div>
                             <div style={{
                                 fontSize: '15px',
@@ -181,7 +195,7 @@ const UserProfileScreen = () => {
                                 lineHeight: '1.6',
                                 marginBottom: '16px',
                             }}>
-                                Personalized AI News & Reports 📑 | Stay informed with curated content tailored to your interests. Exploring technology, business, and innovation.
+                                {profile?.bio || "Set up your profile details and verify email/phone for a trusted badge."}
                             </div>
                             <div style={{
                                 display: 'flex',
@@ -196,7 +210,10 @@ const UserProfileScreen = () => {
                                     color: textSecondary,
                                 }}>
                                     <Mail size={14} color={textSecondary} />
-                                    <span>shahroz.butt@gmail.com</span>
+                                    <span>{profile?.email || "No email"}</span>
+                                    <span style={{ marginLeft: 6, color: profile?.email_verified ? "#2563eb" : "#ef4444", fontSize: 12 }}>
+                                        {profile?.email_verified ? "Verified" : "Unverified"}
+                                    </span>
                                 </div>
                                 <div style={{
                                     display: 'flex',
@@ -206,7 +223,10 @@ const UserProfileScreen = () => {
                                     color: textSecondary,
                                 }}>
                                     <Phone size={14} color={textSecondary} />
-                                    <span>+92 300 1234567</span>
+                                    <span>{profile?.phone || "No phone added"}</span>
+                                    <span style={{ marginLeft: 6, color: profile?.phone_verified ? "#2563eb" : "#ef4444", fontSize: 12 }}>
+                                        {profile?.phone_verified ? "Verified" : "Unverified"}
+                                    </span>
                                 </div>
                                 <div style={{
                                     display: 'flex',

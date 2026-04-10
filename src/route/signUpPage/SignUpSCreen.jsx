@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, StatusBar, Alert, ScrollView, Platform, Animated, Dimensions } from 'react-native';
+import { View, StyleSheet, StatusBar, ScrollView, Platform, Animated, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { Header } from './components/Header';
@@ -9,13 +9,17 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import Text from '../../components/ui/Text';
 import { UserPlus } from 'lucide-react-native';
+import { setTokens } from '../../api/client';
+import { loginWithSocialDemo, saveAuthSession } from '../../utils/Service/api';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
 
 const { width, height } = Dimensions.get('window');
 
 const SignUpScreen = ({ navigation }) => {
     const { theme } = useTheme();
+    const { success, error: showError } = useFeedback();
     const { colors } = theme;
-    const { register } = useAuth();
+    const { register, bootstrap } = useAuth();
     const [fullName, setFullName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -127,14 +131,10 @@ const SignUpScreen = ({ navigation }) => {
 
         try {
             await register(email, password, confirmPassword);
-            Alert.alert('Success!', 'Account created successfully', [
-                {
-                    text: 'Continue',
-                    onPress: () => navigation.navigate('TagSelection'),
-                },
-            ]);
+            success('Account created successfully');
+            navigation.navigate('TagSelection');
         } catch (error) {
-            Alert.alert('Error', error.message);
+            showError(error.message);
         } finally {
             setLoading(false);
         }
@@ -144,9 +144,16 @@ const SignUpScreen = ({ navigation }) => {
         setLoadingProvider(provider);
         
         try {
-            Alert.alert('Social sign-up', 'OAuth is not wired yet. Register with email.');
+            const normalizedProvider = provider === 'apple' ? 'twitter' : provider === 'facebook' ? 'github' : provider;
+            const syntheticEmail = `${normalizedProvider}_mobile_signup_${Date.now()}@trak.local`;
+            const session = await loginWithSocialDemo(normalizedProvider, syntheticEmail);
+            await setTokens(session.access, session.refresh);
+            saveAuthSession(session);
+            await bootstrap();
+            success(`Signed up with ${provider}`);
+            navigation.navigate('TagSelection');
         } catch (error) {
-            Alert.alert('Error', error.message);
+            showError(error.message);
         } finally {
             setLoadingProvider(null);
         }

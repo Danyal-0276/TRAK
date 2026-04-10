@@ -9,18 +9,20 @@ import {
     Platform,
     Animated,
     Dimensions,
+    Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'react-native-linear-gradient';
 import { ChevronLeft, Mail, Shield } from 'lucide-react-native';
-import { Alert } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { requestPasswordReset } from '../../api/authPasswordApi';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
 
 const { width, height } = Dimensions.get('window');
 
 const ForgotPasswordCodeScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
+    const { error: showError } = useFeedback();
     const { colors } = theme;
     const [timer, setTimer] = useState(60);
     const [resendLoading, setResendLoading] = useState(false);

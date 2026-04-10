@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
-import { loadFeedItems } from '../../utils/loadFeed';
-import { mockApi } from '../../utils/Service/mockApi';
-import Text from '../../components/ui/Text';
+import { getUserFeed } from '../../utils/Service/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
+import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { 
     ArrowLeft, 
     ChevronUp, 
@@ -37,12 +36,24 @@ const NewsFeedScreen = () => {
     const [articleBookmarked, setArticleBookmarked] = useState(false);
     const [articleLikeCount, setArticleLikeCount] = useState(0);
     const [articleDislikeCount, setArticleDislikeCount] = useState(0);
+    const { success } = useUIFeedback();
 
     const loadNews = async () => {
         try {
             setLoading(true);
-            const rows = await loadFeedItems();
-            setNewsData(rows);
+            const response = await getUserFeed();
+            const mapped = (response.results || []).map((item, idx) => ({
+                ...item,
+                id: item.id || item.canonical_url || String(idx),
+                description: item.content || item.excerpt,
+                fullContent: item.content || item.excerpt,
+                category: item.topic_keywords?.[0] || 'General',
+                time: item.published_at ? new Date(item.published_at).toLocaleString() : 'Recently',
+                votes: 0,
+                upvotes: 0,
+                verified: item.credibility?.label === 'real',
+            }));
+            setNewsData(mapped);
         } catch (error) {
             console.error('Error loading news:', error);
             setNewsData([]);
@@ -115,7 +126,7 @@ const NewsFeedScreen = () => {
             });
         } else if (selectedArticle) {
             navigator.clipboard.writeText(window.location.href);
-            alert('Link copied to clipboard!');
+            success('Link copied to clipboard!');
         }
     };
 
@@ -129,7 +140,7 @@ const NewsFeedScreen = () => {
         }));
 
         try {
-            await mockApi.voteArticle(itemId, newVote);
+            await Promise.resolve({ ok: true });
         } catch (error) {
             setVotedItems(prev => ({
                 ...prev,
@@ -150,7 +161,7 @@ const NewsFeedScreen = () => {
         });
 
         try {
-            await mockApi.bookmarkArticle(itemId);
+            await Promise.resolve({ ok: true });
         } catch (error) {
             console.error('Error bookmarking:', error);
         }
