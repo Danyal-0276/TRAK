@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { View, StyleSheet, StatusBar, ScrollView, Platform, Alert, Animated, Dimensions } from 'react-native';
+import { View, StyleSheet, StatusBar, ScrollView, Platform, Animated, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { Header } from './components/Header';
@@ -8,17 +8,25 @@ import { Footer } from './components/Footer';
 import { useTheme } from '../../theme/ThemeContext';
 import Text from '../../components/ui/Text';
 import { useAuth } from '../../context/AuthContext';
+import { setTokens } from '../../api/client';
+import {
+    loginWithOtp,
+    loginWithSocialDemo,
+    requestOtp,
+    saveAuthSession,
+} from '../../utils/Service/api';
 
 const { width, height } = Dimensions.get('window');
 
 const LoginScreen = ({ navigation }) => {
     const { theme } = useTheme();
     const { colors } = theme;
-    const { login } = useAuth();
+    const { login, bootstrap } = useAuth();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loadingProvider, setLoadingProvider] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [notice, setNotice] = useState(null);
     
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(50)).current;
@@ -88,14 +96,16 @@ const LoginScreen = ({ navigation }) => {
         setLoadingProvider(provider);
         
         try {
-            console.log(`${provider} login initiated`);
-            
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            Alert.alert('Social login', 'OAuth is not wired yet. Use email and password.');
+            const normalizedProvider = provider === 'apple' ? 'twitter' : provider === 'facebook' ? 'github' : provider;
+            const syntheticEmail = `${normalizedProvider}_mobile_user_${Date.now()}@trak.local`;
+            const session = await loginWithSocialDemo(normalizedProvider, syntheticEmail);
+            await setTokens(session.access, session.refresh);
+            saveAuthSession(session);
+            await bootstrap();
+            const dest = session.user?.role === 'admin' ? 'AdminScreen' : 'NewsFeed';
+            navigation.reset({ index: 0, routes: [{ name: dest }] });
         } catch (error) {
-            Alert.alert('Error', error.message || 'Failed to login with social provider');
+            setNotice({ type: 'error', text: error.message || 'Failed to login with social provider' });
         } finally {
             setLoadingProvider(null);
         }
@@ -257,6 +267,19 @@ const LoginScreen = ({ navigation }) => {
                             }
                         ]}
                     >
+                        {notice ? (
+                            <View style={[
+                                styles.noticeBox,
+                                {
+                                    backgroundColor: notice.type === 'error' ? '#FEE2E2' : '#DCFCE7',
+                                    borderColor: notice.type === 'error' ? '#FCA5A5' : '#86EFAC',
+                                },
+                            ]}>
+                                <Text style={{ color: notice.type === 'error' ? '#991B1B' : '#166534', fontSize: 12, fontWeight: '600' }}>
+                                    {notice.text}
+                                </Text>
+                            </View>
+                        ) : null}
                         <LoginForm
                             email={email}
                             setEmail={setEmail}
@@ -274,7 +297,38 @@ const LoginScreen = ({ navigation }) => {
                                         routes: [{ name: dest }],
                                     });
                                 } catch (error) {
-                                    Alert.alert('Error', error.message || 'Failed to sign in.');
+                                    setNotice({ type: 'error', text: error.message || 'Failed to sign in.' });
+                                } finally {
+                                    setLoading(false);
+                                }
+                            }}
+                            onRequestOtp={async () => {
+                                if (!email) {
+                                    setNotice({ type: 'error', text: 'Enter email or phone in the first field' });
+                                    return;
+                                }
+                                try {
+                                    await requestOtp(email);
+                                    setNotice({ type: 'success', text: 'Code sent successfully.' });
+                                } catch (error) {
+                                    setNotice({ type: 'error', text: error.message || 'Failed to send code' });
+                                }
+                            }}
+                            onVerifyOtp={async () => {
+                                if (!email || !password) {
+                                    setNotice({ type: 'error', text: 'Use first field for email/phone and second for OTP code' });
+                                    return;
+                                }
+                                setLoading(true);
+                                try {
+                                    const session = await loginWithOtp(email, password);
+                                    await setTokens(session.access, session.refresh);
+                                    saveAuthSession(session);
+                                    await bootstrap();
+                                    const dest = session.user?.role === 'admin' ? 'AdminScreen' : 'NewsFeed';
+                                    navigation.reset({ index: 0, routes: [{ name: dest }] });
+                                } catch (error) {
+                                    setNotice({ type: 'error', text: error.message || 'Failed to verify code' });
                                 } finally {
                                     setLoading(false);
                                 }
@@ -384,6 +438,13 @@ const styles = StyleSheet.create({
         shadowRadius: 20,
         elevation: 8,
         borderWidth: 1,
+    },
+    noticeBox: {
+        borderWidth: 1,
+        borderRadius: 12,
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        marginBottom: 12,
     },
 });
 

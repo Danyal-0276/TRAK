@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
+import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { 
     Database, 
     HardDrive, 
@@ -36,6 +37,7 @@ const DataScreen = () => {
 
     const [loading, setLoading] = useState(true);
     const [clearing, setClearing] = useState(null);
+    const { confirm, error: showError, success } = useUIFeedback();
 
     useEffect(() => {
         calculateStorage();
@@ -105,7 +107,13 @@ const DataScreen = () => {
     };
 
     const clearData = async (type) => {
-        if (!window.confirm(`Are you sure you want to clear ${type}? This action cannot be undone.`)) {
+        const accepted = await confirm({
+            title: `Clear ${type}?`,
+            message: `Are you sure you want to clear ${type}? This action cannot be undone.`,
+            confirmText: 'Clear',
+            danger: true,
+        });
+        if (!accepted) {
             return;
         }
 
@@ -139,9 +147,10 @@ const DataScreen = () => {
             }
 
             calculateStorage();
-        } catch (error) {
-            console.error('Error clearing data:', error);
-            alert('Failed to clear data. Please try again.');
+            success(`${type} cleared successfully.`);
+        } catch (err) {
+            console.error('Error clearing data:', err);
+            showError('Failed to clear data. Please try again.');
         } finally {
             setClearing(null);
         }
@@ -165,9 +174,9 @@ const DataScreen = () => {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error('Error exporting data:', error);
-            alert('Failed to export data. Please try again.');
+        } catch (err) {
+            console.error('Error exporting data:', err);
+            showError('Failed to export data. Please try again.');
         }
     };
 

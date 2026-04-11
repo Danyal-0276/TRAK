@@ -4,10 +4,12 @@ import React, { useState, useEffect } from 'react';
 import AppNavigation from './src/navigation/AppNavigation';
 import SplashScreen from 'react-native-splash-screen';
 import CustomSplashScreen from './src/components/SplashScreen';
+import ChatBotWidget from './src/components/ChatBotWidget';
 
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from './src/theme/ThemeContext';
 import { AuthProvider } from './src/context/AuthContext';
+import { FeedbackProvider } from './src/components/ui/FeedbackProvider';
 
 const App = () => {
     const [showSplash, setShowSplash] = useState(true);
@@ -63,11 +65,14 @@ const App = () => {
 
     return (
         <ThemeProvider>
-            <SafeAreaProvider>
-                <AuthProvider>
-                    <AppNavigation />
-                </AuthProvider>
-            </SafeAreaProvider>
+            <FeedbackProvider>
+                <SafeAreaProvider>
+                    <AuthProvider>
+                        <AppNavigation />
+                        <ChatBotWidget />
+                    </AuthProvider>
+                </SafeAreaProvider>
+            </FeedbackProvider>
         </ThemeProvider>
     );
 };

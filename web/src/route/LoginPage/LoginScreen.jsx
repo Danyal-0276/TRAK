@@ -1,43 +1,100 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Mail, Lock, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import Text from '../../components/ui/Text';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
+import { startSocialOAuth } from '../../utils/Service/api';
+import { useUIFeedback } from '../../components/ui/UIFeedback';
 
 const LoginScreen = () => {
     const navigate = useNavigate();
-    const { login } = useAuth();
+    const [searchParams] = useSearchParams();
+    const { login, sendOtp, verifyOtp, socialLogin, completeSocialLogin } = useAuth();
+    const { error: showError } = useUIFeedback();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
     const [showPassword, setShowPassword] = useState(false);
     const [socialLoading, setSocialLoading] = useState(null);
+    const [authMode, setAuthMode] = useState('email');
+
+    useEffect(() => {
+        const ticket = searchParams.get('social_ticket');
+        if (!ticket) return;
+        const consume = async () => {
+            setLoading(true);
+            try {
+                const userData = await completeSocialLogin(ticket);
+                navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed', { replace: true });
+            } catch (error) {
+                setErrors((prev) => ({ ...prev, password: error.message || 'Social login completion failed' }));
+            } finally {
+                setLoading(false);
+            }
+        };
+        consume();
+    }, [searchParams, completeSocialLogin, navigate]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrors({});
-        
-        if (!email.trim()) {
-            setErrors(prev => ({ ...prev, email: 'Email is required' }));
-            return;
-        }
-        if (!password) {
-            setErrors(prev => ({ ...prev, password: 'Password is required' }));
+
+        setLoading(true);
+        if (authMode === 'email') {
+            if (!email.trim()) {
+                setErrors(prev => ({ ...prev, email: 'Email is required' }));
+                setLoading(false);
+                return;
+            }
+            if (!password) {
+                setErrors(prev => ({ ...prev, password: 'Password is required' }));
+                setLoading(false);
+                return;
+            }
+            try {
+                const userData = await login(email, password);
+                navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed');
+            } catch (error) {
+                setErrors(prev => ({ ...prev, password: error.message || 'Invalid email or password' }));
+            } finally {
+                setLoading(false);
+            }
             return;
         }
 
+        if (!email.trim()) {
+            setErrors(prev => ({ ...prev, email: 'Phone is required' }));
+            setLoading(false);
+            return;
+        }
+        if (!password.trim()) {
+            setErrors(prev => ({ ...prev, password: 'Verification code is required' }));
+            setLoading(false);
+            return;
+        }
+        try {
+            const userData = await verifyOtp(email.trim(), password.trim());
+            navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed');
+        } catch (error) {
+            setErrors(prev => ({ ...prev, password: error.message || 'Invalid code' }));
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleRequestOtp = async () => {
+        if (!email.trim()) {
+            setErrors(prev => ({ ...prev, email: 'Phone is required' }));
+            return;
+        }
+        setErrors({});
         setLoading(true);
         try {
-            const userData = await login(email, password);
-            if (userData?.role === 'admin') {
-                navigate('/admin/dashboard');
-            } else {
-                navigate('/newsfeed');
-            }
+            await sendOtp(email.trim());
+            setErrors(prev => ({ ...prev, password: '' }));
         } catch (error) {
-            setErrors(prev => ({ ...prev, password: error.message || 'Invalid email or password' }));
+            setErrors(prev => ({ ...prev, password: error.message }));
         } finally {
             setLoading(false);
         }
@@ -108,8 +165,43 @@ const LoginScreen = () => {
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
-                        Enter your email and password to continue
+                        {authMode === 'email'
+                            ? 'Enter your email and password to continue'
+                            : 'Enter phone and verification code to continue'}
                     </p>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '20px' }}>
+                    <button
+                        type="button"
+                        onClick={() => { setAuthMode('email'); setErrors({}); }}
+                        style={{
+                            padding: '10px 12px',
+                            borderRadius: '6px',
+                            border: authMode === 'email' ? '1px solid #0f172a' : '1px solid #cbd5e1',
+                            backgroundColor: authMode === 'email' ? '#0f172a' : '#ffffff',
+                            color: authMode === 'email' ? '#ffffff' : '#0f172a',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        Login with Email
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => { setAuthMode('phone'); setErrors({}); }}
+                        style={{
+                            padding: '10px 12px',
+                            borderRadius: '6px',
+                            border: authMode === 'phone' ? '1px solid #0f172a' : '1px solid #cbd5e1',
+                            backgroundColor: authMode === 'phone' ? '#0f172a' : '#ffffff',
+                            color: authMode === 'phone' ? '#ffffff' : '#0f172a',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                        }}
+                    >
+                        Login with Phone
+                    </button>
                 </div>
 
                 <form onSubmit={handleSubmit}>
@@ -122,13 +214,13 @@ const LoginScreen = () => {
                             color: '#0f172a',
                             marginBottom: '8px',
                         }}>
-                            Email address
+                            {authMode === 'email' ? 'Email address' : 'Phone number'}
                         </label>
                         <input
-                            type="email"
+                            type={authMode === 'email' ? 'email' : 'text'}
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            placeholder="you@example.com"
+                            placeholder={authMode === 'email' ? 'you@example.com' : '+923001234567'}
                             style={{
                                 width: '100%',
                                 padding: '11px 14px',
@@ -164,7 +256,7 @@ const LoginScreen = () => {
                         )}
                     </div>
 
-                    {/* Password Field */}
+                    {/* Password/Code Field */}
                     <div style={{ marginBottom: '24px' }}>
                         <div style={{ 
                             display: 'flex', 
@@ -177,24 +269,34 @@ const LoginScreen = () => {
                                 fontWeight: '500',
                                 color: '#0f172a',
                             }}>
-                                Password
+                                {authMode === 'email' ? 'Password' : 'Verification Code'}
                             </label>
-                            <Link to="/forgot-password" style={{
-                                fontSize: '14px',
-                                color: '#0f172a',
-                                textDecoration: 'none',
-                                fontWeight: '500',
-                            }}>
-                                Forgot password?
-                            </Link>
+                            {authMode === 'email' ? (
+                                <Link to="/forgot-password" style={{
+                                    fontSize: '14px',
+                                    color: '#0f172a',
+                                    textDecoration: 'none',
+                                    fontWeight: '500',
+                                }}>
+                                    Forgot password?
+                                </Link>
+                            ) : (
+                                <button
+                                    type="button"
+                                    onClick={handleRequestOtp}
+                                    style={{ fontSize: '14px', color: '#0f172a', background: 'transparent', border: 'none', fontWeight: '500', cursor: 'pointer' }}
+                                >
+                                    Send code
+                                </button>
+                            )}
                         </div>
                         <div style={{ position: 'relative' }}>
                             <input
-                                type={showPassword ? 'text' : 'password'}
+                                type={authMode === 'email' ? (showPassword ? 'text' : 'password') : 'text'}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder="Enter your password"
-                                autoComplete="current-password"
+                                placeholder={authMode === 'email' ? 'Enter your password' : 'Enter 6-digit code'}
+                                autoComplete={authMode === 'email' ? 'current-password' : 'one-time-code'}
                                 style={{
                                     width: '100%',
                                     padding: '11px 45px 11px 14px',
@@ -219,25 +321,27 @@ const LoginScreen = () => {
                                     }
                                 }}
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                style={{
-                                    position: 'absolute',
-                                    right: '14px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    background: 'transparent',
-                                    border: 'none',
-                                    cursor: 'pointer',
-                                    color: '#64748b',
-                                    padding: '4px',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                }}
-                            >
-                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                            </button>
+                            {authMode === 'email' ? (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    style={{
+                                        position: 'absolute',
+                                        right: '14px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        background: 'transparent',
+                                        border: 'none',
+                                        cursor: 'pointer',
+                                        color: '#64748b',
+                                        padding: '4px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                    }}
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
+                            ) : null}
                         </div>
                         {errors.password && (
                             <p style={{ 
@@ -286,7 +390,7 @@ const LoginScreen = () => {
                     >
                         {loading ? 'Signing in...' : (
                             <>
-                                Sign in
+                                {authMode === 'email' ? 'Sign in' : 'Verify & Sign in'}
                                 <ArrowRight size={18} />
                             </>
                         )}
@@ -352,22 +456,25 @@ const LoginScreen = () => {
                         return (
                             <button 
                                 key={provider.key}
-                                onClick={() => {
+                                onClick={async () => {
                                     setSocialLoading(provider.key);
-                                    setTimeout(() => {
-                                        try {
-                                            // For social login, default to regular user
-                                            const userData = login('ali@user.com', 'user123');
-                                            if (userData.isAdmin) {
-                                                navigate('/admin/dashboard');
-                                            } else {
-                                                navigate('/newsfeed');
-                                            }
-                                        } catch (error) {
-                                            setSocialLoading(null);
-                                            alert('Social login failed. Please use email and password.');
+                                    try {
+                                        if (provider.key === 'google' || provider.key === 'github') {
+                                            startSocialOAuth(provider.key);
+                                            return;
                                         }
-                                    }, 1000);
+                                        const candidateEmail = window.prompt(`Enter your ${provider.name} account email`);
+                                        if (!candidateEmail) {
+                                            setSocialLoading(null);
+                                            return;
+                                        }
+                                        const userData = await socialLogin(provider.key, candidateEmail);
+                                        navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed');
+                                    } catch (error) {
+                                        showError(error.message || 'Social login failed');
+                                    } finally {
+                                        setSocialLoading(null);
+                                    }
                                 }}
                                 disabled={socialLoading !== null}
                                 style={{

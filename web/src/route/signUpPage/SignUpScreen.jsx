@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { User, Mail, Lock, ArrowRight, Eye, EyeOff, X } from 'lucide-react';
-import Text from '../../components/ui/Text';
-import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
+import { ArrowRight, Eye, EyeOff, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
+import { startSocialOAuth } from '../../utils/Service/api';
 
 const SignUpScreen = () => {
     const navigate = useNavigate();
-    const { register } = useAuth();
+    const { register, socialLogin } = useAuth();
     const [fullName, setFullName] = useState('');
+    const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,11 +34,14 @@ const SignUpScreen = () => {
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             newErrors.email = 'Invalid email address';
         }
+        if (phone.trim() && !/^\+?[0-9]{8,15}$/.test(phone.trim())) {
+            newErrors.phone = 'Invalid phone number';
+        }
         
         if (!password) {
             newErrors.password = 'Password is required';
-        } else if (password.length < 6) {
-            newErrors.password = 'Password must be at least 6 characters';
+        } else if (password.length < 8) {
+            newErrors.password = 'Password must be at least 8 characters';
         }
         
         if (!confirmPassword) {
@@ -61,10 +65,12 @@ const SignUpScreen = () => {
         setLoading(true);
         setErrors({});
         try {
-            await register(email.trim().toLowerCase(), password, confirmPassword);
+            await register(email, password, confirmPassword, fullName, phone);
             navigate('/tag-selection');
-        } catch (err) {
-            setErrors((prev) => ({ ...prev, form: err.message || 'Could not create account' }));
+        } catch (error) {
+            const msg = error.message || 'Signup failed';
+            const isPasswordError = msg.toLowerCase().includes('password');
+            setErrors((prev) => ({ ...prev, [isPasswordError ? 'password' : 'email']: msg }));
         } finally {
             setLoading(false);
         }
@@ -238,6 +244,43 @@ const SignUpScreen = () => {
                                 margin: '6px 0 0 0',
                             }}>
                                 {errors.email}
+                            </p>
+                        )}
+                    </div>
+
+                    {/* Password Fields */}
+                    <div style={{ marginBottom: '20px' }}>
+                        <label style={{
+                            display: 'block',
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: '#0f172a',
+                            marginBottom: '8px',
+                        }}>
+                            Phone number (optional)
+                        </label>
+                        <input
+                            type="tel"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            placeholder="+923001234567"
+                            style={{
+                                width: '100%',
+                                padding: '11px 14px',
+                                fontSize: '15px',
+                                border: errors.phone ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                borderRadius: '6px',
+                                outline: 'none',
+                                transition: 'all 0.2s',
+                                color: '#0f172a',
+                                backgroundColor: '#ffffff',
+                                boxSizing: 'border-box',
+                                fontFamily: 'inherit',
+                            }}
+                        />
+                        {errors.phone && (
+                            <p style={{ color: '#ef4444', fontSize: '13px', margin: '6px 0 0 0' }}>
+                                {errors.phone}
                             </p>
                         )}
                     </div>
@@ -584,11 +627,25 @@ const SignUpScreen = () => {
                         return (
                             <button 
                                 key={provider.key}
-                                onClick={() => {
+                                onClick={async () => {
                                     setSocialLoading(provider.key);
-                                    setTimeout(() => {
+                                    try {
+                                        if (provider.key === 'google' || provider.key === 'github') {
+                                            startSocialOAuth(provider.key);
+                                            return;
+                                        }
+                                        const candidateEmail = window.prompt(`Enter your ${provider.name} account email`);
+                                        if (!candidateEmail) {
+                                            setSocialLoading(null);
+                                            return;
+                                        }
+                                        await socialLogin(provider.key, candidateEmail);
                                         navigate('/newsfeed');
-                                    }, 1000);
+                                    } catch (error) {
+                                        setErrors((prev) => ({ ...prev, email: error.message || 'Social signup failed' }));
+                                    } finally {
+                                        setSocialLoading(null);
+                                    }
                                 }}
                                 disabled={socialLoading !== null}
                                 style={{

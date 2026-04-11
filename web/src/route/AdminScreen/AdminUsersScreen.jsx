@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import { getResponsivePadding, getResponsiveMaxWidth, getResponsiveFontSize } from '../../utils/responsiveStyles';
+import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { 
     Users, 
     Search, 
@@ -18,6 +19,7 @@ const AdminUsersScreen = () => {
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
     const { isMobile, isTablet } = useResponsive();
+    const { confirm } = useUIFeedback();
     const [users, setUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
@@ -52,8 +54,14 @@ const AdminUsersScreen = () => {
         }
     };
 
-    const handleDelete = (userId) => {
-        if (window.confirm('Are you sure you want to delete this user?')) {
+    const handleDelete = async (userId) => {
+        const accepted = await confirm({
+            title: 'Delete user?',
+            message: 'Are you sure you want to delete this user?',
+            confirmText: 'Delete',
+            danger: true,
+        });
+        if (accepted) {
             setUsers(users.filter(u => u.id !== userId));
         }
     };

@@ -11,6 +11,7 @@ import {
     MoreHorizontal,
     ArrowLeft
 } from 'lucide-react';
+import { useUIFeedback } from '../../components/ui/UIFeedback';
 
 const ArticleDetailScreen = () => {
     const navigate = useNavigate();
@@ -31,6 +32,7 @@ const ArticleDetailScreen = () => {
         trending: false,
         readTime: 5,
     };
+    const { success } = useUIFeedback();
     
     const [isLiked, setIsLiked] = useState(false);
     const [isDisliked, setIsDisliked] = useState(false);
@@ -70,7 +72,7 @@ const ArticleDetailScreen = () => {
             });
         } else {
             navigator.clipboard.writeText(window.location.href);
-            alert('Link copied to clipboard!');
+            success('Link copied to clipboard!');
         }
     };
 

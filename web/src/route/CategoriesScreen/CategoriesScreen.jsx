@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { mockApi } from '../../utils/Service/mockApi';
 import { NewsCard } from '../../components/NewsCard';
+import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { 
     TrendingUp,
     Bookmark,
@@ -26,6 +27,7 @@ const CategoriesScreen = () => {
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
     const [selectedArticle, setSelectedArticle] = useState(null);
     const [articleLiked, setArticleLiked] = useState(false);
+    const { success } = useUIFeedback();
     const [articleDisliked, setArticleDisliked] = useState(false);
     const [articleBookmarked, setArticleBookmarked] = useState(false);
     const [articleLikeCount, setArticleLikeCount] = useState(0);
@@ -137,7 +139,7 @@ const CategoriesScreen = () => {
             });
         } else if (selectedArticle) {
             navigator.clipboard.writeText(window.location.href);
-            alert('Link copied to clipboard!');
+            success('Link copied to clipboard!');
         }
     };
 

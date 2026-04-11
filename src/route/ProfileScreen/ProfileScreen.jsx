@@ -9,6 +9,7 @@ import LogoutButton from "./components/LogoutButton";
 import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
+import { getProfile } from "../../utils/Service/api";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -38,6 +39,7 @@ const UserProfileScreen = ({ navigation }) => {
       date: "2d ago",
     },
   ]);
+  const [profile, setProfile] = useState(null);
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -47,6 +49,7 @@ const UserProfileScreen = ({ navigation }) => {
   const circle3Anim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    getProfile().then(setProfile).catch(() => {});
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -174,10 +177,11 @@ const UserProfileScreen = ({ navigation }) => {
         scrollEventThrottle={16}
       >
         <ProfileHeader
-          name="Shahroz"
-          username="@shahroz_butt"
-          bio="Personalized AI News & Reports 📑"
+          name={profile?.full_name || profile?.email?.split("@")[0] || "User"}
+          username={`@${(profile?.email || "user").split("@")[0]}`}
+          bio={profile?.bio || "Complete your profile and verify your contact details."}
           avatar={null}
+          verified={Boolean(profile?.email_verified || profile?.phone_verified)}
         />
         <View style={styles.sectionGap}>
           <StatsRow />

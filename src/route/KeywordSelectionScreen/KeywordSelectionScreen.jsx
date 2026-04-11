@@ -9,7 +9,6 @@ import {
     StyleSheet,
     StatusBar,
     ScrollView,
-    Alert,
     Animated,
     Dimensions,
 } from 'react-native';
@@ -28,11 +27,13 @@ import TextComponent from '../../components/ui/Text';
 import { trackKeywords } from '../../api/newsApi';
 import { getAccessToken } from '../../api/client';
 import { getUserKeywords, setUserKeywords } from '../../utils/userKeywordsStorage';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
 
 const { width, height } = Dimensions.get('window');
 
 const KeywordSelectionScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
+    const { error } = useFeedback();
     const { colors } = theme;
     const [selectedKeywords, setSelectedKeywords] = useState([]);
     const [keywordInput, setKeywordInput] = useState('');
@@ -117,17 +118,17 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
         const trimmedKeyword = keywordInput.trim();
         
         if (trimmedKeyword === '') {
-            Alert.alert('Invalid Input', 'Please enter a keyword');
+            error('Please enter a keyword');
             return;
         }
         
         if (selectedKeywords.includes(trimmedKeyword.toLowerCase())) {
-            Alert.alert('Duplicate Keyword', 'This keyword has already been added');
+            error('This keyword has already been added');
             return;
         }
         
         if (trimmedKeyword.length < 2) {
-            Alert.alert('Too Short', 'Keyword must be at least 2 characters long');
+            error('Keyword must be at least 2 characters long');
             return;
         }
         

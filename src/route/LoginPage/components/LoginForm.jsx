@@ -12,6 +12,8 @@ export const LoginForm = ({
     onLoginPress,
     onForgotPasswordPress,
     onSocialPress,
+    onRequestOtp,
+    onVerifyOtp,
     loadingProvider,
     loading = false
 }) => {
@@ -93,6 +95,15 @@ export const LoginForm = ({
                         <Text style={styles.primaryButtonText}>Sign in</Text>
                     )}
                 </TouchableOpacity>
+
+                <View style={styles.otpRow}>
+                    <TouchableOpacity style={styles.otpButton} onPress={onRequestOtp} activeOpacity={0.8}>
+                        <Text style={styles.otpButtonText}>Send code</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.otpButtonFilled} onPress={onVerifyOtp} activeOpacity={0.8}>
+                        <Text style={styles.otpButtonFilledText}>Verify code</Text>
+                    </TouchableOpacity>
+                </View>
 
                 <SocialButtons
                     onSocialPress={onSocialPress}
@@ -199,5 +210,35 @@ const styles = StyleSheet.create({
     },
     spinner: {
         marginRight: 10,
+    },
+    otpRow: {
+        flexDirection: 'row',
+        gap: 10,
+        marginBottom: 20,
+    },
+    otpButton: {
+        flex: 1,
+        borderWidth: 1,
+        borderColor: colors.border,
+        borderRadius: 12,
+        paddingVertical: 12,
+        alignItems: 'center',
+    },
+    otpButtonText: {
+        color: colors.textPrimary,
+        fontSize: 14,
+        fontWeight: '600',
+    },
+    otpButtonFilled: {
+        flex: 1,
+        backgroundColor: '#000000',
+        borderRadius: 12,
+        paddingVertical: 12,
+        alignItems: 'center',
+    },
+    otpButtonFilledText: {
+        color: '#ffffff',
+        fontSize: 14,
+        fontWeight: '600',
     },
 });

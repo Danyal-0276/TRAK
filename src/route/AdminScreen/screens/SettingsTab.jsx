@@ -1,11 +1,12 @@
 import React from 'react';
-import { View, TextInput, TouchableOpacity, Alert, StyleSheet } from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Settings as SettingsIcon, Plus, Trash2 } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import ToggleSwitch from '../components/ToggleSwitch';
 import SettingRow from '../components/SettingRow';
 import Text from '../../../components/ui/Text';
 import LinearGradient from 'react-native-linear-gradient';
+import { useFeedback } from '../../../components/ui/FeedbackProvider';
 
 const SettingsTab = ({
   settings,
@@ -24,6 +25,7 @@ const SettingsTab = ({
   onLogout,
 }) => {
   const { theme } = useTheme();
+  const { confirm } = useFeedback();
   const { colors } = theme;
 
   return (
@@ -221,7 +223,15 @@ const SettingsTab = ({
           backgroundColor: colors.backgroundSecondary,
           borderColor: colors.border,
         }]}
-        onPress={onLogout}
+        onPress={async () => {
+          const accepted = await confirm({
+            title: 'Logout',
+            message: 'Are you sure you want to logout?',
+            confirmText: 'Logout',
+            danger: true,
+          });
+          if (accepted) onLogout();
+        }}
         activeOpacity={0.8}
       >
         <Text variant="body" color={colors.error} style={styles.logoutButtonText}>

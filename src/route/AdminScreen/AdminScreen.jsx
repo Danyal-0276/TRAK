@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, Alert, StyleSheet, StatusBar, Animated, Dimensions } from 'react-native';
+import { View, ScrollView, StyleSheet, StatusBar, Animated, Dimensions, Alert } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../../theme/ThemeContext';
@@ -21,6 +21,7 @@ import NotificationsTab from './screens/NotificationsTab';
 import SettingsTab from './screens/SettingsTab';
 import EditModal from './components/EditModal';
 import ListModal from './components/ListModal';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -49,6 +50,7 @@ const AdminScreen = ({ navigation }) => {
   const { user, isAdmin, bootstrapped, logout } = useAuth();
   const { colors } = theme;
   const insets = useSafeAreaInsets();
+  const { confirm, error: showError } = useFeedback();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [users, setUsers] = useState([]);
   const [apiArticles, setApiArticles] = useState([]);
@@ -239,7 +241,7 @@ const AdminScreen = ({ navigation }) => {
     setModalVisible(true);
   };
 
-  const handleDelete = (id, type) => {
+  const handleDelete = async (id, type) => {
     if (type === 'article') {
       const row = apiArticles.find(a => String(a.id) === String(id));
       if (row?.fromApi) {
@@ -247,18 +249,16 @@ const AdminScreen = ({ navigation }) => {
         return;
       }
     }
-    Alert.alert('Confirm Delete', 'Are you sure you want to delete this item?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          if (type === 'user') await MockAPI.deleteUser(id);
-          else if (type === 'article') await MockAPI.deleteArticle(id);
-          loadData();
-        },
-      },
-    ]);
+    const accepted = await confirm({
+      title: 'Confirm Delete',
+      message: 'Are you sure you want to delete this item?',
+      confirmText: 'Delete',
+      danger: true,
+    });
+    if (!accepted) return;
+    if (type === 'user') await MockAPI.deleteUser(id);
+    else if (type === 'article') await MockAPI.deleteArticle(id);
+    loadData();
   };
 
   const handleSave = async () => {
@@ -275,7 +275,7 @@ const AdminScreen = ({ navigation }) => {
       setEditingItem(null);
       setFormData({});
     } catch (error) {
-      Alert.alert('Error', 'Failed to save');
+      showError('Failed to save');
     }
   };
 
