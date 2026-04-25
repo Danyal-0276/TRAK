@@ -49,82 +49,64 @@ Authentication state is persisted with `AsyncStorage`, and app navigation adapts
 
 ## Screenshots (Page-wise)
 
-Add your images in `docs/screenshots/mobile/` using the same file names below.
+Images are loaded from `ScreenShots/`.
 
-### OpeningScreen
-![OpeningScreen](docs/screenshots/mobile/opening-screen.png)
+### Splash Screen
+![Splash Screen](ScreenShots/Splash%20screen.png)
 
-### LoginScreen
-![LoginScreen](docs/screenshots/mobile/login-screen.png)
+### Onboarding Screen
+![Onboarding Screen](ScreenShots/onboarding%20page.png)
 
-### SignUpScreen
-![SignUpScreen](docs/screenshots/mobile/signup-screen.png)
+### Login Screen
+![Login Screen](ScreenShots/Login%20page.png)
 
-### ForgotPasswordScreen
-![ForgotPasswordScreen](docs/screenshots/mobile/forgot-password-screen.png)
+### Signup Screen
+![Signup Screen](ScreenShots/Signup%20page.png)
 
-### ForgotPasswordCodeScreen
-![ForgotPasswordCodeScreen](docs/screenshots/mobile/forgot-password-code-screen.png)
+### Forgot Password Screen
+![Forgot Password Screen](ScreenShots/forget%20passwords%20page.png)
 
-### ResetPasswordScreen
-![ResetPasswordScreen](docs/screenshots/mobile/reset-password-screen.png)
+### OTP Verification Screen
+![OTP Verification Screen](ScreenShots/after%20enetering%20email%20otp%20is%20send%20this%20is%20for%20that.png)
 
-### PasswordChangedScreen
-![PasswordChangedScreen](docs/screenshots/mobile/password-changed-screen.png)
+### Keyword Selection Screen
+![Keyword Selection Screen](ScreenShots/keywords%20selection%20page.png)
 
-### KeywordSelectionScreen
-![KeywordSelectionScreen](docs/screenshots/mobile/keyword-selection-screen.png)
+### User Home Feed Screen
+![User Home Feed Screen](ScreenShots/user%20dahsboard%20home%20feed%20page.png)
 
-### TagSelectionScreen
-![TagSelectionScreen](docs/screenshots/mobile/tag-selection-screen.png)
+### Article Detail Screen
+![Article Detail Screen](ScreenShots/on%20clicking%20the%20arcticle%20this%20page%20is%20openewd%20a%20detaield%20article%20page.png)
 
-### NewsFeedScreen
-![NewsFeedScreen](docs/screenshots/mobile/news-feed-screen.png)
+### Discover / Search Screen
+![Discover / Search Screen](ScreenShots/this%20is%20a%20discover%20page%20a%20searching%20page%20whre%20you%20can%20find%20all%20the%20articles.png)
 
-### ArticleDetailScreen
-![ArticleDetailScreen](docs/screenshots/mobile/article-detail-screen.png)
+### Notifications Screen
+![Notifications Screen](ScreenShots/this%20is%20the%20page%20that%20shows%20notifucations.png)
 
-### CategoriesScreen
-![CategoriesScreen](docs/screenshots/mobile/categories-screen.png)
+### Profile Screen
+![Profile Screen](ScreenShots/profile%20page%20that%20also%20ahs%20booksmarks.png)
 
-### SearchScreen
-![SearchScreen](docs/screenshots/mobile/search-screen.png)
+### Edit Profile Screen
+![Edit Profile Screen](ScreenShots/profile%20info%20page%20user%20can%20chnage%20ther%20name%20and%20desciption%20here.png)
 
-### TrendingScreen
-![TrendingScreen](docs/screenshots/mobile/trending-screen.png)
+### User Settings Screen
+![User Settings Screen](ScreenShots/user%20setting%20page4.png)
 
-### RecentScreen
-![RecentScreen](docs/screenshots/mobile/recent-screen.png)
+### Admin Dashboard Screen
+![Admin Dashboard Screen](ScreenShots/admin%20panel%20dashboard%20that%20shows%20metrics%20about%20user%20artclies%20and%20ketywords.png)
 
-### BookmarksScreen
-![BookmarksScreen](docs/screenshots/mobile/bookmarks-screen.png)
+### Admin User Management Screen
+![Admin User Management Screen](ScreenShots/amdin%20panel%20user%20management.png)
 
-### NotificationsScreen
-![NotificationsScreen](docs/screenshots/mobile/notifications-screen.png)
+### Admin Article Management Screen
+![Admin Article Management Screen](ScreenShots/admin%20arctle%20management.png)
 
-### ProfileScreen
-![ProfileScreen](docs/screenshots/mobile/profile-screen.png)
+### Admin Analytics Screen
+![Admin Analytics Screen](ScreenShots/admin%20analyticval%20page%20that%20shows%20models%20performance%20and%20and%20grapghs.png)
 
-### EditProfileScreen
-![EditProfileScreen](docs/screenshots/mobile/edit-profile-screen.png)
-
-### SettingsScreen
-![SettingsScreen](docs/screenshots/mobile/settings-screen.png)
-
-### PrivacyScreen
-![PrivacyScreen](docs/screenshots/mobile/privacy-screen.png)
-
-### TermsScreen
-![TermsScreen](docs/screenshots/mobile/terms-screen.png)
-
-### AboutScreen
-![AboutScreen](docs/screenshots/mobile/about-screen.png)
-
-### DataScreen
-![DataScreen](docs/screenshots/mobile/data-screen.png)
-
-### AdminScreen
-![AdminScreen](docs/screenshots/mobile/admin-screen.png)
+### Admin Settings Screen
+![Admin Settings Screen](ScreenShots/amdin%20panel%20setting%20whrer%20amdin%20can%20add%20or%20dleete%20keywords.png)
 
 ## Tech Stack
 
