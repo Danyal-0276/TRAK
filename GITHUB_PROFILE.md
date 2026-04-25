@@ -52,61 +52,61 @@ Authentication state is persisted with `AsyncStorage`, and app navigation adapts
 Images are loaded from `ScreenShots/`.
 
 ### Splash Screen
-![Splash Screen](ScreenShots/Splash%20screen.png)
+<img src="ScreenShots/Splash%20screen.png" alt="Splash Screen" width="260" />
 
 ### Onboarding Screen
-![Onboarding Screen](ScreenShots/onboarding%20page.png)
+<img src="ScreenShots/onboarding%20page.png" alt="Onboarding Screen" width="260" />
 
 ### Login Screen
-![Login Screen](ScreenShots/Login%20page.png)
+<img src="ScreenShots/Login%20page.png" alt="Login Screen" width="260" />
 
 ### Signup Screen
-![Signup Screen](ScreenShots/Signup%20page.png)
+<img src="ScreenShots/Signup%20page.png" alt="Signup Screen" width="260" />
 
 ### Forgot Password Screen
-![Forgot Password Screen](ScreenShots/forget%20passwords%20page.png)
+<img src="ScreenShots/forget%20passwords%20page.png" alt="Forgot Password Screen" width="260" />
 
 ### OTP Verification Screen
-![OTP Verification Screen](ScreenShots/after%20enetering%20email%20otp%20is%20send%20this%20is%20for%20that.png)
+<img src="ScreenShots/after%20enetering%20email%20otp%20is%20send%20this%20is%20for%20that.png" alt="OTP Verification Screen" width="260" />
 
 ### Keyword Selection Screen
-![Keyword Selection Screen](ScreenShots/keywords%20selection%20page.png)
+<img src="ScreenShots/keywords%20selection%20page.png" alt="Keyword Selection Screen" width="260" />
 
 ### User Home Feed Screen
-![User Home Feed Screen](ScreenShots/user%20dahsboard%20home%20feed%20page.png)
+<img src="ScreenShots/user%20dahsboard%20home%20feed%20page.png" alt="User Home Feed Screen" width="260" />
 
 ### Article Detail Screen
-![Article Detail Screen](ScreenShots/on%20clicking%20the%20arcticle%20this%20page%20is%20openewd%20a%20detaield%20article%20page.png)
+<img src="ScreenShots/on%20clicking%20the%20arcticle%20this%20page%20is%20openewd%20a%20detaield%20article%20page.png" alt="Article Detail Screen" width="260" />
 
 ### Discover / Search Screen
-![Discover / Search Screen](ScreenShots/this%20is%20a%20discover%20page%20a%20searching%20page%20whre%20you%20can%20find%20all%20the%20articles.png)
+<img src="ScreenShots/this%20is%20a%20discover%20page%20a%20searching%20page%20whre%20you%20can%20find%20all%20the%20articles.png" alt="Discover / Search Screen" width="260" />
 
 ### Notifications Screen
-![Notifications Screen](ScreenShots/this%20is%20the%20page%20that%20shows%20notifucations.png)
+<img src="ScreenShots/this%20is%20the%20page%20that%20shows%20notifucations.png" alt="Notifications Screen" width="260" />
 
 ### Profile Screen
-![Profile Screen](ScreenShots/profile%20page%20that%20also%20ahs%20booksmarks.png)
+<img src="ScreenShots/profile%20page%20that%20also%20ahs%20booksmarks.png" alt="Profile Screen" width="260" />
 
 ### Edit Profile Screen
-![Edit Profile Screen](ScreenShots/profile%20info%20page%20user%20can%20chnage%20ther%20name%20and%20desciption%20here.png)
+<img src="ScreenShots/profile%20info%20page%20user%20can%20chnage%20ther%20name%20and%20desciption%20here.png" alt="Edit Profile Screen" width="260" />
 
 ### User Settings Screen
-![User Settings Screen](ScreenShots/user%20setting%20page4.png)
+<img src="ScreenShots/user%20setting%20page4.png" alt="User Settings Screen" width="260" />
 
 ### Admin Dashboard Screen
-![Admin Dashboard Screen](ScreenShots/admin%20panel%20dashboard%20that%20shows%20metrics%20about%20user%20artclies%20and%20ketywords.png)
+<img src="ScreenShots/admin%20panel%20dashboard%20that%20shows%20metrics%20about%20user%20artclies%20and%20ketywords.png" alt="Admin Dashboard Screen" width="260" />
 
 ### Admin User Management Screen
-![Admin User Management Screen](ScreenShots/amdin%20panel%20user%20management.png)
+<img src="ScreenShots/amdin%20panel%20user%20management.png" alt="Admin User Management Screen" width="260" />
 
 ### Admin Article Management Screen
-![Admin Article Management Screen](ScreenShots/admin%20arctle%20management.png)
+<img src="ScreenShots/admin%20arctle%20management.png" alt="Admin Article Management Screen" width="260" />
 
 ### Admin Analytics Screen
-![Admin Analytics Screen](ScreenShots/admin%20analyticval%20page%20that%20shows%20models%20performance%20and%20and%20grapghs.png)
+<img src="ScreenShots/admin%20analyticval%20page%20that%20shows%20models%20performance%20and%20and%20grapghs.png" alt="Admin Analytics Screen" width="260" />
 
 ### Admin Settings Screen
-![Admin Settings Screen](ScreenShots/amdin%20panel%20setting%20whrer%20amdin%20can%20add%20or%20dleete%20keywords.png)
+<img src="ScreenShots/amdin%20panel%20setting%20whrer%20amdin%20can%20add%20or%20dleete%20keywords.png" alt="Admin Settings Screen" width="260" />
 
 ## Tech Stack
 
