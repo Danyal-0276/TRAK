@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { AUTH_PREFIX, API_BASE } from '../config/api';
 import { apiFetch, clearTokens, getAccessToken, setTokens } from '../api/client';
+import { registerDeviceToken } from '../api/notificationsApi';
+import { getOrCreatePushToken } from '../api/pushToken';
 
 const AuthContext = createContext(null);
 
@@ -26,6 +28,10 @@ export function AuthProvider({ children }) {
             }
             const me = await fetchMe();
             setUser(me);
+            if (me) {
+                const deviceToken = await getOrCreatePushToken();
+                await registerDeviceToken(deviceToken, 'mobile');
+            }
         } catch {
             setUser(null);
         } finally {
@@ -52,6 +58,8 @@ export function AuthProvider({ children }) {
         await setTokens(data.access, data.refresh);
         const u = data.user || (await fetchMe());
         setUser(u);
+        const deviceToken = await getOrCreatePushToken();
+        await registerDeviceToken(deviceToken, 'mobile');
         return u;
     };
 
@@ -76,6 +84,8 @@ export function AuthProvider({ children }) {
         await setTokens(data.access, data.refresh);
         const u = data.user || (await fetchMe());
         setUser(u);
+        const deviceToken = await getOrCreatePushToken();
+        await registerDeviceToken(deviceToken, 'mobile');
         return u;
     };
 

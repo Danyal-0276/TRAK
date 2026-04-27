@@ -11,6 +11,8 @@ import {
     requestOtp,
     saveAuthSession,
 } from '../utils/Service/api';
+import { registerDeviceToken } from '../api/notificationsApi';
+import { getOrCreatePushToken } from '../api/pushToken';
 
 const AuthContext = createContext(null);
 
@@ -26,6 +28,7 @@ export const AuthProvider = ({ children }) => {
     const applySession = (session) => {
         saveAuthSession(session);
         setUser(session.user);
+        registerDeviceToken(getOrCreatePushToken(), 'web').catch(() => {});
         return session.user;
     };
 

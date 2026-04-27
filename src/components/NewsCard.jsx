@@ -18,8 +18,14 @@ import { useTheme } from '../theme/ThemeContext';
 export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark, index = 0 }) => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const safeId = item?.id != null ? String(item.id) : `news-${index}`;
+    const safeSource = String(item?.source || 'TRAK');
+    const safeTitle = String(item?.title || 'Untitled');
+    const safeExcerpt = String(item?.excerpt || item?.content || '');
+    const safeCategory = String(item?.category || 'General');
+    const safeVotes = Number(item?.votes || 0);
     const isBookmarked =
-        bookmarkedItems?.has?.(item.id) || bookmarkedItems?.has?.(String(item.id));
+        bookmarkedItems?.has?.(item?.id) || bookmarkedItems?.has?.(String(item?.id));
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(20)).current;
 
@@ -268,12 +274,12 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             { backgroundColor: item.trending ? colors.primary : colors.textSecondary }
                         ]}>
                             <Text style={cardStyles.sourceIconText}>
-                                {item.source.substring(0, 2).toUpperCase()}
+                                {safeSource.substring(0, 2).toUpperCase()}
                             </Text>
                         </View>
                         <View style={cardStyles.sourceInfo}>
                             <View style={cardStyles.sourceNameRow}>
-                                <Text style={cardStyles.sourceName}>{item.source}</Text>
+                                <Text style={cardStyles.sourceName}>{safeSource}</Text>
                                 {item.verified && (
                                     <CheckCircle size={14} color={colors.verified} fill={colors.verified} />
                                 )}
@@ -295,17 +301,17 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                 </View>
 
                 {/* Title */}
-                <Text style={cardStyles.title}>{item.title}</Text>
+                <Text style={cardStyles.title}>{safeTitle}</Text>
 
                 {/* Excerpt */}
                 <Text style={cardStyles.excerpt} numberOfLines={3}>
-                    {item.excerpt}
+                    {safeExcerpt}
                 </Text>
 
                 {/* Category & Trending */}
                 <View style={cardStyles.metaRow}>
                     <View style={cardStyles.categoryBadge}>
-                        <Text style={cardStyles.categoryText}>{item.category}</Text>
+                        <Text style={cardStyles.categoryText}>{safeCategory}</Text>
                     </View>
                     <View style={[cardStyles.credibilityBadge, { backgroundColor: credBg, borderLeftColor: credFg }]}>
                         <CheckCircle size={11} color={credFg} />
@@ -327,28 +333,28 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                 style={cardStyles.voteButton}
                                 onPress={(e) => {
                                     e.stopPropagation();
-                                    onVote(item.id, 'up');
+                                    onVote(safeId, 'up');
                                 }}
                             >
                                 <ChevronUp
                                     size={18}
-                                    color={votedItems[item.id] === 'up' ? colors.textPrimary : colors.textSecondary}
+                                    color={votedItems[safeId] === 'up' ? colors.textPrimary : colors.textSecondary}
                                     strokeWidth={2.5}
                                 />
                             </TouchableOpacity>
 
-                            <Text style={cardStyles.voteCount}>{item.votes}</Text>
+                            <Text style={cardStyles.voteCount}>{safeVotes}</Text>
 
                             <TouchableOpacity
                                 style={cardStyles.voteButton}
                                 onPress={(e) => {
                                     e.stopPropagation();
-                                    onVote(item.id, 'down');
+                                    onVote(safeId, 'down');
                                 }}
                             >
                                 <ChevronDown
                                     size={18}
-                                    color={votedItems[item.id] === 'down' ? colors.textPrimary : colors.textSecondary}
+                                    color={votedItems[safeId] === 'down' ? colors.textPrimary : colors.textSecondary}
                                     strokeWidth={2.5}
                                 />
                             </TouchableOpacity>
@@ -360,7 +366,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             style={cardStyles.actionButton}
                             onPress={(e) => {
                                 e.stopPropagation();
-                                onBookmark(item.id);
+                                onBookmark(safeId);
                             }}
                         >
                             <Bookmark

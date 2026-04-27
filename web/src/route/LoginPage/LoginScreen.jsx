@@ -18,6 +18,7 @@ const LoginScreen = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [socialLoading, setSocialLoading] = useState(null);
     const [authMode, setAuthMode] = useState('email');
+    const [otpMeta, setOtpMeta] = useState({ message: '', devCode: '' });
 
     useEffect(() => {
         const ticket = searchParams.get('social_ticket');
@@ -88,10 +89,19 @@ const LoginScreen = () => {
             setErrors(prev => ({ ...prev, email: 'Phone is required' }));
             return;
         }
+        if (!/^\+?[\d\s\-()]{7,20}$/.test(email.trim())) {
+            setErrors(prev => ({ ...prev, email: 'Enter a valid phone number' }));
+            return;
+        }
         setErrors({});
+        setOtpMeta({ message: '', devCode: '' });
         setLoading(true);
         try {
-            await sendOtp(email.trim());
+            const payload = await sendOtp(email.trim());
+            setOtpMeta({
+                message: payload?.detail || 'Verification code sent.',
+                devCode: payload?.dev_code ? String(payload.dev_code) : '',
+            });
             setErrors(prev => ({ ...prev, password: '' }));
         } catch (error) {
             setErrors(prev => ({ ...prev, password: error.message }));
@@ -189,7 +199,7 @@ const LoginScreen = () => {
                     </button>
                     <button
                         type="button"
-                        onClick={() => { setAuthMode('phone'); setErrors({}); }}
+                        onClick={() => { setAuthMode('phone'); setErrors({}); setOtpMeta({ message: '', devCode: '' }); }}
                         style={{
                             padding: '10px 12px',
                             borderRadius: '6px',
@@ -254,6 +264,12 @@ const LoginScreen = () => {
                                 {errors.email}
                             </p>
                         )}
+                        {authMode === 'phone' && otpMeta.message ? (
+                            <p style={{ color: '#166534', fontSize: '13px', margin: '6px 0 0 0' }}>
+                                {otpMeta.message}
+                                {otpMeta.devCode ? ` Test code: ${otpMeta.devCode}` : ''}
+                            </p>
+                        ) : null}
                     </div>
 
                     {/* Password/Code Field */}
@@ -463,20 +479,14 @@ const LoginScreen = () => {
                                             startSocialOAuth(provider.key);
                                             return;
                                         }
-                                        const candidateEmail = window.prompt(`Enter your ${provider.name} account email`);
-                                        if (!candidateEmail) {
-                                            setSocialLoading(null);
-                                            return;
-                                        }
-                                        const userData = await socialLogin(provider.key, candidateEmail);
-                                        navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed');
+                                        throw new Error('This social provider is not available yet.');
                                     } catch (error) {
                                         showError(error.message || 'Social login failed');
                                     } finally {
                                         setSocialLoading(null);
                                     }
                                 }}
-                                disabled={socialLoading !== null}
+                                disabled={socialLoading !== null || provider.key === 'twitter'}
                                 style={{
                                     flex: 1,
                                     padding: '11px 16px',
@@ -493,7 +503,7 @@ const LoginScreen = () => {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     gap: '8px',
-                                    opacity: socialLoading !== null && !isLoading ? 0.6 : 1,
+                                    opacity: socialLoading !== null && !isLoading ? 0.6 : (provider.key === 'twitter' ? 0.5 : 1),
                                 }}
                                 onMouseEnter={(e) => {
                                     if (socialLoading === null) {

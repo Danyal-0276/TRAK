@@ -13,6 +13,7 @@ import {
   deleteRecentSearch,
 } from "../../utils/recentSearchesStorage";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
+import { addBookmark, listBookmarks, removeBookmark, setReaction } from "../../utils/Service/api";
 
 function deriveTrendingFromArticles(articles) {
   const counts = {};
@@ -55,6 +56,7 @@ const SearchScreen = () => {
     const [recentSearches, setRecentSearches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || "");
+    const [debouncedQuery, setDebouncedQuery] = useState(searchParams.get('q') || "");
     const [activeTab, setActiveTab] = useState("All");
     const [votedItems, setVotedItems] = useState({});
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
@@ -70,12 +72,18 @@ const SearchScreen = () => {
     const [categories, setCategories] = useState(["All"]);
 
     useEffect(() => {
-        const q = searchQuery.trim();
-        const delayMs = q ? 360 : 0;
-        const timer = setTimeout(async () => {
+        const t = setTimeout(() => setDebouncedQuery(searchQuery), 300);
+        return () => clearTimeout(t);
+    }, [searchQuery]);
+
+    useEffect(() => {
+        const q = debouncedQuery.trim();
+        (async () => {
             try {
                 setLoading(true);
                 const newsData = await loadFeedItems({ q });
+                const bookmarks = await listBookmarks().catch(() => ({ results: [] }));
+                setBookmarkedItems(new Set((bookmarks.results || []).map((b) => String(b.article_id))));
                 setAllNews(newsData);
                 const categorySet = new Set();
                 newsData.forEach((article) => {
@@ -96,9 +104,8 @@ const SearchScreen = () => {
             } finally {
                 setLoading(false);
             }
-        }, delayMs);
-        return () => clearTimeout(timer);
-    }, [searchQuery]);
+        })();
+    }, [debouncedQuery]);
 
     // Read query parameter from URL on mount and when URL changes
     useEffect(() => {
@@ -121,6 +128,7 @@ const SearchScreen = () => {
 
     const handleTopicPress = (topicName) => {
         setSearchQuery(topicName);
+        setSearchParams({ q: topicName });
         setActiveTab("All"); // Reset to All tab when searching
         searchRef.current?.collapseKeepText();
     };
@@ -175,8 +183,8 @@ const SearchScreen = () => {
         }
 
         // Then filter by search query if present
-        if (searchQuery && searchQuery.trim()) {
-            const lower = searchQuery.toLowerCase().trim();
+        if (debouncedQuery && debouncedQuery.trim()) {
+            const lower = debouncedQuery.toLowerCase().trim();
             const searchTerms = lower.split(/\s+/).filter(term => term.length > 0); // Split into individual words and filter empty
             
             if (searchTerms.length > 0) {
@@ -200,7 +208,7 @@ const SearchScreen = () => {
         }
 
         setFilteredNews(results);
-    }, [searchQuery, activeTab, allNews]);
+    }, [debouncedQuery, activeTab, allNews]);
 
     const handleArticlePress = (article) => {
         setSelectedArticle(article);
@@ -269,7 +277,7 @@ const SearchScreen = () => {
         }));
 
         try {
-            /* votes API TBD */
+            await setReaction(itemId, newVote || "none");
         } catch (error) {
             setVotedItems(prev => ({
                 ...prev,
@@ -290,7 +298,13 @@ const SearchScreen = () => {
         });
 
         try {
-            /* bookmarks API TBD */
+            const exists = bookmarkedItems.has(itemId) || bookmarkedItems.has(String(itemId));
+            const article = allNews.find((n) => String(n.id) === String(itemId));
+            if (exists) {
+                await removeBookmark(itemId);
+            } else {
+                await addBookmark(itemId, article?.title || "", article?.canonical_url || article?.url || "");
+            }
         } catch (error) {
             console.error('Error bookmarking:', error);
         }

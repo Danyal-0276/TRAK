@@ -16,6 +16,7 @@ const ResetPasswordScreen = () => {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [errors, setErrors] = useState({});
+    const hasTokenParams = Boolean(uid.trim() && token.trim());
 
     useEffect(() => {
         const u = searchParams.get('uid') || '';
@@ -160,14 +161,28 @@ const ResetPasswordScreen = () => {
 
                 <form onSubmit={handleSubmit}>
                     <div style={{ marginBottom: '20px' }}>
-                        <p style={{
-                            fontSize: '13px',
-                            color: '#64748b',
-                            margin: '0 0 12px 0',
-                            lineHeight: '1.5',
-                        }}>
-                            If you opened this page from the email link, the fields below are filled automatically. Otherwise paste the values from the link.
-                        </p>
+                        {!hasTokenParams ? (
+                            <p style={{
+                                fontSize: '13px',
+                                color: '#64748b',
+                                margin: '0 0 12px 0',
+                                lineHeight: '1.5',
+                            }}>
+                                Open this page directly from the reset link sent to your email. You can also paste uid/token manually.
+                            </p>
+                        ) : (
+                            <p style={{
+                                fontSize: '13px',
+                                color: '#166534',
+                                margin: '0 0 12px 0',
+                                lineHeight: '1.5',
+                            }}>
+                                Reset link verified. Create your new password below.
+                            </p>
+                        )}
+                        <details style={{ marginBottom: '16px' }}>
+                            <summary style={{ cursor: 'pointer', color: '#64748b', fontSize: '13px' }}>Show manual uid/token fields</summary>
+                            <div style={{ marginTop: '10px' }}>
                         <label style={{
                             display: 'block',
                             fontSize: '14px',
@@ -234,6 +249,8 @@ const ResetPasswordScreen = () => {
                         {errors.token && (
                             <p style={{ color: '#ef4444', fontSize: '13px', margin: '0 0 20px 0' }}>{errors.token}</p>
                         )}
+                            </div>
+                        </details>
                     </div>
 
                     {/* New Password */}

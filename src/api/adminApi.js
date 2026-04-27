@@ -42,3 +42,42 @@ export async function getAdminModelMetrics() {
   const res = await apiFetch(`${ADMIN_PREFIX}/model-metrics/`, {}, API_BASE);
   return parseJson(res);
 }
+
+export async function getAdminUsers(q = '') {
+  const suffix = q ? `?q=${encodeURIComponent(q)}` : '';
+  const res = await apiFetch(`${ADMIN_PREFIX}/users/${suffix}`, {}, API_BASE);
+  return parseJson(res);
+}
+
+export async function patchAdminUser(userId, payload) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/users/${userId}/`,
+    { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) },
+    API_BASE
+  );
+  return parseJson(res);
+}
+
+export async function deleteAdminUser(userId) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/users/${userId}/`, { method: 'DELETE' }, API_BASE);
+  return parseJson(res);
+}
+
+export async function getAdminSettings() {
+  const res = await apiFetch(`${ADMIN_PREFIX}/settings/`, {}, API_BASE);
+  return parseJson(res);
+}
+
+export async function patchAdminSettings(payload) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/settings/`,
+    { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) },
+    API_BASE
+  );
+  return parseJson(res);
+}
+
+export async function getAdminNotifications() {
+  const res = await apiFetch(`${ADMIN_PREFIX}/notifications/`, {}, API_BASE);
+  return parseJson(res);
+}

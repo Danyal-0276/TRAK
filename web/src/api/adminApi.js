@@ -38,3 +38,39 @@ export async function getAdminModelMetrics() {
   const res = await apiFetch(`${ADMIN_PREFIX}/model-metrics/`);
   return parseJson(res);
 }
+
+export async function getAdminUsers(q = '') {
+  const suffix = q ? `?q=${encodeURIComponent(q)}` : '';
+  const res = await apiFetch(`${ADMIN_PREFIX}/users/${suffix}`);
+  return parseJson(res);
+}
+
+export async function patchAdminUser(userId, payload) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/users/${userId}/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJson(res);
+}
+
+export async function deleteAdminUser(userId) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/users/${userId}/`, { method: 'DELETE' });
+  return parseJson(res);
+}
+
+export async function patchAdminArticle(scope, articleId, payload) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/articles/${encodeURIComponent(scope)}/${encodeURIComponent(articleId)}/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJson(res);
+}
+
+export async function deleteAdminArticle(scope, articleId) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/articles/${encodeURIComponent(scope)}/${encodeURIComponent(articleId)}/`, {
+    method: 'DELETE',
+  });
+  return parseJson(res);
+}

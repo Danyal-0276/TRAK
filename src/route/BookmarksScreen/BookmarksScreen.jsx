@@ -12,8 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
 import { NewsCard } from '../../components/NewsCard';
 import { useTheme } from '../../theme/ThemeContext';
-import { loadFeedItems } from '../../utils/loadFeed';
-import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
+import { addBookmark, getUserArticleDetail, listBookmarks, removeBookmark, setReaction } from '../../utils/Service/api';
 import Text from '../../components/ui/Text';
 
 const BookmarksScreen = ({ navigation }) => {
@@ -27,12 +26,38 @@ const BookmarksScreen = ({ navigation }) => {
 
     const loadNews = useCallback(async () => {
         try {
-            const stored = await getBookmarkIds();
-            const idSet = new Set(stored);
+            const response = await listBookmarks();
+            const rows = response.results || [];
+            const detailed = await Promise.all(
+                rows.map(async (r) => {
+                    try {
+                        const full = await getUserArticleDetail(r.article_id);
+                        return {
+                            ...full,
+                            id: full.id || r.article_id || r.id,
+                            time: full.time || (r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently'),
+                            category: full.category || 'Saved',
+                        };
+                    } catch {
+                        return {
+                            id: r.article_id || r.id,
+                            title: r.title || 'Saved article',
+                            source: 'TRAK',
+                            excerpt: '',
+                            description: '',
+                            content: '',
+                            canonical_url: r.url || '',
+                            category: 'Saved',
+                            time: r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently',
+                            upvotes: 0,
+                            votes: 0,
+                        };
+                    }
+                })
+            );
+            const idSet = new Set((detailed || []).map((item) => String(item.id)));
             setBookmarkedItems(idSet);
-
-            const items = await loadFeedItems();
-            setNewsData(items.filter((item) => idSet.has(String(item.id))));
+            setNewsData((detailed || []).filter(Boolean));
         } catch (e) {
             console.warn(e);
             setNewsData([]);
@@ -54,23 +79,21 @@ const BookmarksScreen = ({ navigation }) => {
         const newVote = previousVote === type ? null : type;
         setVotedItems((prev) => ({ ...prev, [itemId]: newVote }));
         try {
-            await mockApi.voteArticle(itemId, newVote);
+            await setReaction(itemId, newVote || 'none');
         } catch {
             setVotedItems((prev) => ({ ...prev, [itemId]: previousVote }));
         }
     };
 
     const handleBookmark = async (itemId) => {
-        const nextSet = new Set(bookmarkedItems);
-        if (nextSet.has(itemId)) nextSet.delete(itemId);
-        else nextSet.add(itemId);
-        setBookmarkedItems(nextSet);
-        await setBookmarkIds(Array.from(nextSet));
-        setNewsData((rows) => rows.filter((r) => nextSet.has(String(r.id))));
         try {
-            await mockApi.bookmarkArticle(itemId);
+            const exists = bookmarkedItems.has(itemId) || bookmarkedItems.has(String(itemId));
+            const item = newsData.find((n) => String(n.id) === String(itemId));
+            if (exists) await removeBookmark(itemId);
+            else await addBookmark(itemId, item?.title || '', item?.canonical_url || item?.url || '');
+            await loadNews();
         } catch {
-            /* ignore */
+            console.warn('bookmark update failed');
         }
     };
 
@@ -86,7 +109,7 @@ const BookmarksScreen = ({ navigation }) => {
                         Bookmarks
                     </Text>
                     <Text variant="caption" color={colors.textSecondary}>
-                        Saved articles (synced on device)
+                        Saved articles (synced with backend)
                     </Text>
                 </View>
             </View>

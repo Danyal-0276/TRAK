@@ -17,9 +17,8 @@ import LinearGradient from 'react-native-linear-gradient';
 import { FeedHeader } from './components/FeedHeader';
 import { TabBar } from './components/TabBar';
 import { NewsCard } from '../../components/NewsCard';
-import { getUserFeed } from '../../utils/Service/api';
+import { addBookmark, getUserFeed, listBookmarks, removeBookmark, setReaction } from '../../utils/Service/api';
 import { useTheme } from '../../theme/ThemeContext';
-import { getBookmarkIds, toggleBookmarkId } from '../../utils/bookmarksStorage';
 import { resetTabBarVisibility, setTabBarHidden } from '../../navigation/tabBarVisibility';
 
 const { width, height } = Dimensions.get('window');
@@ -158,8 +157,8 @@ const NewsFeedScreen = ({ navigation }) => {
 
     useEffect(() => {
         (async () => {
-            const ids = await getBookmarkIds();
-            setBookmarkedItems(new Set(ids));
+            const res = await listBookmarks().catch(() => ({ results: [] }));
+            setBookmarkedItems(new Set((res.results || []).map((b) => String(b.article_id))));
         })();
     }, []);
 
@@ -227,7 +226,7 @@ const NewsFeedScreen = ({ navigation }) => {
         }));
 
         try {
-            await Promise.resolve({ ok: true });
+            await setReaction(itemId, newVote || 'none');
         } catch (error) {
             setVotedItems(prev => ({
                 ...prev,
@@ -237,13 +236,29 @@ const NewsFeedScreen = ({ navigation }) => {
     };
 
     const handleBookmark = async (itemId) => {
-        const next = await toggleBookmarkId(itemId);
-        setBookmarkedItems(next);
+        const wasBookmarked = bookmarkedItems.has(itemId);
+        setBookmarkedItems(prev => {
+            const next = new Set(prev);
+            if (next.has(itemId)) next.delete(itemId);
+            else next.add(itemId);
+            return next;
+        });
 
         try {
-            await Promise.resolve({ ok: true });
+            const article = newsData.find((n) => String(n.id) === String(itemId));
+            if (wasBookmarked) {
+                await removeBookmark(itemId);
+            } else {
+                await addBookmark(itemId, article?.title || '', article?.canonical_url || article?.url || '');
+            }
         } catch (error) {
             console.error('Error bookmarking:', error);
+            setBookmarkedItems(prev => {
+                const rollback = new Set(prev);
+                if (rollback.has(itemId)) rollback.delete(itemId);
+                else rollback.add(itemId);
+                return rollback;
+            });
         }
     };
 

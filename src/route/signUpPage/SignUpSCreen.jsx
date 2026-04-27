@@ -148,7 +148,7 @@ const SignUpScreen = ({ navigation }) => {
             const syntheticEmail = `${normalizedProvider}_mobile_signup_${Date.now()}@trak.local`;
             const session = await loginWithSocialDemo(normalizedProvider, syntheticEmail);
             await setTokens(session.access, session.refresh);
-            saveAuthSession(session);
+            await saveAuthSession(session);
             await bootstrap();
             success(`Signed up with ${provider}`);
             navigation.navigate('TagSelection');

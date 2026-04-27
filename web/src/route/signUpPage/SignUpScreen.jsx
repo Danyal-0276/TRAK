@@ -634,20 +634,14 @@ const SignUpScreen = () => {
                                             startSocialOAuth(provider.key);
                                             return;
                                         }
-                                        const candidateEmail = window.prompt(`Enter your ${provider.name} account email`);
-                                        if (!candidateEmail) {
-                                            setSocialLoading(null);
-                                            return;
-                                        }
-                                        await socialLogin(provider.key, candidateEmail);
-                                        navigate('/newsfeed');
+                                        throw new Error('This social provider is not available yet.');
                                     } catch (error) {
                                         setErrors((prev) => ({ ...prev, email: error.message || 'Social signup failed' }));
                                     } finally {
                                         setSocialLoading(null);
                                     }
                                 }}
-                                disabled={socialLoading !== null}
+                                disabled={socialLoading !== null || provider.key === 'twitter'}
                                 style={{
                                     flex: 1,
                                     padding: '11px 16px',
@@ -664,7 +658,7 @@ const SignUpScreen = () => {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     gap: '8px',
-                                    opacity: socialLoading !== null && !isLoading ? 0.6 : 1,
+                                    opacity: socialLoading !== null && !isLoading ? 0.6 : (provider.key === 'twitter' ? 0.5 : 1),
                                 }}
                                 onMouseEnter={(e) => {
                                     if (socialLoading === null) {

@@ -1,13 +1,13 @@
 // components/profile/ProfileHeader.jsx
 import React from "react";
-import { View, Image, StyleSheet } from "react-native";
+import { View, Image, StyleSheet, TouchableOpacity } from "react-native";
 import { CheckCircle2 } from "lucide-react-native";
 import LinearGradient from "react-native-linear-gradient";
 import { useTheme } from "../../../theme/ThemeContext";
 import Text from "../../../components/ui/Text";
 import Card from "../../../components/ui/Card";
 
-const ProfileHeader = ({ name, username, bio, avatar, verified }) => {
+const ProfileHeader = ({ name, username, bio, avatarUri, verified, onPressAvatar, onLongPressAvatar }) => {
   const { theme } = useTheme();
   const { colors, spacing, radius } = theme;
   
@@ -23,15 +23,15 @@ const ProfileHeader = ({ name, username, bio, avatar, verified }) => {
   return (
     <Card style={{ marginBottom: spacing.lg, overflow: 'hidden' }}>
       <View style={styles.header}>
-        <View style={styles.avatarContainer}>
+        <TouchableOpacity style={styles.avatarContainer} activeOpacity={0.9} onPress={onPressAvatar} onLongPress={onLongPressAvatar}>
           <LinearGradient
             colors={[colors.primary, `${colors.primary}DD`]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.avatarGradient}
           >
-            {avatar ? (
-              <Image source={avatar} style={styles.avatar} />
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatar} />
             ) : (
               <View style={[styles.avatarPlaceholder, { backgroundColor: colors.surface }]}>
                 <Text variant="title" color={colors.primary} style={styles.avatarText}>
@@ -40,7 +40,7 @@ const ProfileHeader = ({ name, username, bio, avatar, verified }) => {
               </View>
             )}
           </LinearGradient>
-        </View>
+        </TouchableOpacity>
         <View style={styles.headerText}>
           <View style={styles.nameRow}>
             <Text variant="title" style={[styles.name, { color: colors.textPrimary }]}>{name}</Text>

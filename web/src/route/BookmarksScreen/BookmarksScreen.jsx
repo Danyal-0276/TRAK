@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
-import { mockApi } from '../../utils/Service/mockApi';
+import { addBookmark, getUserArticleDetail, listBookmarks, removeBookmark, setReaction } from '../../utils/Service/api';
 
 const BookmarksScreen = () => {
     const navigate = useNavigate();
@@ -13,16 +13,38 @@ const BookmarksScreen = () => {
     const loadBookmarks = async () => {
         try {
             setLoading(true);
-            const response = await mockApi.getNewsFeed();
-            // In a real app, you'd fetch bookmarked items from the API
-            // For now, we'll show all items and let users bookmark them
-            setNewsData(response.data);
-            
-            // Load saved bookmarks from localStorage or API
-            const savedBookmarks = localStorage.getItem('bookmarks');
-            if (savedBookmarks) {
-                setBookmarkedItems(new Set(JSON.parse(savedBookmarks)));
-            }
+            const response = await listBookmarks();
+            const rows = response.results || [];
+            const ids = new Set(rows.map((r) => String(r.article_id)));
+            setBookmarkedItems(ids);
+            const detailed = await Promise.all(
+                rows.map(async (r) => {
+                    try {
+                        const full = await getUserArticleDetail(r.article_id);
+                        return {
+                            ...full,
+                            id: full.id || r.article_id || r.id,
+                            time: full.time || (r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently'),
+                            category: full.category || 'Saved',
+                        };
+                    } catch {
+                        return {
+                            id: r.article_id || r.id,
+                            title: r.title || 'Saved article',
+                            source: 'TRAK',
+                            excerpt: '',
+                            description: '',
+                            content: '',
+                            canonical_url: r.url || '',
+                            category: 'Saved',
+                            time: r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently',
+                            upvotes: 0,
+                            votes: 0,
+                        };
+                    }
+                })
+            );
+            setNewsData(detailed.filter(Boolean));
         } catch (error) {
             console.error('Error loading bookmarks:', error);
         } finally {
@@ -34,8 +56,13 @@ const BookmarksScreen = () => {
         loadBookmarks();
     }, []);
 
-    const handleArticlePress = (article) => {
-        navigate(`/article/${article.id}`, { state: { article } });
+    const handleArticlePress = async (article) => {
+        try {
+            const full = await getUserArticleDetail(article.id);
+            navigate(`/article/${article.id}`, { state: { article: full } });
+        } catch {
+            navigate(`/article/${article.id}`, { state: { article } });
+        }
     };
 
     const handleVote = async (itemId, type) => {
@@ -48,7 +75,7 @@ const BookmarksScreen = () => {
         }));
 
         try {
-            await mockApi.voteArticle(itemId, newVote);
+            await setReaction(itemId, newVote || 'none');
         } catch (error) {
             setVotedItems(prev => ({
                 ...prev,
@@ -65,13 +92,15 @@ const BookmarksScreen = () => {
             } else {
                 newSet.add(itemId);
             }
-            // Save to localStorage
-            localStorage.setItem('bookmarks', JSON.stringify(Array.from(newSet)));
             return newSet;
         });
 
         try {
-            await mockApi.bookmarkArticle(itemId);
+            const exists = bookmarkedItems.has(itemId) || bookmarkedItems.has(String(itemId));
+            const item = newsData.find((n) => String(n.id) === String(itemId));
+            if (exists) await removeBookmark(itemId);
+            else await addBookmark(itemId, item?.title || '', item?.canonical_url || item?.url || '');
+            await loadBookmarks();
         } catch (error) {
             console.error('Error bookmarking:', error);
         }

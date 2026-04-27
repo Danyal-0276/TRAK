@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import {
@@ -9,6 +10,7 @@ import {
   getResponsiveFontSize,
 } from '../../utils/responsiveStyles';
 import { FileText, BarChart3, Activity, Hash } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { getAdminAnalytics, getAdminModelMetrics } from '../../api/adminApi';
 
 const BreakdownTable = ({ title, entries, textPrimary, textSecondary, borderColor, cardBackground }) => (
@@ -64,6 +66,8 @@ const AdminAnalyticsScreen = () => {
   const [snapshot, setSnapshot] = useState(null);
   const [modelMetrics, setModelMetrics] = useState(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+  const [activeMetric, setActiveMetric] = useState('all');
 
   const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
   const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
@@ -109,24 +113,28 @@ const AdminAnalyticsScreen = () => {
       label: 'Raw articles',
       value: snapshot != null ? String(snapshot.raw_total ?? 0) : '—',
       color: '#f59e0b',
+      key: 'raw',
     },
     {
       icon: BarChart3,
       label: 'Processed',
       value: snapshot != null ? String(snapshot.processed_total ?? 0) : '—',
       color: '#10b981',
+      key: 'processed',
     },
     {
       icon: Activity,
       label: 'Pipeline buckets',
       value: snapshot != null ? String(rawEntries.length) : '—',
       color: '#3b82f6',
+      key: 'pipeline',
     },
     {
       icon: Hash,
       label: 'Credibility labels',
       value: snapshot != null ? String(credEntries.length) : '—',
       color: '#8b5cf6',
+      key: 'credibility',
     },
   ];
 
@@ -161,6 +169,11 @@ const AdminAnalyticsScreen = () => {
               paddingTop: '0',
             }}
           >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: textSecondary, marginBottom: '10px' }}>
+              <button onClick={() => navigate('/admin/dashboard')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Admin</button>
+              <ChevronRight size={14} />
+              <span style={{ color: textPrimary, fontWeight: 600 }}>Analytics</span>
+            </div>
             <h1
               style={{
                 fontSize: getResponsiveFontSize(isMobile, isTablet, 28),
@@ -197,12 +210,25 @@ const AdminAnalyticsScreen = () => {
               return (
                 <div
                   key={index}
+                  onClick={() => {
+                    if (stat.key === 'raw') navigate('/admin/articles?scope=raw');
+                    else if (stat.key === 'processed') navigate('/admin/articles?scope=processed');
+                    else setActiveMetric(stat.key);
+                  }}
                   style={{
                     backgroundColor: cardBackground,
                     borderRadius: '12px',
-                    border: `1px solid ${borderColor}`,
+                    border: `1px solid ${activeMetric === stat.key ? (isDark ? colors.primary || '#818CF8' : '#0f172a') : borderColor}`,
                     padding: '24px',
                     boxShadow: isDark ? '0 1px 3px rgba(0, 0, 0, 0.2)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-1px)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)';
                   }}
                 >
                   <div
@@ -260,14 +286,16 @@ const AdminAnalyticsScreen = () => {
                 borderColor={borderColor}
                 cardBackground={cardBackground}
               />
-              <BreakdownTable
-                title="Processed articles by credibility_label"
-                entries={credEntries}
-                textPrimary={textPrimary}
-                textSecondary={textSecondary}
-                borderColor={borderColor}
-                cardBackground={cardBackground}
-              />
+              {activeMetric !== 'pipeline' && (
+                <BreakdownTable
+                  title="Processed articles by credibility_label"
+                  entries={credEntries}
+                  textPrimary={textPrimary}
+                  textSecondary={textSecondary}
+                  borderColor={borderColor}
+                  cardBackground={cardBackground}
+                />
+              )}
               {modelMetrics && (
                 <>
                   <BreakdownTable

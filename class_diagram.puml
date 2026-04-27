@@ -1,0 +1,273 @@
+@startuml
+title TRAK Web Frontend - Class Diagram
+left to right direction
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+
+package "App Shell" {
+  class AppRouter {
+    +render(): JSX
+  }
+
+  class RouterContent {
+    +renderRoutes(): JSX
+  }
+
+  class ProtectedRoute {
+    +requireAdmin: boolean
+    +validateAccess(): boolean
+    +render(): JSX
+  }
+
+  class Navigation
+  class Header
+  class AppSidebar
+}
+
+package "Auth Context" {
+  class AuthContext {
+    +user: object
+    +token: string
+    +role: string
+    +login(email, password): Promise<object>
+    +logout(): void
+    +socialLogin(provider, email): Promise<object>
+    +completeSocialLogin(ticket): Promise<object>
+    +verifyOtp(email, code): Promise<object>
+  }
+}
+
+package "Auth Screens" {
+  class OpeningScreen
+  class LoginScreen {
+    +email: string
+    +password: string
+    +loading: boolean
+    +errors: object
+    +authMode: string
+  }
+  class SignUpScreen {
+    +fullName: string
+    +phone: string
+    +email: string
+    +password: string
+    +confirmPassword: string
+    +loading: boolean
+    +errors: object
+  }
+  class ForgotPasswordScreen {
+    +email: string
+    +loading: boolean
+    +errors: object
+  }
+  class ForgotPasswordCodeScreen {
+    +timer: number
+    +resendLoading: boolean
+  }
+  class ResetPasswordScreen {
+    +uid: string
+    +token: string
+    +newPassword: string
+    +confirmPassword: string
+    +loading: boolean
+    +errors: object
+  }
+  class PasswordChangedScreen
+  class TagSelectionScreen {
+    +selectedTags: string[]
+    +searchText: string
+  }
+  class KeywordSelectionScreen {
+    +selectedKeywords: string[]
+    +keywordInput: string
+  }
+  class TermsScreen
+  class PrivacyScreen
+}
+
+package "Main Screens" {
+  class NewsFeedScreen {
+    +activeTab: string
+    +bookmarkedItems: Set
+    +votedItems: object
+    +newsData: object[]
+    +loading: boolean
+  }
+  class SearchScreen {
+    +searchQuery: string
+    +filteredNews: object[]
+    +trendingTopics: string[]
+  }
+  class NotificationsScreen {
+    +notifications: object[]
+    +filteredNotifications: object[]
+    +activeTab: string
+  }
+  class ProfileScreen {
+    +profile: object
+    +userStats: object
+    +bookmarks: object[]
+  }
+  class SettingsScreen {
+    +settings: object
+    +showLogoutConfirm: boolean
+    +showSaveSuccess: boolean
+  }
+  class EditProfileScreen {
+    +formData: object
+    +errors: object
+    +isSaving: boolean
+  }
+  class DataScreen {
+    +storageData: object
+    +loading: boolean
+    +clearing: string
+  }
+  class CategoriesScreen {
+    +categories: object[]
+    +selectedCategory: string
+    +filteredNews: object[]
+  }
+  class AboutScreen
+  class TrendingScreen
+  class BookmarksScreen
+  class RecentScreen
+  class ArticleDetailScreen {
+    +isLiked: boolean
+    +isDisliked: boolean
+    +isBookmarked: boolean
+  }
+}
+
+package "Admin Screens" {
+  class AdminScreen
+  class AdminDashboardScreen {
+    +snapshot: object
+    +pipelineBusy: boolean
+  }
+  class AdminUsersScreen {
+    +users: object[]
+    +searchQuery: string
+  }
+  class AdminArticlesScreen {
+    +articles: object[]
+    +scope: string
+  }
+  class AdminAnalyticsScreen {
+    +modelMetrics: object
+    +snapshot: object
+  }
+}
+
+package "API and Services" {
+  class ClientApi {
+    +getAccessToken(): Promise<string>
+  }
+
+  class AuthPasswordApi {
+    +requestPasswordReset(email): Promise<object>
+    +verifyResetCode(email, code): Promise<object>
+    +resetPassword(payload): Promise<object>
+  }
+
+  class NewsApi {
+    +getUserFeed(): Promise<object>
+    +trackKeywords(tags, token): Promise<object>
+  }
+
+  class AdminApi {
+    +getDashboard(): Promise<object>
+    +getUsers(): Promise<object[]>
+    +getArticles(): Promise<object[]>
+    +getAnalytics(): Promise<object>
+  }
+
+  class MockApi
+  class MockNotificationApi
+}
+
+package "Shared Utils and Constants" {
+  class LoadFeed {
+    +loadFeedItems(): Promise<object[]>
+  }
+  class BookmarksStorage {
+    +getBookmarkIds(): Promise<string[]>
+    +setBookmarkIds(ids): Promise<void>
+  }
+  class UserKeywordsStorage {
+    +getUserKeywords(): Promise<string[]>
+    +setUserKeywords(keywords): Promise<void>
+  }
+  class NewsCategories {
+    +newsTagsWithSubcategories: object
+  }
+}
+
+AppRouter --> Header
+AppRouter --> AppSidebar
+AppRouter --> Navigation
+AppRouter --> RouterContent
+
+RouterContent --> ProtectedRoute
+RouterContent --> OpeningScreen
+RouterContent --> LoginScreen
+RouterContent --> SignUpScreen
+RouterContent --> ForgotPasswordScreen
+RouterContent --> ForgotPasswordCodeScreen
+RouterContent --> ResetPasswordScreen
+RouterContent --> PasswordChangedScreen
+RouterContent --> TagSelectionScreen
+RouterContent --> KeywordSelectionScreen
+RouterContent --> TermsScreen
+RouterContent --> PrivacyScreen
+RouterContent --> NewsFeedScreen
+RouterContent --> SearchScreen
+RouterContent --> NotificationsScreen
+RouterContent --> ProfileScreen
+RouterContent --> SettingsScreen
+RouterContent --> EditProfileScreen
+RouterContent --> DataScreen
+RouterContent --> CategoriesScreen
+RouterContent --> AboutScreen
+RouterContent --> TrendingScreen
+RouterContent --> BookmarksScreen
+RouterContent --> RecentScreen
+RouterContent --> ArticleDetailScreen
+RouterContent --> AdminScreen
+RouterContent --> AdminDashboardScreen
+RouterContent --> AdminUsersScreen
+RouterContent --> AdminArticlesScreen
+RouterContent --> AdminAnalyticsScreen
+
+ProtectedRoute --> AuthContext
+LoginScreen --> AuthContext
+SignUpScreen --> AuthContext
+ProfileScreen --> AuthContext
+SettingsScreen --> AuthContext
+
+ForgotPasswordScreen --> AuthPasswordApi
+ForgotPasswordCodeScreen --> AuthPasswordApi
+ResetPasswordScreen --> AuthPasswordApi
+
+NewsFeedScreen --> NewsApi
+SearchScreen --> LoadFeed
+TrendingScreen --> MockApi
+BookmarksScreen --> MockApi
+RecentScreen --> MockApi
+NotificationsScreen --> MockNotificationApi
+
+KeywordSelectionScreen --> NewsApi
+KeywordSelectionScreen --> ClientApi
+KeywordSelectionScreen --> UserKeywordsStorage
+TagSelectionScreen --> NewsCategories
+
+NewsFeedScreen --> BookmarksStorage
+BookmarksScreen --> BookmarksStorage
+ArticleDetailScreen --> NewsApi
+
+AdminDashboardScreen --> AdminApi
+AdminUsersScreen --> AdminApi
+AdminArticlesScreen --> AdminApi
+AdminAnalyticsScreen --> AdminApi
+
+@enduml

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -11,8 +11,10 @@ import {
     CheckCircle,
     Clock,
     Tag,
+    ChevronRight,
+    Trash2,
 } from 'lucide-react';
-import { getAdminArticles } from '../../api/adminApi';
+import { deleteAdminArticle, getAdminArticles, patchAdminArticle } from '../../api/adminApi';
 
 const AdminArticlesScreen = () => {
     const { theme } = useTheme();
@@ -20,11 +22,13 @@ const AdminArticlesScreen = () => {
     const isDark = theme.mode === 'dark';
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [articles, setArticles] = useState([]);
-    const { confirm } = useUIFeedback();
+    const { confirm, success, error: notifyError } = useUIFeedback();
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
-    const [scope, setScope] = useState('all');
+    const [scope, setScope] = useState((searchParams.get('scope') || 'all').toLowerCase());
+    const [statusById, setStatusById] = useState({});
 
     const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
     const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
@@ -36,20 +40,29 @@ const AdminArticlesScreen = () => {
         loadArticles();
     }, [scope]);
 
+    useEffect(() => {
+        const paramScope = (searchParams.get('scope') || 'all').toLowerCase();
+        if (paramScope !== scope) setScope(paramScope);
+    }, [searchParams, scope]);
+
     const mapApiDoc = (doc) => {
         const dateStr = doc.fetched_at || doc.processed_at || '';
         const time = typeof dateStr === 'string' ? dateStr.slice(0, 16).replace('T', ' ') : '';
         return {
             id: doc.id,
+            scope: doc.scope,
             title: doc.title,
             source: doc.source_key || '—',
             time,
             category: doc.scope === 'raw' ? 'Raw' : 'Processed',
-            excerpt: doc.canonical_url ? String(doc.canonical_url).slice(0, 140) : '',
+            excerpt: doc.description || doc.content || 'No content preview available',
+            description: doc.description || doc.content || 'No content preview available',
+            fullContent: doc.content || doc.description || doc.canonical_url || '',
             verified: doc.scope === 'processed' && doc.credibility_label != null && doc.credibility_label !== '',
             upvotes: 0,
             credibility_label: doc.credibility_label,
             pipeline_status: doc.pipeline_status,
+            moderation_status: doc.moderation_status || 'review',
             canonical_url: doc.canonical_url,
         };
     };
@@ -75,7 +88,30 @@ const AdminArticlesScreen = () => {
             danger: true,
         });
         if (accepted) {
-            setArticles(articles.filter(a => a.id !== articleId));
+            const target = articles.find((a) => a.id === articleId);
+            if (!target) return;
+            try {
+                await deleteAdminArticle(target.scope, articleId);
+                setArticles((prev) => prev.filter((a) => a.id !== articleId));
+                success('Article deleted.');
+            } catch (e) {
+                notifyError(e?.message || 'Failed to delete article.');
+            }
+        }
+    };
+
+    const handleStatusChange = async (articleId, nextStatus) => {
+        const target = articles.find((a) => a.id === articleId);
+        if (!target) return;
+        const previous = statusById[articleId] || target.moderation_status || target.pipeline_status || 'review';
+        setStatusById((prev) => ({ ...prev, [articleId]: nextStatus }));
+        try {
+            await patchAdminArticle(target.scope, articleId, { status: nextStatus });
+            setArticles((prev) => prev.map((a) => (a.id === articleId ? { ...a, moderation_status: nextStatus } : a)));
+            success('Article status updated.');
+        } catch (e) {
+            setStatusById((prev) => ({ ...prev, [articleId]: previous }));
+            notifyError(e?.message || 'Failed to update status.');
         }
     };
 
@@ -113,6 +149,11 @@ const AdminArticlesScreen = () => {
                     marginBottom: isMobile ? '16px' : '24px',
                     paddingTop: '0',
                 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: textSecondary, marginBottom: '10px' }}>
+                        <button onClick={() => navigate('/admin/dashboard')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Admin</button>
+                        <ChevronRight size={14} />
+                        <span style={{ color: textPrimary, fontWeight: 600 }}>Articles</span>
+                    </div>
                     <h1 style={{
                         fontSize: getResponsiveFontSize(isMobile, isTablet, 28),
                         fontWeight: '700',
@@ -129,7 +170,7 @@ const AdminArticlesScreen = () => {
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
-                        Live list from MongoDB (admin API). Edit/delete are not exposed in the API yet.
+                        Live list from MongoDB with admin controls for status updates and deletion.
                     </p>
                     <div style={{
                         display: 'flex',
@@ -141,7 +182,14 @@ const AdminArticlesScreen = () => {
                             <button
                                 key={s}
                                 type="button"
-                                onClick={() => setScope(s)}
+                                onClick={() => {
+                                    setScope(s);
+                                    setSearchParams((prev) => {
+                                        const next = new URLSearchParams(prev);
+                                        next.set('scope', s);
+                                        return next;
+                                    });
+                                }}
                                 style={{
                                     padding: '8px 14px',
                                     borderRadius: '8px',
@@ -381,23 +429,28 @@ const AdminArticlesScreen = () => {
 
                                 <div style={{
                                     display: 'flex',
-                                    alignItems: 'center',
+                                    alignItems: 'flex-end',
                                     justifyContent: 'space-between',
                                     paddingTop: '12px',
                                     borderTop: `1px solid ${borderColor}`,
+                                    gap: '12px',
                                 }}>
                                     <div style={{
                                         display: 'flex',
                                         alignItems: 'center',
+                                        flexWrap: 'wrap',
                                         gap: '8px',
                                     }}>
                                         <button
                                             type="button"
-                                            onClick={() => navigate(`/article/${article.id}`)}
+                                            onClick={() => {
+                                                if (article.id) navigate(`/article/${article.id}`, { state: { article } });
+                                                else if (article.canonical_url) window.open(article.canonical_url, '_blank', 'noopener,noreferrer');
+                                            }}
                                             style={{
-                                                padding: '6px 12px',
-                                                border: `1px solid ${borderColor}`,
-                                                background: 'transparent',
+                                                padding: '8px 12px',
+                                                border: `1px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`,
+                                                background: isDark ? 'rgba(129,140,248,0.12)' : '#f8fafc',
                                                 borderRadius: '6px',
                                                 cursor: 'pointer',
                                                 transition: 'all 0.2s ease',
@@ -420,19 +473,40 @@ const AdminArticlesScreen = () => {
                                             <Eye size={12} />
                                             In app
                                         </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleDelete(article.id)}
+                                            style={{
+                                                padding: '8px 12px',
+                                                border: `1px solid #ef4444`,
+                                                borderRadius: '6px',
+                                                fontSize: '12px',
+                                                fontWeight: '600',
+                                                color: '#ef4444',
+                                                background: '#fff5f5',
+                                                cursor: 'pointer',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '4px',
+                                            }}
+                                        >
+                                            <Trash2 size={12} />
+                                            Delete
+                                        </button>
                                         {article.canonical_url ? (
                                             <a
                                                 href={article.canonical_url}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 style={{
-                                                    padding: '6px 12px',
+                                                    padding: '8px 12px',
                                                     border: `1px solid ${borderColor}`,
                                                     borderRadius: '6px',
                                                     fontSize: '12px',
                                                     fontWeight: '600',
                                                     color: textPrimary,
                                                     textDecoration: 'none',
+                                                    background: isDark ? colors.surfaceElevated || '#334155' : '#ffffff',
                                                 }}
                                             >
                                                 Source URL
@@ -440,17 +514,20 @@ const AdminArticlesScreen = () => {
                                         ) : null}
                                     </div>
                                     <div style={{
-                                        fontSize: '12px',
-                                        color: textSecondary,
                                         display: 'flex',
                                         alignItems: 'center',
-                                        gap: '4px',
+                                        gap: '8px',
                                     }}>
-                                        {article.category === 'Processed' && article.credibility_label != null
-                                            ? `label: ${article.credibility_label}`
-                                            : article.pipeline_status
-                                                ? `status: ${article.pipeline_status}`
-                                                : '—'}
+                                        <span style={{ fontSize: '11px', fontWeight: 600, color: textSecondary, textTransform: 'uppercase', letterSpacing: '0.4px' }}>Status</span>
+                                        <select
+                                            value={statusById[article.id] || (article.moderation_status || article.pipeline_status || 'review')}
+                                            onChange={(e) => handleStatusChange(article.id, e.target.value)}
+                                            style={{ fontSize: '12px', padding: '8px 10px', borderRadius: '8px', border: `1px solid ${borderColor}`, background: cardBackground, color: textPrimary, minWidth: '120px' }}
+                                        >
+                                            <option value="review">review</option>
+                                            <option value="approved">approved</option>
+                                            <option value="rejected">rejected</option>
+                                        </select>
                                     </div>
                                 </div>
                             </div>

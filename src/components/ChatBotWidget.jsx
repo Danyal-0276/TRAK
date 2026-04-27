@@ -257,7 +257,7 @@ const ChatBotWidget = () => {
 };
 
 const styles = StyleSheet.create({
-  root: { position: 'absolute', right: 16, bottom: 18, zIndex: 9999 },
+  root: { position: 'absolute', right: 16, bottom: 98, zIndex: 9999 },
   fab: { borderRadius: 28, overflow: 'hidden' },
   fabInner: { width: 56, height: 56, justifyContent: 'center', alignItems: 'center' },
   panel: {

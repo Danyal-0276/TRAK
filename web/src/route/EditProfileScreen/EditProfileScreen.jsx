@@ -12,17 +12,18 @@ import {
     X,
     AlertCircle
 } from 'lucide-react';
+import { getProfile, updateProfile } from '../../utils/Service/api';
 
 const EditProfileScreen = () => {
     const navigate = useNavigate();
     const fileInputRef = useRef(null);
     
     const [formData, setFormData] = useState({
-        name: 'Shahroz Butt',
-        username: 'shahroz_butt',
-        email: 'shahroz.butt@gmail.com',
-        phone: '+92 300 1234567',
-        bio: 'Personalized AI News & Reports 📑 | Stay informed with curated content tailored to your interests. Exploring technology, business, and innovation.',
+        name: '',
+        username: '',
+        email: '',
+        phone: '',
+        bio: '',
     });
 
     const [errors, setErrors] = useState({});
@@ -30,6 +31,29 @@ const EditProfileScreen = () => {
     const [showSuccess, setShowSuccess] = useState(false);
     const [avatar, setAvatar] = useState(null);
     const [avatarPreview, setAvatarPreview] = useState(null);
+    const [profileLoading, setProfileLoading] = useState(true);
+
+    React.useEffect(() => {
+        (async () => {
+            try {
+                const profile = await getProfile();
+                const email = profile?.email || '';
+                setFormData((prev) => ({
+                    ...prev,
+                    name: profile?.full_name || prev.name,
+                    username: profile?.username || (email ? String(email).split('@')[0] : prev.username),
+                    email,
+                    phone: profile?.phone || prev.phone,
+                    bio: profile?.bio || prev.bio,
+                }));
+                if (profile?.avatar_image) setAvatarPreview(profile.avatar_image);
+            } catch {
+                // Keep defaults when profile endpoint is unavailable.
+            } finally {
+                setProfileLoading(false);
+            }
+        })();
+    }, []);
 
     const handleChange = (field, value) => {
         setFormData(prev => ({ ...prev, [field]: value }));
@@ -95,7 +119,8 @@ const EditProfileScreen = () => {
             setAvatar(file);
             const reader = new FileReader();
             reader.onloadend = () => {
-                setAvatarPreview(reader.result);
+                const dataUrl = String(reader.result || '');
+                setAvatarPreview(dataUrl);
             };
             reader.readAsDataURL(file);
             
@@ -114,23 +139,18 @@ const EditProfileScreen = () => {
             return;
         }
 
+        const startedAt = Date.now();
         setIsSaving(true);
         setShowSuccess(false);
 
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            // Save to localStorage
-            const profileData = {
-                ...formData,
-                updatedAt: new Date().toISOString(),
-            };
-            localStorage.setItem('userProfile', JSON.stringify(profileData));
-            
-            if (avatarPreview) {
-                localStorage.setItem('userAvatar', avatarPreview);
-            }
+            await updateProfile({
+                full_name: formData.name,
+                username: formData.username,
+                phone: formData.phone,
+                bio: formData.bio,
+                avatar_image: avatarPreview || '',
+            });
 
             setShowSuccess(true);
             setTimeout(() => {
@@ -140,11 +160,15 @@ const EditProfileScreen = () => {
             console.error('Error saving profile:', error);
             setErrors(prev => ({ ...prev, general: 'Failed to save profile. Please try again.' }));
         } finally {
+            const elapsed = Date.now() - startedAt;
+            if (elapsed < 600) {
+                await new Promise((resolve) => setTimeout(resolve, 600 - elapsed));
+            }
             setIsSaving(false);
         }
     };
 
-    const InputField = ({ label, icon: Icon, field, type = 'text', placeholder, maxLength, required = false }) => (
+    const renderInputField = ({ label, icon: Icon, field, type = 'text', placeholder, maxLength, required = false }) => (
         <div style={{ marginBottom: '20px' }}>
             <label style={{
                 display: 'flex',
@@ -218,6 +242,7 @@ const EditProfileScreen = () => {
             backgroundColor: '#ffffff',
             paddingTop: '0',
             marginTop: '0',
+            position: 'relative',
         }}>
             <div style={{
                 maxWidth: '700px',
@@ -272,6 +297,10 @@ const EditProfileScreen = () => {
                         </p>
                     </div>
                 </div>
+
+                {profileLoading ? (
+                    <div style={{ padding: '24px', color: '#64748b', fontSize: '14px' }}>Loading profile...</div>
+                ) : null}
 
                 {/* Success Message */}
                 {showSuccess && (
@@ -444,41 +473,41 @@ const EditProfileScreen = () => {
                     </div>
 
                     {/* Form Fields */}
-                    <InputField
-                        label="Full Name"
-                        icon={User}
-                        field="name"
-                        placeholder="Enter your full name"
-                        required
-                        maxLength={50}
-                    />
+                    {renderInputField({
+                        label: "Full Name",
+                        icon: User,
+                        field: "name",
+                        placeholder: "Enter your full name",
+                        required: true,
+                        maxLength: 50,
+                    })}
 
-                    <InputField
-                        label="Username"
-                        icon={AtSign}
-                        field="username"
-                        placeholder="Enter username"
-                        required
-                        maxLength={30}
-                    />
+                    {renderInputField({
+                        label: "Username",
+                        icon: AtSign,
+                        field: "username",
+                        placeholder: "Enter username",
+                        required: true,
+                        maxLength: 30,
+                    })}
 
-                    <InputField
-                        label="Email"
-                        icon={Mail}
-                        field="email"
-                        type="email"
-                        placeholder="Enter your email"
-                        required
-                    />
+                    {renderInputField({
+                        label: "Email",
+                        icon: Mail,
+                        field: "email",
+                        type: "email",
+                        placeholder: "Enter your email",
+                        required: true,
+                    })}
 
-                    <InputField
-                        label="Phone Number"
-                        icon={Phone}
-                        field="phone"
-                        type="tel"
-                        placeholder="Enter your phone number"
-                        required
-                    />
+                    {renderInputField({
+                        label: "Phone Number",
+                        icon: Phone,
+                        field: "phone",
+                        type: "tel",
+                        placeholder: "Enter your phone number",
+                        required: true,
+                    })}
 
                     <div style={{ marginBottom: '20px' }}>
                         <label style={{

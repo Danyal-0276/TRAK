@@ -4,7 +4,14 @@ import { View, TextInput, StyleSheet, Animated } from "react-native";
 import { useTheme } from "../../../theme/ThemeContext";
 import Text from "../../../components/ui/Text";
 
-export default function ProfileInput({ label, value, onChangeText, multiline = false, keyboardType = "default" }) {
+export default function ProfileInput({
+  label,
+  value,
+  onChangeText,
+  multiline = false,
+  keyboardType = "default",
+  autoCapitalize = "sentences",
+}) {
   const { theme } = useTheme();
   const { colors, spacing, radius } = theme;
   const [focused, setFocused] = useState(false);
@@ -54,6 +61,7 @@ export default function ProfileInput({ label, value, onChangeText, multiline = f
           onBlur={handleBlur}
           multiline={multiline}
           keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
           placeholder={`Enter your ${label.toLowerCase()}`}
           placeholderTextColor={colors.textTertiary}
           cursorColor={colors.primary}

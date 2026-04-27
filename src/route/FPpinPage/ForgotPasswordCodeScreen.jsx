@@ -12,7 +12,7 @@ import {
     Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'react-native-linear-gradient';
+import LinearGradient from 'react-native-linear-gradient';
 import { ChevronLeft, Mail, Shield } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { requestPasswordReset } from '../../api/authPasswordApi';
@@ -27,7 +27,7 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
     const [timer, setTimer] = useState(60);
     const [resendLoading, setResendLoading] = useState(false);
 
-    const { email } = route.params || {};
+    const { email, debugResetPreview } = route.params || {};
 
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(50)).current;
@@ -293,7 +293,13 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
                                         shadowColor: colors.shadowDark,
                                     },
                                 ]}
-                                onPress={() => navigation.navigate('ResetPassword', { email })}
+                                onPress={() =>
+                                    navigation.navigate('ResetPassword', {
+                                        email,
+                                        uid: debugResetPreview?.uid || '',
+                                        token: debugResetPreview?.token || '',
+                                    })
+                                }
                                 activeOpacity={0.8}
                             >
                                 <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
