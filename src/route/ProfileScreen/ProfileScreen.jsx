@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useCallback } from "react";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ScrollView, StatusBar, StyleSheet, Animated, View, Dimensions } from "react-native";
+import { ScrollView, StatusBar, StyleSheet, Animated, View, Dimensions, TextInput, TouchableOpacity, Modal, Pressable, Image } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 import LinearGradient from "react-native-linear-gradient";
 import ProfileHeader from "./components/ProfileHeader";
 import ProfileActions from "./components/ProfileActions";
@@ -9,37 +11,28 @@ import LogoutButton from "./components/LogoutButton";
 import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
-import { getProfile } from "../../utils/Service/api";
+import { addBookmark, confirmProfileVerification, getProfile, getUserArticleDetail, listBookmarks, removeBookmark, requestProfileVerification, setReaction } from "../../utils/Service/api";
+import Text from "../../components/ui/Text";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const UserProfileScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { colors } = theme;
-  const { logout } = useAuth();
-  const [bookmarks] = useState([
-    {
-      id: 1,
-      title: "AI transforming healthcare in 2025",
-      summary:
-        "AI adoption in hospitals is growing rapidly, enhancing patient outcomes...",
-      date: "2h ago",
-    },
-    {
-      id: 2,
-      title: "SNGPL service updates",
-      summary: "SNGPL announced new digital services for customers...",
-      date: "1d ago",
-    },
-    {
-      id: 3,
-      title: "Mobile market 2025",
-      summary:
-        "Latest Samsung vs iPhone models compared — new battle in flagship space...",
-      date: "2d ago",
-    },
-  ]);
+  const { logout, isAdmin } = useAuth();
+  const [bookmarks, setBookmarks] = useState([]);
   const [profile, setProfile] = useState(null);
+  const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
+  const [votedItems, setVotedItems] = useState({});
+  const [verificationChannel, setVerificationChannel] = useState("email");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [sendingCode, setSendingCode] = useState(false);
+  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [devCodeHint, setDevCodeHint] = useState("");
+  const [verifyMessage, setVerifyMessage] = useState("");
+  const [stats, setStats] = useState({ following: 0, followers: 0, saved: 0 });
+  const [avatarActionOpen, setAvatarActionOpen] = useState(false);
+  const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -48,8 +41,67 @@ const UserProfileScreen = ({ navigation }) => {
   const circle2Anim = useRef(new Animated.Value(0)).current;
   const circle3Anim = useRef(new Animated.Value(0)).current;
 
+  const loadProfileData = useCallback(async () => {
+    try {
+      const p = await getProfile();
+      setProfile(p);
+      setStats((prev) => ({
+        ...prev,
+        following: Number(p?.following_count || 0),
+        followers: Number(p?.followers_count || 0),
+      }));
+    } catch {
+      setProfile(null);
+    }
+    try {
+      const response = await listBookmarks();
+      const rows = response.results || [];
+      const detailed = await Promise.all(
+        rows.map(async (r) => {
+          try {
+            const full = await getUserArticleDetail(r.article_id);
+            return {
+              ...full,
+              id: full.id || r.article_id || r.id,
+              source: full.source || "TRAK",
+              title: full.title || r.title || "Saved article",
+              excerpt: full.excerpt || full.content || "",
+              content: full.content || full.excerpt || "",
+              date: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
+              time: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
+              category: full.category || "Saved",
+              readTime: full.readTime || 4,
+              votes: Number(full.votes || 0),
+            };
+          } catch {
+            return {
+              id: r.article_id || r.id,
+              title: r.title || "Saved article",
+              source: "TRAK",
+              excerpt: "",
+              content: "",
+              summary: "",
+              date: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
+              time: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
+              category: "Saved",
+              readTime: 4,
+              votes: 0,
+            };
+          }
+        })
+      );
+      const cleaned = detailed.filter(Boolean);
+      setBookmarks(cleaned);
+      setBookmarkedItems(new Set(cleaned.map((b) => String(b.id))));
+      setStats((prev) => ({ ...prev, saved: cleaned.length }));
+    } catch {
+      setBookmarks([]);
+      setBookmarkedItems(new Set());
+    }
+  }, []);
+
   useEffect(() => {
-    getProfile().then(setProfile).catch(() => {});
+    loadProfileData();
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -81,7 +133,17 @@ const UserProfileScreen = ({ navigation }) => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, slideAnim]);
+  }, [fadeAnim, slideAnim, loadProfileData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      try {
+        loadProfileData();
+      } catch (_) {
+        // ignore
+      }
+    }, [loadProfileData])
+  );
 
   useEffect(() => {
     resetTabBarVisibility();
@@ -96,6 +158,65 @@ const UserProfileScreen = ({ navigation }) => {
       if (diff < 0) setTabBarHidden(false);
     }
     lastScrollY.current = currentY;
+  };
+
+  const handleVote = async (itemId, type) => {
+    const previousVote = votedItems[itemId];
+    const newVote = previousVote === type ? null : type;
+    setVotedItems((prev) => ({ ...prev, [itemId]: newVote }));
+    try {
+      await setReaction(itemId, newVote || "none");
+    } catch {
+      setVotedItems((prev) => ({ ...prev, [itemId]: previousVote }));
+    }
+  };
+
+  const handleBookmark = async (itemId) => {
+    try {
+      const exists = bookmarkedItems.has(itemId) || bookmarkedItems.has(String(itemId));
+      const item = bookmarks.find((n) => String(n.id) === String(itemId));
+      if (exists) await removeBookmark(itemId);
+      else await addBookmark(itemId, item?.title || "", item?.canonical_url || item?.url || "");
+      await loadProfileData();
+    } catch {
+      // ignore and keep ui stable
+    }
+  };
+
+  const sendVerificationCode = async () => {
+    setSendingCode(true);
+    setVerifyMessage("");
+    setDevCodeHint("");
+    try {
+      const payload = verificationChannel === "phone" ? { channel: "phone", phone: profile?.phone || "" } : { channel: "email" };
+      const result = await requestProfileVerification(payload);
+      setVerifyMessage(result?.detail || "Verification code sent.");
+      if (result?.dev_code) setDevCodeHint(String(result.dev_code));
+    } catch (error) {
+      setVerifyMessage(error?.message || "Failed to send verification code.");
+    } finally {
+      setSendingCode(false);
+    }
+  };
+
+  const confirmVerificationCode = async () => {
+    if (!verificationCode.trim()) {
+      setVerifyMessage("Enter code first.");
+      return;
+    }
+    setVerifyingCode(true);
+    setVerifyMessage("");
+    try {
+      const updated = await confirmProfileVerification({ channel: verificationChannel, code: verificationCode.trim() });
+      setProfile(updated);
+      setVerificationCode("");
+      setDevCodeHint("");
+      setVerifyMessage(`${verificationChannel === "email" ? "Email" : "Phone"} verified.`);
+    } catch (error) {
+      setVerifyMessage(error?.message || "Verification failed.");
+    } finally {
+      setVerifyingCode(false);
+    }
   };
 
   return (
@@ -178,16 +299,74 @@ const UserProfileScreen = ({ navigation }) => {
       >
         <ProfileHeader
           name={profile?.full_name || profile?.email?.split("@")[0] || "User"}
-          username={`@${(profile?.email || "user").split("@")[0]}`}
+          username={`@${profile?.username || (profile?.email || "user").split("@")[0]}`}
           bio={profile?.bio || "Complete your profile and verify your contact details."}
-          avatar={null}
-          verified={Boolean(profile?.email_verified || profile?.phone_verified)}
+          avatarUri={profile?.avatar_image || ""}
+          verified={isAdmin ? true : Boolean(profile?.email_verified || profile?.phone_verified)}
+          onLongPressAvatar={() => setAvatarActionOpen(true)}
+          onPressAvatar={() => {
+            if (profile?.avatar_image) setAvatarPreviewOpen(true);
+          }}
         />
+        {!isAdmin && (
+          <View style={{
+            marginBottom: 16,
+            padding: 12,
+            borderRadius: 12,
+            borderWidth: 1,
+            borderColor: colors.border,
+            backgroundColor: colors.surface,
+          }}>
+            <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: "700", marginBottom: 8 }}>
+              Verify your account
+            </Text>
+            <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
+              <TouchableOpacity onPress={() => setVerificationChannel("email")} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: verificationChannel === "email" ? colors.primary : colors.border }}>
+                <Text style={{ color: colors.textPrimary, fontSize: 12 }}>Email</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => setVerificationChannel("phone")} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: verificationChannel === "phone" ? colors.primary : colors.border }}>
+                <Text style={{ color: colors.textPrimary, fontSize: 12 }}>Phone</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={sendVerificationCode} disabled={sendingCode} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: colors.primary }}>
+                <Text style={{ color: colors.textInverse, fontSize: 12 }}>{sendingCode ? "Sending..." : "Send code"}</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <TextInput
+                value={verificationCode}
+                onChangeText={setVerificationCode}
+                placeholder="Enter code"
+                placeholderTextColor={colors.textTertiary}
+                style={{
+                  flex: 1,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                  borderRadius: 8,
+                  paddingVertical: 8,
+                  paddingHorizontal: 10,
+                  color: colors.textPrimary,
+                }}
+              />
+              <TouchableOpacity onPress={confirmVerificationCode} disabled={verifyingCode} style={{ paddingVertical: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 8 }}>
+                <Text style={{ color: colors.textPrimary, fontSize: 12 }}>{verifyingCode ? "..." : "Verify"}</Text>
+              </TouchableOpacity>
+            </View>
+            {verifyMessage ? <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 8 }}>{verifyMessage}</Text> : null}
+            {devCodeHint ? <Text style={{ color: colors.primary, fontSize: 12, marginTop: 4 }}>Test code: {devCodeHint}</Text> : null}
+          </View>
+        )}
         <View style={styles.sectionGap}>
-          <StatsRow />
+          <StatsRow stats={stats} />
         </View>
         <ProfileActions navigation={navigation} />
-        <BookmarkList bookmarks={bookmarks} />
+        <BookmarkList
+          bookmarks={bookmarks}
+          onPressArticle={(article) => navigation.navigate("ArticleDetail", { article })}
+          votedItems={votedItems}
+          bookmarkedItems={bookmarkedItems}
+          onVote={handleVote}
+          onBookmark={handleBookmark}
+        />
         <LogoutButton
           onLogout={async () => {
             await logout();
@@ -195,17 +374,51 @@ const UserProfileScreen = ({ navigation }) => {
           }}
         />
       </Animated.ScrollView>
+
+      <Modal visible={avatarActionOpen} transparent animationType="fade" onRequestClose={() => setAvatarActionOpen(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setAvatarActionOpen(false)}>
+          <View style={[styles.actionSheet, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            <TouchableOpacity
+              style={styles.actionItem}
+              onPress={() => {
+                setAvatarActionOpen(false);
+                navigation.navigate("EditProfileScreen");
+              }}
+            >
+              <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "600" }}>Change image</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.actionItem}
+              disabled={!profile?.avatar_image}
+              onPress={() => {
+                setAvatarActionOpen(false);
+                if (profile?.avatar_image) setAvatarPreviewOpen(true);
+              }}
+            >
+              <Text style={{ color: profile?.avatar_image ? colors.textPrimary : colors.textTertiary, fontSize: 15, fontWeight: "600" }}>Display image</Text>
+            </TouchableOpacity>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={avatarPreviewOpen} transparent animationType="fade" onRequestClose={() => setAvatarPreviewOpen(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setAvatarPreviewOpen(false)}>
+          <View style={styles.previewWrap}>
+            {profile?.avatar_image ? <Image source={{ uri: profile.avatar_image }} style={styles.previewImage} /> : null}
+          </View>
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 };
 
-const StatsRow = () => {
+const StatsRow = ({ stats }) => {
   const { theme } = useTheme();
   const { colors, spacing, radius } = theme;
   const items = [
-    { label: 'Following', value: '180' },
-    { label: 'Followers', value: '2.4k' },
-    { label: 'Saved', value: '38' },
+    { label: 'Following', value: String(stats?.following ?? 0) },
+    { label: 'Followers', value: String(stats?.followers ?? 0) },
+    { label: 'Saved', value: String(stats?.saved ?? 0) },
   ];
 
   return (
@@ -266,6 +479,37 @@ const styles = StyleSheet.create({
   },
   scrollContent: { padding: 20, paddingBottom: 120 },
   sectionGap: { marginTop: 8, marginBottom: 20 },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  actionSheet: {
+    width: "100%",
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  actionItem: {
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(148,163,184,0.2)",
+  },
+  previewWrap: {
+    width: "95%",
+    aspectRatio: 1,
+    borderRadius: 16,
+    overflow: "hidden",
+    backgroundColor: "#000",
+  },
+  previewImage: {
+    width: "100%",
+    height: "100%",
+    resizeMode: "contain",
+  },
 });
 
 export default UserProfileScreen;

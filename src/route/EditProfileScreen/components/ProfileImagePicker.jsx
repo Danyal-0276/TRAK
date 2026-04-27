@@ -12,9 +12,14 @@ export default function ProfileImagePicker({ profilePic, setProfilePic, name = "
   const { colors } = theme;
   
   const pickImage = () => {
-    launchImageLibrary({ mediaType: "photo", quality: 1 }, (response) => {
+    launchImageLibrary({ mediaType: "photo", quality: 0.9, includeBase64: true }, (response) => {
       if (!response.didCancel && response.assets && response.assets.length > 0) {
-        setProfilePic(response.assets[0].uri);
+        const asset = response.assets[0];
+        const dataUrl = asset?.base64 ? `data:${asset.type || "image/jpeg"};base64,${asset.base64}` : "";
+        setProfilePic({
+          uri: asset.uri || "",
+          dataUrl,
+        });
       }
     });
   };
@@ -36,9 +41,9 @@ export default function ProfileImagePicker({ profilePic, setProfilePic, name = "
         end={{ x: 1, y: 1 }}
         style={styles.gradient}
       >
-        {profilePic ? (
+        {profilePic?.uri ? (
           <Image
-            source={{ uri: profilePic }}
+            source={{ uri: profilePic.uri }}
             style={styles.image}
           />
         ) : (

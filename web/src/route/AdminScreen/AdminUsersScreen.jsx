@@ -12,14 +12,18 @@ import {
     XCircle,
     Mail,
     Calendar
+    ,ChevronRight
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { deleteAdminUser, getAdminUsers, patchAdminUser } from '../../api/adminApi';
 
 const AdminUsersScreen = () => {
+    const navigate = useNavigate();
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
     const { isMobile, isTablet } = useResponsive();
-    const { confirm } = useUIFeedback();
+    const { confirm, success, error: notifyError } = useUIFeedback();
     const [users, setUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
@@ -37,16 +41,16 @@ const AdminUsersScreen = () => {
     const loadUsers = async () => {
         try {
             setLoading(true);
-            // Mock user data
-            const mockUsers = [
-                { id: 1, name: 'Ali', email: 'ali@user.com', status: 'inactive', joinDate: '2024-01-15', isAdmin: false },
-                { id: 2, name: 'Danyal', email: 'danyal@admin.com', status: 'active', joinDate: '2024-01-10', isAdmin: true },
-                { id: 3, name: 'Shahroz', email: 'shahroz@admin.com', status: 'active', joinDate: '2024-01-08', isAdmin: true },
-                { id: 4, name: 'Abdullah', email: 'abdullah@admin.com', status: 'active', joinDate: '2024-01-05', isAdmin: true },
-                { id: 5, name: 'Zain', email: 'zain@user.com', status: 'active', joinDate: '2024-01-20', isAdmin: false },
-                { id: 6, name: 'Subhan', email: 'Subhan@user.com', status: 'inactive', joinDate: '2024-01-18', isAdmin: false },
-            ];
-            setUsers(mockUsers);
+            const data = await getAdminUsers();
+            const mapped = (data.results || []).map((u) => ({
+                id: u.id,
+                name: u.email?.split('@')[0] || 'user',
+                email: u.email,
+                status: u.is_active ? 'active' : 'inactive',
+                joinDate: u.created_at,
+                isAdmin: u.role === 'admin',
+            }));
+            setUsers(mapped);
         } catch (error) {
             console.error('Error loading users:', error);
         } finally {
@@ -62,16 +66,27 @@ const AdminUsersScreen = () => {
             danger: true,
         });
         if (accepted) {
-            setUsers(users.filter(u => u.id !== userId));
+            try {
+                await deleteAdminUser(userId);
+                await loadUsers();
+                success('User deleted.');
+            } catch (e) {
+                notifyError(e?.message || 'Failed to delete user.');
+            }
         }
     };
 
-    const handleToggleStatus = (userId) => {
-        setUsers(users.map(u => 
-            u.id === userId 
-                ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' }
-                : u
-        ));
+    const handleToggleStatus = async (userId) => {
+        const target = users.find((u) => u.id === userId);
+        if (!target) return;
+        const nextStatus = target.status === 'active' ? 'inactive' : 'active';
+        try {
+            await patchAdminUser(userId, { is_active: nextStatus === 'active' });
+            setUsers(users.map(u => (u.id === userId ? { ...u, status: nextStatus } : u)));
+            success(`User set to ${nextStatus}.`);
+        } catch (e) {
+            notifyError(e?.message || 'Failed to update user status.');
+        }
     };
 
     const filteredUsers = users.filter(user =>
@@ -111,6 +126,11 @@ const AdminUsersScreen = () => {
                     gap: isMobile ? '12px' : '0',
                 }}>
                     <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: textSecondary, marginBottom: '10px' }}>
+                            <button onClick={() => navigate('/admin/dashboard')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Admin</button>
+                            <ChevronRight size={14} />
+                            <span style={{ color: textPrimary, fontWeight: 600 }}>Users</span>
+                        </div>
                         <h1 style={{
                             fontSize: getResponsiveFontSize(isMobile, isTablet, 28),
                             fontWeight: '700',

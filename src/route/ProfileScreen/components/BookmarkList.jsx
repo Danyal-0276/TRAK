@@ -4,9 +4,9 @@ import { View, StyleSheet } from "react-native";
 import { BookMarked } from "lucide-react-native";
 import { useTheme } from "../../../theme/ThemeContext";
 import Text from "../../../components/ui/Text";
-import Card from "../../../components/ui/Card";
+import { NewsCard } from "../../../components/NewsCard";
 
-const BookmarkList = ({ bookmarks }) => {
+const BookmarkList = ({ bookmarks, onPressArticle, votedItems, bookmarkedItems, onVote, onBookmark }) => {
   const { theme } = useTheme();
   const { colors, spacing } = theme;
   return (
@@ -14,14 +14,24 @@ const BookmarkList = ({ bookmarks }) => {
       <Text variant="subtitle" style={{ marginBottom: spacing.md }}>
         My Reports (Bookmarks)
       </Text>
-      {bookmarks.map((item) => (
-        <Card key={item.id} style={{ marginBottom: spacing.sm }}>
-          <BookMarked size={18} color={colors.textPrimary} style={{ marginBottom: spacing.xs }} />
-          <Text variant="body" style={{ fontWeight: '600', marginBottom: spacing.xs }}>{item.title}</Text>
-          <Text variant="body" color={colors.textSecondary} style={{ marginBottom: spacing.xs }}>{item.summary}</Text>
-          <Text variant="caption" color={colors.textTertiary}>{item.date}</Text>
-        </Card>
-      ))}
+      {bookmarks.length === 0 ? (
+        <View style={{ paddingVertical: spacing.md }}>
+          <Text variant="body" color={colors.textSecondary}>No saved articles yet.</Text>
+        </View>
+      ) : (
+        bookmarks.map((item, index) => (
+          <NewsCard
+            key={item.id}
+            item={item}
+            index={index}
+            onPress={() => onPressArticle?.(item)}
+            votedItems={votedItems}
+            bookmarkedItems={bookmarkedItems}
+            onVote={onVote}
+            onBookmark={onBookmark}
+          />
+        ))
+      )}
     </View>
   );
 };

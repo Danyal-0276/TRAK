@@ -11,7 +11,8 @@ import {
     X,
     Clock
 } from 'lucide-react';
-import mockNotificationAPI from '../../utils/Service/mockNotificationApi';
+import * as notificationsApi from '../../api/notificationsApi';
+import { openNotificationsSocket } from '../../api/notificationsRealtime';
 
 const NotificationsScreen = () => {
     const { theme } = useTheme();
@@ -22,9 +23,33 @@ const NotificationsScreen = () => {
     const [activeTab, setActiveTab] = useState('All');
     const [loading, setLoading] = useState(true);
     const [selectedNotification, setSelectedNotification] = useState(null);
+    const socketRef = React.useRef(null);
+    const reconnectRef = React.useRef(null);
 
     useEffect(() => {
         loadNotifications();
+        const poll = setInterval(loadNotifications, 30000);
+        const connect = () => {
+            const ws = openNotificationsSocket((payload) => {
+                if (payload?.type !== 'notification.created' || !payload.notification?.id) return;
+                const incoming = notificationsApi.normalizeNotification(payload.notification);
+                setNotifications((prev) => {
+                    if (prev.some((n) => String(n.id) === String(incoming.id))) return prev;
+                    return [incoming, ...prev];
+                });
+            });
+            if (!ws) return;
+            socketRef.current = ws;
+            ws.onclose = () => {
+                reconnectRef.current = setTimeout(connect, 2500);
+            };
+        };
+        connect();
+        return () => {
+            clearInterval(poll);
+            if (socketRef.current) socketRef.current.close();
+            if (reconnectRef.current) clearTimeout(reconnectRef.current);
+        };
     }, []);
 
     useEffect(() => {
@@ -34,7 +59,7 @@ const NotificationsScreen = () => {
     const loadNotifications = async () => {
         try {
             setLoading(true);
-            const data = await mockNotificationAPI.getNotifications();
+            const data = await notificationsApi.getNotifications();
             setNotifications(data);
             setFilteredNotifications(data);
         } catch (error) {
@@ -56,7 +81,7 @@ const NotificationsScreen = () => {
 
     const markAsRead = async (notificationId) => {
         try {
-            await mockNotificationAPI.markAsRead(notificationId);
+            await notificationsApi.markAsRead(notificationId);
             setNotifications(prev => 
                 prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
             );
@@ -67,7 +92,7 @@ const NotificationsScreen = () => {
 
     const markAllAsRead = async () => {
         try {
-            await mockNotificationAPI.markAllAsRead();
+            await notificationsApi.markAllAsRead();
             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
         } catch (error) {
             console.error("Error marking all as read:", error);

@@ -1,7 +1,7 @@
 import { API_BASE, AUTH_PREFIX } from '../config/api';
 
-const ACCESS_KEY = 'trak_access';
-const REFRESH_KEY = 'trak_refresh';
+const ACCESS_KEY = 'trak_access_token';
+const REFRESH_KEY = 'trak_refresh_token';
 
 function getAccess() {
   return localStorage.getItem(ACCESS_KEY);

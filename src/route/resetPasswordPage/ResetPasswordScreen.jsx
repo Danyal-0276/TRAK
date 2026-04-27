@@ -11,9 +11,10 @@ import {
     Platform,
     Dimensions,
     ActivityIndicator,
+    Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'react-native-linear-gradient';
+import LinearGradient from 'react-native-linear-gradient';
 import { ChevronLeft, Eye, EyeOff, Lock } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
@@ -40,6 +41,22 @@ const ResetPasswordScreen = ({ navigation, route }) => {
         if (p?.uid) setUid(p.uid);
         if (p?.token) setToken(p.token);
     }, [route.params?.uid, route.params?.token]);
+
+    useEffect(() => {
+        const tryParse = (url) => {
+            if (!url) return;
+            const qIndex = url.indexOf('?');
+            if (qIndex < 0) return;
+            const params = new URLSearchParams(url.slice(qIndex + 1));
+            const uidParam = params.get('uid');
+            const tokenParam = params.get('token');
+            if (uidParam) setUid(uidParam);
+            if (tokenParam) setToken(tokenParam);
+        };
+        Linking.getInitialURL().then(tryParse).catch(() => {});
+        const sub = Linking.addEventListener('url', ({ url }) => tryParse(url));
+        return () => sub?.remove?.();
+    }, []);
 
     const validateForm = () => {
         const newErrors = {};

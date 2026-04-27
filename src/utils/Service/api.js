@@ -1,13 +1,11 @@
-import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE } from '../../config/api';
 
-const API_BASE_URL =
-  Platform.OS === 'android'
-    ? 'http://10.0.2.2:8000'
-    : 'http://127.0.0.1:8000';
+const API_BASE_URL = API_BASE;
 
-let accessToken = null;
-let refreshToken = null;
-let currentUser = null;
+const ACCESS_KEY = 'trak_access_token';
+const REFRESH_KEY = 'trak_refresh_token';
+const USER_KEY = 'trak_user';
 
 const jsonHeaders = {
   'Content-Type': 'application/json',
@@ -37,14 +35,33 @@ async function request(path, options = {}) {
   return res.json();
 }
 
-export const saveAuthSession = (session) => {
-  accessToken = session.access;
-  refreshToken = session.refresh;
-  currentUser = session.user;
+export const saveAuthSession = async (session) => {
+  const legacyAccess = await AsyncStorage.getItem('trak_access');
+  const legacyRefresh = await AsyncStorage.getItem('trak_refresh');
+  const access = session.access || legacyAccess || '';
+  const refresh = session.refresh || legacyRefresh || '';
+  await AsyncStorage.multiSet([
+    [ACCESS_KEY, access],
+    [REFRESH_KEY, refresh],
+    [USER_KEY, JSON.stringify(session.user || null)],
+  ]);
+  await AsyncStorage.multiRemove(['trak_access', 'trak_refresh']);
 };
 
-export const getCurrentUser = () => currentUser;
-export const getAccessToken = () => accessToken;
+export const getCurrentUser = async () => {
+  const raw = await AsyncStorage.getItem(USER_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+export const getAccessToken = async () =>
+  (await AsyncStorage.getItem(ACCESS_KEY)) || (await AsyncStorage.getItem('trak_access'));
+export const clearAuthSession = async () => {
+  await AsyncStorage.multiRemove([ACCESS_KEY, REFRESH_KEY, USER_KEY]);
+};
 
 export const loginWithEmailPassword = (email, password) =>
   request('/api/auth/login/', {
@@ -79,21 +96,43 @@ export const loginWithOtp = (identity, code) =>
   });
 
 export const loginWithSocialDemo = (provider, email) =>
-  request('/api/auth/social/demo-login/', {
-    method: 'POST',
-    headers: jsonHeaders,
-    body: JSON.stringify({ provider, email }),
-  });
+  Promise.reject(new Error('Demo social login is disabled.'));
 
-export const authRequest = (path, options = {}) =>
-  request(path, {
-    ...options,
-    headers: {
-      ...(options.headers || {}),
-      Authorization: `Bearer ${getAccessToken()}`,
-      'Content-Type': 'application/json',
-    },
-  });
+export const authRequest = async (path, options = {}) => {
+  const access = await getAccessToken();
+  const doReq = (token) =>
+    fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+  let res = await doReq(access);
+  if (res.status === 401) {
+    const refresh = await AsyncStorage.getItem(REFRESH_KEY);
+    if (!refresh) {
+      await clearAuthSession();
+      throw new Error('Session expired');
+    }
+    const refreshRes = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
+      method: 'POST',
+      headers: jsonHeaders,
+      body: JSON.stringify({ refresh }),
+    });
+    if (refreshRes.ok) {
+      const payload = await refreshRes.json().catch(() => ({}));
+      if (payload.access) {
+        await AsyncStorage.setItem(ACCESS_KEY, payload.access);
+        res = await doReq(payload.access);
+      }
+    }
+  }
+  if (!res.ok) await parseError(res);
+  return res.json();
+};
 
 export const getUserFeed = () => authRequest('/api/user/feed/?limit=50');
 export const getExploreFeed = () => authRequest('/api/user/explore/?limit=200');
@@ -112,3 +151,45 @@ export const clearChatHistory = () =>
   });
 
 export const getProfile = () => authRequest('/api/auth/profile/');
+export const updateProfile = (payload) =>
+  authRequest('/api/auth/profile/', {
+    method: 'PATCH',
+    body: JSON.stringify(payload),
+  });
+export const requestProfileVerification = (payload) =>
+  authRequest('/api/auth/verify/request/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+export const confirmProfileVerification = (payload) =>
+  authRequest('/api/auth/verify/confirm/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+export const followUser = (userId) =>
+  authRequest('/api/auth/follow/', {
+    method: 'POST',
+    body: JSON.stringify({ user_id: userId }),
+  });
+export const unfollowUser = (userId) =>
+  authRequest('/api/auth/follow/', {
+    method: 'DELETE',
+    body: JSON.stringify({ user_id: userId }),
+  });
+export const setReaction = (articleId, reaction) =>
+  authRequest('/api/user/reactions/', {
+    method: 'POST',
+    body: JSON.stringify({ article_id: articleId, reaction }),
+  });
+export const addBookmark = (articleId, title = '', url = '') =>
+  authRequest('/api/user/bookmarks/', {
+    method: 'POST',
+    body: JSON.stringify({ article_id: articleId, title, url }),
+  });
+export const removeBookmark = (articleId) =>
+  authRequest(`/api/user/bookmarks/${encodeURIComponent(articleId)}/`, {
+    method: 'DELETE',
+  });
+export const listBookmarks = () => authRequest('/api/user/bookmarks/');
+export const getUserArticleDetail = (articleId) =>
+  authRequest(`/api/user/articles/${encodeURIComponent(articleId)}/`);

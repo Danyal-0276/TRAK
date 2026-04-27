@@ -1,0 +1,179 @@
+@startuml
+title TRAK Web Module Flow - Auth
+left to right direction
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Web Auth" {
+  class "OpeningScreen" as WA_Opening {
+    +state: logoScale, logoOpacity, brandOpacity, welcomeOpacity, buttonOpacity
+    +imports: none
+  }
+  class "LoginScreen" as WA_Login {
+    +state: email, password, loading, errors, showPassword, socialLoading, authMode
+    +imports: ../../utils/Service/api
+  }
+  class "SignUpScreen" as WA_SignUp {
+    +state: fullName, phone, email, password, confirmPassword, loading, errors
+    +imports: ../../utils/Service/api
+  }
+  class "TagSelectionScreen" as WA_Tag {
+    +state: selectedTags, searchText
+    +imports: ./constants/newsCategories
+  }
+  class "KeywordSelectionScreen" as WA_Keyword {
+    +state: selectedKeywords, keywordInput
+    +imports: none
+  }
+  class "ForgotPasswordScreen" as WA_Forgot {
+    +state: email, loading, errors
+    +imports: ../../api/authPasswordApi
+  }
+  class "ForgotPasswordCodeScreen" as WA_Code {
+    +state: timer, resendLoading
+    +imports: ../../api/authPasswordApi
+  }
+  class "ResetPasswordScreen" as WA_Reset {
+    +state: uid, token, newPassword, confirmPassword, loading, errors
+    +imports: ../../api/authPasswordApi
+  }
+  class "PasswordChangedScreen" as WA_Done
+  class "TermsScreen" as WA_Terms
+  class "PrivacyScreen" as WA_Privacy
+}
+
+WA_Opening --> WA_Login : /login
+WA_Opening --> WA_SignUp : /signup
+WA_Login --> WA_Forgot : /forgot-password
+WA_Login --> WA_SignUp : /signup
+WA_SignUp --> WA_Tag : /tag-selection
+WA_Tag --> WA_Keyword : /keyword-selection
+WA_Keyword --> "NewsFeed (/newsfeed)"
+WA_Forgot --> WA_Code : /forgot-password-code
+WA_Code --> WA_Reset : /reset-password
+WA_Reset --> WA_Done : /password-changed
+WA_Done --> WA_Login : /login
+@enduml
+
+@startuml
+title TRAK Web Module Flow - Feed
+left to right direction
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Web Feed" {
+  class "NewsFeedScreen" as WF_News {
+    +state: activeTab, bookmarkedItems, votedItems, newsData, loading, selectedArticle
+    +imports: ../../utils/Service/api
+  }
+  class "SearchScreen" as WF_Search {
+    +state: allNews, filteredNews, trendingTopics, recentSearches, searchQuery, activeTab
+    +imports: ../../utils/loadFeed
+  }
+  class "TrendingScreen" as WF_Trend {
+    +state: bookmarkedItems, votedItems, newsData, loading
+    +imports: ../../utils/Service/mockApi
+  }
+  class "BookmarksScreen" as WF_Book {
+    +state: bookmarkedItems, votedItems, newsData, loading
+    +imports: ../../utils/Service/mockApi
+  }
+  class "RecentScreen" as WF_Recent {
+    +state: bookmarkedItems, votedItems, newsData, loading
+    +imports: ../../utils/Service/mockApi
+  }
+  class "ArticleDetailScreen" as WF_Detail {
+    +state: isLiked, isDisliked, isBookmarked, likeCount, dislikeCount, scrollY
+    +imports: none
+  }
+  class "NotificationsScreen" as WF_Notify {
+    +state: notifications, filteredNotifications, activeTab, loading, selectedNotification
+    +imports: ../../utils/Service/mockNotificationApi
+  }
+}
+
+WF_News --> WF_Detail : /article/:id
+WF_Search --> WF_Detail : detail panel
+WF_Trend --> WF_Detail : /article/:id
+WF_Book --> WF_Detail : /article/:id
+WF_Recent --> WF_Detail : /article/:id
+@enduml
+
+@startuml
+title TRAK Web Module Flow - Profile and Settings
+left to right direction
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Web Profile and Settings" {
+  class "ProfileScreen" as WP_Profile {
+    +state: bookmarks, loading, profile, userStats
+    +imports: ../../utils/Service/api
+  }
+  class "EditProfileScreen" as WP_Edit {
+    +state: formData, errors, isSaving, showSuccess, avatar, avatarPreview
+    +imports: none
+  }
+  class "SettingsScreen" as WP_Settings {
+    +state: settings, showLogoutConfirm, showSaveSuccess
+    +imports: none
+  }
+  class "PrivacyScreen" as WP_Privacy
+  class "DataScreen" as WP_Data {
+    +state: storageData, loading, clearing
+    +imports: none
+  }
+  class "CategoriesScreen" as WP_Categories {
+    +state: allNews, categories, selectedCategory, filteredNews, loading
+    +imports: ../../utils/Service/mockApi
+  }
+  class "AboutScreen" as WP_About
+  class "TermsScreen" as WP_Terms
+}
+
+WP_Settings --> WP_Profile : /profile
+WP_Settings --> WP_Edit : /edit-profile
+WP_Settings --> WP_Privacy : /privacy
+WP_Settings --> WP_Data : /data
+WP_Settings --> WP_Categories : /categories
+WP_Settings --> WP_About : /about
+WP_Settings --> WP_Terms : /terms
+@enduml
+
+@startuml
+title TRAK Web Module Flow - Admin
+left to right direction
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+
+package "Web Admin" {
+  class "AdminScreen" as WA_Admin {
+    +role: redirect shell
+  }
+  class "AdminDashboardScreen" as WA_Dashboard {
+    +state: snapshot, loading, pipelineBusy
+    +imports: ../../api/adminApi
+  }
+  class "AdminUsersScreen" as WA_Users {
+    +state: users, searchQuery, loading
+    +imports: ../../utils/responsiveStyles
+  }
+  class "AdminArticlesScreen" as WA_Articles {
+    +state: articles, searchQuery, loading, scope
+    +imports: ../../api/adminApi
+  }
+  class "AdminAnalyticsScreen" as WA_Analytics {
+    +state: snapshot, modelMetrics, loading
+    +imports: ../../api/adminApi
+  }
+}
+
+WA_Admin --> WA_Dashboard : /admin -> /admin/dashboard
+WA_Dashboard --> WA_Users : /admin/users
+WA_Dashboard --> WA_Articles : /admin/articles
+WA_Dashboard --> WA_Analytics : /admin/analytics
+
+note bottom
+Web admin routes are protected by ProtectedRoute(requireAdmin=true).
+end note
+@enduml

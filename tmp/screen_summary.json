@@ -1,0 +1,434 @@
+[
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\AboutScreen\\AboutScreen.jsx",
+        "screen":  "AboutScreen",
+        "states":  "",
+        "constants":  "",
+        "imports":  "",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\AdminScreen\\AdminScreen.jsx",
+        "screen":  "AdminScreen",
+        "states":  "activeTab, users, apiArticles, serverAnalytics, modelMetrics, pipelineRunning, keywords, notifications, settings, categories, connections, analytics, categoryInput, connectionInput, searchQuery, modalVisible, listModalVisible, listModalType, editingItem, formData",
+        "constants":  "",
+        "imports":  "./Service/MockAPI",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\ArticleDetailScreen\\ArticleDetailScreen.jsx",
+        "screen":  "ArticleDetailScreen",
+        "states":  "article, isLiked, isDisliked, isBookmarked, likeCount, dislikeCount",
+        "constants":  "",
+        "imports":  "../../api/newsApi, ../../utils/loadFeed, ../../api/client",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\BookmarksScreen\\BookmarksScreen.jsx",
+        "screen":  "BookmarksScreen",
+        "states":  "bookmarkedItems, votedItems, newsData, loading, refreshing",
+        "constants":  "",
+        "imports":  "../../utils/loadFeed, ../../utils/bookmarksStorage",
+        "targets":  "ArticleDetailArticleDetail"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\CategoriesScreen\\CategoriesScreen.jsx",
+        "screen":  "CategoriesScreen",
+        "states":  "categories, newCategory, showConfirm, categoryToDelete, showSuccess, focused, loading",
+        "constants":  "",
+        "imports":  "",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\DataScreen\\DataScreen.jsx",
+        "screen":  "DataScreen",
+        "states":  "",
+        "constants":  "",
+        "imports":  "",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\EditProfileScreen\\EditProfileScreen.jsx",
+        "screen":  "EditProfileScreen",
+        "states":  "name, email, phone, bio, profilePic, alert",
+        "constants":  "",
+        "imports":  "",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\forgotPasswordPage\\ForgotPasswordScreen.jsx",
+        "screen":  "ForgotPasswordScreen",
+        "states":  "email, loading",
+        "constants":  "",
+        "imports":  "../../api/authPasswordApi",
+        "targets":  "ForgotPasswordCode, Login"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\FPpinPage\\ForgotPasswordCodeScreen.jsx",
+        "screen":  "ForgotPasswordCodeScreen",
+        "states":  "timer, resendLoading",
+        "constants":  "",
+        "imports":  "../../api/authPasswordApi",
+        "targets":  "ResetPassword, Login"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\KeywordSelectionScreen\\KeywordSelectionScreen.jsx",
+        "screen":  "KeywordSelectionScreen",
+        "states":  "selectedKeywords, keywordInput, loading",
+        "constants":  "",
+        "imports":  "../../api/newsApi, ../../api/client, ../../utils/userKeywordsStorage",
+        "targets":  "NewsFeedNewsFeed"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\LoginPage\\LoginScreen.jsx",
+        "screen":  "LoginScreen",
+        "states":  "email, password, loadingProvider, loading, notice",
+        "constants":  "",
+        "imports":  "../../api/client",
+        "targets":  "OpeningScreen, ForgotPassword, SignUp"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\NewsFeedScreen\\NewsFeedScreen.jsx",
+        "screen":  "NewsFeedScreen",
+        "states":  "activeTab, bookmarkedItems, votedItems, newsData, loading, refreshing",
+        "constants":  "HEADER_HEIGHT, TAB_HEIGHT, TOTAL_HEADER_HEIGHT",
+        "imports":  "../../utils/Service/api, ../../utils/bookmarksStorage",
+        "targets":  "ArticleDetailArticleDetail"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\NotificationsScreen\\NotificationsScreen.jsx",
+        "screen":  "NotificationsScreen",
+        "states":  "notifications, loading",
+        "constants":  "",
+        "imports":  "./services/mockNotificationAPI",
+        "targets":  "NotificationDetailNotificationDetail"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\openingScreen\\OpeningScreen.jsx",
+        "screen":  "OpeningScreen",
+        "states":  "signInLoading, createAccountLoading",
+        "constants":  "",
+        "imports":  "",
+        "targets":  "Login, SignUp"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\PasswordChangedScreen\\PasswordChangedScreen.jsx",
+        "screen":  "PasswordChangedScreen",
+        "states":  "",
+        "constants":  "",
+        "imports":  "",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\PrivacyScreen\\PrivacyScreen.jsx",
+        "screen":  "PrivacyScreen",
+        "states":  "",
+        "constants":  "",
+        "imports":  "",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\ProfileScreen\\ProfileScreen.jsx",
+        "screen":  "ProfileScreen",
+        "states":  "profile",
+        "constants":  "",
+        "imports":  "../../utils/Service/api",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\RecentScreen\\RecentScreen.jsx",
+        "screen":  "RecentScreen",
+        "states":  "bookmarkedItems, votedItems, newsData, loading, refreshing",
+        "constants":  "",
+        "imports":  "../../utils/loadFeed",
+        "targets":  "ArticleDetailArticleDetail"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\resetPasswordPage\\ResetPasswordScreen.jsx",
+        "screen":  "ResetPasswordScreen",
+        "states":  "uid, token, newPassword, confirmPassword, showNewPassword, showConfirmPassword, loading, errors",
+        "constants":  "",
+        "imports":  "../../api/authPasswordApi",
+        "targets":  "PasswordChanged, Login"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\SearchScreen\\SearchScreen.jsx",
+        "screen":  "SearchScreen",
+        "states":  "allNews, filteredNews, trendingTopics, recentSearches, loading, refreshing, searchQuery, activeTab, votedItems, bookmarkedItems",
+        "constants":  "",
+        "imports":  "../../utils/loadFeed",
+        "targets":  "ArticleDetailArticleDetail"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\SettingsScreen\\SettingsScreen.jsx",
+        "screen":  "SettingsScreen",
+        "states":  "pushEnabled, keywordAlerts, quietHours",
+        "constants":  "",
+        "imports":  "",
+        "targets":  "ProfileScreen, PrivacyScreen, KeywordSelection, DataScreen, AboutScreen, TermsScreen"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\signUpPage\\SignUpSCreen.jsx",
+        "screen":  "SignUpSCreen",
+        "states":  "fullName, email, password, confirmPassword, loading, loadingProvider, errors",
+        "constants":  "",
+        "imports":  "../../api/client, ../../utils/Service/api",
+        "targets":  "TagSelection, OpeningScreen, Login"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\TagSelectionScreen\\TagSelectionScreen.jsx",
+        "screen":  "TagSelectionScreen",
+        "states":  "selectedTags, searchText, loading",
+        "constants":  "",
+        "imports":  "./constants/newsCategories",
+        "targets":  "KeywordSelectionKeywordSelection"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\TermsScreen\\TermsScreen.jsx",
+        "screen":  "TermsScreen",
+        "states":  "",
+        "constants":  "",
+        "imports":  "",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\src\\route\\TrendingScreen\\TrendingScreen.jsx",
+        "screen":  "TrendingScreen",
+        "states":  "bookmarkedItems, votedItems, newsData, loading, refreshing",
+        "constants":  "",
+        "imports":  "../../utils/loadFeed",
+        "targets":  "ArticleDetailArticleDetail"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\AboutScreen\\AboutScreen.jsx",
+        "screen":  "AboutScreen",
+        "states":  "",
+        "constants":  "",
+        "imports":  "",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\AdminScreen\\AdminAnalyticsScreen.jsx",
+        "screen":  "AdminAnalyticsScreen",
+        "states":  "snapshot, modelMetrics, loading",
+        "constants":  "",
+        "imports":  "../../api/adminApi",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\AdminScreen\\AdminArticlesScreen.jsx",
+        "screen":  "AdminArticlesScreen",
+        "states":  "articles, searchQuery, loading, scope",
+        "constants":  "",
+        "imports":  "../../utils/responsiveStyles, ../../api/adminApi",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\AdminScreen\\AdminDashboardScreen.jsx",
+        "screen":  "AdminDashboardScreen",
+        "states":  "snapshot, loading, pipelineBusy",
+        "constants":  "",
+        "imports":  "../../utils/responsiveStyles, ../../api/adminApi",
+        "targets":  "/admin/users, /admin/articles, /admin/analytics"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\AdminScreen\\AdminScreen.jsx",
+        "screen":  "AdminScreen",
+        "states":  "",
+        "constants":  "",
+        "imports":  "",
+        "targets":  "/admin/dashboard"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\AdminScreen\\AdminUsersScreen.jsx",
+        "screen":  "AdminUsersScreen",
+        "states":  "users, searchQuery, loading",
+        "constants":  "",
+        "imports":  "../../utils/responsiveStyles",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\ArticleDetailScreen\\ArticleDetailScreen.jsx",
+        "screen":  "ArticleDetailScreen",
+        "states":  "isLiked, isDisliked, isBookmarked, likeCount, dislikeCount, scrollY",
+        "constants":  "",
+        "imports":  "",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\BookmarksScreen\\BookmarksScreen.jsx",
+        "screen":  "BookmarksScreen",
+        "states":  "bookmarkedItems, votedItems, newsData, loading",
+        "constants":  "",
+        "imports":  "../../utils/Service/mockApi",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\CategoriesScreen\\CategoriesScreen.jsx",
+        "screen":  "CategoriesScreen",
+        "states":  "allNews, categories, selectedCategory, filteredNews, loading, votedItems, bookmarkedItems, selectedArticle, articleLiked, articleDisliked, articleBookmarked, articleLikeCount, articleDislikeCount",
+        "constants":  "",
+        "imports":  "../../utils/Service/mockApi",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\DataScreen\\DataScreen.jsx",
+        "screen":  "DataScreen",
+        "states":  "storageData, loading, clearing",
+        "constants":  "",
+        "imports":  "",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\EditProfileScreen\\EditProfileScreen.jsx",
+        "screen":  "EditProfileScreen",
+        "states":  "formData, errors, isSaving, showSuccess, avatar, avatarPreview",
+        "constants":  "",
+        "imports":  "",
+        "targets":  "/profile"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\forgotPasswordPage\\ForgotPasswordScreen.jsx",
+        "screen":  "ForgotPasswordScreen",
+        "states":  "email, loading, errors",
+        "constants":  "",
+        "imports":  "../../api/authPasswordApi",
+        "targets":  "/forgot-password-code/login"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\FPpinPage\\ForgotPasswordCodeScreen.jsx",
+        "screen":  "ForgotPasswordCodeScreen",
+        "states":  "timer, resendLoading",
+        "constants":  "",
+        "imports":  "../../api/authPasswordApi",
+        "targets":  "/reset-password/login"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\KeywordSelectionScreen\\KeywordSelectionScreen.jsx",
+        "screen":  "KeywordSelectionScreen",
+        "states":  "selectedKeywords, keywordInput",
+        "constants":  "",
+        "imports":  "",
+        "targets":  "/newsfeed"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\LoginPage\\LoginScreen.jsx",
+        "screen":  "LoginScreen",
+        "states":  "email, password, loading, errors, showPassword, socialLoading, authMode",
+        "constants":  "",
+        "imports":  "../../utils/Service/api",
+        "targets":  "/forgot-password, /signup"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\NewsFeedScreen\\NewsFeedScreen.jsx",
+        "screen":  "NewsFeedScreen",
+        "states":  "activeTab, bookmarkedItems, votedItems, newsData, loading, selectedArticle, articleLiked, articleDisliked, articleBookmarked, articleLikeCount, articleDislikeCount",
+        "constants":  "",
+        "imports":  "../../utils/Service/api",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\NotificationsScreen\\NotificationsScreen.jsx",
+        "screen":  "NotificationsScreen",
+        "states":  "notifications, filteredNotifications, activeTab, loading, selectedNotification",
+        "constants":  "",
+        "imports":  "../../utils/Service/mockNotificationApi",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\openingScreen\\OpeningScreen.jsx",
+        "screen":  "OpeningScreen",
+        "states":  "logoScale, logoOpacity, brandOpacity, brandY, welcomeOpacity, welcomeY, buttonOpacity, buttonY, backgroundOpacity",
+        "constants":  "",
+        "imports":  "",
+        "targets":  "/signup, /login"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\PasswordChangedScreen\\PasswordChangedScreen.jsx",
+        "screen":  "PasswordChangedScreen",
+        "states":  "",
+        "constants":  "",
+        "imports":  "",
+        "targets":  "/login"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\PrivacyScreen\\PrivacyScreen.jsx",
+        "screen":  "PrivacyScreen",
+        "states":  "",
+        "constants":  "",
+        "imports":  "",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\ProfileScreen\\ProfileScreen.jsx",
+        "screen":  "ProfileScreen",
+        "states":  "bookmarks, loading, profile, userStats",
+        "constants":  "",
+        "imports":  "../../utils/Service/api",
+        "targets":  "/login, /edit-profile, /settings"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\RecentScreen\\RecentScreen.jsx",
+        "screen":  "RecentScreen",
+        "states":  "bookmarkedItems, votedItems, newsData, loading",
+        "constants":  "",
+        "imports":  "../../utils/Service/mockApi",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\resetPasswordPage\\ResetPasswordScreen.jsx",
+        "screen":  "ResetPasswordScreen",
+        "states":  "uid, token, newPassword, confirmPassword, showNewPassword, showConfirmPassword, loading, errors",
+        "constants":  "",
+        "imports":  "../../api/authPasswordApi",
+        "targets":  "/password-changed/login"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\SearchScreen\\SearchScreen.jsx",
+        "screen":  "SearchScreen",
+        "states":  "allNews, filteredNews, trendingTopics, recentSearches, loading, searchQuery, activeTab, votedItems, bookmarkedItems, selectedArticle, articleLiked, articleDisliked, articleBookmarked, articleLikeCount, articleDislikeCount, categories",
+        "constants":  "",
+        "imports":  "../../utils/loadFeed",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\SettingsScreen\\SettingsScreen.jsx",
+        "screen":  "SettingsScreen",
+        "states":  "settings, showLogoutConfirm, showSaveSuccess",
+        "constants":  "",
+        "imports":  "",
+        "targets":  "/login, /profile, /edit-profile, /privacy, /data, /categories, /about"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\signUpPage\\SignUpScreen.jsx",
+        "screen":  "SignUpScreen",
+        "states":  "fullName, phone, email, password, confirmPassword, loading, errors, agreed, showPassword, showConfirmPassword, showTermsModal, showPrivacyModal, socialLoading",
+        "constants":  "",
+        "imports":  "../../utils/Service/api",
+        "targets":  "/tag-selection, /newsfeed, /login"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\TagSelectionScreen\\TagSelectionScreen.jsx",
+        "screen":  "TagSelectionScreen",
+        "states":  "selectedTags, searchText",
+        "constants":  "",
+        "imports":  "./constants/newsCategories",
+        "targets":  "/keyword-selection"
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\TermsScreen\\TermsScreen.jsx",
+        "screen":  "TermsScreen",
+        "states":  "",
+        "constants":  "",
+        "imports":  "",
+        "targets":  ""
+    },
+    {
+        "file":  "D:\\UCP RECORDS\\FYP\\TRAK\\TRAK\\web\\src\\route\\TrendingScreen\\TrendingScreen.jsx",
+        "screen":  "TrendingScreen",
+        "states":  "bookmarkedItems, votedItems, newsData, loading",
+        "constants":  "",
+        "imports":  "../../utils/Service/mockApi",
+        "targets":  ""
+    }
+]

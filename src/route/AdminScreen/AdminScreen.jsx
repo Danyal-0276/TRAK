@@ -5,9 +5,15 @@ import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import {
+  deleteAdminUser,
   getAdminAnalytics,
   getAdminArticles,
   getAdminModelMetrics,
+  getAdminNotifications,
+  getAdminSettings,
+  getAdminUsers,
+  patchAdminSettings,
+  patchAdminUser,
   postAdminPipelineRun,
 } from '../../api/adminApi';
 import MockAPI from './Service/MockAPI';
@@ -152,23 +158,33 @@ const AdminScreen = ({ navigation }) => {
     setServerAnalytics(svr);
     setApiArticles(arts);
 
-    const [
-      usersData,
-      keywordsData,
-      notificationsData,
-      settingsData,
-      categoriesData,
-      connectionsData,
-      analyticsData,
-    ] = await Promise.all([
-      MockAPI.getUsers(),
+    const [usersRes, keywordsData, notificationsRes, settingsRes, analyticsData] = await Promise.all([
+      getAdminUsers(),
       MockAPI.getKeywords(),
-      MockAPI.getNotifications(),
-      MockAPI.getSettings(),
-      MockAPI.getCategories(),
-      MockAPI.getConnections(),
+      getAdminNotifications(),
+      getAdminSettings(),
       MockAPI.getAnalytics(),
     ]);
+    const usersData = (usersRes.results || []).map((u) => ({
+      id: u.id,
+      name: u.email?.split('@')[0] || 'user',
+      email: u.email,
+      status: u.is_active ? 'active' : 'inactive',
+      role: u.role,
+    }));
+    const notificationsData = (notificationsRes.results || []).map((n) => ({
+      id: n.id,
+      title: n.type,
+      message: n.text,
+      status: n.read ? 'read' : 'unread',
+    }));
+    const settingsData = {
+      notifications: !!settingsRes.notifications_enabled_default,
+      connections: !!settingsRes.allow_external_connections,
+      moderationMode: settingsRes.moderation_mode || 'review',
+    };
+    const categoriesData = settingsRes.categories || [];
+    const connectionsData = settingsRes.connections || [];
     setUsers(usersData);
     setKeywords(keywordsData);
     setNotifications(notificationsData);
@@ -256,7 +272,7 @@ const AdminScreen = ({ navigation }) => {
       danger: true,
     });
     if (!accepted) return;
-    if (type === 'user') await MockAPI.deleteUser(id);
+    if (type === 'user') await deleteAdminUser(id);
     else if (type === 'article') await MockAPI.deleteArticle(id);
     loadData();
   };
@@ -264,8 +280,8 @@ const AdminScreen = ({ navigation }) => {
   const handleSave = async () => {
     try {
       if (activeTab === 'users') {
-        if (editingItem) await MockAPI.updateUser(editingItem.id, formData);
-        else await MockAPI.createUser(formData);
+        if (editingItem) await patchAdminUser(editingItem.id, { is_active: formData.status === 'active' });
+        else throw new Error('User creation is restricted to auth registration.');
       } else if (activeTab === 'articles') {
         if (editingItem) await MockAPI.updateArticle(editingItem.id, formData);
         else await MockAPI.createArticle(formData);
@@ -284,33 +300,43 @@ const AdminScreen = ({ navigation }) => {
   };
 
   const handleSettingsChange = async (updates) => {
-    const updated = await MockAPI.updateSettings(updates);
-    setSettings(updated);
+    const updated = await patchAdminSettings({
+      notifications_enabled_default: !!updates.notifications,
+      allow_external_connections: !!updates.connections,
+      moderation_mode: updates.moderationMode || settings.moderationMode || 'review',
+      categories,
+      connections,
+    });
+    setSettings({
+      notifications: !!updated.notifications_enabled_default,
+      connections: !!updated.allow_external_connections,
+      moderationMode: updated.moderation_mode || 'review',
+    });
   };
 
   const handleAddCategory = async () => {
     if (categoryInput.trim()) {
-      await MockAPI.addCategory(categoryInput);
+      await patchAdminSettings({ categories: [...categories, categoryInput.trim()] });
       setCategoryInput('');
       loadData();
     }
   };
 
   const handleRemoveCategory = async (id) => {
-    await MockAPI.removeCategory(id);
+    await patchAdminSettings({ categories: categories.filter((c) => c.id !== id && c !== id) });
     loadData();
   };
 
   const handleAddConnection = async () => {
     if (connectionInput.trim()) {
-      await MockAPI.addConnection(connectionInput);
+      await patchAdminSettings({ connections: [...connections, connectionInput.trim()] });
       setConnectionInput('');
       loadData();
     }
   };
 
   const handleRemoveConnection = async (id) => {
-    await MockAPI.removeConnection(id);
+    await patchAdminSettings({ connections: connections.filter((c) => c.id !== id && c !== id) });
     loadData();
   };
 

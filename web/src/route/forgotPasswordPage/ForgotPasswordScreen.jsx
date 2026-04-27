@@ -26,8 +26,13 @@ const ForgotPasswordScreen = () => {
 
         setLoading(true);
         try {
-            await requestPasswordReset(email.trim());
-            navigate('/forgot-password-code', { state: { email: email.trim().toLowerCase() } });
+            const res = await requestPasswordReset(email.trim());
+            navigate('/forgot-password-code', {
+                state: {
+                    email: email.trim().toLowerCase(),
+                    debugResetPreview: res?.debug_reset_preview || null,
+                },
+            });
         } catch {
             setErrors((prev) => ({ ...prev, email: 'Could not start reset. Try again.' }));
         } finally {

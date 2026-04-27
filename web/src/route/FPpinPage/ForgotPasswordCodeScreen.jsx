@@ -9,6 +9,7 @@ const ForgotPasswordCodeScreen = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const email = (location.state?.email || '').trim().toLowerCase();
+  const debugResetPreview = location.state?.debugResetPreview || null;
   const [timer, setTimer] = useState(60);
   const [resendLoading, setResendLoading] = useState(false);
 
@@ -97,7 +98,13 @@ const ForgotPasswordCodeScreen = () => {
 
         <button
           type="button"
-          onClick={() => navigate('/reset-password')}
+          onClick={() => {
+            if (debugResetPreview?.uid && debugResetPreview?.token) {
+              navigate(`/reset-password?uid=${encodeURIComponent(debugResetPreview.uid)}&token=${encodeURIComponent(debugResetPreview.token)}`);
+              return;
+            }
+            navigate('/reset-password');
+          }}
           style={{
             width: '100%',
             padding: '12px 20px',
@@ -116,9 +123,15 @@ const ForgotPasswordCodeScreen = () => {
             fontFamily: 'inherit',
           }}
         >
-          Open reset page
+          {debugResetPreview ? 'Continue to reset' : 'Open reset page'}
           <ArrowRight size={18} />
         </button>
+
+        {debugResetPreview ? (
+          <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 18px 0', lineHeight: '1.5' }}>
+            Dev mode: reset link generated for local testing without paid email providers.
+          </p>
+        ) : null}
 
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <button

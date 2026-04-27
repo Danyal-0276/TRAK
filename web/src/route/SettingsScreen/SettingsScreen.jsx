@@ -16,7 +16,8 @@ import {
     Volume2,
     VolumeX,
     Clock,
-    CheckCircle
+    CheckCircle,
+    Loader2,
 } from "lucide-react";
 import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
@@ -50,6 +51,7 @@ export default function SettingsScreen() {
 
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     // Save settings to localStorage whenever they change
     useEffect(() => {
@@ -57,15 +59,23 @@ export default function SettingsScreen() {
     }, [settings]);
 
     const handleToggle = (key) => {
+        setIsSaving(true);
         setSettings(prev => ({ ...prev, [key]: !prev[key] }));
-        setShowSaveSuccess(true);
-        setTimeout(() => setShowSaveSuccess(false), 2000);
+        setTimeout(() => {
+            setIsSaving(false);
+            setShowSaveSuccess(true);
+            setTimeout(() => setShowSaveSuccess(false), 2000);
+        }, 450);
     };
 
     const handleSelectChange = (key, value) => {
+        setIsSaving(true);
         setSettings(prev => ({ ...prev, [key]: value }));
-        setShowSaveSuccess(true);
-        setTimeout(() => setShowSaveSuccess(false), 2000);
+        setTimeout(() => {
+            setIsSaving(false);
+            setShowSaveSuccess(true);
+            setTimeout(() => setShowSaveSuccess(false), 2000);
+        }, 450);
     };
 
     const handleLogout = async () => {
@@ -300,7 +310,28 @@ export default function SettingsScreen() {
                 </div>
 
                 {/* Save Success Message */}
-                {showSaveSuccess && (
+                {isSaving && (
+                    <div style={{
+                        padding: '12px 16px',
+                        backgroundColor: darkTheme ? '#1e293b' : '#f8fafc',
+                        border: `1px solid ${borderColor}`,
+                        borderRadius: '8px',
+                        marginBottom: '24px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                    }}>
+                        <Loader2 size={16} color={textSecondary} style={{ animation: 'spin 0.8s linear infinite' }} />
+                        <span style={{
+                            fontSize: '14px',
+                            fontWeight: '500',
+                            color: textSecondary,
+                        }}>
+                            Saving changes...
+                        </span>
+                    </div>
+                )}
+                {showSaveSuccess && !isSaving && (
                     <div style={{
                         padding: '12px 16px',
                         backgroundColor: darkTheme ? '#064E3B' : '#f0fdf4',

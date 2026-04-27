@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import { NewsCard } from "../../components/NewsCard";
 import { useTheme } from "../../theme/ThemeContext";
 import { 
     Edit, 
@@ -13,9 +14,22 @@ import {
     CheckCircle,
     TrendingUp,
     Users,
-    BookOpen
+    BookOpen,
+    Loader2,
+    ShieldCheck,
 } from "lucide-react";
-import { clearAuthTokens, getExploreFeed, getProfile } from "../../utils/Service/api";
+import {
+    addBookmark,
+    clearAuthTokens,
+    confirmProfileVerification,
+    getProfile,
+    getUserArticleDetail,
+    listBookmarks,
+    removeBookmark,
+    requestProfileVerification,
+    setReaction,
+    updateProfile,
+} from "../../utils/Service/api";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
 
 const UserProfileScreen = () => {
@@ -26,10 +40,21 @@ const UserProfileScreen = () => {
     const [bookmarks, setBookmarks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState(null);
+    const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
+    const [votedItems, setVotedItems] = useState({});
+    const [verificationChannel, setVerificationChannel] = useState("email");
+    const [verificationCode, setVerificationCode] = useState("");
+    const [sendingCode, setSendingCode] = useState(false);
+    const [verifyingCode, setVerifyingCode] = useState(false);
+    const [devCodeHint, setDevCodeHint] = useState("");
+    const [verifyMessage, setVerifyMessage] = useState("");
     const { confirm } = useUIFeedback();
+    const fileInputRef = useRef(null);
+    const [showAvatarMenu, setShowAvatarMenu] = useState(false);
+    const [showAvatarPreview, setShowAvatarPreview] = useState(false);
     const [userStats, setUserStats] = useState({
-        following: 180,
-        followers: '2.4k',
+        following: 0,
+        followers: 0,
         saved: 0,
     });
 
@@ -42,17 +67,41 @@ const UserProfileScreen = () => {
             setLoading(true);
             const profileData = await getProfile();
             setProfile(profileData);
-            // Get bookmarks from localStorage
-            const savedBookmarks = localStorage.getItem('bookmarks');
-            if (savedBookmarks) {
-                const bookmarkIds = JSON.parse(savedBookmarks);
-                const allNews = await getExploreFeed();
-                const bookmarkedArticles = (allNews.results || []).filter(article => 
-                    bookmarkIds.includes(article.id)
-                );
-                setBookmarks(bookmarkedArticles);
-                setUserStats(prev => ({ ...prev, saved: bookmarkedArticles.length }));
-            }
+            const bookmarkPayload = await listBookmarks().catch(() => ({ results: [] }));
+            const rows = bookmarkPayload.results || [];
+            const detailed = await Promise.all(
+                rows.map(async (row) => {
+                    try {
+                        const full = await getUserArticleDetail(row.article_id);
+                        return {
+                            ...full,
+                            id: full.id || row.article_id,
+                        };
+                    } catch {
+                        return {
+                            id: row.article_id || row.id,
+                            title: row.title || "Saved article",
+                            source: "TRAK",
+                            excerpt: row.url || "",
+                            description: row.url || "",
+                            canonical_url: row.url || "",
+                            fullContent: row.url || "",
+                            category: "Saved",
+                            time: row.created_at ? new Date(row.created_at).toLocaleString() : "Recently",
+                            upvotes: 0,
+                            votes: 0,
+                        };
+                    }
+                })
+            );
+            const bookmarkedArticles = detailed.filter(Boolean);
+            setBookmarkedItems(new Set(bookmarkedArticles.map((b) => String(b.id))));
+            setBookmarks(bookmarkedArticles);
+            setUserStats({
+                following: Number(profileData?.following_count || 0),
+                followers: Number(profileData?.followers_count || 0),
+                saved: bookmarkedArticles.length,
+            });
         } catch (error) {
             console.error("Error loading bookmarks:", error);
         } finally {
@@ -73,6 +122,35 @@ const UserProfileScreen = () => {
         }
     };
 
+    const handleVote = async (itemId, type) => {
+        const previousVote = votedItems[itemId];
+        const newVote = previousVote === type ? null : type;
+        setVotedItems((prev) => ({ ...prev, [itemId]: newVote }));
+        try {
+            await setReaction(itemId, newVote || "none");
+        } catch {
+            setVotedItems((prev) => ({ ...prev, [itemId]: previousVote }));
+        }
+    };
+
+    const handleBookmark = async (itemId) => {
+        const exists = bookmarkedItems.has(itemId) || bookmarkedItems.has(String(itemId));
+        setBookmarkedItems((prev) => {
+            const next = new Set(prev);
+            if (next.has(itemId)) next.delete(itemId);
+            else next.add(itemId);
+            return next;
+        });
+        try {
+            const item = bookmarks.find((n) => String(n.id) === String(itemId));
+            if (exists) await removeBookmark(itemId);
+            else await addBookmark(itemId, item?.title || "", item?.canonical_url || item?.url || "");
+            await loadBookmarks();
+        } catch {
+            await loadBookmarks();
+        }
+    };
+
     const items = [
         { label: 'Following', value: userStats.following, icon: Users },
         { label: 'Followers', value: userStats.followers, icon: TrendingUp },
@@ -84,6 +162,64 @@ const UserProfileScreen = () => {
     const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
     const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
     const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const isAdmin = profile?.role === "admin";
+    const emailVerified = isAdmin ? true : Boolean(profile?.email_verified);
+    const phoneVerified = isAdmin ? true : Boolean(profile?.phone_verified);
+
+    const sendVerificationCode = async () => {
+        setSendingCode(true);
+        setVerifyMessage("");
+        setDevCodeHint("");
+        try {
+            const payload = verificationChannel === "phone" ? { channel: "phone", phone: profile?.phone || "" } : { channel: "email" };
+            const result = await requestProfileVerification(payload);
+            setVerifyMessage(result?.detail || "Verification code sent.");
+            if (result?.dev_code) {
+                setDevCodeHint(String(result.dev_code));
+            }
+        } catch (error) {
+            setVerifyMessage(error?.message || "Failed to send verification code.");
+        } finally {
+            setSendingCode(false);
+        }
+    };
+
+    const confirmVerificationCode = async () => {
+        if (!verificationCode.trim()) {
+            setVerifyMessage("Please enter the code first.");
+            return;
+        }
+        setVerifyingCode(true);
+        setVerifyMessage("");
+        try {
+            const updated = await confirmProfileVerification({ channel: verificationChannel, code: verificationCode.trim() });
+            setProfile(updated);
+            setVerificationCode("");
+            setDevCodeHint("");
+            setVerifyMessage(`${verificationChannel === "email" ? "Email" : "Phone"} verified successfully.`);
+        } catch (error) {
+            setVerifyMessage(error?.message || "Invalid code.");
+        } finally {
+            setVerifyingCode(false);
+        }
+    };
+
+    const handleAvatarFileChange = async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        if (!file.type.startsWith("image/")) return;
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            try {
+                const dataUrl = String(reader.result || "");
+                const updated = await updateProfile({ avatar_image: dataUrl });
+                setProfile(updated);
+            } catch {
+                // ignore avatar update errors to keep profile usable
+            }
+        };
+        reader.readAsDataURL(file);
+    };
 
     return (
         <div style={{
@@ -140,7 +276,9 @@ const UserProfileScreen = () => {
                         marginBottom: '24px',
                     }}>
                         {/* Avatar */}
-                        <div style={{
+                        <div
+                            onMouseDown={() => setShowAvatarMenu(true)}
+                            style={{
                             width: '100px',
                             height: '100px',
                             borderRadius: '12px',
@@ -150,15 +288,38 @@ const UserProfileScreen = () => {
                             alignItems: 'center',
                             flexShrink: 0,
                             boxShadow: isDark ? '0 4px 12px rgba(129, 140, 248, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
+                            position: 'relative',
+                            cursor: 'pointer',
                         }}>
-                            <span style={{
-                                fontSize: '36px',
-                                fontWeight: '700',
-                                color: '#ffffff',
-                                letterSpacing: '0.5px',
-                            }}>
-                                S
-                            </span>
+                            {profile?.avatar_image ? (
+                                <img src={profile.avatar_image} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                                <span style={{
+                                    fontSize: '36px',
+                                    fontWeight: '700',
+                                    color: '#ffffff',
+                                    letterSpacing: '0.5px',
+                                }}>
+                                    {(profile?.full_name || profile?.email || 'U').trim().charAt(0).toUpperCase()}
+                                </span>
+                            )}
+                            {showAvatarMenu ? (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '104px',
+                                    left: 0,
+                                    background: cardBackground,
+                                    border: `1px solid ${borderColor}`,
+                                    borderRadius: '8px',
+                                    boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
+                                    zIndex: 12,
+                                    minWidth: '160px',
+                                }}>
+                                    <button type="button" onClick={() => { setShowAvatarMenu(false); fileInputRef.current?.click(); }} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', background: 'transparent', border: 'none', color: textPrimary, cursor: 'pointer' }}>Change image</button>
+                                    <button type="button" onClick={() => { setShowAvatarMenu(false); if (profile?.avatar_image) setShowAvatarPreview(true); }} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', background: 'transparent', border: 'none', color: profile?.avatar_image ? textPrimary : textSecondary, cursor: profile?.avatar_image ? 'pointer' : 'not-allowed' }}>Display image</button>
+                                </div>
+                            ) : null}
+                            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarFileChange} style={{ display: 'none' }} />
                         </div>
 
                         {/* User Info */}
@@ -187,7 +348,7 @@ const UserProfileScreen = () => {
                                 color: textSecondary,
                                 marginBottom: '12px',
                             }}>
-                                @{(profile?.email || "user").split("@")[0]}
+                                @{profile?.username || (profile?.email || "user").split("@")[0]}
                             </div>
                             <div style={{
                                 fontSize: '15px',
@@ -211,8 +372,8 @@ const UserProfileScreen = () => {
                                 }}>
                                     <Mail size={14} color={textSecondary} />
                                     <span>{profile?.email || "No email"}</span>
-                                    <span style={{ marginLeft: 6, color: profile?.email_verified ? "#2563eb" : "#ef4444", fontSize: 12 }}>
-                                        {profile?.email_verified ? "Verified" : "Unverified"}
+                                    <span style={{ marginLeft: 6, color: emailVerified ? "#2563eb" : "#ef4444", fontSize: 12 }}>
+                                        {emailVerified ? "Verified" : "Unverified"}
                                     </span>
                                 </div>
                                 <div style={{
@@ -224,8 +385,8 @@ const UserProfileScreen = () => {
                                 }}>
                                     <Phone size={14} color={textSecondary} />
                                     <span>{profile?.phone || "No phone added"}</span>
-                                    <span style={{ marginLeft: 6, color: profile?.phone_verified ? "#2563eb" : "#ef4444", fontSize: 12 }}>
-                                        {profile?.phone_verified ? "Verified" : "Unverified"}
+                                    <span style={{ marginLeft: 6, color: phoneVerified ? "#2563eb" : "#ef4444", fontSize: 12 }}>
+                                        {phoneVerified ? "Verified" : "Unverified"}
                                     </span>
                                 </div>
                                 <div style={{
@@ -255,6 +416,9 @@ const UserProfileScreen = () => {
                             return (
                                 <div
                                     key={item.label}
+                                    onClick={() => {
+                                        if (item.label === 'Saved') navigate('/bookmarks');
+                                    }}
                                     style={{
                                         padding: '16px',
                                         backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f9fafb',
@@ -262,13 +426,15 @@ const UserProfileScreen = () => {
                                         border: `1px solid ${borderColor}`,
                                         textAlign: 'center',
                                         transition: 'all 0.2s ease',
-                                        cursor: 'pointer',
+                                        cursor: item.label === 'Saved' ? 'pointer' : 'default',
                                     }}
                                     onMouseEnter={(e) => {
+                                        if (item.label !== 'Saved') return;
                                         e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f3f4f6';
                                         e.currentTarget.style.borderColor = isDark ? colors.borderLight || '#475569' : '#d1d5db';
                                     }}
                                     onMouseLeave={(e) => {
+                                        if (item.label !== 'Saved') return;
                                         e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
                                         e.currentTarget.style.borderColor = borderColor;
                                     }}
@@ -400,6 +566,57 @@ const UserProfileScreen = () => {
                             Log Out
                         </button>
                     </div>
+
+                    {!isAdmin && (!emailVerified || !phoneVerified) && (
+                        <div style={{
+                            marginTop: '20px',
+                            padding: '16px',
+                            borderRadius: '10px',
+                            border: `1px solid ${borderColor}`,
+                            backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f8fafc',
+                        }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                                <ShieldCheck size={16} color={textPrimary} />
+                                <span style={{ fontSize: '14px', fontWeight: '700', color: textPrimary }}>
+                                    Verify your account
+                                </span>
+                            </div>
+                            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: textSecondary }}>
+                                Request a code and enter it below to verify your email or phone.
+                            </p>
+                            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
+                                <button type="button" onClick={() => setVerificationChannel("email")} style={{ padding: '7px 12px', borderRadius: '8px', border: `1px solid ${verificationChannel === "email" ? (isDark ? colors.primary || '#818CF8' : '#0f172a') : borderColor}`, background: verificationChannel === "email" ? (isDark ? 'rgba(129,140,248,0.15)' : '#eef2ff') : 'transparent', cursor: 'pointer', color: textPrimary, fontSize: '12px', fontWeight: 600 }}>Email</button>
+                                <button type="button" onClick={() => setVerificationChannel("phone")} style={{ padding: '7px 12px', borderRadius: '8px', border: `1px solid ${verificationChannel === "phone" ? (isDark ? colors.primary || '#818CF8' : '#0f172a') : borderColor}`, background: verificationChannel === "phone" ? (isDark ? 'rgba(129,140,248,0.15)' : '#eef2ff') : 'transparent', cursor: 'pointer', color: textPrimary, fontSize: '12px', fontWeight: 600 }}>Phone</button>
+                                <button type="button" onClick={sendVerificationCode} disabled={sendingCode} style={{ padding: '7px 12px', borderRadius: '8px', border: 'none', background: isDark ? colors.primary || '#818CF8' : '#0f172a', color: '#fff', cursor: sendingCode ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600 }}>
+                                    {sendingCode ? <Loader2 size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> : null}
+                                    {sendingCode ? "Sending..." : "Send Code"}
+                                </button>
+                            </div>
+                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <input
+                                    type="text"
+                                    value={verificationCode}
+                                    onChange={(e) => setVerificationCode(e.target.value)}
+                                    placeholder="Enter verification code"
+                                    style={{ flex: '1 1 220px', minWidth: '220px', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: cardBackground, color: textPrimary, fontSize: '13px' }}
+                                />
+                                <button type="button" onClick={confirmVerificationCode} disabled={verifyingCode} style={{ padding: '9px 14px', borderRadius: '8px', border: `1px solid ${borderColor}`, background: 'transparent', color: textPrimary, cursor: verifyingCode ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600 }}>
+                                    {verifyingCode ? <Loader2 size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> : null}
+                                    {verifyingCode ? "Verifying..." : "Verify"}
+                                </button>
+                            </div>
+                            {verifyMessage ? (
+                                <div style={{ marginTop: '10px', fontSize: '12px', color: textSecondary }}>
+                                    {verifyMessage}
+                                </div>
+                            ) : null}
+                            {devCodeHint ? (
+                                <div style={{ marginTop: '6px', fontSize: '12px', color: isDark ? '#c7d2fe' : '#3730a3' }}>
+                                    Test code: <strong>{devCodeHint}</strong>
+                                </div>
+                            ) : null}
+                        </div>
+                    )}
                 </div>
 
                 {/* Bookmarks Section */}
@@ -481,88 +698,26 @@ const UserProfileScreen = () => {
                             gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
                             gap: '20px',
                         }}>
-                            {bookmarks.map((bookmark) => (
-                                <div
-                                    key={bookmark.id}
-                                    onClick={() => navigate(`/article/${bookmark.id}`)}
-                                    style={{
-                                        backgroundColor: cardBackground,
-                                        borderRadius: '8px',
-                                        border: `1px solid ${borderColor}`,
-                                        padding: '20px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
-                                        e.currentTarget.style.borderColor = isDark ? colors.borderLight || '#475569' : '#d1d5db';
-                                        e.currentTarget.style.boxShadow = isDark 
-                                            ? '0 2px 8px rgba(0, 0, 0, 0.3)' 
-                                            : '0 2px 8px rgba(0, 0, 0, 0.08)';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = cardBackground;
-                                        e.currentTarget.style.borderColor = borderColor;
-                                        e.currentTarget.style.boxShadow = 'none';
-                                    }}
-                                >
-                                    {bookmark.category && (
-                                        <div style={{ marginBottom: '12px' }}>
-                                            <span style={{
-                                                fontSize: '10px',
-                                                fontWeight: '600',
-                                                color: textSecondary,
-                                                textTransform: 'uppercase',
-                                                letterSpacing: '0.5px',
-                                                padding: '4px 10px',
-                                                backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6',
-                                                borderRadius: '4px',
-                                                display: 'inline-block',
-                                            }}>
-                                                {bookmark.category}
-                                            </span>
-                                        </div>
-                                    )}
-                                    <h3 style={{
-                                        fontSize: '16px',
-                                        fontWeight: '600',
-                                        color: textPrimary,
-                                        margin: '0 0 8px 0',
-                                        lineHeight: '1.4',
-                                    }}>
-                                        {bookmark.title || 'Article Title'}
-                                    </h3>
-                                    <p style={{
-                                        fontSize: '14px',
-                                        color: textSecondary,
-                                        margin: '0 0 12px 0',
-                                        lineHeight: '1.5',
-                                        display: '-webkit-box',
-                                        WebkitLineClamp: 3,
-                                        WebkitBoxOrient: 'vertical',
-                                        overflow: 'hidden',
-                                    }}>
-                                        {bookmark.excerpt || bookmark.description || 'Article summary...'}
-                                    </p>
-                                    <div style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                    }}>
-                                        <div style={{
-                                            fontSize: '12px',
-                                            color: textSecondary,
-                                        }}>
-                                            {bookmark.source || 'Source'} • {bookmark.time || '2h ago'}
-                                        </div>
-                                        <Bookmark size={14} color="#f59e0b" fill="#f59e0b" />
-                                    </div>
-                                </div>
+                            {bookmarks.map((item) => (
+                                <NewsCard
+                                    key={item.id}
+                                    item={item}
+                                    onPress={() => navigate(`/article/${item.id}`, { state: { article: item } })}
+                                    votedItems={votedItems}
+                                    bookmarkedItems={bookmarkedItems}
+                                    onVote={handleVote}
+                                    onBookmark={handleBookmark}
+                                />
                             ))}
                         </div>
                     )}
                 </div>
             </div>
+            {showAvatarPreview ? (
+                <div onClick={() => setShowAvatarPreview(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>
+                    <img src={profile?.avatar_image} alt="Avatar preview" style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: '12px' }} />
+                </div>
+            ) : null}
             <style>{`
                 @keyframes spin {
                     0% { transform: rotate(0deg); }

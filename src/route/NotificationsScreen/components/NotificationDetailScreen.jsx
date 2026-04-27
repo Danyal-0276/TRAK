@@ -17,7 +17,7 @@ import { ChevronLeft, MessageCircle, Heart, UserPlus, Hash, Settings, X } from "
 import { useTheme } from "../../../theme/ThemeContext";
 import Text from "../../../components/ui/Text";
 import { getIcon } from "../utils/getIcon";
-import mockAPI from "../services/mockNotificationAPI";        
+import * as notificationsApi from "../../../api/notificationsApi";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -47,11 +47,11 @@ const NotificationDetailScreen = () => {
 
   const loadNotificationDetails = async () => {
     try {
-      const data = await mockAPI.getNotificationDetails(notificationId);
+      const data = await notificationsApi.getNotificationDetails(notificationId);
       setNotification(data);
       
       if (!data.read && onMarkAsRead) {
-        await mockAPI.markAsRead(notificationId);
+        await notificationsApi.markAsRead(notificationId);
         onMarkAsRead(notificationId);
       }
 

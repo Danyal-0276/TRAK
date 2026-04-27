@@ -5,7 +5,8 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { useNavigation } from "@react-navigation/native";
 import LinearGradient from "react-native-linear-gradient";
 import NotificationTabs from "./components/NotificationTabs";
-import mockAPI from "./services/mockNotificationAPI";
+import * as notificationsApi from "../../api/notificationsApi";
+import { openNotificationsSocket } from "../../api/notificationsRealtime";
 import { useTheme } from "../../theme/ThemeContext";
 import Text from "../../components/ui/Text";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
@@ -26,6 +27,9 @@ const NotificationsScreen = () => {
   const circle2Anim = useRef(new Animated.Value(0)).current;
   const circle3Anim = useRef(new Animated.Value(0)).current;
   const navigation = useNavigation();
+  const socketRef = useRef(null);
+  const reconnectRef = useRef(null);
+  const pollRef = useRef(null);
 
   useEffect(() => {
     loadNotifications();
@@ -62,7 +66,30 @@ const NotificationsScreen = () => {
         useNativeDriver: true,
       }),
     ]).start();
+    startRealtime();
+    pollRef.current = setInterval(loadNotifications, 30000);
+    return () => {
+      if (socketRef.current) socketRef.current.close();
+      if (reconnectRef.current) clearTimeout(reconnectRef.current);
+      if (pollRef.current) clearInterval(pollRef.current);
+    };
   }, []);
+
+  const startRealtime = async () => {
+    const ws = await openNotificationsSocket((payload) => {
+      if (payload?.type !== "notification.created" || !payload.notification?.id) return;
+      const incoming = notificationsApi.normalizeNotification(payload.notification);
+      setNotifications((prev) => {
+        if (prev.some((n) => String(n.id) === String(incoming.id))) return prev;
+        return [incoming, ...prev];
+      });
+    });
+    if (!ws) return;
+    socketRef.current = ws;
+    ws.onclose = () => {
+      reconnectRef.current = setTimeout(startRealtime, 2500);
+    };
+  };
 
   useEffect(() => {
     resetTabBarVisibility();
@@ -81,7 +108,7 @@ const NotificationsScreen = () => {
 
   const loadNotifications = async () => {
     try {
-      const data = await mockAPI.getNotifications();
+      const data = await notificationsApi.getNotifications();
       setNotifications(data);
     } catch (error) {
       console.error("Error loading notifications:", error);
@@ -92,7 +119,7 @@ const NotificationsScreen = () => {
 
   const markAsRead = async (notificationId) => {
     try {
-      await mockAPI.markAsRead(notificationId);
+      await notificationsApi.markAsRead(notificationId);
       const updatedNotifications = notifications.map(notification =>
         notification.id === notificationId 
           ? { ...notification, read: true }
@@ -120,7 +147,7 @@ const NotificationsScreen = () => {
     ]).start();
 
     try {
-      await mockAPI.markAllAsRead();
+      await notificationsApi.markAllAsRead();
       const updatedNotifications = notifications.map(notification => ({
         ...notification,
         read: true

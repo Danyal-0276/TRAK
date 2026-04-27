@@ -100,7 +100,7 @@ const LoginScreen = ({ navigation }) => {
             const syntheticEmail = `${normalizedProvider}_mobile_user_${Date.now()}@trak.local`;
             const session = await loginWithSocialDemo(normalizedProvider, syntheticEmail);
             await setTokens(session.access, session.refresh);
-            saveAuthSession(session);
+            await saveAuthSession(session);
             await bootstrap();
             const dest = session.user?.role === 'admin' ? 'AdminScreen' : 'NewsFeed';
             navigation.reset({ index: 0, routes: [{ name: dest }] });
@@ -290,8 +290,7 @@ const LoginScreen = ({ navigation }) => {
                                 setLoading(true);
                                 try {
                                     const user = await login(email, password);
-                                    const dest =
-                                        user?.role === 'admin' ? 'AdminScreen' : 'NewsFeed';
+                                    const dest = 'NewsFeed';
                                     navigation.reset({
                                         index: 0,
                                         routes: [{ name: dest }],
@@ -307,9 +306,14 @@ const LoginScreen = ({ navigation }) => {
                                     setNotice({ type: 'error', text: 'Enter email or phone in the first field' });
                                     return;
                                 }
+                                if (!/^\+?[\d\s\-()]{7,20}$/.test(email.trim())) {
+                                    setNotice({ type: 'error', text: 'Enter a valid phone number' });
+                                    return;
+                                }
                                 try {
-                                    await requestOtp(email);
-                                    setNotice({ type: 'success', text: 'Code sent successfully.' });
+                                    const payload = await requestOtp(email);
+                                    const codeHint = payload?.dev_code ? ` Test code: ${payload.dev_code}` : '';
+                                    setNotice({ type: 'success', text: `Code sent successfully.${codeHint}` });
                                 } catch (error) {
                                     setNotice({ type: 'error', text: error.message || 'Failed to send code' });
                                 }
@@ -323,9 +327,9 @@ const LoginScreen = ({ navigation }) => {
                                 try {
                                     const session = await loginWithOtp(email, password);
                                     await setTokens(session.access, session.refresh);
-                                    saveAuthSession(session);
+                                    await saveAuthSession(session);
                                     await bootstrap();
-                                    const dest = session.user?.role === 'admin' ? 'AdminScreen' : 'NewsFeed';
+                                    const dest = 'NewsFeed';
                                     navigation.reset({ index: 0, routes: [{ name: dest }] });
                                 } catch (error) {
                                     setNotice({ type: 'error', text: error.message || 'Failed to verify code' });

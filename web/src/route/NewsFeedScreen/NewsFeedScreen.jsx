@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
-import { getUserFeed } from '../../utils/Service/api';
+import { addBookmark, getUserFeed, listBookmarks, removeBookmark, setReaction } from '../../utils/Service/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
@@ -42,6 +42,8 @@ const NewsFeedScreen = () => {
         try {
             setLoading(true);
             const response = await getUserFeed();
+            const bookmarks = await listBookmarks().catch(() => ({ results: [] }));
+            const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
             const mapped = (response.results || []).map((item, idx) => ({
                 ...item,
                 id: item.id || item.canonical_url || String(idx),
@@ -54,6 +56,7 @@ const NewsFeedScreen = () => {
                 verified: item.credibility?.label === 'real',
             }));
             setNewsData(mapped);
+            setBookmarkedItems(bookmarked);
         } catch (error) {
             console.error('Error loading news:', error);
             setNewsData([]);
@@ -140,7 +143,7 @@ const NewsFeedScreen = () => {
         }));
 
         try {
-            await Promise.resolve({ ok: true });
+            await setReaction(itemId, newVote || 'none');
         } catch (error) {
             setVotedItems(prev => ({
                 ...prev,
@@ -150,6 +153,7 @@ const NewsFeedScreen = () => {
     };
 
     const handleBookmark = async (itemId) => {
+        const article = newsData.find((n) => String(n.id) === String(itemId));
         setBookmarkedItems(prev => {
             const newSet = new Set(prev);
             if (newSet.has(itemId)) {
@@ -161,9 +165,20 @@ const NewsFeedScreen = () => {
         });
 
         try {
-            await Promise.resolve({ ok: true });
+            const isBookmarked = bookmarkedItems.has(itemId);
+            if (isBookmarked) {
+                await removeBookmark(itemId);
+            } else {
+                await addBookmark(itemId, article?.title || '', article?.canonical_url || article?.url || '');
+            }
         } catch (error) {
             console.error('Error bookmarking:', error);
+            setBookmarkedItems(prev => {
+                const rollback = new Set(prev);
+                if (rollback.has(itemId)) rollback.delete(itemId);
+                else rollback.add(itemId);
+                return rollback;
+            });
         }
     };
 
@@ -172,6 +187,10 @@ const NewsFeedScreen = () => {
     const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
     const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
     const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+
+    const visibleNews = activeTab === 'Bookmarks'
+        ? newsData.filter((n) => bookmarkedItems.has(n.id) || bookmarkedItems.has(String(n.id)))
+        : newsData;
 
     return (
         <div style={{
@@ -610,7 +629,7 @@ const NewsFeedScreen = () => {
                             : 'repeat(auto-fill, minmax(320px, 1fr))',
                         gap: isMobile ? '16px' : isTablet ? '20px' : '24px',
                     }}>
-                        {newsData.map((item) => (
+                        {visibleNews.map((item) => (
                             <NewsCard
                                 key={item.id}
                                 item={item}

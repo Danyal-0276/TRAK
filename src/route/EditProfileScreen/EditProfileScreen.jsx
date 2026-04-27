@@ -9,16 +9,19 @@ import ProfileImagePicker from "./components/ProfileImagePicker";
 import ProfileInput from "./components/ProfileInput";
 import SaveButton from "./components/SaveButton";
 import AlertModal from "./components/AlertModal";
+import { getProfile, updateProfile } from "../../utils/Service/api";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function EditProfileScreen({ navigation }) {
-  const [name, setName] = useState("Shahroz Butt");
-  const [email, setEmail] = useState("shahroz.butt@gmail.com");
-  const [phone, setPhone] = useState("+923001234567");
-  const [bio, setBio] = useState("Software Engineer passionate about AI, cloud, and building scalable apps.");
+  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [bio, setBio] = useState("");
   const [profilePic, setProfilePic] = useState(null);
   const [alert, setAlert] = useState({ visible: false, title: "", message: "" });
+  const [isSaving, setIsSaving] = useState(false);
   const { theme } = useTheme();
   const { colors } = theme;
   const insets = useSafeAreaInsets();
@@ -64,8 +67,29 @@ export default function EditProfileScreen({ navigation }) {
     ]).start();
   }, []);
 
-  const handleSave = () => {
-    if (!name.trim() || !email.trim() || !phone.trim() || !bio.trim()) {
+  useEffect(() => {
+    (async () => {
+      try {
+        const profile = await getProfile();
+        if (profile?.full_name) setName(profile.full_name);
+        if (profile?.username) setUsername(profile.username);
+        if (profile?.email) setEmail(profile.email);
+        if (profile?.phone) setPhone(profile.phone);
+        if (profile?.bio) setBio(profile.bio);
+        if (profile?.avatar_image) {
+          setProfilePic({
+            uri: profile.avatar_image,
+            dataUrl: profile.avatar_image,
+          });
+        }
+      } catch {
+        // Keep editable defaults when profile request fails.
+      }
+    })();
+  }, []);
+
+  const handleSave = async () => {
+    if (!name.trim() || !username.trim() || !email.trim() || !phone.trim() || !bio.trim()) {
       return setAlert({ visible: true, title: "Error", message: "Please fill in all fields before saving." });
     }
 
@@ -77,8 +101,25 @@ export default function EditProfileScreen({ navigation }) {
     if (!phoneRegex.test(phone)) {
       return setAlert({ visible: true, title: "Invalid Phone", message: "Please enter a valid phone number." });
     }
+    if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
+      return setAlert({ visible: true, title: "Invalid Username", message: "Username must be 3-30 chars and contain only letters, numbers, and underscores." });
+    }
 
-    setAlert({ visible: true, title: "Profile Updated", message: "Your profile has been saved successfully!" });
+    try {
+      setIsSaving(true);
+      await updateProfile({
+        full_name: name,
+        username,
+        phone,
+        bio,
+        avatar_image: profilePic?.dataUrl || profilePic?.uri || "",
+      });
+      setAlert({ visible: true, title: "Profile Updated", message: "Your profile has been saved successfully!" });
+    } catch (error) {
+      setAlert({ visible: true, title: "Save failed", message: error?.message || "Could not update profile." });
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -179,10 +220,11 @@ export default function EditProfileScreen({ navigation }) {
 
         <ProfileImagePicker profilePic={profilePic} setProfilePic={setProfilePic} name={name} />
         <ProfileInput label="Full Name" value={name} onChangeText={setName} />
+        <ProfileInput label="Username" value={username} onChangeText={setUsername} autoCapitalize="none" />
         <ProfileInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
         <ProfileInput label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         <ProfileInput label="Bio" value={bio} onChangeText={setBio} multiline />
-        <SaveButton onPress={handleSave} />
+        <SaveButton onPress={handleSave} loading={isSaving} />
         <AlertModal
           visible={alert.visible}
           title={alert.title}

@@ -10,6 +10,7 @@ import {
     Activity,
     ArrowRight,
     Play,
+    ChevronRight,
 } from 'lucide-react';
 import { getAdminAnalytics, postAdminPipelineRun } from '../../api/adminApi';
 
@@ -59,14 +60,14 @@ const AdminDashboardScreen = () => {
             label: 'Raw articles',
             value: snapshot != null ? String(snapshot.raw_total ?? 0) : '—',
             color: '#f59e0b',
-            path: '/admin/articles',
+            path: '/admin/articles?scope=raw',
         },
         {
             icon: BarChart3,
             label: 'Processed',
             value: snapshot != null ? String(snapshot.processed_total ?? 0) : '—',
             color: '#10b981',
-            path: '/admin/analytics',
+            path: '/admin/articles?scope=processed',
         },
         {
             icon: Activity,
@@ -123,6 +124,11 @@ const AdminDashboardScreen = () => {
                     marginBottom: isMobile ? '20px' : '32px',
                     paddingTop: '0',
                 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: textSecondary, marginBottom: '10px' }}>
+                        <span style={{ color: textPrimary, fontWeight: 600 }}>Admin</span>
+                        <ChevronRight size={14} />
+                        <span>Dashboard</span>
+                    </div>
                     <h1 style={{
                         fontSize: getResponsiveFontSize(isMobile, isTablet, 28),
                         fontWeight: '700',

@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Search, Bell, Settings, User, Menu, X, Shield } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
 import Text from './ui/Text';
+import { getProfile } from '../utils/Service/api';
 
 const Header = () => {
     const { theme } = useTheme();
@@ -17,6 +18,22 @@ const Header = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
+    const [profileInitial, setProfileInitial] = useState('U');
+    const [avatarPreview, setAvatarPreview] = useState('');
+
+    useEffect(() => {
+        (async () => {
+            try {
+                const profile = await getProfile();
+                const base = (profile?.full_name || profile?.email || 'U').trim();
+                setProfileInitial(base.charAt(0).toUpperCase() || 'U');
+                setAvatarPreview(profile?.avatar_image || '');
+            } catch {
+                setProfileInitial('U');
+                setAvatarPreview('');
+            }
+        })();
+    }, [location.pathname]);
 
     // Don't show header on auth pages
     const hideHeaderPaths = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'];
@@ -329,13 +346,17 @@ const Header = () => {
                             }
                         }}
                     >
-                        <Text variant="body" style={{
-                            fontSize: '16px',
-                            fontWeight: '600',
-                            color: isDark ? colors.textPrimary || '#F1F5F9' : '#000000',
-                        }}>
-                            S
-                        </Text>
+                        {avatarPreview ? (
+                            <img src={avatarPreview} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                        ) : (
+                            <Text variant="body" style={{
+                                fontSize: '16px',
+                                fontWeight: '600',
+                                color: isDark ? colors.textPrimary || '#F1F5F9' : '#000000',
+                            }}>
+                                {profileInitial}
+                            </Text>
+                        )}
                     </button>
                 </div>
             </div>

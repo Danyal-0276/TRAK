@@ -1,0 +1,220 @@
+@startuml
+title TRAK Frontend Complete Screen Flow (Web Only)
+left to right direction
+skinparam packageStyle rectangle
+skinparam classAttributeIconSize 0
+hide circle
+
+package "Web React Frontend" {
+  class "AppRouter" as W_AppRouter
+  class "RouterContent" as W_RouterContent
+
+  class "OpeningScreen" as W_Opening {
+    +file: web/src/route/openingScreen/OpeningScreen.jsx
+    +state: logoScale, logoOpacity, brandOpacity, brandY, welcomeOpacity, welcomeY, buttonOpacity, buttonY, backgroundOpacity
+    +imports: none
+  }
+  class "LoginScreen" as W_Login {
+    +file: web/src/route/LoginPage/LoginScreen.jsx
+    +state: email, password, loading, errors, showPassword, socialLoading, authMode
+    +imports: ../../utils/Service/api
+  }
+  class "SignUpScreen" as W_SignUp {
+    +file: web/src/route/signUpPage/SignUpScreen.jsx
+    +state: fullName, phone, email, password, confirmPassword, loading, errors, agreed, showPassword, showConfirmPassword, showTermsModal, showPrivacyModal, socialLoading
+    +imports: ../../utils/Service/api
+  }
+  class "ForgotPasswordScreen" as W_Forgot {
+    +file: web/src/route/forgotPasswordPage/ForgotPasswordScreen.jsx
+    +state: email, loading, errors
+    +imports: ../../api/authPasswordApi
+  }
+  class "ForgotPasswordCodeScreen" as W_ForgotCode {
+    +file: web/src/route/FPpinPage/ForgotPasswordCodeScreen.jsx
+    +state: timer, resendLoading
+    +imports: ../../api/authPasswordApi
+  }
+  class "ResetPasswordScreen" as W_Reset {
+    +file: web/src/route/resetPasswordPage/ResetPasswordScreen.jsx
+    +state: uid, token, newPassword, confirmPassword, showNewPassword, showConfirmPassword, loading, errors
+    +imports: ../../api/authPasswordApi
+  }
+  class "PasswordChangedScreen" as W_PasswordChanged {
+    +file: web/src/route/PasswordChangedScreen/PasswordChangedScreen.jsx
+    +state: none
+    +imports: none
+  }
+  class "TagSelectionScreen" as W_TagSelection {
+    +file: web/src/route/TagSelectionScreen/TagSelectionScreen.jsx
+    +state: selectedTags, searchText
+    +imports: ./constants/newsCategories
+  }
+  class "KeywordSelectionScreen" as W_KeywordSelection {
+    +file: web/src/route/KeywordSelectionScreen/KeywordSelectionScreen.jsx
+    +state: selectedKeywords, keywordInput
+    +imports: none
+  }
+
+  class "NewsFeedScreen" as W_NewsFeed {
+    +file: web/src/route/NewsFeedScreen/NewsFeedScreen.jsx
+    +state: activeTab, bookmarkedItems, votedItems, newsData, loading, selectedArticle, articleLiked, articleDisliked, articleBookmarked, articleLikeCount, articleDislikeCount
+    +imports: ../../utils/Service/api
+  }
+  class "SearchScreen" as W_Search {
+    +file: web/src/route/SearchScreen/SearchScreen.jsx
+    +state: allNews, filteredNews, trendingTopics, recentSearches, loading, searchQuery, activeTab, votedItems, bookmarkedItems, selectedArticle, articleLiked, articleDisliked, articleBookmarked, articleLikeCount, articleDislikeCount, categories
+    +imports: ../../utils/loadFeed
+  }
+  class "TrendingScreen" as W_Trending {
+    +file: web/src/route/TrendingScreen/TrendingScreen.jsx
+    +state: bookmarkedItems, votedItems, newsData, loading
+    +imports: ../../utils/Service/mockApi
+  }
+  class "BookmarksScreen" as W_Bookmarks {
+    +file: web/src/route/BookmarksScreen/BookmarksScreen.jsx
+    +state: bookmarkedItems, votedItems, newsData, loading
+    +imports: ../../utils/Service/mockApi
+  }
+  class "RecentScreen" as W_Recent {
+    +file: web/src/route/RecentScreen/RecentScreen.jsx
+    +state: bookmarkedItems, votedItems, newsData, loading
+    +imports: ../../utils/Service/mockApi
+  }
+  class "ArticleDetailScreen" as W_ArticleDetail {
+    +file: web/src/route/ArticleDetailScreen/ArticleDetailScreen.jsx
+    +state: isLiked, isDisliked, isBookmarked, likeCount, dislikeCount, scrollY
+    +imports: none
+  }
+  class "NotificationsScreen" as W_Notifications {
+    +file: web/src/route/NotificationsScreen/NotificationsScreen.jsx
+    +state: notifications, filteredNotifications, activeTab, loading, selectedNotification
+    +imports: ../../utils/Service/mockNotificationApi
+  }
+
+  class "ProfileScreen" as W_Profile {
+    +file: web/src/route/ProfileScreen/ProfileScreen.jsx
+    +state: bookmarks, loading, profile, userStats
+    +imports: ../../utils/Service/api
+  }
+  class "EditProfileScreen" as W_EditProfile {
+    +file: web/src/route/EditProfileScreen/EditProfileScreen.jsx
+    +state: formData, errors, isSaving, showSuccess, avatar, avatarPreview
+    +imports: none
+  }
+  class "SettingsScreen" as W_Settings {
+    +file: web/src/route/SettingsScreen/SettingsScreen.jsx
+    +state: settings, showLogoutConfirm, showSaveSuccess
+    +imports: none
+  }
+  class "PrivacyScreen" as W_Privacy {
+    +file: web/src/route/PrivacyScreen/PrivacyScreen.jsx
+    +state: none
+    +imports: none
+  }
+  class "TermsScreen" as W_Terms {
+    +file: web/src/route/TermsScreen/TermsScreen.jsx
+    +state: none
+    +imports: none
+  }
+  class "DataScreen" as W_Data {
+    +file: web/src/route/DataScreen/DataScreen.jsx
+    +state: storageData, loading, clearing
+    +imports: none
+  }
+  class "CategoriesScreen" as W_Categories {
+    +file: web/src/route/CategoriesScreen/CategoriesScreen.jsx
+    +state: allNews, categories, selectedCategory, filteredNews, loading, votedItems, bookmarkedItems, selectedArticle, articleLiked, articleDisliked, articleBookmarked, articleLikeCount, articleDislikeCount
+    +imports: ../../utils/Service/mockApi
+  }
+  class "AboutScreen" as W_About {
+    +file: web/src/route/AboutScreen/AboutScreen.jsx
+    +state: none
+    +imports: none
+  }
+
+  class "AdminScreen" as W_Admin {
+    +file: web/src/route/AdminScreen/AdminScreen.jsx
+    +state: none
+    +imports: none
+  }
+  class "AdminDashboardScreen" as W_AdminDashboard {
+    +file: web/src/route/AdminScreen/AdminDashboardScreen.jsx
+    +state: snapshot, loading, pipelineBusy
+    +imports: ../../utils/responsiveStyles, ../../api/adminApi
+  }
+  class "AdminUsersScreen" as W_AdminUsers {
+    +file: web/src/route/AdminScreen/AdminUsersScreen.jsx
+    +state: users, searchQuery, loading
+    +imports: ../../utils/responsiveStyles
+  }
+  class "AdminArticlesScreen" as W_AdminArticles {
+    +file: web/src/route/AdminScreen/AdminArticlesScreen.jsx
+    +state: articles, searchQuery, loading, scope
+    +imports: ../../utils/responsiveStyles, ../../api/adminApi
+  }
+  class "AdminAnalyticsScreen" as W_AdminAnalytics {
+    +file: web/src/route/AdminScreen/AdminAnalyticsScreen.jsx
+    +state: snapshot, modelMetrics, loading
+    +imports: ../../api/adminApi
+  }
+}
+
+package "Web Shared Constants" {
+  class "newsTagsWithSubcategories" as C_Tags {
+    +file: web/src/route/TagSelectionScreen/constants/newsCategories.js
+    +categories: politics, business, technology, sports, entertainment, ...
+  }
+}
+
+W_AppRouter --> W_RouterContent
+
+W_RouterContent --> W_Opening : /
+W_Opening --> W_Login : /login
+W_Opening --> W_SignUp : /signup
+W_Login --> W_Forgot : /forgot-password
+W_Login --> W_SignUp : /signup
+W_Forgot --> W_ForgotCode : /forgot-password-code
+W_ForgotCode --> W_Reset : /reset-password
+W_Reset --> W_PasswordChanged : /password-changed
+W_PasswordChanged --> W_Login : /login
+W_SignUp --> W_TagSelection : /tag-selection
+W_TagSelection --> W_KeywordSelection : /keyword-selection
+W_KeywordSelection --> W_NewsFeed : /newsfeed
+
+W_RouterContent --> W_NewsFeed : /newsfeed
+W_RouterContent --> W_Search : /search
+W_RouterContent --> W_Notifications : /notifications
+W_RouterContent --> W_Profile : /profile
+W_RouterContent --> W_Settings : /settings
+W_RouterContent --> W_EditProfile : /edit-profile
+W_RouterContent --> W_Privacy : /privacy
+W_RouterContent --> W_Terms : /terms
+W_RouterContent --> W_Data : /data
+W_RouterContent --> W_Categories : /categories
+W_RouterContent --> W_About : /about
+W_RouterContent --> W_Trending : /trending
+W_RouterContent --> W_Bookmarks : /bookmarks
+W_RouterContent --> W_Recent : /recent
+W_RouterContent --> W_ArticleDetail : /article/:id
+
+W_RouterContent --> W_Admin : /admin
+W_RouterContent --> W_AdminDashboard : /admin/dashboard
+W_RouterContent --> W_AdminUsers : /admin/users
+W_RouterContent --> W_AdminArticles : /admin/articles
+W_RouterContent --> W_AdminAnalytics : /admin/analytics
+
+W_Trending --> W_ArticleDetail
+W_Bookmarks --> W_ArticleDetail
+W_Recent --> W_ArticleDetail
+W_Settings --> W_Profile
+W_Settings --> W_EditProfile
+W_Settings --> W_Privacy
+W_Settings --> W_Data
+W_Settings --> W_Categories
+W_Settings --> W_About
+W_TagSelection ..> C_Tags
+
+note bottom
+Web-only flow. Mobile packages and mobile links are intentionally removed.
+end note
+@enduml

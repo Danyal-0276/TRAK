@@ -85,7 +85,6 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             borderColor: theme.mode === 'dark' 
                 ? 'rgba(255, 255, 255, 0.1)' 
                 : 'rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(10px)',
         },
         tabBarContent: {
             position: 'relative',

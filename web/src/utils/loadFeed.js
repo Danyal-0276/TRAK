@@ -41,7 +41,7 @@ async function fetchFeed(limit = 50, q = '') {
 /** @param {{ q?: string }} [options] */
 export async function loadFeedItems(options = {}) {
   const q = options.q || '';
-  const token = localStorage.getItem('trak_access');
+  const token = localStorage.getItem('trak_access_token') || localStorage.getItem('trak_access');
   if (token) {
     try {
       const json = await fetchFeed(80, q);
