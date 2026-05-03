@@ -24,6 +24,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
     const { colors } = theme;
     const [selectedTags, setSelectedTags] = useState([]);
+    const [expandedMainTags, setExpandedMainTags] = useState([]);
     const [searchText, setSearchText] = useState('');
     const [loading, setLoading] = useState(false);
     const { fromSettings = false, selectedTags: incomingSelectedTags = [] } = route?.params || {};
@@ -138,12 +139,20 @@ const TagSelectionScreen = ({ navigation, route }) => {
             if (prev.includes(tag)) {
                 // Remove main tag and all its subcategories
                 const subcategories = newsTagsWithSubcategories[tag];
+                setExpandedMainTags((expanded) => expanded.filter((t) => t !== tag));
                 return prev.filter(t => t !== tag && !subcategories.includes(t));
             } else {
                 // Add main tag
+                setExpandedMainTags((expanded) => (expanded.includes(tag) ? expanded : [...expanded, tag]));
                 return [...prev, tag];
             }
         });
+    };
+
+    const toggleExpandMainTag = (tag) => {
+        setExpandedMainTags((prev) =>
+            prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+        );
     };
 
     // Toggle subcategory selection
@@ -154,6 +163,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
                 return prev.filter(t => t !== subTag);
             } else {
                 // Add subcategory and ensure main tag is selected
+                setExpandedMainTags((expanded) => (expanded.includes(mainTag) ? expanded : [...expanded, mainTag]));
                 if (!prev.includes(mainTag)) {
                     return [...prev, mainTag, subTag];
                 }
@@ -370,6 +380,10 @@ const TagSelectionScreen = ({ navigation, route }) => {
                     >
                         {filteredTags.map((tag, index) => {
                             const isSelected = selectedTags.includes(tag);
+                            const selectedSubCount = (newsTagsWithSubcategories[tag] || []).filter((sub) =>
+                                selectedTags.includes(sub)
+                            ).length;
+                            const isExpanded = expandedMainTags.includes(tag);
                             return (
                                 <React.Fragment key={index}>
                                     {/* Main Tag */}
@@ -377,10 +391,14 @@ const TagSelectionScreen = ({ navigation, route }) => {
                                         label={tag}
                                         isSelected={isSelected}
                                         onPress={() => toggleMainTag(tag)}
+                                        showExpandToggle={isSelected}
+                                        expanded={isExpanded}
+                                        onToggleExpand={() => toggleExpandMainTag(tag)}
+                                        selectedSubCount={selectedSubCount}
                                     />
 
                                     {/* Subcategories */}
-                                    {isSelected && (
+                                    {isSelected && isExpanded && (
                                         <SubcategoriesContainer
                                             mainTag={tag}
                                             subcategories={newsTagsWithSubcategories[tag]}
