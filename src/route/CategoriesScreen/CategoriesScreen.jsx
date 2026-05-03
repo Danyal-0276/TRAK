@@ -17,20 +17,19 @@ import LinearGradient from "react-native-linear-gradient";
 import { ChevronLeft, Plus, Trash2, Tag, CheckCircle, X, AlertCircle } from "lucide-react-native";
 import { useTheme } from "../../theme/ThemeContext";
 import Text from "../../components/ui/Text";
+import { getAccessToken } from "../../api/client";
+import { trackKeywords } from "../../api/newsApi";
+import { getUserKeywords, setUserKeywords } from "../../utils/userKeywordsStorage";
+import { useFeedback } from "../../components/ui/FeedbackProvider";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const CategoriesScreen = ({ navigation }) => {
   const { theme } = useTheme();
+  const { error } = useFeedback();
   const { colors, spacing } = theme;
   const insets = useSafeAreaInsets();
-  const [categories, setCategories] = useState([
-    "Technology",
-    "Health",
-    "Finance",
-    "Education",
-    "Sports",
-  ]);
+  const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
@@ -47,8 +46,13 @@ const CategoriesScreen = ({ navigation }) => {
   const categoryAnims = useRef({}).current;
 
   useEffect(() => {
-    navigation.replace('KeywordSelection', { fromSettings: true, selectedTags: [] });
-  }, [navigation]);
+    (async () => {
+      const saved = await getUserKeywords();
+      if (saved.length) {
+        setCategories(saved);
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     // Initialize animations for existing categories
@@ -138,11 +142,23 @@ const CategoriesScreen = ({ navigation }) => {
     outputRange: [colors.border, colors.primary],
   });
 
+  const persistCategories = async (next) => {
+    const normalized = [...new Set(next.map((x) => String(x || "").trim().toLowerCase()).filter(Boolean))];
+    setCategories(normalized);
+    await setUserKeywords(normalized);
+    const token = await getAccessToken();
+    if (token) {
+      await trackKeywords(normalized);
+    }
+    return normalized;
+  };
+
   const addCategory = async () => {
     if (!newCategory.trim()) return;
     
-    if (categories.includes(newCategory.trim())) {
-      setShowSuccess(false);
+    const candidate = newCategory.trim().toLowerCase();
+    if (categories.includes(candidate)) {
+      error("This category already exists.");
       return;
     }
     
@@ -150,7 +166,11 @@ const CategoriesScreen = ({ navigation }) => {
     // Simulate API call
     await new Promise(resolve => setTimeout(resolve, 500));
     
-    setCategories([...categories, newCategory.trim()]);
+    try {
+      await persistCategories([...categories, candidate]);
+    } catch {
+      error("Failed to save category.");
+    }
     setNewCategory("");
     setLoading(false);
     setShowSuccess(true);
@@ -163,10 +183,11 @@ const CategoriesScreen = ({ navigation }) => {
 
   const handleDelete = async () => {
     setLoading(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    setCategories(categories.filter((c) => c !== categoryToDelete));
+    try {
+      await persistCategories(categories.filter((c) => c !== categoryToDelete));
+    } catch {
+      error("Failed to remove category.");
+    }
     setCategoryToDelete(null);
     setShowConfirm(false);
     setLoading(false);

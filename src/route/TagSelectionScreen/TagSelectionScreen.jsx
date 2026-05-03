@@ -16,15 +16,17 @@ import { ContinueButton } from './components/ContinueButton';
 import { newsTagsWithSubcategories } from './constants/newsCategories';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
+import { getUserKeywords } from '../../utils/userKeywordsStorage';
 
 const { width, height } = Dimensions.get('window');
 
-const TagSelectionScreen = ({ navigation }) => {
+const TagSelectionScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
     const { colors } = theme;
     const [selectedTags, setSelectedTags] = useState([]);
     const [searchText, setSearchText] = useState('');
     const [loading, setLoading] = useState(false);
+    const { fromSettings = false, selectedTags: incomingSelectedTags = [] } = route?.params || {};
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -91,6 +93,38 @@ const TagSelectionScreen = ({ navigation }) => {
         ]).start();
     }, []);
 
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            const saved = await getUserKeywords();
+            const seed = [...saved, ...incomingSelectedTags]
+                .map((x) => String(x || '').trim().toLowerCase())
+                .filter(Boolean);
+            if (!seed.length || !mounted) return;
+
+            const next = new Set();
+            const mainTags = Object.keys(newsTagsWithSubcategories);
+            for (const main of mainTags) {
+                const subs = newsTagsWithSubcategories[main] || [];
+                if (seed.includes(main)) {
+                    next.add(main);
+                }
+                for (const sub of subs) {
+                    if (seed.includes(sub)) {
+                        next.add(main);
+                        next.add(sub);
+                    }
+                }
+            }
+            if (next.size) {
+                setSelectedTags(Array.from(next));
+            }
+        })();
+        return () => {
+            mounted = false;
+        };
+    }, [incomingSelectedTags]);
+
     const mainTags = Object.keys(newsTagsWithSubcategories);
 
     // Filter tags based on search text
@@ -137,7 +171,7 @@ const TagSelectionScreen = ({ navigation }) => {
         try {
             // Simulate API call
             await new Promise(resolve => setTimeout(resolve, 500));
-            navigation.navigate('KeywordSelection', { selectedTags });
+            navigation.navigate('KeywordSelection', { selectedTags, fromSettings });
         } catch (error) {
             console.error('Error:', error);
         } finally {
@@ -448,9 +482,10 @@ const styles = StyleSheet.create({
     tagsContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
+        alignItems: 'center',
         marginBottom: 30,
-        gap: 10,
+        gap: 8,
     },
 });
 

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useCallback } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ScrollView, StatusBar, StyleSheet, Animated, View, Dimensions, TextInput, TouchableOpacity, Modal, Pressable, Image } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
@@ -15,13 +16,15 @@ import { addBookmark, confirmProfileVerification, getProfile, getUserArticleDeta
 import Text from "../../components/ui/Text";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const PROFILE_CACHE_KEY = "trak_profile_cache_v1";
+const PROFILE_BOOKMARKS_CACHE_KEY = "trak_profile_bookmarks_cache_v1";
 
 const UserProfileScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { colors } = theme;
-  const { logout, isAdmin } = useAuth();
+  const { logout, isAdmin, user } = useAuth();
   const [bookmarks, setBookmarks] = useState([]);
-  const [profile, setProfile] = useState(null);
+  const [profile, setProfile] = useState(user || null);
   const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
   const [votedItems, setVotedItems] = useState({});
   const [verificationChannel, setVerificationChannel] = useState("email");
@@ -41,10 +44,38 @@ const UserProfileScreen = ({ navigation }) => {
   const circle2Anim = useRef(new Animated.Value(0)).current;
   const circle3Anim = useRef(new Animated.Value(0)).current;
 
+  const hydrateFromCache = useCallback(async () => {
+    try {
+      const rawProfile = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
+      if (rawProfile) {
+        const cachedProfile = JSON.parse(rawProfile);
+        if (cachedProfile && typeof cachedProfile === "object") {
+          setProfile((prev) => prev || cachedProfile);
+        }
+      }
+    } catch (_) {
+      // ignore cache parse issues
+    }
+    try {
+      const rawBookmarks = await AsyncStorage.getItem(PROFILE_BOOKMARKS_CACHE_KEY);
+      if (rawBookmarks) {
+        const cachedRows = JSON.parse(rawBookmarks);
+        if (Array.isArray(cachedRows) && cachedRows.length) {
+          setBookmarks(cachedRows);
+          setBookmarkedItems(new Set(cachedRows.map((b) => String(b.id))));
+          setStats((prev) => ({ ...prev, saved: cachedRows.length }));
+        }
+      }
+    } catch (_) {
+      // ignore cache parse issues
+    }
+  }, []);
+
   const loadProfileData = useCallback(async () => {
     try {
       const p = await getProfile();
       setProfile(p);
+      await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(p));
       setStats((prev) => ({
         ...prev,
         following: Number(p?.following_count || 0),
@@ -56,44 +87,49 @@ const UserProfileScreen = ({ navigation }) => {
     try {
       const response = await listBookmarks();
       const rows = response.results || [];
-      const detailed = await Promise.all(
+      const quickRows = rows.map((r) => ({
+        id: r.article_id || r.id,
+        title: r.title || "Saved article",
+        source: "TRAK",
+        excerpt: "",
+        content: "",
+        summary: "",
+        date: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
+        time: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
+        category: "Saved",
+        readTime: 4,
+        votes: 0,
+      }));
+      setBookmarks(quickRows);
+      setBookmarkedItems(new Set(quickRows.map((b) => String(b.id))));
+      setStats((prev) => ({ ...prev, saved: quickRows.length }));
+
+      const detailed = await Promise.allSettled(
         rows.map(async (r) => {
-          try {
-            const full = await getUserArticleDetail(r.article_id);
-            return {
-              ...full,
-              id: full.id || r.article_id || r.id,
-              source: full.source || "TRAK",
-              title: full.title || r.title || "Saved article",
-              excerpt: full.excerpt || full.content || "",
-              content: full.content || full.excerpt || "",
-              date: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
-              time: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
-              category: full.category || "Saved",
-              readTime: full.readTime || 4,
-              votes: Number(full.votes || 0),
-            };
-          } catch {
-            return {
-              id: r.article_id || r.id,
-              title: r.title || "Saved article",
-              source: "TRAK",
-              excerpt: "",
-              content: "",
-              summary: "",
-              date: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
-              time: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
-              category: "Saved",
-              readTime: 4,
-              votes: 0,
-            };
-          }
+          const full = await getUserArticleDetail(r.article_id);
+          return {
+            ...full,
+            id: full.id || r.article_id || r.id,
+            source: full.source || "TRAK",
+            title: full.title || r.title || "Saved article",
+            excerpt: full.excerpt || full.content || "",
+            content: full.content || full.excerpt || "",
+            date: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
+            time: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
+            category: full.category || "Saved",
+            readTime: full.readTime || 4,
+            votes: Number(full.votes || 0),
+          };
         })
       );
-      const cleaned = detailed.filter(Boolean);
+      const cleaned = detailed.map((r, i) => {
+        if (r.status === "fulfilled" && r.value) return r.value;
+        return quickRows[i];
+      });
       setBookmarks(cleaned);
       setBookmarkedItems(new Set(cleaned.map((b) => String(b.id))));
       setStats((prev) => ({ ...prev, saved: cleaned.length }));
+      await AsyncStorage.setItem(PROFILE_BOOKMARKS_CACHE_KEY, JSON.stringify(cleaned));
     } catch {
       setBookmarks([]);
       setBookmarkedItems(new Set());
@@ -101,6 +137,7 @@ const UserProfileScreen = ({ navigation }) => {
   }, []);
 
   useEffect(() => {
+    hydrateFromCache();
     loadProfileData();
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -133,7 +170,7 @@ const UserProfileScreen = ({ navigation }) => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, slideAnim, loadProfileData]);
+  }, [fadeAnim, slideAnim, hydrateFromCache, loadProfileData]);
 
   useFocusEffect(
     useCallback(() => {
@@ -165,7 +202,7 @@ const UserProfileScreen = ({ navigation }) => {
     const newVote = previousVote === type ? null : type;
     setVotedItems((prev) => ({ ...prev, [itemId]: newVote }));
     try {
-      await setReaction(itemId, newVote || "none");
+      await setReaction(itemId, newVote === "up" ? "like" : newVote === "down" ? "dislike" : "none");
     } catch {
       setVotedItems((prev) => ({ ...prev, [itemId]: previousVote }));
     }

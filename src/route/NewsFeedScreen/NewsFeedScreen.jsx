@@ -1,7 +1,7 @@
 // ============================================
 // NewsFeedScreen.jsx - WITH SKELETON LOADING
 // ============================================
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
     View,
     ScrollView,
@@ -13,13 +13,16 @@ import {
     Dimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import { FeedHeader } from './components/FeedHeader';
 import { TabBar } from './components/TabBar';
 import { NewsCard } from '../../components/NewsCard';
-import { addBookmark, getUserFeed, listBookmarks, removeBookmark, setReaction } from '../../utils/Service/api';
+import { addBookmark, getUserFeed, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { resetTabBarVisibility, setTabBarHidden } from '../../navigation/tabBarVisibility';
+import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
+import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -119,7 +122,13 @@ const NewsFeedScreen = ({ navigation }) => {
     const loadNews = async () => {
         try {
             setLoading(true);
-            const response = await getUserFeed();
+            const cachedReactions = await getReactionMap().catch(() => ({}));
+            const [response, reactionsRes] = await Promise.all([
+                getUserFeed(),
+                listReactions().catch(() => ({ results: [] })),
+            ]);
+            const serverReactionMap = await mergeReactionRows(reactionsRes.results || []).catch(() => ({}));
+            const reactionMap = { ...cachedReactions, ...serverReactionMap };
             const mapped = (response.results || []).map((item, idx) => ({
                 ...item,
                 id: item.id || item.canonical_url || String(idx),
@@ -136,8 +145,10 @@ const NewsFeedScreen = ({ navigation }) => {
                 trending: Boolean(item.topic_keywords?.length),
                 votes: 0,
                 readTime: 4,
+                userReaction: reactionMap[String(item.id || item.canonical_url || String(idx))] || null,
             }));
             setNewsData(mapped);
+            setVotedItems(reactionMap);
         } catch (error) {
             console.error('Error loading news:', error);
             setNewsData([]);
@@ -150,6 +161,32 @@ const NewsFeedScreen = ({ navigation }) => {
         loadNews();
     }, []);
 
+    const syncInteractionsFromServer = useCallback(async () => {
+        const [bmRes, reactRes] = await Promise.all([
+            listBookmarks().catch(() => ({ results: [] })),
+            listReactions().catch(() => ({ results: [] })),
+        ]);
+        const ids = (bmRes.results || []).map((b) => String(b.article_id));
+        setBookmarkedItems(new Set(ids));
+        await setBookmarkIds(ids).catch(() => {});
+
+        const reactionMap = await mergeReactionRows(reactRes.results || []).catch(() => ({}));
+        setVotedItems(reactionMap);
+        setNewsData((prev) =>
+            prev.map((n) => ({
+                ...n,
+                userReaction: reactionMap[String(n.id)] || null,
+            }))
+        );
+    }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            // Refresh quick interaction state whenever returning from detail/profile/bookmarks.
+            syncInteractionsFromServer();
+        }, [syncInteractionsFromServer])
+    );
+
     useEffect(() => {
         resetTabBarVisibility();
         return () => resetTabBarVisibility();
@@ -157,8 +194,14 @@ const NewsFeedScreen = ({ navigation }) => {
 
     useEffect(() => {
         (async () => {
+            const cached = await getBookmarkIds().catch(() => []);
+            if (cached.length) {
+                setBookmarkedItems(new Set(cached.map(String)));
+            }
             const res = await listBookmarks().catch(() => ({ results: [] }));
-            setBookmarkedItems(new Set((res.results || []).map((b) => String(b.article_id))));
+            const ids = (res.results || []).map((b) => String(b.article_id));
+            setBookmarkedItems(new Set(ids));
+            await setBookmarkIds(ids).catch(() => {});
         })();
     }, []);
 
@@ -217,46 +260,68 @@ const NewsFeedScreen = ({ navigation }) => {
     };
 
     const handleVote = async (itemId, type) => {
-        const previousVote = votedItems[itemId];
+        const id = String(itemId);
+        const previousVote = votedItems[id];
         const newVote = previousVote === type ? null : type;
 
         setVotedItems(prev => ({
             ...prev,
-            [itemId]: newVote
+            [id]: newVote
         }));
+        setReactionForArticle(id, newVote).catch(() => {});
+        setNewsData((prev) =>
+            prev.map((n) => {
+                if (String(n.id) !== id) return n;
+                const prevDelta = previousVote === 'up' ? 1 : previousVote === 'down' ? -1 : 0;
+                const nextDelta = newVote === 'up' ? 1 : newVote === 'down' ? -1 : 0;
+                return { ...n, votes: Number(n.votes || 0) - prevDelta + nextDelta, userReaction: newVote };
+            })
+        );
 
         try {
-            await setReaction(itemId, newVote || 'none');
+            await setReaction(id, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
         } catch (error) {
             setVotedItems(prev => ({
                 ...prev,
-                [itemId]: previousVote
+                [id]: previousVote
             }));
+            setReactionForArticle(id, previousVote || null).catch(() => {});
+            setNewsData((prev) =>
+                prev.map((n) => {
+                    if (String(n.id) !== id) return n;
+                    const nextDelta = newVote === 'up' ? 1 : newVote === 'down' ? -1 : 0;
+                    const prevDelta = previousVote === 'up' ? 1 : previousVote === 'down' ? -1 : 0;
+                    return { ...n, votes: Number(n.votes || 0) - nextDelta + prevDelta, userReaction: previousVote || null };
+                })
+            );
         }
     };
 
     const handleBookmark = async (itemId) => {
-        const wasBookmarked = bookmarkedItems.has(itemId);
+        const id = String(itemId);
+        const wasBookmarked = bookmarkedItems.has(id);
         setBookmarkedItems(prev => {
             const next = new Set(prev);
-            if (next.has(itemId)) next.delete(itemId);
-            else next.add(itemId);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            setBookmarkIds(Array.from(next)).catch(() => {});
             return next;
         });
 
         try {
-            const article = newsData.find((n) => String(n.id) === String(itemId));
+            const article = newsData.find((n) => String(n.id) === id);
             if (wasBookmarked) {
-                await removeBookmark(itemId);
+                await removeBookmark(id);
             } else {
-                await addBookmark(itemId, article?.title || '', article?.canonical_url || article?.url || '');
+                await addBookmark(id, article?.title || '', article?.canonical_url || article?.url || '');
             }
         } catch (error) {
             console.error('Error bookmarking:', error);
             setBookmarkedItems(prev => {
                 const rollback = new Set(prev);
-                if (rollback.has(itemId)) rollback.delete(itemId);
-                else rollback.add(itemId);
+                if (rollback.has(id)) rollback.delete(id);
+                else rollback.add(id);
+                setBookmarkIds(Array.from(rollback)).catch(() => {});
                 return rollback;
             });
         }

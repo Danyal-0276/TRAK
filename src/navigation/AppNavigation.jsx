@@ -1,8 +1,11 @@
 import React from 'react';
+import { ActivityIndicator, View } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AuthStack from './AuthStack.jsx';
 import MainAppStack from './MainAppStack.jsx';
+import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../theme/ThemeContext';
 import {
     EditProfileScreen,
     PrivacyScreen,
@@ -18,9 +21,9 @@ import {
 
 const Stack = createNativeStackNavigator();
 
-const RootStack = () => (
+const RootStack = ({ initialRouteName }) => (
     <Stack.Navigator
-        initialRouteName="OpeningScreen"
+        initialRouteName={initialRouteName}
         screenOptions={{ headerShown: false }}
     >
         {/* Auth Stack - contains OpeningScreen as initial */}
@@ -52,9 +55,27 @@ const RootStack = () => (
 );
 
 export default function AppNavigation() {
+    const { user, bootstrapped } = useAuth();
+    const { theme } = useTheme();
+    // Show a fast branded loader instead of a black frame.
+    if (!bootstrapped) {
+        return (
+            <View
+                style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: theme.colors.background,
+                }}
+            >
+                <ActivityIndicator size="small" color={theme.colors.primary} />
+            </View>
+        );
+    }
+    const initialRouteName = user ? 'NewsFeed' : 'OpeningScreen';
     return (
         <NavigationContainer>
-            <RootStack />
+            <RootStack initialRouteName={initialRouteName} />
         </NavigationContainer>
     );
 }

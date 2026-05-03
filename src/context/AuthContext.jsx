@@ -1,10 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AUTH_PREFIX, API_BASE } from '../config/api';
 import { apiFetch, clearTokens, getAccessToken, setTokens } from '../api/client';
 import { registerDeviceToken } from '../api/notificationsApi';
 import { getOrCreatePushToken } from '../api/pushToken';
 
 const AuthContext = createContext(null);
+const USER_CACHE_KEY = 'trak_user_cache_v1';
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
@@ -15,6 +17,7 @@ export function AuthProvider({ children }) {
         const res = await apiFetch(`${AUTH_PREFIX}/me/`, {}, API_BASE);
         if (!res.ok) return null;
         const data = await res.json();
+        await AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(data)).catch(() => {});
         return data;
     }, []);
 
@@ -24,19 +27,45 @@ export function AuthProvider({ children }) {
             const token = await getAccessToken();
             if (!token) {
                 setUser(null);
+                await AsyncStorage.removeItem(USER_CACHE_KEY).catch(() => {});
+                setBootstrapped(true);
+                setLoading(false);
                 return;
             }
-            const me = await fetchMe();
-            setUser(me);
-            if (me) {
-                const deviceToken = await getOrCreatePushToken();
-                await registerDeviceToken(deviceToken, 'mobile');
+            const cachedRaw = await AsyncStorage.getItem(USER_CACHE_KEY).catch(() => null);
+            if (cachedRaw) {
+                try {
+                    const cachedUser = JSON.parse(cachedRaw);
+                    if (cachedUser && typeof cachedUser === 'object') {
+                        setUser(cachedUser);
+                    }
+                } catch (_) {
+                    // ignore invalid cache
+                }
             }
-        } catch {
-            setUser(null);
-        } finally {
-            setLoading(false);
+            // Unblock UI immediately after local session restore.
             setBootstrapped(true);
+            setLoading(false);
+
+            // Refresh user + push token in background (non-blocking).
+            (async () => {
+                try {
+                    const me = await fetchMe();
+                    if (me) setUser(me);
+                    if (me) {
+                        const deviceToken = await getOrCreatePushToken();
+                        await registerDeviceToken(deviceToken, 'mobile');
+                    }
+                } catch {
+                    // Keep cached/saved session on transient failures.
+                }
+            })();
+            return;
+        } catch {
+            // Keep cached/saved session on transient network issues.
+        } finally {
+            setBootstrapped(true);
+            setLoading(false);
         }
     }, [fetchMe]);
 
@@ -46,7 +75,11 @@ export function AuthProvider({ children }) {
 
     const login = async (email, password) => {
         const normalizedPassword = typeof password === 'string' ? password.trim() : password;
-        const res = await fetch(`${AUTH_PREFIX}/login/`, {
+        const url = `${AUTH_PREFIX}/login/`;
+        if (__DEV__) {
+            console.warn('[auth] login POST', url);
+        }
+        const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
             body: JSON.stringify({ email: email.trim().toLowerCase(), password: normalizedPassword }),
@@ -58,6 +91,7 @@ export function AuthProvider({ children }) {
         await setTokens(data.access, data.refresh);
         const u = data.user || (await fetchMe());
         setUser(u);
+        await AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(u || {})).catch(() => {});
         const deviceToken = await getOrCreatePushToken();
         await registerDeviceToken(deviceToken, 'mobile');
         return u;
@@ -84,6 +118,7 @@ export function AuthProvider({ children }) {
         await setTokens(data.access, data.refresh);
         const u = data.user || (await fetchMe());
         setUser(u);
+        await AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(u || {})).catch(() => {});
         const deviceToken = await getOrCreatePushToken();
         await registerDeviceToken(deviceToken, 'mobile');
         return u;
@@ -91,6 +126,7 @@ export function AuthProvider({ children }) {
 
     const logout = async () => {
         await clearTokens();
+        await AsyncStorage.removeItem(USER_CACHE_KEY).catch(() => {});
         setUser(null);
     };
 

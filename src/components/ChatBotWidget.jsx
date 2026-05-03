@@ -25,10 +25,20 @@ const QUICK_PROMPTS = [
   'Show trending topics',
 ];
 
+function formatCaughtMessage(e) {
+  if (e == null) return 'Chat failed';
+  if (typeof e === 'string') return e;
+  if (typeof e === 'object' && typeof e.message === 'string') return e.message;
+  return 'Chat failed';
+}
+
 const ChatBotWidget = () => {
   const { theme } = useTheme();
   const { confirm } = useFeedback();
-  const { colors } = theme;
+  const colors = theme?.colors;
+  if (!colors) {
+    return null;
+  }
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -126,8 +136,8 @@ const ChatBotWidget = () => {
       if (!open) {
         setHasUnread(true);
       }
-    } catch (error) {
-      setMessages((prev) => [...prev, { role: 'bot', text: error.message || 'Chat failed' }]);
+    } catch (e) {
+      setMessages((prev) => [...prev, { role: 'bot', text: formatCaughtMessage(e) }]);
     } finally {
       setLoading(false);
     }

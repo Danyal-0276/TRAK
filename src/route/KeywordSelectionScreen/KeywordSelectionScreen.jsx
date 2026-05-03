@@ -28,8 +28,12 @@ import { trackKeywords } from '../../api/newsApi';
 import { getAccessToken } from '../../api/client';
 import { getUserKeywords, setUserKeywords } from '../../utils/userKeywordsStorage';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
+import { newsTagsWithSubcategories } from '../TagSelectionScreen/constants/newsCategories';
 
 const { width, height } = Dimensions.get('window');
+const BUILTIN_TAXONOMY_TERMS = new Set(
+    Object.entries(newsTagsWithSubcategories).flatMap(([main, subs]) => [main, ...(subs || [])])
+);
 
 const KeywordSelectionScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
@@ -110,7 +114,8 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
     useEffect(() => {
         (async () => {
             const saved = await getUserKeywords();
-            if (saved.length) setSelectedKeywords(saved);
+            const customOnly = saved.filter((k) => !BUILTIN_TAXONOMY_TERMS.has(String(k || '').toLowerCase()));
+            if (customOnly.length) setSelectedKeywords(customOnly);
         })();
     }, []);
 

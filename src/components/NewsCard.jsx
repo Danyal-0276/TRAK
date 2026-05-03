@@ -24,6 +24,11 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const safeExcerpt = String(item?.excerpt || item?.content || '');
     const safeCategory = String(item?.category || 'General');
     const safeVotes = Number(item?.votes || 0);
+    const initialReaction = item?.userReaction || null;
+    const currentReaction = (votedItems && votedItems[safeId] !== undefined) ? votedItems[safeId] : initialReaction;
+    const voteDelta = currentReaction === 'up' ? 1 : currentReaction === 'down' ? -1 : 0;
+    const initialDelta = initialReaction === 'up' ? 1 : initialReaction === 'down' ? -1 : 0;
+    const displayedVotes = safeVotes - initialDelta + voteDelta;
     const isBookmarked =
         bookmarkedItems?.has?.(item?.id) || bookmarkedItems?.has?.(String(item?.id));
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -338,12 +343,12 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             >
                                 <ChevronUp
                                     size={18}
-                                    color={votedItems[safeId] === 'up' ? colors.textPrimary : colors.textSecondary}
+                                    color={currentReaction === 'up' ? colors.textPrimary : colors.textSecondary}
                                     strokeWidth={2.5}
                                 />
                             </TouchableOpacity>
 
-                            <Text style={cardStyles.voteCount}>{safeVotes}</Text>
+                            <Text style={cardStyles.voteCount}>{displayedVotes}</Text>
 
                             <TouchableOpacity
                                 style={cardStyles.voteButton}
@@ -354,7 +359,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             >
                                 <ChevronDown
                                     size={18}
-                                    color={votedItems[safeId] === 'down' ? colors.textPrimary : colors.textSecondary}
+                                    color={currentReaction === 'down' ? colors.textPrimary : colors.textSecondary}
                                     strokeWidth={2.5}
                                 />
                             </TouchableOpacity>

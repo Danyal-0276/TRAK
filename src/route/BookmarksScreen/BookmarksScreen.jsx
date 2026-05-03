@@ -79,7 +79,7 @@ const BookmarksScreen = ({ navigation }) => {
         const newVote = previousVote === type ? null : type;
         setVotedItems((prev) => ({ ...prev, [itemId]: newVote }));
         try {
-            await setReaction(itemId, newVote || 'none');
+            await setReaction(itemId, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
         } catch {
             setVotedItems((prev) => ({ ...prev, [itemId]: previousVote }));
         }
