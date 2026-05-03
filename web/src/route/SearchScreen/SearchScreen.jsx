@@ -4,14 +4,8 @@ import { useTheme } from "../../theme/ThemeContext";
 import SearchBar from "./components/SearchBar";
 import Tabs from "./components/tabs";
 import TrendingTopics from "./components/TrendingTopics";
-import RecentSearches from "./components/RecentSearches";
 import { NewsCard } from "../../components/NewsCard";
 import { loadFeedItems } from "../../utils/loadFeed";
-import {
-  getRecentSearches,
-  addRecentSearch,
-  deleteRecentSearch,
-} from "../../utils/recentSearchesStorage";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
 import { addBookmark, listBookmarks, removeBookmark, setReaction } from "../../utils/Service/api";
 
@@ -53,7 +47,6 @@ const SearchScreen = () => {
     const [allNews, setAllNews] = useState([]);
     const [filteredNews, setFilteredNews] = useState([]);
     const [trendingTopics, setTrendingTopics] = useState([]);
-    const [recentSearches, setRecentSearches] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || "");
     const [debouncedQuery, setDebouncedQuery] = useState(searchParams.get('q') || "");
@@ -68,6 +61,8 @@ const SearchScreen = () => {
     const [articleDislikeCount, setArticleDislikeCount] = useState(0);
     const { success } = useUIFeedback();
     const searchRef = useRef(null);
+    const lastScrollY = useRef(0);
+    const [headerHidden, setHeaderHidden] = useState(false);
 
     const [categories, setCategories] = useState(["All"]);
 
@@ -94,7 +89,6 @@ const SearchScreen = () => {
                 setCategories(["All", ...Array.from(categorySet).sort()]);
                 if (!q) {
                     setTrendingTopics(deriveTrendingFromArticles(newsData));
-                    setRecentSearches(await getRecentSearches());
                 }
                 setFilteredNews([...newsData]);
             } catch (error) {
@@ -133,19 +127,6 @@ const SearchScreen = () => {
         searchRef.current?.collapseKeepText();
     };
 
-    const handleSearchSelect = async (query) => {
-        setSearchQuery(query);
-        setActiveTab("All"); // Reset to All tab when searching
-        searchRef.current?.collapseKeepText();
-
-        try {
-            const next = await addRecentSearch(query);
-            setRecentSearches(next);
-        } catch (error) {
-            console.error("Error updating recent searches:", error);
-        }
-    };
-
     const handleClearSearch = () => {
         setSearchQuery("");
         setActiveTab("All");
@@ -155,14 +136,20 @@ const SearchScreen = () => {
         }
     };
 
-    const handleDeleteSearch = async (searchId) => {
-        try {
-            const next = await deleteRecentSearch(searchId);
-            setRecentSearches(next);
-        } catch (error) {
-            console.error("Error deleting search:", error);
-        }
-    };
+    useEffect(() => {
+        const onScroll = () => {
+            const y = window.scrollY || 0;
+            const diff = y - lastScrollY.current;
+            if (Math.abs(diff) > 6) {
+                if (diff > 0 && y > 80) setHeaderHidden(true);
+                if (diff < 0) setHeaderHidden(false);
+            }
+            if (y < 24) setHeaderHidden(false);
+            lastScrollY.current = y;
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, []);
 
     useEffect(() => {
         // Don't filter if news haven't loaded yet
@@ -329,52 +316,63 @@ const SearchScreen = () => {
                 width: '100%',
                 padding: '0 24px 24px 24px',
             }}>
-                {/* Header Section */}
                 <div style={{
-                    marginTop: '0',
-                    marginBottom: '24px',
-                    paddingTop: '0',
+                    position: 'sticky',
+                    top: 0,
+                    zIndex: 20,
+                    backgroundColor,
+                    paddingTop: '6px',
+                    marginBottom: '12px',
+                    transform: headerHidden ? 'translateY(-118%)' : 'translateY(0)',
+                    opacity: headerHidden ? 0 : 1,
+                    transition: 'transform 240ms ease, opacity 220ms ease',
                 }}>
-                    <h1 style={{
-                        fontSize: '28px',
-                        fontWeight: '700',
-                        color: textPrimary,
-                        margin: '0 0 8px 0',
+                    {/* Header Section */}
+                    <div style={{
+                        marginTop: '0',
+                        marginBottom: '20px',
                         paddingTop: '0',
-                        letterSpacing: '-0.5px',
                     }}>
-                        Explore Articles
-                    </h1>
-                    <p style={{
-                        fontSize: '15px',
-                        color: textSecondary,
-                        margin: '0',
-                        lineHeight: '1.5',
+                        <h1 style={{
+                            fontSize: '28px',
+                            fontWeight: '700',
+                            color: textPrimary,
+                            margin: '0 0 8px 0',
+                            paddingTop: '0',
+                            letterSpacing: '-0.5px',
+                        }}>
+                            Explore Articles
+                        </h1>
+                        <p style={{
+                            fontSize: '15px',
+                            color: textSecondary,
+                            margin: '0',
+                            lineHeight: '1.5',
+                        }}>
+                            Search and discover articles from all categories
+                        </p>
+                    </div>
+
+                    {/* Search Bar */}
+                    <div style={{ marginBottom: '18px' }}>
+                        <SearchBar
+                            ref={searchRef}
+                            onSearch={handleSearch}
+                            initialQuery={searchQuery}
+                        />
+                    </div>
+
+                    {/* Tab Bar */}
+                    <div style={{
+                        display: 'flex',
+                        gap: '8px',
+                        marginBottom: '8px',
+                        borderBottom: '1px solid #e5e7eb',
+                        paddingBottom: '0',
+                        overflowX: 'auto',
+                        scrollbarWidth: 'none',
+                        msOverflowStyle: 'none',
                     }}>
-                        Search and discover articles from all categories
-                    </p>
-                </div>
-
-                {/* Search Bar */}
-                <div style={{ marginBottom: '24px' }}>
-                    <SearchBar
-                        ref={searchRef}
-                        onSearch={handleSearch}
-                        initialQuery={searchQuery}
-                    />
-                </div>
-
-                {/* Tab Bar */}
-                <div style={{
-                    display: 'flex',
-                    gap: '8px',
-                    marginBottom: '32px',
-                    borderBottom: '1px solid #e5e7eb',
-                    paddingBottom: '0',
-                    overflowX: 'auto',
-                    scrollbarWidth: 'none',
-                    msOverflowStyle: 'none',
-                }}>
                     {categories.map((tab) => {
                         // Count articles for this category
                         const count = tab === "All" 
@@ -442,6 +440,7 @@ const SearchScreen = () => {
                             </button>
                         );
                     })}
+                    </div>
                 </div>
                 <style>{`
                     div::-webkit-scrollbar {
@@ -920,13 +919,6 @@ const SearchScreen = () => {
                                 <TrendingTopics 
                                     topics={trendingTopics}
                                     onTopicPress={handleTopicPress}
-                                    searchQuery={searchQuery}
-                                />
-                                
-                                <RecentSearches 
-                                    searches={recentSearches}
-                                    onSearchSelect={handleSearchSelect}
-                                    onDeleteSearch={handleDeleteSearch}
                                     searchQuery={searchQuery}
                                 />
                             </>

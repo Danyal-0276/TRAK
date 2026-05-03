@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
-import { addBookmark, getUserArticleDetail, listBookmarks, removeBookmark, setReaction } from '../../utils/Service/api';
+import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
+import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 
 const BookmarksScreen = () => {
     const navigate = useNavigate();
@@ -13,10 +15,19 @@ const BookmarksScreen = () => {
     const loadBookmarks = async () => {
         try {
             setLoading(true);
-            const response = await listBookmarks();
+            const cachedIds = getBookmarkIds();
+            if (cachedIds.length) setBookmarkedItems(new Set(cachedIds));
+            const cachedReactions = getReactionMap();
+            if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
+            const [response, reactRes] = await Promise.all([
+                listBookmarks(),
+                listReactions().catch(() => ({ results: [] })),
+            ]);
             const rows = response.results || [];
             const ids = new Set(rows.map((r) => String(r.article_id)));
             setBookmarkedItems(ids);
+            setBookmarkIds(Array.from(ids));
+            setVotedItems(mergeReactionRows(reactRes.results || []));
             const detailed = await Promise.all(
                 rows.map(async (r) => {
                     try {
@@ -66,21 +77,24 @@ const BookmarksScreen = () => {
     };
 
     const handleVote = async (itemId, type) => {
-        const previousVote = votedItems[itemId];
+        const id = String(itemId);
+        const previousVote = votedItems[id];
         const newVote = previousVote === type ? null : type;
 
         setVotedItems(prev => ({
             ...prev,
-            [itemId]: newVote
+            [id]: newVote
         }));
+        setReactionForArticle(id, newVote);
 
         try {
-            await setReaction(itemId, newVote || 'none');
+            await setReaction(id, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
         } catch (error) {
             setVotedItems(prev => ({
                 ...prev,
-                [itemId]: previousVote
+                [id]: previousVote
             }));
+            setReactionForArticle(id, previousVote || null);
         }
     };
 
@@ -92,6 +106,7 @@ const BookmarksScreen = () => {
             } else {
                 newSet.add(itemId);
             }
+            setBookmarkIds(Array.from(newSet));
             return newSet;
         });
 
