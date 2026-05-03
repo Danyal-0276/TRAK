@@ -2,7 +2,7 @@
 // FILE: screens/TagSelectionScreen.jsx
 // ============================================
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, StatusBar, ScrollView, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, ScrollView, Animated, Dimensions, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { Tags } from 'lucide-react-native';
@@ -38,6 +38,12 @@ const TagSelectionScreen = ({ navigation, route }) => {
     const circle1Anim = useRef(new Animated.Value(0)).current;
     const circle2Anim = useRef(new Animated.Value(0)).current;
     const circle3Anim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+            UIManager.setLayoutAnimationEnabledExperimental(true);
+        }
+    }, []);
 
     useEffect(() => {
         // Staggered entrance animations
@@ -128,35 +134,43 @@ const TagSelectionScreen = ({ navigation, route }) => {
 
     const mainTags = Object.keys(newsTagsWithSubcategories);
 
+    const animateLayout = () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    };
+
     // Filter tags based on search text
     const filteredTags = mainTags.filter(tag => 
         tag.toLowerCase().includes(searchText.toLowerCase())
     );
 
     // Toggle main category selection
-    const toggleMainTag = (tag) => {
+    const onMainTagPress = (tag) => {
+        animateLayout();
         setSelectedTags(prev => {
-            if (prev.includes(tag)) {
-                // Remove main tag and all its subcategories
-                const subcategories = newsTagsWithSubcategories[tag];
-                setExpandedMainTags((expanded) => expanded.filter((t) => t !== tag));
-                return prev.filter(t => t !== tag && !subcategories.includes(t));
-            } else {
-                // Add main tag
+            if (!prev.includes(tag)) {
                 setExpandedMainTags((expanded) => (expanded.includes(tag) ? expanded : [...expanded, tag]));
                 return [...prev, tag];
             }
+            // Already selected: toggle open/close only (don't deselect)
+            setExpandedMainTags((expanded) =>
+                expanded.includes(tag) ? expanded.filter((t) => t !== tag) : [...expanded, tag]
+            );
+            return prev;
         });
     };
 
-    const toggleExpandMainTag = (tag) => {
-        setExpandedMainTags((prev) =>
-            prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
-        );
+    const clearMainTag = (tag) => {
+        animateLayout();
+        setExpandedMainTags((expanded) => expanded.filter((t) => t !== tag));
+        setSelectedTags((prev) => {
+            const subcategories = newsTagsWithSubcategories[tag] || [];
+            return prev.filter((t) => t !== tag && !subcategories.includes(t));
+        });
     };
 
     // Toggle subcategory selection
     const toggleSubTag = (mainTag, subTag) => {
+        animateLayout();
         setSelectedTags(prev => {
             if (prev.includes(subTag)) {
                 // Remove subcategory
@@ -390,10 +404,9 @@ const TagSelectionScreen = ({ navigation, route }) => {
                                     <Tag
                                         label={tag}
                                         isSelected={isSelected}
-                                        onPress={() => toggleMainTag(tag)}
-                                        showExpandToggle={isSelected}
-                                        expanded={isExpanded}
-                                        onToggleExpand={() => toggleExpandMainTag(tag)}
+                                        onPress={() => onMainTagPress(tag)}
+                                        showClear={isSelected}
+                                        onClearSelection={() => clearMainTag(tag)}
                                         selectedSubCount={selectedSubCount}
                                     />
 
@@ -503,7 +516,6 @@ const styles = StyleSheet.create({
         justifyContent: 'flex-start',
         alignItems: 'center',
         marginBottom: 30,
-        gap: 8,
     },
 });
 

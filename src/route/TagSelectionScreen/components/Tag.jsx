@@ -4,7 +4,7 @@
 // ============================================
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { ChevronDown, ChevronUp } from 'lucide-react-native';
+import { X } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 
 export function Tag({
@@ -12,9 +12,8 @@ export function Tag({
     isSelected,
     onPress,
     isSubTag = false,
-    showExpandToggle = false,
-    expanded = false,
-    onToggleExpand,
+    showClear = false,
+    onClearSelection,
     selectedSubCount = 0,
 }) {
     const { theme } = useTheme();
@@ -57,17 +56,13 @@ export function Tag({
                 </Text>
             </TouchableOpacity>
 
-            {showExpandToggle ? (
+            {showClear ? (
                 <TouchableOpacity
                     style={[styles.expandBtn, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
-                    onPress={onToggleExpand}
+                    onPress={onClearSelection}
                     activeOpacity={0.75}
                 >
-                    {expanded ? (
-                        <ChevronUp size={14} color={colors.textSecondary} />
-                    ) : (
-                        <ChevronDown size={14} color={colors.textSecondary} />
-                    )}
+                    <X size={13} color={colors.textSecondary} />
                 </TouchableOpacity>
             ) : null}
         </View>
@@ -78,7 +73,8 @@ const styles = StyleSheet.create({
     wrapper: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
+        marginRight: 8,
+        marginBottom: 8,
     },
     tag: {
         paddingHorizontal: 14,
