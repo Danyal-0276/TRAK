@@ -11,7 +11,6 @@ import { Header } from './components/Header';
 import { SearchBar } from './components/SearchBar';
 import { SelectedCount } from './components/SelectedCount';
 import { Tag } from './components/Tag';
-import { SubcategoriesContainer } from './components/SubcategoriesContainer';
 import { ContinueButton } from './components/ContinueButton';
 import { newsTagsWithSubcategories } from './constants/newsCategories';
 import { useTheme } from '../../theme/ThemeContext';
@@ -394,6 +393,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
                     >
                         {filteredTags.map((tag, index) => {
                             const isSelected = selectedTags.includes(tag);
+                            const subcategories = newsTagsWithSubcategories[tag] || [];
                             const selectedSubCount = (newsTagsWithSubcategories[tag] || []).filter((sub) =>
                                 selectedTags.includes(sub)
                             ).length;
@@ -411,14 +411,20 @@ const TagSelectionScreen = ({ navigation, route }) => {
                                     />
 
                                     {/* Subcategories */}
-                                    {isSelected && isExpanded && (
-                                        <SubcategoriesContainer
-                                            mainTag={tag}
-                                            subcategories={newsTagsWithSubcategories[tag]}
-                                            selectedTags={selectedTags}
-                                            onSubTagPress={toggleSubTag}
-                                        />
-                                    )}
+                                    {isSelected && isExpanded
+                                        ? subcategories.map((subTag, subIndex) => {
+                                              const isSubSelected = selectedTags.includes(subTag);
+                                              return (
+                                                  <Tag
+                                                      key={`${tag}-${subIndex}`}
+                                                      label={subTag}
+                                                      isSelected={isSubSelected}
+                                                      onPress={() => toggleSubTag(tag, subTag)}
+                                                      isSubTag={true}
+                                                  />
+                                              );
+                                          })
+                                        : null}
                                 </React.Fragment>
                             );
                         })}

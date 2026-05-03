@@ -26,14 +26,11 @@ export function SubcategoriesContainer({ mainTag, subcategories, selectedTags, o
 
 const styles = StyleSheet.create({
     subcategoriesContainer: {
-        flexBasis: '100%',
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'flex-start',
         alignItems: 'center',
-        alignContent: 'flex-start',
-        marginTop: 2,
-        marginBottom: 4,
-        paddingLeft: 2,
+        marginRight: 8,
+        marginBottom: 8,
     },
 });
