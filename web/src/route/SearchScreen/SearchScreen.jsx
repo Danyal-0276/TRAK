@@ -7,7 +7,9 @@ import TrendingTopics from "./components/TrendingTopics";
 import { NewsCard } from "../../components/NewsCard";
 import { loadFeedItems } from "../../utils/loadFeed";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
-import { addBookmark, listBookmarks, removeBookmark, setReaction } from "../../utils/Service/api";
+import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from "../../utils/Service/api";
+import { getBookmarkIds, setBookmarkIds } from "../../utils/bookmarksStorage";
+import { getReactionMap, mergeReactionRows, setReactionForArticle } from "../../utils/reactionsStorage";
 
 function deriveTrendingFromArticles(articles) {
   const counts = {};
@@ -76,9 +78,20 @@ const SearchScreen = () => {
         (async () => {
             try {
                 setLoading(true);
+                const cachedBookmarks = new Set(getBookmarkIds());
+                if (cachedBookmarks.size) setBookmarkedItems(cachedBookmarks);
+                const cachedReactions = getReactionMap();
+                if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
                 const newsData = await loadFeedItems({ q });
-                const bookmarks = await listBookmarks().catch(() => ({ results: [] }));
-                setBookmarkedItems(new Set((bookmarks.results || []).map((b) => String(b.article_id))));
+                const [bookmarks, reactions] = await Promise.all([
+                    listBookmarks().catch(() => ({ results: [] })),
+                    listReactions().catch(() => ({ results: [] })),
+                ]);
+                const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
+                setBookmarkedItems(bookmarked);
+                setBookmarkIds(Array.from(bookmarked));
+                const serverReactions = mergeReactionRows(reactions.results || []);
+                setVotedItems({ ...cachedReactions, ...serverReactions });
                 setAllNews(newsData);
                 const categorySet = new Set();
                 newsData.forEach((article) => {
@@ -255,21 +268,24 @@ const SearchScreen = () => {
     };
 
     const handleVote = async (itemId, type) => {
-        const previousVote = votedItems[itemId];
+        const id = String(itemId);
+        const previousVote = votedItems[id];
         const newVote = previousVote === type ? null : type;
 
         setVotedItems(prev => ({
             ...prev,
-            [itemId]: newVote
+            [id]: newVote
         }));
+        setReactionForArticle(id, newVote);
 
         try {
-            await setReaction(itemId, newVote || "none");
+            await setReaction(id, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
         } catch (error) {
             setVotedItems(prev => ({
                 ...prev,
-                [itemId]: previousVote
+                [id]: previousVote
             }));
+            setReactionForArticle(id, previousVote || null);
         }
     };
 
@@ -281,6 +297,7 @@ const SearchScreen = () => {
             } else {
                 newSet.add(itemId);
             }
+            setBookmarkIds(Array.from(newSet));
             return newSet;
         });
 
