@@ -24,6 +24,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
     const { colors } = theme;
     const [selectedTags, setSelectedTags] = useState([]);
     const [expandedMainTags, setExpandedMainTags] = useState([]);
+    const subTagAnimMap = useRef({}).current;
     const [searchText, setSearchText] = useState('');
     const [loading, setLoading] = useState(false);
     const { fromSettings = false, selectedTags: incomingSelectedTags = [] } = route?.params || {};
@@ -137,6 +138,27 @@ const TagSelectionScreen = ({ navigation, route }) => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     };
 
+    const runSubtagOpenAnimation = (mainTag) => {
+        const subcategories = newsTagsWithSubcategories[mainTag] || [];
+        const anims = subcategories.map((subTag, index) => {
+            const key = `${mainTag}::${subTag}`;
+            if (!subTagAnimMap[key]) {
+                subTagAnimMap[key] = new Animated.Value(0);
+            } else {
+                subTagAnimMap[key].setValue(0);
+            }
+            return Animated.timing(subTagAnimMap[key], {
+                toValue: 1,
+                duration: 220,
+                delay: index * 22,
+                useNativeDriver: true,
+            });
+        });
+        if (anims.length) {
+            Animated.parallel(anims).start();
+        }
+    };
+
     // Filter tags based on search text
     const filteredTags = mainTags.filter(tag => 
         tag.toLowerCase().includes(searchText.toLowerCase())
@@ -148,12 +170,16 @@ const TagSelectionScreen = ({ navigation, route }) => {
         setSelectedTags(prev => {
             if (!prev.includes(tag)) {
                 setExpandedMainTags((expanded) => (expanded.includes(tag) ? expanded : [...expanded, tag]));
+                runSubtagOpenAnimation(tag);
                 return [...prev, tag];
             }
             // Already selected: toggle open/close only (don't deselect)
             setExpandedMainTags((expanded) =>
                 expanded.includes(tag) ? expanded.filter((t) => t !== tag) : [...expanded, tag]
             );
+            if (!expandedMainTags.includes(tag)) {
+                runSubtagOpenAnimation(tag);
+            }
             return prev;
         });
     };
@@ -332,10 +358,14 @@ const TagSelectionScreen = ({ navigation, route }) => {
                             </Animated.View>
                         </View>
                         <TextComponent variant="title" style={styles.title}>
-                            Pick tags that are{'\n'}relevant to you
+                            {fromSettings
+                                ? 'Manage categories'
+                                : 'Pick tags that are\nrelevant to you'}
                         </TextComponent>
                         <TextComponent variant="body" color={colors.textSecondary} style={styles.subtitle}>
-                            Select news categories you're interested in to personalize your feed
+                            {fromSettings
+                                ? 'Edit your category preferences. Next, you can review custom keywords.'
+                                : "Select news categories you're interested in to personalize your feed"}
                         </TextComponent>
                     </Animated.View>
 
@@ -414,14 +444,29 @@ const TagSelectionScreen = ({ navigation, route }) => {
                                     {isSelected && isExpanded
                                         ? subcategories.map((subTag, subIndex) => {
                                               const isSubSelected = selectedTags.includes(subTag);
+                                              const key = `${tag}::${subTag}`;
+                                              if (!subTagAnimMap[key]) {
+                                                  subTagAnimMap[key] = new Animated.Value(1);
+                                              }
+                                              const translateY = subTagAnimMap[key].interpolate({
+                                                  inputRange: [0, 1],
+                                                  outputRange: [8, 0],
+                                              });
                                               return (
-                                                  <Tag
+                                                  <Animated.View
                                                       key={`${tag}-${subIndex}`}
-                                                      label={subTag}
-                                                      isSelected={isSubSelected}
-                                                      onPress={() => toggleSubTag(tag, subTag)}
-                                                      isSubTag={true}
-                                                  />
+                                                      style={{
+                                                          opacity: subTagAnimMap[key],
+                                                          transform: [{ translateY }],
+                                                      }}
+                                                  >
+                                                      <Tag
+                                                          label={subTag}
+                                                          isSelected={isSubSelected}
+                                                          onPress={() => toggleSubTag(tag, subTag)}
+                                                          isSubTag={true}
+                                                      />
+                                                  </Animated.View>
                                               );
                                           })
                                         : null}
@@ -447,6 +492,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
                             onPress={handleContinue}
                             selectedCount={selectedTags.length}
                             loading={loading}
+                            labelPrefix={fromSettings ? 'Next' : 'Continue'}
                         />
                     </Animated.View>
                 </Animated.View>

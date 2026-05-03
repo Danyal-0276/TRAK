@@ -45,6 +45,9 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
     
     // Get selected tags from previous screen
     const { selectedTags = [], fromSettings = false } = route.params || {};
+    const goToSettings = () => {
+        navigation.navigate('MainTabs', { screen: 'Settings' });
+    };
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -168,7 +171,7 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
                 }
             }
             if (fromSettings) {
-                navigation.goBack();
+                goToSettings();
             } else {
                 navigation.navigate('NewsFeed', {
                     selectedTags,
@@ -312,10 +315,14 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
                             </Animated.View>
                         </View>
                         <TextComponent variant="title" style={styles.title}>
-                            Add custom keywords{'\n'}for better results
+                            {fromSettings
+                                ? 'Manage custom keywords'
+                                : 'Add custom keywords\nfor better results'}
                         </TextComponent>
                         <TextComponent variant="body" color={colors.textSecondary} style={styles.subtitle}>
-                            Add specific keywords you want to follow for more personalized news content
+                            {fromSettings
+                                ? 'Update your extra keywords. Category tags are managed on the previous step.'
+                                : 'Add specific keywords you want to follow for more personalized news content'}
                         </TextComponent>
                     </Animated.View>
 
@@ -398,10 +405,12 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
                         }}
                     >
                         <ActionButtons
-                            onSkip={handleContinue}
+                            onSkip={fromSettings ? goToSettings : handleContinue}
                             onContinue={handleContinue}
                             keywordCount={selectedKeywords.length}
                             loading={loading}
+                            skipLabel={fromSettings ? 'Back to Settings' : 'Skip this step'}
+                            continueLabelPrefix={fromSettings ? 'Save & Back' : 'Continue'}
                         />
                     </Animated.View>
                 </Animated.View>

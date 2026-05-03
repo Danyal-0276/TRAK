@@ -468,7 +468,7 @@ export default function SettingsScreen() {
                         icon={<Tag size={20} color={colors.textPrimary || '#0f172a'} />}
                         label="Manage Categories"
                         description="Customize your news categories"
-                        onPress={() => navigate("/categories")}
+                        onPress={() => navigate("/tag-selection?fromSettings=1", { state: { fromSettings: true } })}
                     />
                 </SettingsSection>
 

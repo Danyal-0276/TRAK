@@ -38,13 +38,36 @@ async function fetchFeed(limit = 50, q = '') {
   return res.json();
 }
 
+async function fetchExplore(limit = 200, q = '', cursor = '') {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (q && String(q).trim()) params.set('q', String(q).trim());
+  if (cursor && String(cursor).trim()) params.set('cursor', String(cursor).trim());
+  const res = await apiFetch(`${USER_PREFIX}/explore/?${params}`);
+  if (!res.ok) {
+    const t = await res.text();
+    throw new Error(t || `Explore ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function loadExplorePage({ q = '', limit = 30, cursor = '' } = {}) {
+  const json = await fetchExplore(limit, q, cursor);
+  const results = (json.results || []).map(mapApiItem);
+  return {
+    items: results,
+    nextCursor: json.next_cursor || '',
+    hasMore: Boolean(json.has_more),
+  };
+}
+
 /** @param {{ q?: string }} [options] */
 export async function loadFeedItems(options = {}) {
   const q = options.q || '';
   const token = localStorage.getItem('trak_access_token') || localStorage.getItem('trak_access');
   if (token) {
     try {
-      const json = await fetchFeed(80, q);
+      // Discover should use explore feed, not personalized feed.
+      const json = await fetchExplore(200, q);
       return (json.results || []).map(mapApiItem);
     } catch (e) {
       if (!allowMockFallback) {

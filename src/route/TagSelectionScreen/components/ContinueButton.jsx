@@ -5,7 +5,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 
-export function ContinueButton({ onPress, selectedCount, loading = false }) {
+export function ContinueButton({ onPress, selectedCount, loading = false, labelPrefix = 'Continue' }) {
     const { theme } = useTheme();
     const { colors } = theme;
     const isDisabled = selectedCount === 0 || loading;
@@ -38,7 +38,7 @@ export function ContinueButton({ onPress, selectedCount, loading = false }) {
                     </View>
                 ) : (
                     <Text style={[styles.continueButtonText, { color: colors.textInverse || colors.surface }]}>
-                        Continue ({selectedCount})
+                        {labelPrefix} ({selectedCount})
                     </Text>
                 )}
             </TouchableOpacity>

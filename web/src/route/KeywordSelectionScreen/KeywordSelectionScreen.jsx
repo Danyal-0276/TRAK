@@ -4,6 +4,9 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import Text from '../../components/ui/Text';
 import { ArrowLeft, Plus, X, ArrowRight } from 'lucide-react';
+import { getUserKeywords, setUserKeywords } from '../../utils/userKeywordsStorage';
+import { newsTagsWithSubcategories } from '../TagSelectionScreen/constants/newsCategories';
+import { trackKeywords } from '../../utils/Service/api';
 
 const KeywordSelectionScreen = () => {
     const { theme } = useTheme();
@@ -12,10 +15,16 @@ const KeywordSelectionScreen = () => {
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
     const location = useLocation();
-    const [selectedKeywords, setSelectedKeywords] = useState([]);
+    const BUILTIN_TAXONOMY_TERMS = new Set(
+        Object.entries(newsTagsWithSubcategories).flatMap(([main, subs]) => [main, ...(subs || [])])
+    );
+    const [selectedKeywords, setSelectedKeywords] = useState(() =>
+        getUserKeywords().filter((k) => !BUILTIN_TAXONOMY_TERMS.has(String(k || '').toLowerCase()))
+    );
     const [keywordInput, setKeywordInput] = useState('');
     
     const selectedTags = location.state?.selectedTags || [];
+    const fromSettings = Boolean(location.state?.fromSettings);
 
     const addKeyword = () => {
         const trimmedKeyword = keywordInput.trim();
@@ -47,12 +56,26 @@ const KeywordSelectionScreen = () => {
         }
     };
 
-    const handleContinue = () => {
-        navigate('/newsfeed', { 
-            state: { 
-                selectedTags, 
-                selectedKeywords 
-            } 
+    const handleContinue = async () => {
+        const merged = [...selectedKeywords, ...selectedTags]
+            .map((k) => String(k || '').trim().toLowerCase())
+            .filter(Boolean)
+            .filter((k, idx, arr) => arr.indexOf(k) === idx);
+        setUserKeywords(merged);
+        try {
+            await trackKeywords(merged);
+        } catch (e) {
+            console.warn('track-keywords:', e?.message);
+        }
+        if (fromSettings) {
+            navigate('/settings');
+            return;
+        }
+        navigate('/newsfeed', {
+            state: {
+                selectedTags,
+                selectedKeywords: merged,
+            },
         });
     };
 
@@ -110,7 +133,7 @@ const KeywordSelectionScreen = () => {
                         paddingTop: '0',
                         letterSpacing: '-0.5px',
                     }}>
-                        Add Custom Keywords
+                        {fromSettings ? 'Manage Custom Keywords' : 'Add Custom Keywords'}
                     </h1>
                     <p style={{
                         fontSize: '15px',
@@ -118,7 +141,9 @@ const KeywordSelectionScreen = () => {
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
-                        Add specific keywords to get more personalized content (optional)
+                        {fromSettings
+                            ? 'Edit your extra keywords. Category tags are managed on previous step.'
+                            : 'Add specific keywords to get more personalized content (optional)'}
                     </p>
                 </div>
 
@@ -330,11 +355,11 @@ const KeywordSelectionScreen = () => {
                             e.currentTarget.style.backgroundColor = isDark ? colors.primary || '#3b82f6' : '#000000';
                         }}
                     >
-                        Continue to Feed
+                        {fromSettings ? 'Save & Back' : 'Continue to Feed'}
                         <ArrowRight size={18} />
                     </button>
                     <button
-                        onClick={handleContinue}
+                        onClick={() => (fromSettings ? navigate('/settings') : handleContinue())}
                         style={{
                             padding: '14px 24px',
                             backgroundColor: cardBackground,
@@ -355,7 +380,7 @@ const KeywordSelectionScreen = () => {
                             e.currentTarget.style.borderColor = borderColor;
                         }}
                     >
-                        Skip
+                        {fromSettings ? 'Back to Settings' : 'Skip'}
                     </button>
                 </div>
             </div>

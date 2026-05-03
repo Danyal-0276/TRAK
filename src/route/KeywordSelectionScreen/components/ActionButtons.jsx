@@ -5,7 +5,14 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 
-export function ActionButtons({ onSkip, onContinue, keywordCount, loading = false }) {
+export function ActionButtons({
+    onSkip,
+    onContinue,
+    keywordCount,
+    loading = false,
+    skipLabel = 'Skip this step',
+    continueLabelPrefix = 'Continue',
+}) {
     const { theme } = useTheme();
     const { colors } = theme;
     const isDisabled = keywordCount === 0 || loading;
@@ -26,7 +33,7 @@ export function ActionButtons({ onSkip, onContinue, keywordCount, loading = fals
                 disabled={loading}
             >
                 <Text style={[styles.skipButtonText, { color: colors.textSecondary }]}>
-                    Skip this step
+                    {skipLabel}
                 </Text>
             </TouchableOpacity>
 
@@ -56,7 +63,7 @@ export function ActionButtons({ onSkip, onContinue, keywordCount, loading = fals
                     </View>
                 ) : (
                     <Text style={[styles.continueButtonText, { color: colors.textInverse || colors.surface }]}>
-                        Continue ({keywordCount})
+                        {continueLabelPrefix} ({keywordCount})
                     </Text>
                 )}
             </TouchableOpacity>
