@@ -181,6 +181,7 @@ export const setReaction = (articleId, reaction) =>
     method: 'POST',
     body: JSON.stringify({ article_id: articleId, reaction }),
   });
+export const listReactions = () => authRequest('/api/user/reactions/');
 export const addBookmark = (articleId, title = '', url = '') =>
   authRequest('/api/user/bookmarks/', {
     method: 'POST',

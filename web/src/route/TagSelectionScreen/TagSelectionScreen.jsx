@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import Text from '../../components/ui/Text';
 import { ArrowLeft, Search, Check, X } from 'lucide-react';
 import { newsTagsWithSubcategories } from './constants/newsCategories';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
+import { getUserKeywords } from '../../utils/userKeywordsStorage';
 
 const TagSelectionScreen = () => {
     const { theme } = useTheme();
@@ -13,15 +14,35 @@ const TagSelectionScreen = () => {
     const isDark = theme.mode === 'dark';
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
+    const location = useLocation();
+    const [searchParams] = useSearchParams();
     const { error } = useUIFeedback();
     const [selectedTags, setSelectedTags] = useState([]);
     const [searchText, setSearchText] = useState('');
+    const fromSettings = Boolean(location.state?.fromSettings) || searchParams.get('fromSettings') === '1';
 
     const mainTags = Object.keys(newsTagsWithSubcategories);
 
     const filteredTags = mainTags.filter(tag => 
         tag.toLowerCase().includes(searchText.toLowerCase())
     );
+
+    useEffect(() => {
+        const saved = getUserKeywords();
+        if (!saved.length) return;
+        const next = new Set();
+        for (const main of mainTags) {
+            const subs = newsTagsWithSubcategories[main] || [];
+            if (saved.includes(main)) next.add(main);
+            for (const sub of subs) {
+                if (saved.includes(sub)) {
+                    next.add(main);
+                    next.add(sub);
+                }
+            }
+        }
+        if (next.size) setSelectedTags(Array.from(next));
+    }, []);
 
     const toggleMainTag = (tag) => {
         setSelectedTags(prev => {
@@ -52,7 +73,7 @@ const TagSelectionScreen = () => {
             error('Please select at least one tag');
             return;
         }
-        navigate('/keyword-selection', { state: { selectedTags } });
+        navigate('/keyword-selection', { state: { selectedTags, fromSettings } });
     };
 
     const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
@@ -109,7 +130,7 @@ const TagSelectionScreen = () => {
                         paddingTop: '0',
                         letterSpacing: '-0.5px',
                     }}>
-                        Select Your Interests
+                        {fromSettings ? 'Manage Categories' : 'Select Your Interests'}
                     </h1>
                     <p style={{
                         fontSize: '15px',
@@ -117,7 +138,9 @@ const TagSelectionScreen = () => {
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
-                        Choose categories to personalize your news feed
+                        {fromSettings
+                            ? 'Update your category preferences. Next, review custom keywords.'
+                            : 'Choose categories to personalize your news feed'}
                     </p>
                 </div>
 
@@ -326,7 +349,7 @@ const TagSelectionScreen = () => {
                             }
                         }}
                     >
-                        Continue ({selectedTags.length})
+                        {fromSettings ? 'Next' : 'Continue'} ({selectedTags.length})
                     </button>
                 </div>
             </div>

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
-import { addBookmark, getUserFeed, listBookmarks, removeBookmark, setReaction } from '../../utils/Service/api';
+import { addBookmark, getUserFeed, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
+import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
+import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { 
     ArrowLeft, 
     ChevronUp, 
@@ -41,9 +43,18 @@ const NewsFeedScreen = () => {
     const loadNews = async () => {
         try {
             setLoading(true);
-            const response = await getUserFeed();
-            const bookmarks = await listBookmarks().catch(() => ({ results: [] }));
+            const cachedBookmarks = new Set(getBookmarkIds());
+            if (cachedBookmarks.size) setBookmarkedItems(cachedBookmarks);
+            const cachedReactions = getReactionMap();
+            if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
+            const [response, bookmarks, reactions] = await Promise.all([
+                getUserFeed(),
+                listBookmarks().catch(() => ({ results: [] })),
+                listReactions().catch(() => ({ results: [] })),
+            ]);
             const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
+            const serverReactions = mergeReactionRows(reactions.results || []);
+            const reactionMap = { ...cachedReactions, ...serverReactions };
             const mapped = (response.results || []).map((item, idx) => ({
                 ...item,
                 id: item.id || item.canonical_url || String(idx),
@@ -54,9 +65,12 @@ const NewsFeedScreen = () => {
                 votes: 0,
                 upvotes: 0,
                 verified: item.credibility?.label === 'real',
+                userReaction: reactionMap[String(item.id || item.canonical_url || String(idx))] || null,
             }));
             setNewsData(mapped);
             setBookmarkedItems(bookmarked);
+            setBookmarkIds(Array.from(bookmarked));
+            setVotedItems(reactionMap);
         } catch (error) {
             console.error('Error loading news:', error);
             setNewsData([]);
@@ -134,21 +148,24 @@ const NewsFeedScreen = () => {
     };
 
     const handleVote = async (itemId, type) => {
-        const previousVote = votedItems[itemId];
+        const id = String(itemId);
+        const previousVote = votedItems[id];
         const newVote = previousVote === type ? null : type;
 
         setVotedItems(prev => ({
             ...prev,
-            [itemId]: newVote
+            [id]: newVote
         }));
+        setReactionForArticle(id, newVote);
 
         try {
-            await setReaction(itemId, newVote || 'none');
+            await setReaction(id, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
         } catch (error) {
             setVotedItems(prev => ({
                 ...prev,
-                [itemId]: previousVote
+                [id]: previousVote
             }));
+            setReactionForArticle(id, previousVote || null);
         }
     };
 
@@ -161,6 +178,7 @@ const NewsFeedScreen = () => {
             } else {
                 newSet.add(itemId);
             }
+            setBookmarkIds(Array.from(newSet));
             return newSet;
         });
 

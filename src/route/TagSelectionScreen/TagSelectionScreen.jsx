@@ -2,7 +2,7 @@
 // FILE: screens/TagSelectionScreen.jsx
 // ============================================
 import React, { useState, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, StatusBar, ScrollView, Animated, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, StatusBar, ScrollView, Animated, Dimensions, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { Tags } from 'lucide-react-native';
@@ -11,20 +11,23 @@ import { Header } from './components/Header';
 import { SearchBar } from './components/SearchBar';
 import { SelectedCount } from './components/SelectedCount';
 import { Tag } from './components/Tag';
-import { SubcategoriesContainer } from './components/SubcategoriesContainer';
 import { ContinueButton } from './components/ContinueButton';
 import { newsTagsWithSubcategories } from './constants/newsCategories';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
+import { getUserKeywords } from '../../utils/userKeywordsStorage';
 
 const { width, height } = Dimensions.get('window');
 
-const TagSelectionScreen = ({ navigation }) => {
+const TagSelectionScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
     const { colors } = theme;
     const [selectedTags, setSelectedTags] = useState([]);
+    const [expandedMainTags, setExpandedMainTags] = useState([]);
+    const subTagAnimMap = useRef({}).current;
     const [searchText, setSearchText] = useState('');
     const [loading, setLoading] = useState(false);
+    const { fromSettings = false, selectedTags: incomingSelectedTags = [] } = route?.params || {};
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -35,6 +38,12 @@ const TagSelectionScreen = ({ navigation }) => {
     const circle1Anim = useRef(new Animated.Value(0)).current;
     const circle2Anim = useRef(new Animated.Value(0)).current;
     const circle3Anim = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+            UIManager.setLayoutAnimationEnabledExperimental(true);
+        }
+    }, []);
 
     useEffect(() => {
         // Staggered entrance animations
@@ -91,7 +100,64 @@ const TagSelectionScreen = ({ navigation }) => {
         ]).start();
     }, []);
 
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            const saved = await getUserKeywords();
+            const seed = [...saved, ...incomingSelectedTags]
+                .map((x) => String(x || '').trim().toLowerCase())
+                .filter(Boolean);
+            if (!seed.length || !mounted) return;
+
+            const next = new Set();
+            const mainTags = Object.keys(newsTagsWithSubcategories);
+            for (const main of mainTags) {
+                const subs = newsTagsWithSubcategories[main] || [];
+                if (seed.includes(main)) {
+                    next.add(main);
+                }
+                for (const sub of subs) {
+                    if (seed.includes(sub)) {
+                        next.add(main);
+                        next.add(sub);
+                    }
+                }
+            }
+            if (next.size) {
+                setSelectedTags(Array.from(next));
+            }
+        })();
+        return () => {
+            mounted = false;
+        };
+    }, [incomingSelectedTags]);
+
     const mainTags = Object.keys(newsTagsWithSubcategories);
+
+    const animateLayout = () => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    };
+
+    const runSubtagOpenAnimation = (mainTag) => {
+        const subcategories = newsTagsWithSubcategories[mainTag] || [];
+        const anims = subcategories.map((subTag, index) => {
+            const key = `${mainTag}::${subTag}`;
+            if (!subTagAnimMap[key]) {
+                subTagAnimMap[key] = new Animated.Value(0);
+            } else {
+                subTagAnimMap[key].setValue(0);
+            }
+            return Animated.timing(subTagAnimMap[key], {
+                toValue: 1,
+                duration: 220,
+                delay: index * 22,
+                useNativeDriver: true,
+            });
+        });
+        if (anims.length) {
+            Animated.parallel(anims).start();
+        }
+    };
 
     // Filter tags based on search text
     const filteredTags = mainTags.filter(tag => 
@@ -99,27 +165,44 @@ const TagSelectionScreen = ({ navigation }) => {
     );
 
     // Toggle main category selection
-    const toggleMainTag = (tag) => {
+    const onMainTagPress = (tag) => {
+        animateLayout();
         setSelectedTags(prev => {
-            if (prev.includes(tag)) {
-                // Remove main tag and all its subcategories
-                const subcategories = newsTagsWithSubcategories[tag];
-                return prev.filter(t => t !== tag && !subcategories.includes(t));
-            } else {
-                // Add main tag
+            if (!prev.includes(tag)) {
+                setExpandedMainTags((expanded) => (expanded.includes(tag) ? expanded : [...expanded, tag]));
+                runSubtagOpenAnimation(tag);
                 return [...prev, tag];
             }
+            // Already selected: toggle open/close only (don't deselect)
+            setExpandedMainTags((expanded) =>
+                expanded.includes(tag) ? expanded.filter((t) => t !== tag) : [...expanded, tag]
+            );
+            if (!expandedMainTags.includes(tag)) {
+                runSubtagOpenAnimation(tag);
+            }
+            return prev;
+        });
+    };
+
+    const clearMainTag = (tag) => {
+        animateLayout();
+        setExpandedMainTags((expanded) => expanded.filter((t) => t !== tag));
+        setSelectedTags((prev) => {
+            const subcategories = newsTagsWithSubcategories[tag] || [];
+            return prev.filter((t) => t !== tag && !subcategories.includes(t));
         });
     };
 
     // Toggle subcategory selection
     const toggleSubTag = (mainTag, subTag) => {
+        animateLayout();
         setSelectedTags(prev => {
             if (prev.includes(subTag)) {
                 // Remove subcategory
                 return prev.filter(t => t !== subTag);
             } else {
                 // Add subcategory and ensure main tag is selected
+                setExpandedMainTags((expanded) => (expanded.includes(mainTag) ? expanded : [...expanded, mainTag]));
                 if (!prev.includes(mainTag)) {
                     return [...prev, mainTag, subTag];
                 }
@@ -137,7 +220,7 @@ const TagSelectionScreen = ({ navigation }) => {
         try {
             // Simulate API call
             await new Promise(resolve => setTimeout(resolve, 500));
-            navigation.navigate('KeywordSelection', { selectedTags });
+            navigation.navigate('KeywordSelection', { selectedTags, fromSettings });
         } catch (error) {
             console.error('Error:', error);
         } finally {
@@ -275,10 +358,14 @@ const TagSelectionScreen = ({ navigation }) => {
                             </Animated.View>
                         </View>
                         <TextComponent variant="title" style={styles.title}>
-                            Pick tags that are{'\n'}relevant to you
+                            {fromSettings
+                                ? 'Manage categories'
+                                : 'Pick tags that are\nrelevant to you'}
                         </TextComponent>
                         <TextComponent variant="body" color={colors.textSecondary} style={styles.subtitle}>
-                            Select news categories you're interested in to personalize your feed
+                            {fromSettings
+                                ? 'Edit your category preferences. Next, you can review custom keywords.'
+                                : "Select news categories you're interested in to personalize your feed"}
                         </TextComponent>
                     </Animated.View>
 
@@ -336,24 +423,53 @@ const TagSelectionScreen = ({ navigation }) => {
                     >
                         {filteredTags.map((tag, index) => {
                             const isSelected = selectedTags.includes(tag);
+                            const subcategories = newsTagsWithSubcategories[tag] || [];
+                            const selectedSubCount = (newsTagsWithSubcategories[tag] || []).filter((sub) =>
+                                selectedTags.includes(sub)
+                            ).length;
+                            const isExpanded = expandedMainTags.includes(tag);
                             return (
                                 <React.Fragment key={index}>
                                     {/* Main Tag */}
                                     <Tag
                                         label={tag}
                                         isSelected={isSelected}
-                                        onPress={() => toggleMainTag(tag)}
+                                        onPress={() => onMainTagPress(tag)}
+                                        showClear={isSelected}
+                                        onClearSelection={() => clearMainTag(tag)}
+                                        selectedSubCount={selectedSubCount}
                                     />
 
                                     {/* Subcategories */}
-                                    {isSelected && (
-                                        <SubcategoriesContainer
-                                            mainTag={tag}
-                                            subcategories={newsTagsWithSubcategories[tag]}
-                                            selectedTags={selectedTags}
-                                            onSubTagPress={toggleSubTag}
-                                        />
-                                    )}
+                                    {isSelected && isExpanded
+                                        ? subcategories.map((subTag, subIndex) => {
+                                              const isSubSelected = selectedTags.includes(subTag);
+                                              const key = `${tag}::${subTag}`;
+                                              if (!subTagAnimMap[key]) {
+                                                  subTagAnimMap[key] = new Animated.Value(1);
+                                              }
+                                              const translateY = subTagAnimMap[key].interpolate({
+                                                  inputRange: [0, 1],
+                                                  outputRange: [8, 0],
+                                              });
+                                              return (
+                                                  <Animated.View
+                                                      key={`${tag}-${subIndex}`}
+                                                      style={{
+                                                          opacity: subTagAnimMap[key],
+                                                          transform: [{ translateY }],
+                                                      }}
+                                                  >
+                                                      <Tag
+                                                          label={subTag}
+                                                          isSelected={isSubSelected}
+                                                          onPress={() => toggleSubTag(tag, subTag)}
+                                                          isSubTag={true}
+                                                      />
+                                                  </Animated.View>
+                                              );
+                                          })
+                                        : null}
                                 </React.Fragment>
                             );
                         })}
@@ -376,6 +492,7 @@ const TagSelectionScreen = ({ navigation }) => {
                             onPress={handleContinue}
                             selectedCount={selectedTags.length}
                             loading={loading}
+                            labelPrefix={fromSettings ? 'Next' : 'Continue'}
                         />
                     </Animated.View>
                 </Animated.View>
@@ -448,9 +565,9 @@ const styles = StyleSheet.create({
     tagsContainer: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
+        alignItems: 'center',
         marginBottom: 30,
-        gap: 10,
     },
 });
 

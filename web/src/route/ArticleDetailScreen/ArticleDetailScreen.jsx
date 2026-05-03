@@ -12,6 +12,9 @@ import {
     ArrowLeft
 } from 'lucide-react';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
+import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
+import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 
 const ArticleDetailScreen = () => {
     const navigate = useNavigate();
@@ -34,33 +37,51 @@ const ArticleDetailScreen = () => {
     };
     const { success } = useUIFeedback();
     
-    const [isLiked, setIsLiked] = useState(false);
-    const [isDisliked, setIsDisliked] = useState(false);
+    const [reaction, setReactionState] = useState(null); // 'up' | 'down' | null
     const [isBookmarked, setIsBookmarked] = useState(false);
-    const [likeCount, setLikeCount] = useState(article.upvotes || article.votes || 24);
-    const [dislikeCount, setDislikeCount] = useState(3);
+    const [baseVotes, setBaseVotes] = useState(article.upvotes || article.votes || 0);
+    const [reactionPending, setReactionPending] = useState(false);
     const [scrollY, setScrollY] = useState(0);
 
-    const handleLike = () => {
-        if (isDisliked) {
-            setIsDisliked(false);
-            setDislikeCount(dislikeCount - 1);
+    const voteCount = Number(baseVotes || 0) + (reaction === 'up' ? 1 : reaction === 'down' ? -1 : 0);
+
+    const submitReaction = async (next) => {
+        if (reactionPending) return;
+        const previous = reaction;
+        setReactionPending(true);
+        setReactionState(next);
+        setReactionForArticle(article.id, next);
+        try {
+            await setReaction(article.id, next === 'up' ? 'like' : next === 'down' ? 'dislike' : 'none');
+        } catch {
+            setReactionState(previous);
+            setReactionForArticle(article.id, previous || null);
+        } finally {
+            setReactionPending(false);
         }
-        setIsLiked(!isLiked);
-        setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
     };
 
-    const handleDislike = () => {
-        if (isLiked) {
-            setIsLiked(false);
-            setLikeCount(likeCount - 1);
-        }
-        setIsDisliked(!isDisliked);
-        setDislikeCount(isDisliked ? dislikeCount - 1 : dislikeCount + 1);
-    };
+    const handleLike = () => submitReaction(reaction === 'up' ? null : 'up');
+    const handleDislike = () => submitReaction(reaction === 'down' ? null : 'down');
 
-    const handleBookmark = () => {
-        setIsBookmarked(!isBookmarked);
+    const handleBookmark = async () => {
+        const previous = isBookmarked;
+        const next = !previous;
+        setIsBookmarked(next);
+        const ids = new Set(getBookmarkIds());
+        if (next) ids.add(String(article.id));
+        else ids.delete(String(article.id));
+        setBookmarkIds(Array.from(ids));
+        try {
+            if (previous) await removeBookmark(article.id);
+            else await addBookmark(article.id, article?.title || '', article?.canonical_url || article?.url || '');
+        } catch {
+            setIsBookmarked(previous);
+            const rollback = new Set(getBookmarkIds());
+            if (previous) rollback.add(String(article.id));
+            else rollback.delete(String(article.id));
+            setBookmarkIds(Array.from(rollback));
+        }
     };
 
     const handleShare = () => {
@@ -77,6 +98,23 @@ const ArticleDetailScreen = () => {
     };
 
     useEffect(() => {
+        setBaseVotes(article.upvotes || article.votes || 0);
+        const cachedIds = new Set(getBookmarkIds());
+        setIsBookmarked(cachedIds.has(String(article.id)));
+        const cachedReaction = getReactionMap()[String(article.id)] || null;
+        setReactionState(cachedReaction);
+        (async () => {
+            const [bmRes, reactRes] = await Promise.all([
+                listBookmarks().catch(() => ({ results: [] })),
+                listReactions().catch(() => ({ results: [] })),
+            ]);
+            const ids = (bmRes.results || []).map((b) => String(b.article_id));
+            setBookmarkIds(ids);
+            setIsBookmarked(ids.includes(String(article.id)));
+            const map = mergeReactionRows(reactRes.results || []);
+            setReactionState(map[String(article.id)] || null);
+        })();
+
         const handleScroll = () => {
             setScrollY(window.scrollY);
         };
@@ -329,40 +367,42 @@ const ArticleDetailScreen = () => {
                     }}>
                         <button
                             onClick={handleLike}
+                            disabled={reactionPending}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '6px',
                                 padding: '6px 12px',
                                 border: 'none',
-                                background: isLiked ? '#ffffff' : 'transparent',
+                                background: reaction === 'up' ? '#ffffff' : 'transparent',
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
-                                boxShadow: isLiked ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
+                                boxShadow: reaction === 'up' ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
+                                opacity: reactionPending ? 0.6 : 1,
                             }}
                             onMouseEnter={(e) => {
-                                if (!isLiked) {
+                                if (reaction !== 'up') {
                                     e.currentTarget.style.backgroundColor = '#ffffff';
                                 }
                             }}
                             onMouseLeave={(e) => {
-                                if (!isLiked) {
+                                if (reaction !== 'up') {
                                     e.currentTarget.style.backgroundColor = 'transparent';
                                 }
                             }}
                         >
                             <ChevronUp 
                                 size={16} 
-                                color={isLiked ? '#3b82f6' : '#64748b'} 
-                                strokeWidth={isLiked ? 2.5 : 2}
+                                color={reaction === 'up' ? '#3b82f6' : '#64748b'} 
+                                strokeWidth={reaction === 'up' ? 2.5 : 2}
                             />
                             <span style={{
                                 fontSize: '13px',
                                 fontWeight: '600',
-                                color: isLiked ? '#3b82f6' : '#64748b',
+                                color: reaction === 'up' ? '#3b82f6' : '#64748b',
                             }}>
-                                {likeCount}
+                                {voteCount}
                             </span>
                         </button>
 
@@ -374,40 +414,42 @@ const ArticleDetailScreen = () => {
 
                         <button
                             onClick={handleDislike}
+                            disabled={reactionPending}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
                                 gap: '6px',
                                 padding: '6px 12px',
                                 border: 'none',
-                                background: isDisliked ? '#ffffff' : 'transparent',
+                                background: reaction === 'down' ? '#ffffff' : 'transparent',
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
-                                boxShadow: isDisliked ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
+                                boxShadow: reaction === 'down' ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
+                                opacity: reactionPending ? 0.6 : 1,
                             }}
                             onMouseEnter={(e) => {
-                                if (!isDisliked) {
+                                if (reaction !== 'down') {
                                     e.currentTarget.style.backgroundColor = '#ffffff';
                                 }
                             }}
                             onMouseLeave={(e) => {
-                                if (!isDisliked) {
+                                if (reaction !== 'down') {
                                     e.currentTarget.style.backgroundColor = 'transparent';
                                 }
                             }}
                         >
                             <ChevronDown 
                                 size={16} 
-                                color={isDisliked ? '#ef4444' : '#64748b'} 
-                                strokeWidth={isDisliked ? 2.5 : 2}
+                                color={reaction === 'down' ? '#ef4444' : '#64748b'} 
+                                strokeWidth={reaction === 'down' ? 2.5 : 2}
                             />
                             <span style={{
                                 fontSize: '13px',
                                 fontWeight: '600',
-                                color: isDisliked ? '#ef4444' : '#64748b',
+                                color: reaction === 'down' ? '#ef4444' : '#64748b',
                             }}>
-                                {dislikeCount}
+                                {voteCount}
                             </span>
                         </button>
                     </div>

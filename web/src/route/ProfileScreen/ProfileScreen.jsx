@@ -31,6 +31,11 @@ import {
     updateProfile,
 } from "../../utils/Service/api";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
+import { getBookmarkIds, setBookmarkIds } from "../../utils/bookmarksStorage";
+import { getReactionMap, mergeReactionRows, setReactionForArticle } from "../../utils/reactionsStorage";
+
+const PROFILE_CACHE_KEY = 'trak_profile_cache_v1';
+const PROFILE_BOOKMARKS_CACHE_KEY = 'trak_profile_bookmarks_cache_v1';
 
 const UserProfileScreen = () => {
     const { theme } = useTheme();
@@ -59,6 +64,22 @@ const UserProfileScreen = () => {
     });
 
     useEffect(() => {
+        try {
+            const cachedProfile = window.localStorage.getItem(PROFILE_CACHE_KEY);
+            if (cachedProfile) setProfile(JSON.parse(cachedProfile));
+            const cachedRows = window.localStorage.getItem(PROFILE_BOOKMARKS_CACHE_KEY);
+            if (cachedRows) {
+                const rows = JSON.parse(cachedRows);
+                if (Array.isArray(rows) && rows.length) {
+                    setBookmarks(rows);
+                    setBookmarkedItems(new Set(rows.map((r) => String(r.id))));
+                }
+            } else {
+                const ids = getBookmarkIds();
+                if (ids.length) setBookmarkedItems(new Set(ids));
+            }
+            setVotedItems(getReactionMap());
+        } catch {}
         loadBookmarks();
     }, []);
 
@@ -67,6 +88,7 @@ const UserProfileScreen = () => {
             setLoading(true);
             const profileData = await getProfile();
             setProfile(profileData);
+            window.localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profileData));
             const bookmarkPayload = await listBookmarks().catch(() => ({ results: [] }));
             const rows = bookmarkPayload.results || [];
             const detailed = await Promise.all(
@@ -96,7 +118,9 @@ const UserProfileScreen = () => {
             );
             const bookmarkedArticles = detailed.filter(Boolean);
             setBookmarkedItems(new Set(bookmarkedArticles.map((b) => String(b.id))));
+            setBookmarkIds(bookmarkedArticles.map((b) => String(b.id)));
             setBookmarks(bookmarkedArticles);
+            window.localStorage.setItem(PROFILE_BOOKMARKS_CACHE_KEY, JSON.stringify(bookmarkedArticles));
             setUserStats({
                 following: Number(profileData?.following_count || 0),
                 followers: Number(profileData?.followers_count || 0),
@@ -123,13 +147,16 @@ const UserProfileScreen = () => {
     };
 
     const handleVote = async (itemId, type) => {
-        const previousVote = votedItems[itemId];
+        const id = String(itemId);
+        const previousVote = votedItems[id];
         const newVote = previousVote === type ? null : type;
-        setVotedItems((prev) => ({ ...prev, [itemId]: newVote }));
+        setVotedItems((prev) => ({ ...prev, [id]: newVote }));
+        setReactionForArticle(id, newVote);
         try {
-            await setReaction(itemId, newVote || "none");
+            await setReaction(id, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
         } catch {
-            setVotedItems((prev) => ({ ...prev, [itemId]: previousVote }));
+            setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
+            setReactionForArticle(id, previousVote || null);
         }
     };
 
@@ -139,6 +166,7 @@ const UserProfileScreen = () => {
             const next = new Set(prev);
             if (next.has(itemId)) next.delete(itemId);
             else next.add(itemId);
+            setBookmarkIds(Array.from(next));
             return next;
         });
         try {

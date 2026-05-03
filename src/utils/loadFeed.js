@@ -1,5 +1,5 @@
 import { mockApi } from './Service/mockApi';
-import { fetchFeed } from '../api/newsApi';
+import { fetchExplore, fetchExplorePage, fetchFeed } from '../api/newsApi';
 import { getAccessToken } from '../api/client';
 import { getUserKeywords } from './userKeywordsStorage';
 
@@ -51,15 +51,21 @@ export function mapApiItem(a, userKeywords = []) {
 }
 
 /**
- * @param {{ q?: string }} [options] — optional search string for /feed/?q=
+ * @param {{ q?: string, mode?: 'user'|'explore' }} [options]
+ * - mode=user: personalized feed (/api/user/feed)
+ * - mode=explore: discovery feed (/api/user/explore)
  */
 export async function loadFeedItems(options = {}) {
     const q = options.q || '';
+    const mode = options.mode === 'explore' ? 'explore' : 'user';
     const token = await getAccessToken();
     if (token) {
         try {
             const userKeywords = await getUserKeywords();
-            const json = await fetchFeed(80, q);
+            const json =
+                mode === 'explore'
+                    ? await fetchExplore(1000, q)
+                    : await fetchFeed(80, q);
             return (json.results || []).map((a) => mapApiItem(a, userKeywords));
         } catch (e) {
             if (!allowMockFallback) {
@@ -74,4 +80,25 @@ export async function loadFeedItems(options = {}) {
     }
     const response = await mockApi.getNewsFeed();
     return response.data;
+}
+
+/**
+ * Cursor-based Explore page loader for infinite scroll UIs.
+ * @param {{ q?: string, cursor?: string, limit?: number }} options
+ */
+export async function loadExplorePage(options = {}) {
+    const q = options.q || '';
+    const cursor = options.cursor || '';
+    const limit = Math.max(1, Number(options.limit || 30));
+    const token = await getAccessToken();
+    if (!token) {
+        return { items: [], nextCursor: null, hasMore: false };
+    }
+    const userKeywords = await getUserKeywords();
+    const json = await fetchExplorePage(limit, q, cursor);
+    return {
+        items: (json.results || []).map((a) => mapApiItem(a, userKeywords)),
+        nextCursor: json.next_cursor || null,
+        hasMore: Boolean(json.has_more),
+    };
 }

@@ -2,7 +2,7 @@
 // ============================================
 // FILE: screens/ArticleDetailScreen.jsx
 // ============================================
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import {
     View,
     StyleSheet,
@@ -21,6 +21,9 @@ import { useTheme } from '../../theme/ThemeContext';
 import { fetchArticle } from '../../api/newsApi';
 import { mapApiItem } from '../../utils/loadFeed';
 import { getAccessToken } from '../../api/client';
+import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
+import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 
 const { width, height } = Dimensions.get('window');
 
@@ -28,11 +31,15 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
     const { colors } = theme;
     const [article, setArticle] = useState(route.params?.article || {});
-    const [isLiked, setIsLiked] = useState(false);
-    const [isDisliked, setIsDisliked] = useState(false);
+    const [reaction, setReactionState] = useState(null); // 'up' | 'down' | null
+    const [reactionPending, setReactionPending] = useState(false);
     const [isBookmarked, setIsBookmarked] = useState(false);
-    const [likeCount, setLikeCount] = useState(article.votes || 24);
-    const [dislikeCount, setDislikeCount] = useState(3);
+    const [baseVotes, setBaseVotes] = useState(Number(route.params?.article?.votes || 0));
+    const articleId = String(route.params?.articleId || route.params?.article?.id || '');
+    const voteCount = useMemo(() => {
+        const delta = reaction === 'up' ? 1 : reaction === 'down' ? -1 : 0;
+        return Number(baseVotes || 0) + delta;
+    }, [baseVotes, reaction]);
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -55,7 +62,24 @@ const ArticleDetailScreen = ({ navigation, route }) => {
             try {
                 const doc = await fetchArticle(String(id));
                 if (cancelled) return;
-                setArticle((prev) => ({ ...prev, ...mapApiItem(doc) }));
+                const mapped = mapApiItem(doc);
+                setArticle((prev) => ({ ...prev, ...mapped }));
+                setBaseVotes(Number(mapped.votes || route.params?.article?.votes || 0));
+                const [cachedBmIds, bRes, rRes] = await Promise.all([
+                    getBookmarkIds().catch(() => []),
+                    listBookmarks().catch(() => ({ results: [] })),
+                    listReactions().catch(() => ({ results: [] })),
+                ]);
+                const cacheHas = (cachedBmIds || []).map(String).includes(String(id));
+                const isBm = cacheHas || (bRes.results || []).some((b) => String(b.article_id) === String(id));
+                setIsBookmarked(isBm);
+                const cachedReactions = await getReactionMap().catch(() => ({}));
+                const serverReactionMap = await mergeReactionRows(rRes.results || []).catch(() => ({}));
+                const mergedMap = { ...cachedReactions, ...serverReactionMap };
+                const rowVal = mergedMap[String(id)];
+                const row = (rRes.results || []).find((r) => String(r.article_id) === String(id));
+                const rv = row?.reaction === 'like' ? 'up' : row?.reaction === 'dislike' ? 'down' : null;
+                setReactionState(rowVal ?? rv ?? null);
             } catch (e) {
                 console.warn('Article fetch:', e?.message);
             }
@@ -102,26 +126,63 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         navigation.goBack();
     };
 
-    const handleLike = () => {
-        if (isDisliked) {
-            setIsDisliked(false);
-            setDislikeCount(dislikeCount - 1);
+    const handleLike = async () => {
+        if (reactionPending) return;
+        const previous = reaction;
+        const next = previous === 'up' ? null : 'up';
+        setReactionState(next);
+        setReactionForArticle(articleId, next).catch(() => {});
+        setReactionPending(true);
+        try {
+            await setReaction(articleId, next === 'up' ? 'like' : next === 'down' ? 'dislike' : 'none');
+        } catch {
+            setReactionForArticle(articleId, previous || null).catch(() => {});
+            setReactionState(previous);
+        } finally {
+            setReactionPending(false);
         }
-        setIsLiked(!isLiked);
-        setLikeCount(isLiked ? likeCount - 1 : likeCount + 1);
     };
 
-    const handleDislike = () => {
-        if (isLiked) {
-            setIsLiked(false);
-            setLikeCount(likeCount - 1);
+    const handleDislike = async () => {
+        if (reactionPending) return;
+        const previous = reaction;
+        const next = previous === 'down' ? null : 'down';
+        setReactionState(next);
+        setReactionForArticle(articleId, next).catch(() => {});
+        setReactionPending(true);
+        try {
+            await setReaction(articleId, next === 'up' ? 'like' : next === 'down' ? 'dislike' : 'none');
+        } catch {
+            setReactionForArticle(articleId, previous || null).catch(() => {});
+            setReactionState(previous);
+        } finally {
+            setReactionPending(false);
         }
-        setIsDisliked(!isDisliked);
-        setDislikeCount(isDisliked ? dislikeCount - 1 : dislikeCount + 1);
     };
 
-    const handleBookmark = () => {
-        setIsBookmarked(!isBookmarked);
+    const handleBookmark = async () => {
+        const previous = isBookmarked;
+        const next = !previous;
+        setIsBookmarked(next);
+        try {
+            const ids = await getBookmarkIds().catch(() => []);
+            const set = new Set((ids || []).map(String));
+            if (next) set.add(articleId);
+            else set.delete(articleId);
+            await setBookmarkIds(Array.from(set)).catch(() => {});
+            if (next) {
+                await addBookmark(articleId, article?.title || '', article?.canonical_url || '');
+            } else {
+                await removeBookmark(articleId);
+            }
+        } catch {
+            const ids = await getBookmarkIds().catch(() => []);
+            const set = new Set((ids || []).map(String));
+            if (previous) set.add(articleId);
+            else set.delete(articleId);
+            await setBookmarkIds(Array.from(set)).catch(() => {});
+            setIsBookmarked(previous);
+        }
     };
 
     const handleShare = () => {
@@ -276,10 +337,10 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                     }}
                 >
                     <ArticleActions 
-                        likeCount={likeCount}
-                        dislikeCount={dislikeCount}
-                        isLiked={isLiked}
-                        isDisliked={isDisliked}
+                        likeCount={voteCount}
+                        dislikeCount={0}
+                        isLiked={reaction === 'up'}
+                        isDisliked={reaction === 'down'}
                         isBookmarked={isBookmarked}
                         onLike={handleLike}
                         onDislike={handleDislike}

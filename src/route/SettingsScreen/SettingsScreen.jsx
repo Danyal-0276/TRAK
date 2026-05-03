@@ -236,7 +236,7 @@ export default function SettingsScreen({ navigation }) {
           <SettingsRow
             icon={<Tag size={22} color={colors.primary} />}
             label="Manage Categories"
-            onPress={() => navigation.navigate("KeywordSelection", { fromSettings: true, selectedTags: [] })}
+            onPress={() => navigation.navigate("TagSelection", { fromSettings: true, selectedTags: [] })}
           />
         </SettingsSection>
 

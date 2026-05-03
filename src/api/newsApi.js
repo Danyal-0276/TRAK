@@ -13,6 +13,29 @@ export async function fetchFeed(limit = 50, q = '') {
     return res.json();
 }
 
+export async function fetchExplore(limit = 200, q = '') {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (q && String(q).trim()) params.set('q', String(q).trim());
+    const res = await apiFetch(`${USER_PREFIX}/explore/?${params}`, {}, API_BASE);
+    if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `Explore ${res.status}`);
+    }
+    return res.json();
+}
+
+export async function fetchExplorePage(limit = 30, q = '', cursor = '') {
+    const params = new URLSearchParams({ limit: String(limit) });
+    if (q && String(q).trim()) params.set('q', String(q).trim());
+    if (cursor && String(cursor).trim()) params.set('cursor', String(cursor).trim());
+    const res = await apiFetch(`${USER_PREFIX}/explore/?${params}`, {}, API_BASE);
+    if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `Explore ${res.status}`);
+    }
+    return res.json();
+}
+
 export async function fetchArticle(articleId) {
     const enc = encodeURIComponent(articleId);
     const res = await apiFetch(`${USER_PREFIX}/articles/${enc}/`, {}, API_BASE);

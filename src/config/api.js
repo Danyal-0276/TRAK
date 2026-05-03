@@ -6,9 +6,9 @@ import { Platform } from 'react-native';
  */
 const defaultApiBase =
     Platform.select({
-        // For physical Android devices over USB, use adb reverse:
-        // adb reverse tcp:8000 tcp:8000
-        // This makes localhost:8000 on device point to your PC backend.
+        // Android (emulator/real device over USB):
+        // keep `adb reverse tcp:8000 tcp:8000` active so device localhost maps to PC.
+        // This avoids Wi-Fi/firewall/LAN-IP issues during local development.
         android: 'http://127.0.0.1:8000',
         ios: 'http://localhost:8000',
         default: 'http://127.0.0.1:8000',

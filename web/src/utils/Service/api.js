@@ -190,6 +190,7 @@ export const setReaction = (articleId, reaction) =>
     method: 'POST',
     body: JSON.stringify({ article_id: articleId, reaction }),
   });
+export const listReactions = () => authRequest('/api/user/reactions/');
 
 export const addBookmark = (articleId, title = '', url = '') =>
   authRequest('/api/user/bookmarks/', {
@@ -204,3 +205,9 @@ export const removeBookmark = (articleId) =>
 
 export const listBookmarks = () => authRequest('/api/user/bookmarks/');
 export const getUserArticleDetail = (articleId) => authRequest(`/api/user/articles/${encodeURIComponent(articleId)}/`);
+
+export const trackKeywords = (keywords = []) =>
+  authRequest('/api/user/track-keywords/', {
+    method: 'POST',
+    body: JSON.stringify({ keywords }),
+  });
