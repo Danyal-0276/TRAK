@@ -24,7 +24,12 @@ async function refreshAccess(baseUrl) {
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ refresh }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+        // Refresh token rejected (e.g. user DB rebuilt server-side).
+        // Wipe the session so the UI falls back to the login screen.
+        await clearTokens();
+        return null;
+    }
     const data = await res.json();
     if (data.access) await AsyncStorage.setItem(ACCESS_KEY, data.access);
     return data.access;

@@ -15,6 +15,12 @@ export function AuthProvider({ children }) {
 
     const fetchMe = useCallback(async () => {
         const res = await apiFetch(`${AUTH_PREFIX}/me/`, {}, API_BASE);
+        if (res.status === 401) {
+            // Tokens are no longer valid (e.g. backend user DB rebuilt).
+            // apiFetch already cleared them; surface this so the UI logs out.
+            await AsyncStorage.removeItem(USER_CACHE_KEY).catch(() => {});
+            return { __sessionInvalid: true };
+        }
         if (!res.ok) return null;
         const data = await res.json();
         await AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(data)).catch(() => {});
@@ -51,13 +57,19 @@ export function AuthProvider({ children }) {
             (async () => {
                 try {
                     const me = await fetchMe();
+                    if (me?.__sessionInvalid) {
+                        // Server explicitly rejected our tokens — sign the user out.
+                        await clearTokens();
+                        setUser(null);
+                        return;
+                    }
                     if (me) setUser(me);
                     if (me) {
                         const deviceToken = await getOrCreatePushToken();
                         await registerDeviceToken(deviceToken, 'mobile');
                     }
                 } catch {
-                    // Keep cached/saved session on transient failures.
+                    // Keep cached/saved session on transient failures (network only).
                 }
             })();
             return;

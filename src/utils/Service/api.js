@@ -115,7 +115,7 @@ export const authRequest = async (path, options = {}) => {
     const refresh = await AsyncStorage.getItem(REFRESH_KEY);
     if (!refresh) {
       await clearAuthSession();
-      throw new Error('Session expired');
+      throw new Error('Session expired. Please sign in again.');
     }
     const refreshRes = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
       method: 'POST',
@@ -127,7 +127,15 @@ export const authRequest = async (path, options = {}) => {
       if (payload.access) {
         await AsyncStorage.setItem(ACCESS_KEY, payload.access);
         res = await doReq(payload.access);
+      } else {
+        await clearAuthSession();
+        throw new Error('Session expired. Please sign in again.');
       }
+    } else {
+      // Refresh token is stale (common after a backend user-DB rebuild).
+      // Wipe the session so the app sends the user back to the login screen.
+      await clearAuthSession();
+      throw new Error('Session expired. Please sign in again.');
     }
   }
   if (!res.ok) await parseError(res);
