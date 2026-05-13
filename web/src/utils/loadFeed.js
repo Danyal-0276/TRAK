@@ -9,6 +9,8 @@ const allowMockFallback =
 export function mapApiItem(a) {
   const cred = a.credibility || {};
   const label = cred.label || cred.label_code;
+  const likes = Number(a.like_count ?? a.upvotes ?? 0);
+  const dislikes = Number(a.dislike_count ?? 0);
   return {
     id: a.id,
     source: a.source || 'TRAK',
@@ -20,9 +22,11 @@ export function mapApiItem(a) {
     categories: label ? [String(label)] : ['News'],
     category: 'News',
     trending: cred.label_code === 2 || cred.label === 'suspicious',
-    votes: 0,
+    votes: likes,
     credibility: a.credibility,
-    upvotes: 0,
+    like_count: likes,
+    dislike_count: dislikes,
+    upvotes: likes,
     topic_keywords: a.topic_keywords || [],
   };
 }

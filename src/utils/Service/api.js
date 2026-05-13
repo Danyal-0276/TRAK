@@ -35,7 +35,28 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+const USER_CONTENT_KEYS = [
+  'trak_bookmarks',
+  'trak_reactions_v1',
+  'trak_user_keywords',
+  'trak_profile_cache_v1',
+  'trak_profile_bookmarks_cache_v1',
+];
+
+export async function clearUserContentCaches() {
+  await AsyncStorage.multiRemove(USER_CONTENT_KEYS).catch(() => {});
+}
+
 export const saveAuthSession = async (session) => {
+  const prev = await getCurrentUser();
+  const prevId = prev?.id ?? prev?.pk;
+  const nextId = session.user?.id ?? session.user?.pk;
+  if (prevId != null && nextId != null && String(prevId) !== String(nextId)) {
+    await clearUserContentCaches();
+  }
+  if (prev == null && nextId != null) {
+    await clearUserContentCaches();
+  }
   const legacyAccess = await AsyncStorage.getItem('trak_access');
   const legacyRefresh = await AsyncStorage.getItem('trak_refresh');
   const access = session.access || legacyAccess || '';
@@ -61,6 +82,7 @@ export const getAccessToken = async () =>
   (await AsyncStorage.getItem(ACCESS_KEY)) || (await AsyncStorage.getItem('trak_access'));
 export const clearAuthSession = async () => {
   await AsyncStorage.multiRemove([ACCESS_KEY, REFRESH_KEY, USER_KEY]);
+  await clearUserContentCaches();
 };
 
 export const loginWithEmailPassword = (email, password) =>

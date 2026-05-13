@@ -30,8 +30,10 @@ export async function setReactionForArticle(articleId, reaction) {
   await setReactionMap(map);
 }
 
-export async function mergeReactionRows(rows = []) {
-  const next = {};
+export async function mergeReactionRows(rows = [], opts = {}) {
+  const replace = opts.replace !== false;
+  const base = replace ? {} : await getReactionMap();
+  const next = { ...base };
   for (const r of rows) {
     const id = normalizeId(r?.article_id);
     if (!id) continue;

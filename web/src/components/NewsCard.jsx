@@ -2,6 +2,7 @@ import React from 'react';
 import { useTheme } from '../theme/ThemeContext';
 import {
     ChevronUp,
+    ChevronDown,
     Bookmark,
     Share2,
     MoreHorizontal,
@@ -15,8 +16,11 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
-    const isBookmarked = bookmarkedItems?.has(item.id);
-    const voteType = votedItems?.[item.id];
+    const itemId = item?.id != null ? String(item.id) : '';
+    const isBookmarked = bookmarkedItems?.has(itemId) || bookmarkedItems?.has(item.id);
+    const voteType = votedItems?.[itemId] ?? votedItems?.[item.id];
+    const likeCount = Number(item.like_count ?? item.upvotes ?? 0);
+    const dislikeCount = Number(item.dislike_count ?? 0);
 
     const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
     const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
@@ -253,9 +257,10 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             gap: '12px',
                         }}>
                             <button
+                                type="button"
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    onVote?.(item.id, 'up');
+                                    onVote?.(itemId || item.id, 'up');
                                 }}
                                 style={{
                                     display: 'flex',
@@ -291,14 +296,59 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                     fontWeight: '600',
                                     color: voteType === 'up' ? '#3b82f6' : textSecondary,
                                 }}>
-                                    {item.upvotes || 0}
+                                    {likeCount}
                                 </span>
                             </button>
 
                             <button
+                                type="button"
                                 onClick={(e) => {
                                     e.stopPropagation();
-                                    onBookmark?.(item.id);
+                                    onVote?.(itemId || item.id, 'down');
+                                }}
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    padding: '4px 8px',
+                                    border: 'none',
+                                    background: voteType === 'down'
+                                        ? (isDark ? 'rgba(239, 68, 68, 0.2)' : '#fef2f2')
+                                        : 'transparent',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s ease',
+                                }}
+                                onMouseEnter={(e) => {
+                                    if (voteType !== 'down') {
+                                        e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
+                                    }
+                                }}
+                                onMouseLeave={(e) => {
+                                    if (voteType !== 'down') {
+                                        e.currentTarget.style.backgroundColor = 'transparent';
+                                    }
+                                }}
+                            >
+                                <ChevronDown
+                                    size={14}
+                                    color={voteType === 'down' ? '#ef4444' : textSecondary}
+                                    strokeWidth={voteType === 'down' ? 2.5 : 2}
+                                />
+                                <span style={{
+                                    fontSize: '12px',
+                                    fontWeight: '600',
+                                    color: voteType === 'down' ? '#ef4444' : textSecondary,
+                                }}>
+                                    {dislikeCount}
+                                </span>
+                            </button>
+
+                            <button
+                                type="button"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onBookmark?.(itemId || item.id);
                                 }}
                                 style={{
                                     padding: '4px',
@@ -330,8 +380,19 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             </button>
 
                             <button
+                                type="button"
                                 onClick={(e) => {
                                     e.stopPropagation();
+                                    const url = item.canonical_url || item.url || (typeof window !== 'undefined' ? window.location.href : '');
+                                    if (navigator.share) {
+                                        navigator.share({
+                                            title: item.title,
+                                            text: item.excerpt || item.description || '',
+                                            url,
+                                        }).catch(() => {});
+                                    } else if (url && navigator.clipboard?.writeText) {
+                                        navigator.clipboard.writeText(url);
+                                    }
                                 }}
                                 style={{
                                     padding: '4px',

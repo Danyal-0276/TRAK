@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTheme } from "../../theme/ThemeContext";
 import SearchBar from "./components/SearchBar";
@@ -7,7 +7,7 @@ import TrendingTopics from "./components/TrendingTopics";
 import { NewsCard } from "../../components/NewsCard";
 import { loadFeedItems } from "../../utils/loadFeed";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
-import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from "../../utils/Service/api";
+import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction, submitArticleReport } from "../../utils/Service/api";
 import { getBookmarkIds, setBookmarkIds } from "../../utils/bookmarksStorage";
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from "../../utils/reactionsStorage";
 
@@ -37,7 +37,8 @@ import {
     Share2, 
     Clock, 
     CheckCircle,
-    X
+    X,
+    MoreHorizontal,
 } from 'lucide-react';
 
 const SearchScreen = () => {
@@ -48,7 +49,6 @@ const SearchScreen = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [allNews, setAllNews] = useState([]);
     const [filteredNews, setFilteredNews] = useState([]);
-    const [trendingTopics, setTrendingTopics] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || "");
     const [debouncedQuery, setDebouncedQuery] = useState(searchParams.get('q') || "");
@@ -61,12 +61,19 @@ const SearchScreen = () => {
     const [articleBookmarked, setArticleBookmarked] = useState(false);
     const [articleLikeCount, setArticleLikeCount] = useState(0);
     const [articleDislikeCount, setArticleDislikeCount] = useState(0);
-    const { success } = useUIFeedback();
+    const { success, error: showError } = useUIFeedback();
     const searchRef = useRef(null);
+    const discoverMenuRef = useRef(null);
+    const [discoverMenuOpen, setDiscoverMenuOpen] = useState(false);
     const lastScrollY = useRef(0);
     const [headerHidden, setHeaderHidden] = useState(false);
 
     const [categories, setCategories] = useState(["All"]);
+
+    const trendingTopics = useMemo(() => {
+        if (debouncedQuery.trim()) return [];
+        return deriveTrendingFromArticles(allNews);
+    }, [allNews, debouncedQuery]);
 
     useEffect(() => {
         const t = setTimeout(() => setDebouncedQuery(searchQuery), 300);
@@ -90,7 +97,7 @@ const SearchScreen = () => {
                 const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
                 setBookmarkedItems(bookmarked);
                 setBookmarkIds(Array.from(bookmarked));
-                const serverReactions = mergeReactionRows(reactions.results || []);
+                const serverReactions = mergeReactionRows(reactions.results || [], { replace: false });
                 setVotedItems({ ...cachedReactions, ...serverReactions });
                 setAllNews(newsData);
                 const categorySet = new Set();
@@ -100,9 +107,6 @@ const SearchScreen = () => {
                     }
                 });
                 setCategories(["All", ...Array.from(categorySet).sort()]);
-                if (!q) {
-                    setTrendingTopics(deriveTrendingFromArticles(newsData));
-                }
                 setFilteredNews([...newsData]);
             } catch (error) {
                 console.error("Error fetching data:", error);
@@ -113,6 +117,53 @@ const SearchScreen = () => {
             }
         })();
     }, [debouncedQuery]);
+
+    useEffect(() => {
+        if (!discoverMenuOpen) return;
+        const close = (e) => {
+            if (discoverMenuRef.current && !discoverMenuRef.current.contains(e.target)) {
+                setDiscoverMenuOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', close);
+        return () => document.removeEventListener('mousedown', close);
+    }, [discoverMenuOpen]);
+
+    const exportDiscoverResults = useCallback(() => {
+        const rows = filteredNews.map((a) => ({
+            id: a.id,
+            title: a.title,
+            source: a.source,
+            category: a.category,
+            url: a.canonical_url || a.url,
+        }));
+        const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `trak-discover-export-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        setDiscoverMenuOpen(false);
+        success('Export downloaded.');
+    }, [filteredNews, success]);
+
+    const reportDiscoverContent = useCallback(async () => {
+        const reason = typeof window !== 'undefined' ? window.prompt('Describe the issue (spam, misleading, etc.):', 'flag') : 'flag';
+        if (reason === null) return;
+        const first = filteredNews[0];
+        try {
+            await submitArticleReport({
+                article_id: first?.id ? String(first.id) : '',
+                url: first?.canonical_url || first?.url || '',
+                reason: reason || 'flag',
+            });
+            success('Thanks — your report was sent.');
+        } catch (e) {
+            showError(e?.message || 'Could not submit report.');
+        }
+        setDiscoverMenuOpen(false);
+    }, [filteredNews, success, showError]);
 
     // Read query parameter from URL on mount and when URL changes
     useEffect(() => {
@@ -212,8 +263,8 @@ const SearchScreen = () => {
 
     const handleArticlePress = (article) => {
         setSelectedArticle(article);
-        setArticleLikeCount(article.upvotes || article.votes || 0);
-        setArticleDislikeCount(3);
+        setArticleLikeCount(Number(article.like_count ?? article.upvotes ?? article.votes ?? 0));
+        setArticleDislikeCount(Number(article.dislike_count ?? 0));
         setArticleLiked(false);
         setArticleDisliked(false);
         setArticleBookmarked(bookmarkedItems.has(article.id));
@@ -279,7 +330,19 @@ const SearchScreen = () => {
         setReactionForArticle(id, newVote);
 
         try {
-            await setReaction(id, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
+            const data = await setReaction(
+                id,
+                newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none'
+            );
+            const likes = Number(data.like_count ?? 0);
+            const dislikes = Number(data.dislike_count ?? 0);
+            const patch = { like_count: likes, dislike_count: dislikes, upvotes: likes, votes: likes };
+            setAllNews((prev) =>
+                prev.map((n) => (String(n.id) !== id ? n : { ...n, ...patch }))
+            );
+            setSelectedArticle((prev) =>
+                prev && String(prev.id) === id ? { ...prev, ...patch } : prev
+            );
         } catch (error) {
             setVotedItems(prev => ({
                 ...prev,
@@ -290,24 +353,25 @@ const SearchScreen = () => {
     };
 
     const handleBookmark = async (itemId) => {
-        setBookmarkedItems(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(itemId)) {
-                newSet.delete(itemId);
+        const id = String(itemId);
+        const wasBookmarked = bookmarkedItems.has(id);
+        setBookmarkedItems((prev) => {
+            const newSet = new Set([...prev].map(String));
+            if (newSet.has(id)) {
+                newSet.delete(id);
             } else {
-                newSet.add(itemId);
+                newSet.add(id);
             }
             setBookmarkIds(Array.from(newSet));
             return newSet;
         });
 
         try {
-            const exists = bookmarkedItems.has(itemId) || bookmarkedItems.has(String(itemId));
-            const article = allNews.find((n) => String(n.id) === String(itemId));
-            if (exists) {
-                await removeBookmark(itemId);
+            const article = allNews.find((n) => String(n.id) === id);
+            if (wasBookmarked) {
+                await removeBookmark(id);
             } else {
-                await addBookmark(itemId, article?.title || "", article?.canonical_url || article?.url || "");
+                await addBookmark(id, article?.title || "", article?.canonical_url || article?.url || "");
             }
         } catch (error) {
             console.error('Error bookmarking:', error);
@@ -331,7 +395,7 @@ const SearchScreen = () => {
                 maxWidth: '1200px',
                 margin: '0 auto',
                 width: '100%',
-                padding: '0 24px 24px 24px',
+                padding: '0 clamp(16px, 4vw, 24px) 24px clamp(16px, 4vw, 24px)',
             }}>
                 <div style={{
                     position: 'sticky',
@@ -370,13 +434,88 @@ const SearchScreen = () => {
                         </p>
                     </div>
 
-                    {/* Search Bar */}
-                    <div style={{ marginBottom: '18px' }}>
-                        <SearchBar
-                            ref={searchRef}
-                            onSearch={handleSearch}
-                            initialQuery={searchQuery}
-                        />
+                    {/* Search Bar + actions */}
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '18px' }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <SearchBar
+                                ref={searchRef}
+                                onSearch={handleSearch}
+                                initialQuery={searchQuery}
+                            />
+                        </div>
+                        <div ref={discoverMenuRef} style={{ position: 'relative', flexShrink: 0, paddingTop: '4px' }}>
+                            <button
+                                type="button"
+                                aria-label="More actions"
+                                onClick={() => setDiscoverMenuOpen((o) => !o)}
+                                style={{
+                                    width: 44,
+                                    height: 44,
+                                    borderRadius: 10,
+                                    border: `1px solid ${borderColor}`,
+                                    background: isDark ? colors.surface || '#1E293B' : '#ffffff',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    color: textPrimary,
+                                }}
+                            >
+                                <MoreHorizontal size={20} />
+                            </button>
+                            {discoverMenuOpen ? (
+                                <div style={{
+                                    position: 'absolute',
+                                    right: 0,
+                                    top: 48,
+                                    minWidth: 180,
+                                    background: cardBackground,
+                                    border: `1px solid ${borderColor}`,
+                                    borderRadius: 10,
+                                    boxShadow: isDark ? '0 8px 24px rgba(0,0,0,0.4)' : '0 8px 24px rgba(15,23,42,0.12)',
+                                    zIndex: 50,
+                                    overflow: 'hidden',
+                                }}>
+                                    <button
+                                        type="button"
+                                        onClick={exportDiscoverResults}
+                                        style={{
+                                            display: 'block',
+                                            width: '100%',
+                                            textAlign: 'left',
+                                            padding: '12px 14px',
+                                            border: 'none',
+                                            background: 'transparent',
+                                            cursor: 'pointer',
+                                            fontSize: 14,
+                                            fontWeight: 600,
+                                            color: textPrimary,
+                                        }}
+                                    >
+                                        Export results
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={reportDiscoverContent}
+                                        style={{
+                                            display: 'block',
+                                            width: '100%',
+                                            textAlign: 'left',
+                                            padding: '12px 14px',
+                                            border: 'none',
+                                            borderTop: `1px solid ${borderColor}`,
+                                            background: 'transparent',
+                                            cursor: 'pointer',
+                                            fontSize: 14,
+                                            fontWeight: 600,
+                                            color: textPrimary,
+                                        }}
+                                    >
+                                        Report / Flag
+                                    </button>
+                                </div>
+                            ) : null}
+                        </div>
                     </div>
 
                     {/* Tab Bar */}
@@ -784,19 +923,62 @@ const SearchScreen = () => {
                 {/* Content Area */}
                 {loading ? (
                     <div style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        minHeight: '500px',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                        gap: '24px',
                     }}>
-                        <div style={{
-                            width: '32px',
-                            height: '32px',
-                            border: '3px solid #e5e7eb',
-                            borderTop: '3px solid #0f172a',
-                            borderRadius: '50%',
-                            animation: 'spin 0.8s linear infinite',
-                        }} />
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <div
+                                key={i}
+                                style={{
+                                    backgroundColor: cardBackground,
+                                    borderRadius: '8px',
+                                    border: `1px solid ${borderColor}`,
+                                    overflow: 'hidden',
+                                    minHeight: '260px',
+                                }}
+                            >
+                                <div
+                                    className="trak-search-skel-shimmer"
+                                    style={{
+                                        height: '160px',
+                                        background: isDark ? '#334155' : '#e5e7eb',
+                                    }}
+                                />
+                                <div style={{ padding: '20px' }}>
+                                    <div
+                                        className="trak-search-skel-shimmer"
+                                        style={{
+                                            height: '14px',
+                                            width: '40%',
+                                            borderRadius: '4px',
+                                            marginBottom: '14px',
+                                            background: isDark ? '#334155' : '#e5e7eb',
+                                        }}
+                                    />
+                                    <div
+                                        className="trak-search-skel-shimmer"
+                                        style={{
+                                            height: '18px',
+                                            width: '100%',
+                                            borderRadius: '4px',
+                                            marginBottom: '8px',
+                                            background: isDark ? '#334155' : '#e5e7eb',
+                                        }}
+                                    />
+                                    <div
+                                        className="trak-search-skel-shimmer"
+                                        style={{
+                                            height: '12px',
+                                            width: '90%',
+                                            borderRadius: '4px',
+                                            marginTop: '20px',
+                                            background: isDark ? '#475569' : '#f1f5f9',
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 ) : filteredNews.length === 0 ? (
                     <div style={{
@@ -962,9 +1144,13 @@ const SearchScreen = () => {
                 )}
             </div>
             <style>{`
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
+                @keyframes trakSearchShimmer {
+                    0% { opacity: 0.45; }
+                    50% { opacity: 1; }
+                    100% { opacity: 0.45; }
+                }
+                .trak-search-skel-shimmer {
+                    animation: trakSearchShimmer 1.2s ease-in-out infinite;
                 }
                 h1 {
                     margin-top: 0 !important;

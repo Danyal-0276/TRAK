@@ -135,6 +135,14 @@ const AdminScreen = ({ navigation }) => {
     loadData();
   }, [bootstrapped, isAdmin]);
 
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin || activeTab !== 'users') return;
+    const id = setTimeout(() => {
+      loadData();
+    }, 350);
+    return () => clearTimeout(id);
+  }, [searchQuery, activeTab, bootstrapped, isAdmin]);
+
   const loadData = async () => {
     let svr = null;
     let arts = [];
@@ -159,7 +167,7 @@ const AdminScreen = ({ navigation }) => {
     setApiArticles(arts);
 
     const [usersRes, keywordsData, notificationsRes, settingsRes, analyticsData] = await Promise.all([
-      getAdminUsers(),
+      getAdminUsers(activeTab === 'users' ? searchQuery.trim() : ''),
       MockAPI.getKeywords(),
       getAdminNotifications(),
       getAdminSettings(),
@@ -171,6 +179,7 @@ const AdminScreen = ({ navigation }) => {
       email: u.email,
       status: u.is_active ? 'active' : 'inactive',
       role: u.role,
+      isAdmin: u.role === 'admin',
     }));
     const notificationsData = (notificationsRes.results || []).map((n) => ({
       id: n.id,
@@ -355,12 +364,6 @@ const AdminScreen = ({ navigation }) => {
     loadData();
   };
 
-  const filteredUsers = users.filter(
-    u =>
-      u.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   const filteredArticles = apiArticles.filter(
     a =>
       a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -480,7 +483,7 @@ const AdminScreen = ({ navigation }) => {
         )}
         {activeTab === 'users' && (
           <UsersTab
-            users={filteredUsers}
+            users={users}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onEdit={handleEdit}

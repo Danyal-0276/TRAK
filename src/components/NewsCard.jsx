@@ -2,7 +2,7 @@
 // FILE: components/NewsCard.jsx
 // ============================================
 import React, { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform, Share } from 'react-native';
 import {
     ChevronUp,
     ChevronDown,
@@ -23,12 +23,10 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const safeTitle = String(item?.title || 'Untitled');
     const safeExcerpt = String(item?.excerpt || item?.content || '');
     const safeCategory = String(item?.category || 'General');
-    const safeVotes = Number(item?.votes || 0);
+    const likeCount = Number(item?.like_count ?? item?.upvotes ?? 0);
+    const dislikeCount = Number(item?.dislike_count ?? 0);
     const initialReaction = item?.userReaction || null;
     const currentReaction = (votedItems && votedItems[safeId] !== undefined) ? votedItems[safeId] : initialReaction;
-    const voteDelta = currentReaction === 'up' ? 1 : currentReaction === 'down' ? -1 : 0;
-    const initialDelta = initialReaction === 'up' ? 1 : initialReaction === 'down' ? -1 : 0;
-    const displayedVotes = safeVotes - initialDelta + voteDelta;
     const isBookmarked =
         bookmarkedItems?.has?.(item?.id) || bookmarkedItems?.has?.(String(item?.id));
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -231,13 +229,12 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
         voteButton: {
             padding: 6,
         },
-        voteCount: {
-            fontSize: 16,
+        voteCountSmall: {
+            fontSize: 13,
             fontWeight: '700',
             color: colors.textPrimary,
-            marginHorizontal: 8,
-            minWidth: 32,
-            textAlign: 'center',
+            marginRight: 10,
+            minWidth: 20,
         },
         actionsRight: {
             flexDirection: 'row',
@@ -343,12 +340,11 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             >
                                 <ChevronUp
                                     size={18}
-                                    color={currentReaction === 'up' ? colors.textPrimary : colors.textSecondary}
+                                    color={currentReaction === 'up' ? colors.primary : colors.textSecondary}
                                     strokeWidth={2.5}
                                 />
                             </TouchableOpacity>
-
-                            <Text style={cardStyles.voteCount}>{displayedVotes}</Text>
+                            <Text style={cardStyles.voteCountSmall}>{likeCount}</Text>
 
                             <TouchableOpacity
                                 style={cardStyles.voteButton}
@@ -359,10 +355,11 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             >
                                 <ChevronDown
                                     size={18}
-                                    color={currentReaction === 'down' ? colors.textPrimary : colors.textSecondary}
+                                    color={currentReaction === 'down' ? colors.error : colors.textSecondary}
                                     strokeWidth={2.5}
                                 />
                             </TouchableOpacity>
+                            <Text style={cardStyles.voteCountSmall}>{dislikeCount}</Text>
                         </View>
                     </View>
 
@@ -384,7 +381,19 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
 
                         <TouchableOpacity
                             style={cardStyles.actionButton}
-                            onPress={(e) => e.stopPropagation()}
+                            onPress={async (e) => {
+                                e.stopPropagation();
+                                const url = item.canonical_url || item.url || '';
+                                try {
+                                    await Share.share({
+                                        title: safeTitle,
+                                        message: url ? `${safeTitle}\n${url}` : safeTitle,
+                                        url: Platform.OS === 'ios' ? url : undefined,
+                                    });
+                                } catch (_) {
+                                    /* user dismissed share sheet */
+                                }
+                            }}
                         >
                             <Share2 size={18} color={colors.textSecondary} strokeWidth={2} />
                         </TouchableOpacity>

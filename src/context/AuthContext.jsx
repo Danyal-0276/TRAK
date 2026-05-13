@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AUTH_PREFIX, API_BASE } from '../config/api';
-import { apiFetch, clearTokens, getAccessToken, setTokens } from '../api/client';
+import { apiFetch, getAccessToken, setTokens } from '../api/client';
+import { clearAuthSession as clearStoredAuthSession, saveAuthSession } from '../utils/Service/api';
 import { registerDeviceToken } from '../api/notificationsApi';
 import { getOrCreatePushToken } from '../api/pushToken';
 
@@ -59,7 +60,8 @@ export function AuthProvider({ children }) {
                     const me = await fetchMe();
                     if (me?.__sessionInvalid) {
                         // Server explicitly rejected our tokens — sign the user out.
-                        await clearTokens();
+                        await clearStoredAuthSession();
+                        await AsyncStorage.removeItem(USER_CACHE_KEY).catch(() => {});
                         setUser(null);
                         return;
                     }
@@ -102,6 +104,7 @@ export function AuthProvider({ children }) {
         }
         await setTokens(data.access, data.refresh);
         const u = data.user || (await fetchMe());
+        await saveAuthSession({ access: data.access, refresh: data.refresh, user: u });
         setUser(u);
         await AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(u || {})).catch(() => {});
         const deviceToken = await getOrCreatePushToken();
@@ -129,6 +132,7 @@ export function AuthProvider({ children }) {
         }
         await setTokens(data.access, data.refresh);
         const u = data.user || (await fetchMe());
+        await saveAuthSession({ access: data.access, refresh: data.refresh, user: u });
         setUser(u);
         await AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(u || {})).catch(() => {});
         const deviceToken = await getOrCreatePushToken();
@@ -137,7 +141,7 @@ export function AuthProvider({ children }) {
     };
 
     const logout = async () => {
-        await clearTokens();
+        await clearStoredAuthSession();
         await AsyncStorage.removeItem(USER_CACHE_KEY).catch(() => {});
         setUser(null);
     };

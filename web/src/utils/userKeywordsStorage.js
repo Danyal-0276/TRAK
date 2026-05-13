@@ -23,5 +23,10 @@ export function getUserKeywords() {
 export function setUserKeywords(keywords) {
   const cleaned = normalize(keywords);
   window.localStorage.setItem(KEY, JSON.stringify(cleaned));
+  try {
+    window.dispatchEvent(new CustomEvent('trak-keywords-changed', { detail: cleaned }));
+  } catch {
+    /* ignore */
+  }
   return cleaned;
 }

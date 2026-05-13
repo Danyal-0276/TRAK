@@ -54,6 +54,24 @@ export async function markAllAsRead() {
   return parseJson(res);
 }
 
+export async function getNotificationPreferences() {
+  const res = await apiFetch(`${PREFIX}/preferences/`, {}, API_BASE);
+  return parseJson(res);
+}
+
+export async function patchNotificationPreferences(body) {
+  const res = await apiFetch(
+    `${PREFIX}/preferences/`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    },
+    API_BASE
+  );
+  return parseJson(res);
+}
+
 export async function registerDeviceToken(token, platform = 'mobile') {
   const res = await apiFetch(
     `${PREFIX}/device-token/`,

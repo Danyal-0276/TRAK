@@ -12,51 +12,8 @@ import {
 import { FileText, BarChart3, Activity, Hash } from 'lucide-react';
 import { ChevronRight } from 'lucide-react';
 import { getAdminAnalytics, getAdminModelMetrics } from '../../api/adminApi';
-
-const BreakdownTable = ({ title, entries, textPrimary, textSecondary, borderColor, cardBackground }) => (
-  <div
-    style={{
-      backgroundColor: cardBackground,
-      borderRadius: '12px',
-      border: `1px solid ${borderColor}`,
-      padding: '24px',
-      marginBottom: '24px',
-    }}
-  >
-    <h2
-      style={{
-        fontSize: '18px',
-        fontWeight: '700',
-        color: textPrimary,
-        margin: '0 0 16px 0',
-      }}
-    >
-      {title}
-    </h2>
-    {entries.length === 0 ? (
-      <p style={{ margin: 0, color: textSecondary, fontSize: '14px' }}>No data.</p>
-    ) : (
-      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-        <thead>
-          <tr style={{ borderBottom: `1px solid ${borderColor}` }}>
-            <th style={{ textAlign: 'left', padding: '8px 0', color: textSecondary }}>Key</th>
-            <th style={{ textAlign: 'right', padding: '8px 0', color: textSecondary }}>Count</th>
-          </tr>
-        </thead>
-        <tbody>
-          {entries.map(([k, v]) => (
-            <tr key={String(k)} style={{ borderBottom: `1px solid ${borderColor}` }}>
-              <td style={{ padding: '10px 0', color: textPrimary }}>{String(k)}</td>
-              <td style={{ padding: '10px 0', textAlign: 'right', color: textPrimary, fontWeight: 600 }}>
-                {v}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    )}
-  </div>
-);
+import AdminBreakdownTable from './components/AdminBreakdownTable';
+import { SkeletonStatCards, SkeletonTableRows } from '../../components/skeletons/SkeletonLayouts';
 
 const AdminAnalyticsScreen = () => {
   const { theme } = useTheme();
@@ -169,10 +126,14 @@ const AdminAnalyticsScreen = () => {
               paddingTop: '0',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: textSecondary, marginBottom: '10px' }}>
-              <button onClick={() => navigate('/admin/dashboard')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Admin</button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: textSecondary, marginBottom: '10px', flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => navigate('/admin/dashboard')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Admin</button>
               <ChevronRight size={14} />
               <span style={{ color: textPrimary, fontWeight: 600 }}>Analytics</span>
+              <span style={{ color: borderColor, margin: '0 4px' }}>|</span>
+              <button type="button" onClick={() => navigate('/admin/notifications')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Notifications</button>
+              <span style={{ color: borderColor }}>·</span>
+              <button type="button" onClick={() => navigate('/admin/settings')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Platform settings</button>
             </div>
             <h1
               style={{
@@ -262,23 +223,17 @@ const AdminAnalyticsScreen = () => {
           </div>
 
           {loading ? (
-            <div style={{ display: 'flex', justifyContent: 'center', padding: '48px' }}>
-              <div
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  border: `3px solid ${borderColor}`,
-                  borderTop: `3px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`,
-                  borderRadius: '50%',
-                  animation: 'spin 0.8s linear infinite',
-                }}
-              />
+            <div style={{ padding: '8px 0 24px' }}>
+              <SkeletonStatCards count={4} isDark={isDark} colors={colors} />
+              <div style={{ marginTop: 20 }}>
+                <SkeletonTableRows rows={8} isDark={isDark} colors={colors} />
+              </div>
             </div>
           ) : snapshot == null ? (
             <p style={{ color: textSecondary }}>Could not load analytics. Sign in as an admin and ensure the API is up.</p>
           ) : (
             <>
-              <BreakdownTable
+              <AdminBreakdownTable
                 title="Raw articles by pipeline_status"
                 entries={rawEntries}
                 textPrimary={textPrimary}
@@ -287,7 +242,7 @@ const AdminAnalyticsScreen = () => {
                 cardBackground={cardBackground}
               />
               {activeMetric !== 'pipeline' && (
-                <BreakdownTable
+                <AdminBreakdownTable
                   title="Processed articles by credibility_label"
                   entries={credEntries}
                   textPrimary={textPrimary}
@@ -298,7 +253,7 @@ const AdminAnalyticsScreen = () => {
               )}
               {modelMetrics && (
                 <>
-                  <BreakdownTable
+                  <AdminBreakdownTable
                     title="Model per-class F1"
                     entries={Object.entries(modelMetrics.per_class || {}).map(([k, v]) => [
                       k,
@@ -309,7 +264,7 @@ const AdminAnalyticsScreen = () => {
                     borderColor={borderColor}
                     cardBackground={cardBackground}
                   />
-                  <BreakdownTable
+                  <AdminBreakdownTable
                     title="Model macro/weighted metrics"
                     entries={[
                       ['accuracy', Number(modelMetrics.accuracy ?? 0).toFixed(4)],

@@ -22,6 +22,8 @@ import {
 import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
+import { getNotificationPreferences, patchNotificationPreferences } from "../../utils/Service/api";
+import { SkeletonPageBlocks } from "../../components/skeletons/SkeletonLayouts";
 
 export default function SettingsScreen() {
     const { theme, toggleTheme } = useTheme();
@@ -52,15 +54,48 @@ export default function SettingsScreen() {
     const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
     const [showSaveSuccess, setShowSaveSuccess] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [prefsLoading, setPrefsLoading] = useState(true);
 
     // Save settings to localStorage whenever they change
     useEffect(() => {
         localStorage.setItem('userSettings', JSON.stringify(settings));
     }, [settings]);
 
+    useEffect(() => {
+        (async () => {
+            try {
+                const p = await getNotificationPreferences();
+                setSettings((prev) => ({
+                    ...prev,
+                    pushNotifications: !!p.push_enabled,
+                    emailNotifications: !!p.email_enabled,
+                    keywordAlerts: !!p.keyword_alerts,
+                }));
+            } catch {
+                /* keep local defaults */
+            } finally {
+                setPrefsLoading(false);
+            }
+        })();
+    }, []);
+
     const handleToggle = (key) => {
         setIsSaving(true);
-        setSettings(prev => ({ ...prev, [key]: !prev[key] }));
+        const serverKey =
+            key === 'pushNotifications'
+                ? 'push_enabled'
+                : key === 'emailNotifications'
+                  ? 'email_enabled'
+                  : key === 'keywordAlerts'
+                    ? 'keyword_alerts'
+                    : null;
+        setSettings((prev) => {
+            const next = { ...prev, [key]: !prev[key] };
+            if (serverKey) {
+                patchNotificationPreferences({ [serverKey]: next[key] }).catch(() => {});
+            }
+            return next;
+        });
         setTimeout(() => {
             setIsSaving(false);
             setShowSaveSuccess(true);
@@ -309,6 +344,10 @@ export default function SettingsScreen() {
                     </p>
                 </div>
 
+                {prefsLoading ? (
+                    <SkeletonPageBlocks isDark={darkTheme} colors={colors} minHeight="560px" />
+                ) : (
+                <>
                 {/* Save Success Message */}
                 {isSaving && (
                     <div style={{
@@ -369,10 +408,22 @@ export default function SettingsScreen() {
                     />
                 </SettingsSection>
 
+                <SettingsSection
+                    title="Feed & channels"
+                    description="Topics you follow in your personalized feed"
+                >
+                    <SettingsRow
+                        icon={<Tag size={20} color={colors.textPrimary || '#0f172a'} />}
+                        label="Following news channels"
+                        description="Choose categories and keywords"
+                        onPress={() => navigate('/tag-selection', { state: { fromSettings: true } })}
+                    />
+                </SettingsSection>
+
                 {/* Notifications Section */}
                 <SettingsSection 
-                    title="Notifications"
-                    description="Manage how you receive notifications"
+                    title="Notification preferences"
+                    description="Push, email, and keyword alerts"
                 >
                     <SettingsRow
                         icon={<Bell size={20} color={colors.textPrimary || '#0f172a'} />}
@@ -532,6 +583,8 @@ export default function SettingsScreen() {
                         onPress={handleLogout}
                     />
                 </SettingsSection>
+                </>
+                )}
             </div>
         </div>
     );

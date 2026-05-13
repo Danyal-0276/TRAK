@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import { getResponsivePadding, getResponsiveMaxWidth, getResponsiveFontSize } from '../../utils/responsiveStyles';
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { deleteAdminUser, getAdminUsers, patchAdminUser } from '../../api/adminApi';
+import { SkeletonTableRows } from '../../components/skeletons/SkeletonLayouts';
 
 const AdminUsersScreen = () => {
     const navigate = useNavigate();
@@ -34,14 +35,10 @@ const AdminUsersScreen = () => {
     const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
     const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
 
-    useEffect(() => {
-        loadUsers();
-    }, []);
-
-    const loadUsers = async () => {
+    const loadUsers = useCallback(async () => {
         try {
             setLoading(true);
-            const data = await getAdminUsers();
+            const data = await getAdminUsers(searchQuery.trim());
             const mapped = (data.results || []).map((u) => ({
                 id: u.id,
                 name: u.email?.split('@')[0] || 'user',
@@ -56,7 +53,14 @@ const AdminUsersScreen = () => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [searchQuery]);
+
+    useEffect(() => {
+        const t = window.setTimeout(() => {
+            loadUsers();
+        }, 280);
+        return () => window.clearTimeout(t);
+    }, [loadUsers]);
 
     const handleDelete = async (userId) => {
         const accepted = await confirm({
@@ -88,11 +92,6 @@ const AdminUsersScreen = () => {
             notifyError(e?.message || 'Failed to update user status.');
         }
     };
-
-    const filteredUsers = users.filter(user =>
-        user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchQuery.toLowerCase())
-    );
 
     return (
         <>
@@ -196,22 +195,8 @@ const AdminUsersScreen = () => {
 
                 {/* Users Table */}
                 {loading ? (
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        minHeight: '400px',
-                    }}>
-                        <div style={{
-                            width: '32px',
-                            height: '32px',
-                            border: `3px solid ${borderColor}`,
-                            borderTop: `3px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`,
-                            borderRadius: '50%',
-                            animation: 'spin 0.8s linear infinite',
-                        }} />
-                    </div>
-                ) : filteredUsers.length === 0 ? (
+                    <SkeletonTableRows rows={10} isDark={isDark} colors={colors} />
+                ) : users.length === 0 ? (
                     <div style={{
                         display: 'flex',
                         flexDirection: 'column',
@@ -261,7 +246,7 @@ const AdminUsersScreen = () => {
                             <div style={{ fontSize: '12px', fontWeight: '600', color: textSecondary, textTransform: 'uppercase' }}>Join Date</div>
                             <div style={{ fontSize: '12px', fontWeight: '600', color: textSecondary, textTransform: 'uppercase' }}>Actions</div>
                         </div>
-                        {filteredUsers.map((user) => (
+                        {users.map((user) => (
                             <div
                                 key={user.id}
                                 style={{

@@ -74,7 +74,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 const isBm = cacheHas || (bRes.results || []).some((b) => String(b.article_id) === String(id));
                 setIsBookmarked(isBm);
                 const cachedReactions = await getReactionMap().catch(() => ({}));
-                const serverReactionMap = await mergeReactionRows(rRes.results || []).catch(() => ({}));
+                const serverReactionMap = await mergeReactionRows(rRes.results || [], { replace: false }).catch(() => ({}));
                 const mergedMap = { ...cachedReactions, ...serverReactionMap };
                 const rowVal = mergedMap[String(id)];
                 const row = (rRes.results || []).find((r) => String(r.article_id) === String(id));

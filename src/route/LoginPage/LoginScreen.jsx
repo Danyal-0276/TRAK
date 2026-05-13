@@ -10,9 +10,7 @@ import Text from '../../components/ui/Text';
 import { useAuth } from '../../context/AuthContext';
 import { setTokens } from '../../api/client';
 import {
-    loginWithOtp,
     loginWithSocialDemo,
-    requestOtp,
     saveAuthSession,
 } from '../../utils/Service/api';
 
@@ -96,9 +94,8 @@ const LoginScreen = ({ navigation }) => {
         setLoadingProvider(provider);
         
         try {
-            const normalizedProvider = provider === 'apple' ? 'twitter' : provider === 'facebook' ? 'github' : provider;
-            const syntheticEmail = `${normalizedProvider}_mobile_user_${Date.now()}@trak.local`;
-            const session = await loginWithSocialDemo(normalizedProvider, syntheticEmail);
+            const syntheticEmail = `${provider}_mobile_user_${Date.now()}@trak.local`;
+            const session = await loginWithSocialDemo(provider, syntheticEmail);
             await setTokens(session.access, session.refresh);
             await saveAuthSession(session);
             await bootstrap();
@@ -289,50 +286,14 @@ const LoginScreen = ({ navigation }) => {
                                 if (!email || !password) return;
                                 setLoading(true);
                                 try {
-                                    const user = await login(email, password);
-                                    const dest = 'NewsFeed';
+                                    const u = await login(email, password);
+                                    const dest = u?.role === 'admin' ? 'AdminScreen' : 'NewsFeed';
                                     navigation.reset({
                                         index: 0,
                                         routes: [{ name: dest }],
                                     });
                                 } catch (error) {
                                     setNotice({ type: 'error', text: error.message || 'Failed to sign in.' });
-                                } finally {
-                                    setLoading(false);
-                                }
-                            }}
-                            onRequestOtp={async () => {
-                                if (!email) {
-                                    setNotice({ type: 'error', text: 'Enter email or phone in the first field' });
-                                    return;
-                                }
-                                if (!/^\+?[\d\s\-()]{7,20}$/.test(email.trim())) {
-                                    setNotice({ type: 'error', text: 'Enter a valid phone number' });
-                                    return;
-                                }
-                                try {
-                                    const payload = await requestOtp(email);
-                                    const codeHint = payload?.dev_code ? ` Test code: ${payload.dev_code}` : '';
-                                    setNotice({ type: 'success', text: `Code sent successfully.${codeHint}` });
-                                } catch (error) {
-                                    setNotice({ type: 'error', text: error.message || 'Failed to send code' });
-                                }
-                            }}
-                            onVerifyOtp={async () => {
-                                if (!email || !password) {
-                                    setNotice({ type: 'error', text: 'Use first field for email/phone and second for OTP code' });
-                                    return;
-                                }
-                                setLoading(true);
-                                try {
-                                    const session = await loginWithOtp(email, password);
-                                    await setTokens(session.access, session.refresh);
-                                    await saveAuthSession(session);
-                                    await bootstrap();
-                                    const dest = 'NewsFeed';
-                                    navigation.reset({ index: 0, routes: [{ name: dest }] });
-                                } catch (error) {
-                                    setNotice({ type: 'error', text: error.message || 'Failed to verify code' });
                                 } finally {
                                     setLoading(false);
                                 }

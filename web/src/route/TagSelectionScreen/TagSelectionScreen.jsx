@@ -20,6 +20,7 @@ const TagSelectionScreen = () => {
     const [selectedTags, setSelectedTags] = useState([]);
     const [searchText, setSearchText] = useState('');
     const fromSettings = Boolean(location.state?.fromSettings) || searchParams.get('fromSettings') === '1';
+    const fromSignup = Boolean(location.state?.fromSignup);
 
     const mainTags = Object.keys(newsTagsWithSubcategories);
 
@@ -28,6 +29,7 @@ const TagSelectionScreen = () => {
     );
 
     useEffect(() => {
+        if (fromSignup) return;
         const saved = getUserKeywords();
         if (!saved.length) return;
         const next = new Set();
@@ -42,6 +44,8 @@ const TagSelectionScreen = () => {
             }
         }
         if (next.size) setSelectedTags(Array.from(next));
+    // Intentionally run once on mount; fromSignup is fixed for this navigation.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const toggleMainTag = (tag) => {

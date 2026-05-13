@@ -19,6 +19,8 @@ import AdminDashboardScreen from '../route/AdminScreen/AdminDashboardScreen';
 import AdminUsersScreen from '../route/AdminScreen/AdminUsersScreen';
 import AdminArticlesScreen from '../route/AdminScreen/AdminArticlesScreen';
 import AdminAnalyticsScreen from '../route/AdminScreen/AdminAnalyticsScreen';
+import AdminNotificationsScreen from '../route/AdminScreen/AdminNotificationsScreen';
+import AdminSettingsScreen from '../route/AdminScreen/AdminSettingsScreen';
 import SettingsScreen from '../route/SettingsScreen/SettingsScreen';
 import EditProfileScreen from '../route/EditProfileScreen/EditProfileScreen';
 import PrivacyScreen from '../route/PrivacyScreen/PrivacyScreen';
@@ -26,6 +28,7 @@ import TermsScreen from '../route/TermsScreen/TermsScreen';
 import DataScreen from '../route/DataScreen/DataScreen';
 import CategoriesScreen from '../route/CategoriesScreen/CategoriesScreen';
 import AboutScreen from '../route/AboutScreen/AboutScreen';
+import HelpScreen from '../route/HelpScreen/HelpScreen';
 import ArticleDetailScreen from '../route/ArticleDetailScreen/ArticleDetailScreen';
 import TrendingScreen from '../route/TrendingScreen/TrendingScreen';
 import BookmarksScreen from '../route/BookmarksScreen/BookmarksScreen';
@@ -76,6 +79,7 @@ const RouterContent = () => {
         <Route path="/data" element={<ProtectedRoute><DataScreen /></ProtectedRoute>} />
         <Route path="/categories" element={<ProtectedRoute><CategoriesScreen /></ProtectedRoute>} />
         <Route path="/about" element={<ProtectedRoute><AboutScreen /></ProtectedRoute>} />
+        <Route path="/help" element={<ProtectedRoute><HelpScreen /></ProtectedRoute>} />
         <Route path="/trending" element={<ProtectedRoute><TrendingScreen /></ProtectedRoute>} />
         <Route path="/bookmarks" element={<ProtectedRoute><BookmarksScreen /></ProtectedRoute>} />
         <Route path="/recent" element={<ProtectedRoute><RecentScreen /></ProtectedRoute>} />
@@ -87,6 +91,8 @@ const RouterContent = () => {
         <Route path="/admin/users" element={<ProtectedRoute requireAdmin={true}><AdminUsersScreen /></ProtectedRoute>} />
         <Route path="/admin/articles" element={<ProtectedRoute requireAdmin={true}><AdminArticlesScreen /></ProtectedRoute>} />
         <Route path="/admin/analytics" element={<ProtectedRoute requireAdmin={true}><AdminAnalyticsScreen /></ProtectedRoute>} />
+        <Route path="/admin/notifications" element={<ProtectedRoute requireAdmin={true}><AdminNotificationsScreen /></ProtectedRoute>} />
+        <Route path="/admin/settings" element={<ProtectedRoute requireAdmin={true}><AdminSettingsScreen /></ProtectedRoute>} />
         
         {/* Default redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />

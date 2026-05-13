@@ -11,8 +11,12 @@ import {
     ArrowRight,
     Play,
     ChevronRight,
+    Bell,
+    SlidersHorizontal,
 } from 'lucide-react';
 import { getAdminAnalytics, postAdminPipelineRun } from '../../api/adminApi';
+import AdminBreakdownTable from './components/AdminBreakdownTable';
+import { SkeletonStatCards, SkeletonTableRows } from '../../components/skeletons/SkeletonLayouts';
 
 const AdminDashboardScreen = () => {
     const { theme } = useTheme();
@@ -53,6 +57,13 @@ const AdminDashboardScreen = () => {
     const credKeyCount = snapshot?.processed_by_credibility_label
         ? Object.keys(snapshot.processed_by_credibility_label).length
         : 0;
+
+    const rawEntries = snapshot?.raw_by_pipeline_status
+        ? Object.entries(snapshot.raw_by_pipeline_status).sort((a, b) => b[1] - a[1])
+        : [];
+    const credEntries = snapshot?.processed_by_credibility_label
+        ? Object.entries(snapshot.processed_by_credibility_label).sort((a, b) => b[1] - a[1])
+        : [];
 
     const statCards = [
         {
@@ -124,10 +135,16 @@ const AdminDashboardScreen = () => {
                     marginBottom: isMobile ? '20px' : '32px',
                     paddingTop: '0',
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: textSecondary, marginBottom: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: textSecondary, marginBottom: '10px', flexWrap: 'wrap' }}>
                         <span style={{ color: textPrimary, fontWeight: 600 }}>Admin</span>
                         <ChevronRight size={14} />
                         <span>Dashboard</span>
+                        <span style={{ color: borderColor, margin: '0 4px' }}>|</span>
+                        <button type="button" onClick={() => navigate('/admin/analytics')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Analytics</button>
+                        <span style={{ color: borderColor }}>·</span>
+                        <button type="button" onClick={() => navigate('/admin/notifications')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Notifications</button>
+                        <span style={{ color: borderColor }}>·</span>
+                        <button type="button" onClick={() => navigate('/admin/settings')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Platform settings</button>
                     </div>
                     <h1 style={{
                         fontSize: getResponsiveFontSize(isMobile, isTablet, 28),
@@ -150,8 +167,16 @@ const AdminDashboardScreen = () => {
                 </div>
 
                 {/* Stats Grid */}
+                {loading ? (
+                    <>
+                        <SkeletonStatCards count={4} isDark={isDark} colors={colors} />
+                        <div style={{ marginTop: 24 }}>
+                            <SkeletonTableRows rows={5} isDark={isDark} colors={colors} />
+                        </div>
+                    </>
+                ) : null}
                 <div style={{
-                    display: 'grid',
+                    display: loading ? 'none' : 'grid',
                     gridTemplateColumns: getResponsiveGridColumns(isMobile, isTablet, 250),
                     gap: getResponsiveGap(isMobile, isTablet),
                     marginBottom: isMobile ? '20px' : '32px',
@@ -352,6 +377,58 @@ const AdminDashboardScreen = () => {
                             </div>
                         </button>
                         <button
+                            onClick={() => navigate('/admin/notifications')}
+                            style={{
+                                padding: '16px',
+                                border: `1px solid ${borderColor}`,
+                                background: 'transparent',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
+                                e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.borderColor = borderColor;
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <Bell size={18} color={textPrimary} />
+                                <span style={{ fontSize: '15px', fontWeight: '600', color: textPrimary }}>Admin notifications</span>
+                            </div>
+                            <div style={{ fontSize: '13px', color: textSecondary }}>Delivery log and system notices</div>
+                        </button>
+                        <button
+                            onClick={() => navigate('/admin/settings')}
+                            style={{
+                                padding: '16px',
+                                border: `1px solid ${borderColor}`,
+                                background: 'transparent',
+                                borderRadius: '8px',
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                transition: 'all 0.2s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
+                                e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'transparent';
+                                e.currentTarget.style.borderColor = borderColor;
+                            }}
+                        >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                                <SlidersHorizontal size={18} color={textPrimary} />
+                                <span style={{ fontSize: '15px', fontWeight: '600', color: textPrimary }}>Platform settings</span>
+                            </div>
+                            <div style={{ fontSize: '13px', color: textSecondary }}>Categories and connections (Mongo)</div>
+                        </button>
+                        <button
                             type="button"
                             onClick={runPipeline}
                             disabled={pipelineBusy}
@@ -390,6 +467,38 @@ const AdminDashboardScreen = () => {
                         </button>
                     </div>
                 </div>
+
+                {snapshot != null && !loading && (
+                    <div style={{ marginBottom: 32 }}>
+                        <h2 style={{
+                            fontSize: '20px',
+                            fontWeight: '700',
+                            color: textPrimary,
+                            margin: '0 0 16px 0',
+                        }}>
+                            Analytics preview
+                        </h2>
+                        <p style={{ fontSize: '14px', color: textSecondary, margin: '0 0 16px 0', lineHeight: 1.5 }}>
+                            Same breakdowns as the full analytics page — open <button type="button" onClick={() => navigate('/admin/analytics')} style={{ border: 'none', background: 'transparent', padding: 0, color: isDark ? colors.primary || '#818CF8' : '#0f172a', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}>Analytics</button> for model metrics and raw JSON.
+                        </p>
+                        <AdminBreakdownTable
+                            title="Raw articles by pipeline_status"
+                            entries={rawEntries}
+                            textPrimary={textPrimary}
+                            textSecondary={textSecondary}
+                            borderColor={borderColor}
+                            cardBackground={cardBackground}
+                        />
+                        <AdminBreakdownTable
+                            title="Processed articles by credibility_label"
+                            entries={credEntries}
+                            textPrimary={textPrimary}
+                            textSecondary={textSecondary}
+                            borderColor={borderColor}
+                            cardBackground={cardBackground}
+                        />
+                    </div>
+                )}
 
                 {/* DB snapshot */}
                 <div style={{

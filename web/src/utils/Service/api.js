@@ -57,15 +57,43 @@ export const getCurrentUser = () => {
 };
 
 export const saveAuthSession = (session) => {
+  const prev = getCurrentUser();
+  const prevId = prev?.id ?? prev?.pk;
+  const nextId = session.user?.id ?? session.user?.pk;
+  if (prevId != null && nextId != null && String(prevId) !== String(nextId)) {
+    clearUserContentCaches();
+  }
+  if (prev == null && nextId != null) {
+    clearUserContentCaches();
+  }
   storage?.setItem(ACCESS_KEY, session.access);
   storage?.setItem(REFRESH_KEY, session.refresh);
   storage?.setItem(USER_KEY, JSON.stringify(session.user));
 };
 
+export function clearUserContentCaches() {
+  if (!storage) return;
+  const drop = [];
+  for (let i = 0; i < storage.length; i++) {
+    const k = storage.key(i);
+    if (
+      k &&
+      (k.startsWith('trak_profile') ||
+        k === 'trak_reactions_v1' ||
+        k === 'trak_bookmarks_v1' ||
+        k === 'trak_user_keywords')
+    ) {
+      drop.push(k);
+    }
+  }
+  drop.forEach((k) => storage.removeItem(k));
+}
+
 export const clearAuthTokens = () => {
   storage?.removeItem(ACCESS_KEY);
   storage?.removeItem(REFRESH_KEY);
   storage?.removeItem(USER_KEY);
+  clearUserContentCaches();
 };
 
 export const loginWithEmailPassword = (email, password) =>
@@ -205,6 +233,22 @@ export const removeBookmark = (articleId) =>
 
 export const listBookmarks = () => authRequest('/api/user/bookmarks/');
 export const getUserArticleDetail = (articleId) => authRequest(`/api/user/articles/${encodeURIComponent(articleId)}/`);
+
+export const getUserKeywordsFromServer = () => authRequest('/api/user/keywords/');
+
+export const submitArticleReport = (payload) =>
+  authRequest('/api/user/reports/', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
+
+export const getNotificationPreferences = () => authRequest('/api/notifications/preferences/');
+
+export const patchNotificationPreferences = (body) =>
+  authRequest('/api/notifications/preferences/', {
+    method: 'PATCH',
+    body: JSON.stringify(body),
+  });
 
 export const trackKeywords = (keywords = []) =>
   authRequest('/api/user/track-keywords/', {

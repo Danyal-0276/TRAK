@@ -74,3 +74,22 @@ export async function deleteAdminArticle(scope, articleId) {
   });
   return parseJson(res);
 }
+
+export async function getAdminSettings() {
+  const res = await apiFetch(`${ADMIN_PREFIX}/settings/`);
+  return parseJson(res);
+}
+
+export async function patchAdminSettings(payload) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/settings/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJson(res);
+}
+
+export async function getAdminNotifications() {
+  const res = await apiFetch(`${ADMIN_PREFIX}/notifications/`);
+  return parseJson(res);
+}

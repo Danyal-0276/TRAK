@@ -12,6 +12,7 @@ import {
     CheckCircle,
     X
 } from 'lucide-react';
+import { SkeletonFeedGrid, SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 
 const CategoriesScreen = () => {
     const { theme } = useTheme();
@@ -227,20 +228,11 @@ const CategoriesScreen = () => {
 
                 {/* Categories Grid */}
                 {loading ? (
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        minHeight: '400px',
-                    }}>
-                        <div style={{
-                            width: '32px',
-                            height: '32px',
-                            border: `3px solid ${borderColor}`,
-                            borderTop: `3px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`,
-                            borderRadius: '50%',
-                            animation: 'spin 0.8s linear infinite',
-                        }} />
+                    <div>
+                        <SkeletonListRows rows={5} isDark={isDark} colors={colors} />
+                        <div style={{ marginTop: 28 }}>
+                            <SkeletonFeedGrid count={4} isDark={isDark} colors={colors} columns="repeat(auto-fill, minmax(280px, 1fr))" />
+                        </div>
                     </div>
                 ) : (
                     <div style={{

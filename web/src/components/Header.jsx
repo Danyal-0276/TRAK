@@ -11,7 +11,7 @@ const Header = () => {
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
-    const { isAdmin } = useAuth();
+    const { isAdmin, user } = useAuth();
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
     const location = useLocation();
@@ -33,7 +33,7 @@ const Header = () => {
                 setAvatarPreview('');
             }
         })();
-    }, [location.pathname]);
+    }, [location.pathname, user?.id, user?.pk, user?.email]);
 
     // Don't show header on auth pages
     const hideHeaderPaths = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'];

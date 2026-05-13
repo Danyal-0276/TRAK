@@ -25,3 +25,21 @@ export async function confirmPasswordReset(body) {
   }
   return data;
 }
+
+export async function confirmPasswordResetWithOtp({ email, code, password, password_confirm }) {
+  const res = await fetch(`${AUTH_PREFIX}/password-reset/otp-confirm/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      email: email.trim().toLowerCase(),
+      code: String(code || '').trim(),
+      password,
+      password_confirm,
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || 'Reset failed');
+  }
+  return data;
+}

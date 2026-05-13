@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
 import { mockApi } from '../../utils/Service/mockApi';
+import { useTheme } from '../../theme/ThemeContext';
+import { SkeletonFeedGrid } from '../../components/skeletons/SkeletonLayouts';
 
 const RecentScreen = () => {
     const navigate = useNavigate();
+    const { theme } = useTheme();
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
     const [votedItems, setVotedItems] = useState({});
     const [newsData, setNewsData] = useState([]);
@@ -122,21 +125,7 @@ const RecentScreen = () => {
 
                 {/* News Cards Grid */}
                 {loading ? (
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        minHeight: '500px',
-                    }}>
-                        <div style={{
-                            width: '32px',
-                            height: '32px',
-                            border: '3px solid #e5e7eb',
-                            borderTop: '3px solid #0f172a',
-                            borderRadius: '50%',
-                            animation: 'spin 0.8s linear infinite',
-                        }} />
-                    </div>
+                    <SkeletonFeedGrid count={6} isDark={theme.mode === 'dark'} colors={theme.colors} />
                 ) : (
                     <div style={{
                         display: 'grid',
