@@ -46,6 +46,33 @@ export async function fetchArticle(articleId) {
     return res.json();
 }
 
+export async function submitArticleReport(payload) {
+    const res = await apiFetch(
+        `${USER_PREFIX}/reports/`,
+        {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        },
+        API_BASE
+    );
+    if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `Report ${res.status}`);
+    }
+    return res.json();
+}
+
+export async function fetchUserKeywords() {
+    const res = await apiFetch(`${USER_PREFIX}/keywords/`, {}, API_BASE);
+    if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `Keywords ${res.status}`);
+    }
+    const data = await res.json();
+    return Array.isArray(data.keywords) ? data.keywords : [];
+}
+
 export async function trackKeywords(keywords) {
     const res = await apiFetch(
         `${USER_PREFIX}/track-keywords/`,

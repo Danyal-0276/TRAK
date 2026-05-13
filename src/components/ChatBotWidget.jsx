@@ -18,6 +18,7 @@ import { MessageCircle, Send, Trash2, X, Sparkles } from 'lucide-react-native';
 import { chatWithBot, clearChatHistory, getChatHistory } from '../utils/Service/api';
 import { useTheme } from '../theme/ThemeContext';
 import { useFeedback } from './ui/FeedbackProvider';
+import { useAuth } from '../context/AuthContext';
 
 const QUICK_PROMPTS = [
   'Top tech headlines',
@@ -33,12 +34,10 @@ function formatCaughtMessage(e) {
 }
 
 const ChatBotWidget = () => {
+  const { user, bootstrapped } = useAuth();
   const { theme } = useTheme();
   const { confirm } = useFeedback();
   const colors = theme?.colors;
-  if (!colors) {
-    return null;
-  }
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -75,6 +74,7 @@ const ChatBotWidget = () => {
   }, [open, openAnim]);
 
   useEffect(() => {
+    if (!bootstrapped || !user) return;
     const loadHistory = async () => {
       try {
         const res = await getChatHistory();
@@ -94,7 +94,7 @@ const ChatBotWidget = () => {
       }
     };
     loadHistory();
-  }, []);
+  }, [bootstrapped, user]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -142,6 +142,10 @@ const ChatBotWidget = () => {
       setLoading(false);
     }
   };
+
+  if (!bootstrapped || !user || !colors) {
+    return null;
+  }
 
   return (
     <View pointerEvents="box-none" style={styles.root}>

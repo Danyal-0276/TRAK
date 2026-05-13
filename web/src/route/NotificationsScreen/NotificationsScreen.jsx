@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import * as notificationsApi from '../../api/notificationsApi';
 import { openNotificationsSocket } from '../../api/notificationsRealtime';
+import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 
 const NotificationsScreen = () => {
     const { theme } = useTheme();
@@ -448,21 +449,7 @@ const NotificationsScreen = () => {
 
                 {/* Notifications List */}
                 {loading ? (
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        minHeight: '400px',
-                    }}>
-                        <div style={{
-                            width: '32px',
-                            height: '32px',
-                            border: `3px solid ${borderColor}`,
-                            borderTop: `3px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`,
-                            borderRadius: '50%',
-                            animation: 'spin 0.8s linear infinite',
-                        }} />
-                    </div>
+                    <SkeletonListRows rows={10} isDark={isDark} colors={colors} />
                 ) : filteredNotifications.length === 0 ? (
                     <div style={{
                         display: 'flex',

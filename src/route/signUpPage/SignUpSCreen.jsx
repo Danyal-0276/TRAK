@@ -132,7 +132,7 @@ const SignUpScreen = ({ navigation }) => {
         try {
             await register(email, password, confirmPassword);
             success('Account created successfully');
-            navigation.navigate('TagSelection');
+            navigation.navigate('TagSelection', { fromSignup: true });
         } catch (error) {
             showError(error.message);
         } finally {
@@ -144,14 +144,13 @@ const SignUpScreen = ({ navigation }) => {
         setLoadingProvider(provider);
         
         try {
-            const normalizedProvider = provider === 'apple' ? 'twitter' : provider === 'facebook' ? 'github' : provider;
-            const syntheticEmail = `${normalizedProvider}_mobile_signup_${Date.now()}@trak.local`;
-            const session = await loginWithSocialDemo(normalizedProvider, syntheticEmail);
+            const syntheticEmail = `${provider}_mobile_signup_${Date.now()}@trak.local`;
+            const session = await loginWithSocialDemo(provider, syntheticEmail);
             await setTokens(session.access, session.refresh);
             await saveAuthSession(session);
             await bootstrap();
             success(`Signed up with ${provider}`);
-            navigation.navigate('TagSelection');
+            navigation.navigate('TagSelection', { fromSignup: true });
         } catch (error) {
             showError(error.message);
         } finally {

@@ -4,6 +4,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import {
     View,
+    Text,
     ScrollView,
     StyleSheet,
     StatusBar,
@@ -11,6 +12,7 @@ import {
     Animated,
     Platform,
     Dimensions,
+    TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -19,6 +21,7 @@ import { FeedHeader } from './components/FeedHeader';
 import { TabBar } from './components/TabBar';
 import { NewsCard } from '../../components/NewsCard';
 import { addBookmark, getUserFeed, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { fetchUserKeywords } from '../../api/newsApi';
 import { useTheme } from '../../theme/ThemeContext';
 import { resetTabBarVisibility, setTabBarHidden } from '../../navigation/tabBarVisibility';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
@@ -111,6 +114,7 @@ const NewsFeedScreen = ({ navigation }) => {
     const [newsData, setNewsData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [feedKeywords, setFeedKeywords] = useState([]);
 
     const insets = useSafeAreaInsets();
 
@@ -127,26 +131,32 @@ const NewsFeedScreen = ({ navigation }) => {
                 getUserFeed(),
                 listReactions().catch(() => ({ results: [] })),
             ]);
-            const serverReactionMap = await mergeReactionRows(reactionsRes.results || []).catch(() => ({}));
-            const reactionMap = { ...cachedReactions, ...serverReactionMap };
-            const mapped = (response.results || []).map((item, idx) => ({
-                ...item,
-                id: item.id || item.canonical_url || String(idx),
-                source: item.source || 'Source',
-                time: item.published_at
-                    ? new Date(item.published_at).toLocaleString()
-                    : 'Recently',
-                title: item.title || 'Untitled',
-                excerpt: item.excerpt || item.content || '',
-                content: item.content || item.excerpt || '',
-                fullContent: item.content || item.excerpt || '',
-                category: item.topic_keywords?.[0] || 'General',
-                verified: item.credibility?.label === 'real',
-                trending: Boolean(item.topic_keywords?.length),
-                votes: 0,
-                readTime: 4,
-                userReaction: reactionMap[String(item.id || item.canonical_url || String(idx))] || null,
-            }));
+            const reactionMap = await mergeReactionRows(reactionsRes.results || [], { replace: false }).catch(() => cachedReactions);
+            const mapped = (response.results || []).map((item, idx) => {
+                const aid = item.id || item.canonical_url || String(idx);
+                const likes = Number(item.like_count ?? item.upvotes ?? 0);
+                const dislikes = Number(item.dislike_count ?? 0);
+                return {
+                    ...item,
+                    id: aid,
+                    source: item.source || 'Source',
+                    time: item.published_at
+                        ? new Date(item.published_at).toLocaleString()
+                        : 'Recently',
+                    title: item.title || 'Untitled',
+                    excerpt: item.excerpt || item.content || '',
+                    content: item.content || item.excerpt || '',
+                    fullContent: item.content || item.excerpt || '',
+                    category: item.topic_keywords?.[0] || 'General',
+                    verified: item.credibility?.label === 'real',
+                    trending: Boolean(item.topic_keywords?.length),
+                    like_count: likes,
+                    dislike_count: dislikes,
+                    upvotes: likes,
+                    readTime: 4,
+                    userReaction: reactionMap[String(aid)] || null,
+                };
+            });
             setNewsData(mapped);
             setVotedItems(reactionMap);
         } catch (error) {
@@ -161,6 +171,15 @@ const NewsFeedScreen = ({ navigation }) => {
         loadNews();
     }, []);
 
+    const refreshKeywords = useCallback(async () => {
+        try {
+            const kws = await fetchUserKeywords();
+            setFeedKeywords(Array.isArray(kws) ? kws : []);
+        } catch {
+            setFeedKeywords([]);
+        }
+    }, []);
+
     const syncInteractionsFromServer = useCallback(async () => {
         const [bmRes, reactRes] = await Promise.all([
             listBookmarks().catch(() => ({ results: [] })),
@@ -170,7 +189,7 @@ const NewsFeedScreen = ({ navigation }) => {
         setBookmarkedItems(new Set(ids));
         await setBookmarkIds(ids).catch(() => {});
 
-        const reactionMap = await mergeReactionRows(reactRes.results || []).catch(() => ({}));
+        const reactionMap = await mergeReactionRows(reactRes.results || [], { replace: false }).catch(() => ({}));
         setVotedItems(reactionMap);
         setNewsData((prev) =>
             prev.map((n) => ({
@@ -182,9 +201,9 @@ const NewsFeedScreen = ({ navigation }) => {
 
     useFocusEffect(
         useCallback(() => {
-            // Refresh quick interaction state whenever returning from detail/profile/bookmarks.
             syncInteractionsFromServer();
-        }, [syncInteractionsFromServer])
+            refreshKeywords();
+        }, [syncInteractionsFromServer, refreshKeywords])
     );
 
     useEffect(() => {
@@ -216,6 +235,7 @@ const NewsFeedScreen = ({ navigation }) => {
             friction: 8,
         }).start();
         await loadNews();
+        await refreshKeywords();
         setRefreshing(false);
     };
 
@@ -264,36 +284,38 @@ const NewsFeedScreen = ({ navigation }) => {
         const previousVote = votedItems[id];
         const newVote = previousVote === type ? null : type;
 
-        setVotedItems(prev => ({
+        setVotedItems((prev) => ({
             ...prev,
-            [id]: newVote
+            [id]: newVote,
         }));
         setReactionForArticle(id, newVote).catch(() => {});
-        setNewsData((prev) =>
-            prev.map((n) => {
-                if (String(n.id) !== id) return n;
-                const prevDelta = previousVote === 'up' ? 1 : previousVote === 'down' ? -1 : 0;
-                const nextDelta = newVote === 'up' ? 1 : newVote === 'down' ? -1 : 0;
-                return { ...n, votes: Number(n.votes || 0) - prevDelta + nextDelta, userReaction: newVote };
-            })
-        );
 
         try {
-            await setReaction(id, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
+            const data = await setReaction(
+                id,
+                newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none'
+            );
+            const likes = Number(data.like_count ?? 0);
+            const dislikes = Number(data.dislike_count ?? 0);
+            setNewsData((prev) =>
+                prev.map((n) =>
+                    String(n.id) !== id
+                        ? n
+                        : {
+                              ...n,
+                              like_count: likes,
+                              dislike_count: dislikes,
+                              upvotes: likes,
+                              userReaction: newVote,
+                          }
+                )
+            );
         } catch (error) {
-            setVotedItems(prev => ({
+            setVotedItems((prev) => ({
                 ...prev,
-                [id]: previousVote
+                [id]: previousVote,
             }));
             setReactionForArticle(id, previousVote || null).catch(() => {});
-            setNewsData((prev) =>
-                prev.map((n) => {
-                    if (String(n.id) !== id) return n;
-                    const nextDelta = newVote === 'up' ? 1 : newVote === 'down' ? -1 : 0;
-                    const prevDelta = previousVote === 'up' ? 1 : previousVote === 'down' ? -1 : 0;
-                    return { ...n, votes: Number(n.votes || 0) - nextDelta + prevDelta, userReaction: previousVote || null };
-                })
-            );
         }
     };
 
@@ -327,12 +349,24 @@ const NewsFeedScreen = ({ navigation }) => {
         }
     };
 
+    const hasFeedPersonalization = feedKeywords.length > 0;
+
     const filteredNews = useMemo(() => {
-        if (activeTab === 'Following') {
-            return newsData.filter((_, i) => i % 2 === 0);
+        if (activeTab === 'For you' && !hasFeedPersonalization) {
+            return [];
+        }
+        if (activeTab === 'Bookmarks') {
+            return newsData.filter((n) => bookmarkedItems.has(String(n.id)) || bookmarkedItems.has(n.id));
+        }
+        if (activeTab === 'Trending') {
+            return [...newsData].sort((a, b) => {
+                const ak = (a.topic_keywords?.length || 0) + (a.trending ? 2 : 0);
+                const bk = (b.topic_keywords?.length || 0) + (b.trending ? 2 : 0);
+                return bk - ak;
+            });
         }
         return newsData;
-    }, [newsData, activeTab]);
+    }, [newsData, activeTab, hasFeedPersonalization, bookmarkedItems]);
 
     return (
         <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
@@ -376,7 +410,7 @@ const NewsFeedScreen = ({ navigation }) => {
                     ]}
                 >
                     <FeedHeader navigation={navigation} />
-                    <TabBar activeTab={activeTab} setActiveTab={setActiveTab} navigation={navigation} />
+                    <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />
                 </Animated.View>
 
                 <Animated.ScrollView
@@ -405,6 +439,32 @@ const NewsFeedScreen = ({ navigation }) => {
                             <SkeletonCard colors={colors} />
                             <SkeletonCard colors={colors} />
                         </>
+                    ) : filteredNews.length === 0 ? (
+                        <View style={{ paddingHorizontal: 24, paddingTop: 24, alignItems: 'center' }}>
+                            {activeTab === 'For you' && !hasFeedPersonalization ? (
+                                <>
+                                    <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
+                                        Choose your interests
+                                    </Text>
+                                    <Text style={{ color: colors.textSecondary, fontSize: 15, textAlign: 'center', marginBottom: 20, lineHeight: 22 }}>
+                                        Select news categories to see a personalized For You feed.
+                                    </Text>
+                                    <TouchableOpacity
+                                        onPress={() => navigation.navigate('TagSelection', { fromSettings: true })}
+                                        style={{ backgroundColor: colors.primary, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12 }}
+                                        activeOpacity={0.85}
+                                    >
+                                        <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>Pick categories</Text>
+                                    </TouchableOpacity>
+                                </>
+                            ) : (
+                                <>
+                                    <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center' }}>
+                                        {activeTab === 'Bookmarks' ? 'No bookmarked articles yet.' : 'No articles to show.'}
+                                    </Text>
+                                </>
+                            )}
+                        </View>
                     ) : (
                         filteredNews.map((item, index) => (
                             <NewsCard

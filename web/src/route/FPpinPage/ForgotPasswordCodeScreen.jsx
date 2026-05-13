@@ -1,17 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight } from 'lucide-react';
-import Text from '../../components/ui/Text';
+import { ArrowLeft, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
-import { requestPasswordReset } from '../../api/authPasswordApi';
+import { requestPasswordReset, confirmPasswordResetWithOtp } from '../../api/authPasswordApi';
 
 const ForgotPasswordCodeScreen = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const email = (location.state?.email || '').trim().toLowerCase();
-  const debugResetPreview = location.state?.debugResetPreview || null;
+  const [code, setCode] = useState('');
+  const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
+  const [showPw, setShowPw] = useState(false);
   const [timer, setTimer] = useState(60);
   const [resendLoading, setResendLoading] = useState(false);
+  const [submitLoading, setSubmitLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (!email) {
+      navigate('/forgot-password', { replace: true });
+    }
+  }, [email, navigate]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -20,25 +30,58 @@ const ForgotPasswordCodeScreen = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    if (!code.trim()) {
+      setError('Enter the code from your email.');
+      return;
+    }
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setError('Passwords do not match.');
+      return;
+    }
+    setSubmitLoading(true);
+    try {
+      await confirmPasswordResetWithOtp({
+        email,
+        code: code.trim(),
+        password,
+        password_confirm: passwordConfirm,
+      });
+      navigate('/password-changed');
+    } catch (err) {
+      setError(err?.message || 'Could not reset password.');
+    } finally {
+      setSubmitLoading(false);
+    }
+  };
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      backgroundColor: '#ffffff',
-      padding: '24px',
-      position: 'relative',
-      overflow: 'hidden',
-    }}
+    <div
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: '#ffffff',
+        padding: '24px',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
     >
       <NewsBackgroundAnimation />
-      <div style={{
-        width: '100%',
-        maxWidth: '420px',
-        position: 'relative',
-        zIndex: 1,
-      }}
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '420px',
+          position: 'relative',
+          zIndex: 1,
+        }}
       >
         <button
           type="button"
@@ -61,7 +104,7 @@ const ForgotPasswordCodeScreen = () => {
           Back
         </button>
 
-        <div style={{ marginBottom: '48px', textAlign: 'left' }}>
+        <div style={{ marginBottom: '32px', textAlign: 'left' }}>
           <img
             src="/images/whiteLogo.svg"
             alt="TRAK"
@@ -69,71 +112,148 @@ const ForgotPasswordCodeScreen = () => {
               width: '32px',
               height: '32px',
               filter: 'invert(1)',
-              marginBottom: '40px',
+              marginBottom: '24px',
             }}
           />
-          <h1 style={{
-            fontSize: '30px',
-            fontWeight: '600',
-            color: '#0f172a',
-            margin: '0 0 8px 0',
-            letterSpacing: '-0.5px',
-            lineHeight: '1.2',
-          }}
+          <h1
+            style={{
+              fontSize: '28px',
+              fontWeight: '600',
+              color: '#0f172a',
+              margin: '0 0 8px 0',
+              letterSpacing: '-0.5px',
+              lineHeight: '1.2',
+            }}
           >
-            Check your email
+            Enter your code
           </h1>
-          <p style={{
-            fontSize: '15px',
-            color: '#64748b',
-            margin: '0',
-            lineHeight: '1.5',
-          }}
+          <p
+            style={{
+              fontSize: '15px',
+              color: '#64748b',
+              margin: '0',
+              lineHeight: '1.5',
+            }}
           >
-            If an account exists for{' '}
-            <span style={{ fontWeight: '500', color: '#0f172a' }}>{email || 'that address'}</span>
-            , we sent a link to reset your password. Use it in this browser — the reset page will open with the correct token.
+            We sent a 6-digit code to{' '}
+            <span style={{ fontWeight: '600', color: '#0f172a' }}>{email || 'your email'}</span>. Check your inbox
+            (and spam), then choose a new password below.
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            if (debugResetPreview?.uid && debugResetPreview?.token) {
-              navigate(`/reset-password?uid=${encodeURIComponent(debugResetPreview.uid)}&token=${encodeURIComponent(debugResetPreview.token)}`);
-              return;
-            }
-            navigate('/reset-password');
-          }}
-          style={{
-            width: '100%',
-            padding: '12px 20px',
-            backgroundColor: '#0f172a',
-            color: '#ffffff',
-            border: 'none',
-            borderRadius: '6px',
-            fontSize: '15px',
-            fontWeight: '500',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            marginBottom: '24px',
-            fontFamily: 'inherit',
-          }}
-        >
-          {debugResetPreview ? 'Continue to reset' : 'Open reset page'}
-          <ArrowRight size={18} />
-        </button>
+        <form onSubmit={handleSubmit}>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#0f172a', marginBottom: '8px' }}>
+            Verification code
+          </label>
+          <input
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={code}
+            onChange={(e) => setCode(e.target.value.replace(/\s/g, ''))}
+            placeholder="6-digit code"
+            style={{
+              width: '100%',
+              padding: '11px 14px',
+              fontSize: '16px',
+              border: '1px solid #cbd5e1',
+              borderRadius: '6px',
+              marginBottom: '20px',
+              boxSizing: 'border-box',
+            }}
+          />
 
-        {debugResetPreview ? (
-          <p style={{ fontSize: '13px', color: '#64748b', margin: '0 0 18px 0', lineHeight: '1.5' }}>
-            Dev mode: reset link generated for local testing without paid email providers.
-          </p>
-        ) : null}
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#0f172a', marginBottom: '8px' }}>
+            New password
+          </label>
+          <div style={{ position: 'relative', marginBottom: '16px' }}>
+            <input
+              type={showPw ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+              style={{
+                width: '100%',
+                padding: '11px 44px 11px 14px',
+                fontSize: '15px',
+                border: '1px solid #cbd5e1',
+                borderRadius: '6px',
+                boxSizing: 'border-box',
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPw(!showPw)}
+              style={{
+                position: 'absolute',
+                right: '12px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                color: '#64748b',
+              }}
+            >
+              {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
 
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#0f172a', marginBottom: '8px' }}>
+            Confirm password
+          </label>
+          <input
+            type={showPw ? 'text' : 'password'}
+            value={passwordConfirm}
+            onChange={(e) => setPasswordConfirm(e.target.value)}
+            placeholder="Repeat password"
+            autoComplete="new-password"
+            style={{
+              width: '100%',
+              padding: '11px 14px',
+              fontSize: '15px',
+              border: '1px solid #cbd5e1',
+              borderRadius: '6px',
+              marginBottom: '16px',
+              boxSizing: 'border-box',
+            }}
+          />
+
+          {error ? (
+            <p style={{ color: '#ef4444', fontSize: '14px', margin: '0 0 16px 0' }}>{error}</p>
+          ) : null}
+
+          <button
+            type="submit"
+            disabled={submitLoading}
+            style={{
+              width: '100%',
+              padding: '12px 20px',
+              backgroundColor: '#0f172a',
+              color: '#ffffff',
+              border: 'none',
+              borderRadius: '6px',
+              fontSize: '15px',
+              fontWeight: '500',
+              cursor: submitLoading ? 'wait' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              marginBottom: '20px',
+            }}
+          >
+            {submitLoading ? 'Saving…' : (
+              <>
+                Reset password
+                <ArrowRight size={18} />
+              </>
+            )}
+          </button>
+        </form>
+
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <button
             type="button"
             onClick={async () => {
@@ -143,7 +263,7 @@ const ForgotPasswordCodeScreen = () => {
                 await requestPasswordReset(email);
                 setTimer(60);
               } catch {
-                /* still show generic success elsewhere */
+                /* generic messaging */
               } finally {
                 setResendLoading(false);
               }
@@ -156,24 +276,25 @@ const ForgotPasswordCodeScreen = () => {
               padding: 0,
             }}
           >
-            <span style={{
-              fontSize: '15px',
-              color: timer > 0 ? '#94a3b8' : '#0f172a',
-              fontWeight: '500',
-            }}
+            <span
+              style={{
+                fontSize: '15px',
+                color: timer > 0 ? '#94a3b8' : '#0f172a',
+                fontWeight: '500',
+              }}
             >
-              {resendLoading ? 'Sending…' : timer > 0 ? `Resend email in 0:${timer.toString().padStart(2, '0')}` : 'Resend reset email'}
+              {resendLoading ? 'Sending…' : timer > 0 ? `Resend code in 0:${timer.toString().padStart(2, '0')}` : 'Resend code'}
             </span>
           </button>
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <Text variant="body" color="#64748b" style={{ fontSize: '15px' }}>
+          <span style={{ fontSize: '15px', color: '#64748b' }}>
             Remember password?{' '}
             <Link to="/login" style={{ color: '#0f172a', fontWeight: 500, textDecoration: 'none' }}>
               Log in
             </Link>
-          </Text>
+          </span>
         </div>
       </div>
     </div>

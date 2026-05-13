@@ -27,7 +27,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
     const subTagAnimMap = useRef({}).current;
     const [searchText, setSearchText] = useState('');
     const [loading, setLoading] = useState(false);
-    const { fromSettings = false, selectedTags: incomingSelectedTags = [] } = route?.params || {};
+    const { fromSettings = false, fromSignup = false, selectedTags: incomingSelectedTags = [] } = route?.params || {};
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -101,6 +101,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
     }, []);
 
     useEffect(() => {
+        if (fromSignup) return;
         let mounted = true;
         (async () => {
             const saved = await getUserKeywords();
@@ -130,7 +131,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
         return () => {
             mounted = false;
         };
-    }, [incomingSelectedTags]);
+    }, [incomingSelectedTags, fromSignup]);
 
     const mainTags = Object.keys(newsTagsWithSubcategories);
 

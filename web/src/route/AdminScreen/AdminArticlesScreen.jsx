@@ -15,6 +15,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { deleteAdminArticle, getAdminArticles, patchAdminArticle } from '../../api/adminApi';
+import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 
 const AdminArticlesScreen = () => {
     const { theme } = useTheme();
@@ -254,21 +255,7 @@ const AdminArticlesScreen = () => {
 
                 {/* Articles Grid */}
                 {loading ? (
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        minHeight: '400px',
-                    }}>
-                        <div style={{
-                            width: '32px',
-                            height: '32px',
-                            border: `3px solid ${borderColor}`,
-                            borderTop: `3px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`,
-                            borderRadius: '50%',
-                            animation: 'spin 0.8s linear infinite',
-                        }} />
-                    </div>
+                    <SkeletonListRows rows={10} isDark={isDark} colors={colors} />
                 ) : filteredArticles.length === 0 ? (
                     <div style={{
                         display: 'flex',

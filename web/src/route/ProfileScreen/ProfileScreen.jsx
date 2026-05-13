@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { NewsCard } from "../../components/NewsCard";
 import { useTheme } from "../../theme/ThemeContext";
+import { useResponsive } from "../../hooks/useResponsive";
 import { 
     Edit, 
     Settings, 
@@ -22,6 +23,7 @@ import {
     addBookmark,
     clearAuthTokens,
     confirmProfileVerification,
+    getCurrentUser,
     getProfile,
     getUserArticleDetail,
     listBookmarks,
@@ -30,17 +32,35 @@ import {
     setReaction,
     updateProfile,
 } from "../../utils/Service/api";
+import { useAuth } from "../../context/AuthContext";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
 import { getBookmarkIds, setBookmarkIds } from "../../utils/bookmarksStorage";
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from "../../utils/reactionsStorage";
 
-const PROFILE_CACHE_KEY = 'trak_profile_cache_v1';
-const PROFILE_BOOKMARKS_CACHE_KEY = 'trak_profile_bookmarks_cache_v1';
+function profileCacheKey() {
+    const u = getCurrentUser();
+    const id = u?.id ?? u?.pk;
+    return id != null ? `trak_profile_cache_v1_${id}` : 'trak_profile_cache_v1_guest';
+}
+
+function profileBookmarksCacheKey() {
+    const u = getCurrentUser();
+    const id = u?.id ?? u?.pk;
+    return id != null ? `trak_profile_bookmarks_cache_v1_${id}` : 'trak_profile_bookmarks_cache_v1_guest';
+}
+
+function stripLastLogin(obj) {
+    if (!obj || typeof obj !== 'object') return obj;
+    const { last_login: _ignored, ...rest } = obj;
+    return rest;
+}
 
 const UserProfileScreen = () => {
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
+    const { isMobile, isTablet } = useResponsive();
+    const { user: authUser } = useAuth();
     const navigate = useNavigate();
     const [bookmarks, setBookmarks] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -62,12 +82,15 @@ const UserProfileScreen = () => {
         followers: 0,
         saved: 0,
     });
+    const [pageReady, setPageReady] = useState(false);
+
+    const horizontalPad = isMobile ? 16 : isTablet ? 20 : 24;
 
     useEffect(() => {
         try {
-            const cachedProfile = window.localStorage.getItem(PROFILE_CACHE_KEY);
-            if (cachedProfile) setProfile(JSON.parse(cachedProfile));
-            const cachedRows = window.localStorage.getItem(PROFILE_BOOKMARKS_CACHE_KEY);
+            const cachedProfile = window.localStorage.getItem(profileCacheKey());
+            if (cachedProfile) setProfile(stripLastLogin(JSON.parse(cachedProfile)));
+            const cachedRows = window.localStorage.getItem(profileBookmarksCacheKey());
             if (cachedRows) {
                 const rows = JSON.parse(cachedRows);
                 if (Array.isArray(rows) && rows.length) {
@@ -81,27 +104,35 @@ const UserProfileScreen = () => {
             setVotedItems(getReactionMap());
         } catch {}
         loadBookmarks();
-    }, []);
+    }, [authUser?.id, authUser?.pk]);
 
     const loadBookmarks = async () => {
         try {
             setLoading(true);
-            const profileData = await getProfile();
+            const profileData = stripLastLogin(await getProfile());
             setProfile(profileData);
-            window.localStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(profileData));
+            window.localStorage.setItem(profileCacheKey(), JSON.stringify(profileData));
             const bookmarkPayload = await listBookmarks().catch(() => ({ results: [] }));
             const rows = bookmarkPayload.results || [];
             const detailed = await Promise.all(
                 rows.map(async (row) => {
+                    const aid = String(row.article_id ?? "").trim();
                     try {
-                        const full = await getUserArticleDetail(row.article_id);
+                        const full = await getUserArticleDetail(aid);
+                        const likes = Number(full.like_count ?? full.upvotes ?? 0);
+                        const dislikes = Number(full.dislike_count ?? 0);
                         return {
                             ...full,
-                            id: full.id || row.article_id,
+                            id: aid,
+                            like_count: likes,
+                            dislike_count: dislikes,
+                            upvotes: likes,
+                            description: full.content || full.excerpt,
+                            fullContent: full.content || full.excerpt,
                         };
                     } catch {
                         return {
-                            id: row.article_id || row.id,
+                            id: aid,
                             title: row.title || "Saved article",
                             source: "TRAK",
                             excerpt: row.url || "",
@@ -110,6 +141,8 @@ const UserProfileScreen = () => {
                             fullContent: row.url || "",
                             category: "Saved",
                             time: row.created_at ? new Date(row.created_at).toLocaleString() : "Recently",
+                            like_count: 0,
+                            dislike_count: 0,
                             upvotes: 0,
                             votes: 0,
                         };
@@ -120,7 +153,7 @@ const UserProfileScreen = () => {
             setBookmarkedItems(new Set(bookmarkedArticles.map((b) => String(b.id))));
             setBookmarkIds(bookmarkedArticles.map((b) => String(b.id)));
             setBookmarks(bookmarkedArticles);
-            window.localStorage.setItem(PROFILE_BOOKMARKS_CACHE_KEY, JSON.stringify(bookmarkedArticles));
+            window.localStorage.setItem(profileBookmarksCacheKey(), JSON.stringify(bookmarkedArticles));
             setUserStats({
                 following: Number(profileData?.following_count || 0),
                 followers: Number(profileData?.followers_count || 0),
@@ -130,6 +163,7 @@ const UserProfileScreen = () => {
             console.error("Error loading bookmarks:", error);
         } finally {
             setLoading(false);
+            setPageReady(true);
         }
     };
 
@@ -153,7 +187,19 @@ const UserProfileScreen = () => {
         setVotedItems((prev) => ({ ...prev, [id]: newVote }));
         setReactionForArticle(id, newVote);
         try {
-            await setReaction(id, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
+            const data = await setReaction(
+                id,
+                newVote === "up" ? "like" : newVote === "down" ? "dislike" : "none"
+            );
+            const likes = Number(data.like_count ?? 0);
+            const dislikes = Number(data.dislike_count ?? 0);
+            setBookmarks((prev) =>
+                prev.map((n) =>
+                    String(n.id) !== id
+                        ? n
+                        : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes }
+                )
+            );
         } catch {
             setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
             setReactionForArticle(id, previousVote || null);
@@ -161,18 +207,19 @@ const UserProfileScreen = () => {
     };
 
     const handleBookmark = async (itemId) => {
-        const exists = bookmarkedItems.has(itemId) || bookmarkedItems.has(String(itemId));
+        const id = String(itemId);
+        const wasBookmarked = bookmarkedItems.has(id);
         setBookmarkedItems((prev) => {
-            const next = new Set(prev);
-            if (next.has(itemId)) next.delete(itemId);
-            else next.add(itemId);
+            const next = new Set([...prev].map(String));
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
             setBookmarkIds(Array.from(next));
             return next;
         });
         try {
-            const item = bookmarks.find((n) => String(n.id) === String(itemId));
-            if (exists) await removeBookmark(itemId);
-            else await addBookmark(itemId, item?.title || "", item?.canonical_url || item?.url || "");
+            const item = bookmarks.find((n) => String(n.id) === id);
+            if (wasBookmarked) await removeBookmark(id);
+            else await addBookmark(id, item?.title || "", item?.canonical_url || item?.url || "");
             await loadBookmarks();
         } catch {
             await loadBookmarks();
@@ -220,7 +267,7 @@ const UserProfileScreen = () => {
         setVerifyingCode(true);
         setVerifyMessage("");
         try {
-            const updated = await confirmProfileVerification({ channel: verificationChannel, code: verificationCode.trim() });
+            const updated = stripLastLogin(await confirmProfileVerification({ channel: verificationChannel, code: verificationCode.trim() }));
             setProfile(updated);
             setVerificationCode("");
             setDevCodeHint("");
@@ -240,7 +287,7 @@ const UserProfileScreen = () => {
         reader.onloadend = async () => {
             try {
                 const dataUrl = String(reader.result || "");
-                const updated = await updateProfile({ avatar_image: dataUrl });
+                const updated = stripLastLogin(await updateProfile({ avatar_image: dataUrl }));
                 setProfile(updated);
             } catch {
                 // ignore avatar update errors to keep profile usable
@@ -248,6 +295,35 @@ const UserProfileScreen = () => {
         };
         reader.readAsDataURL(file);
     };
+
+    if (!pageReady && !profile) {
+        const sk = isDark ? colors.surfaceElevated || '#334155' : '#e5e7eb';
+        return (
+            <div style={{ minHeight: '100vh', backgroundColor: backgroundColor, paddingTop: 0 }}>
+                <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%', padding: `0 ${horizontalPad}px 24px` }}>
+                    <div style={{ height: 28, width: 120, background: sk, borderRadius: 6, marginBottom: 20, marginTop: 8 }} />
+                    <div style={{ height: 220, background: cardBackground, border: `1px solid ${borderColor}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
+                        <div style={{ display: 'flex', gap: 24 }}>
+                            <div style={{ width: 100, height: 100, borderRadius: 12, background: sk }} />
+                            <div style={{ flex: 1 }}>
+                                <div style={{ height: 24, width: '45%', background: sk, borderRadius: 6, marginBottom: 12 }} />
+                                <div style={{ height: 16, width: '30%', background: sk, borderRadius: 6, marginBottom: 16 }} />
+                                <div style={{ height: 14, width: '100%', background: sk, borderRadius: 6, marginBottom: 8 }} />
+                                <div style={{ height: 14, width: '90%', background: sk, borderRadius: 6 }} />
+                            </div>
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 24, paddingTop: 24, borderTop: `1px solid ${borderColor}` }}>
+                            {[1, 2, 3].map((i) => (
+                                <div key={i} style={{ height: 72, background: sk, borderRadius: 8 }} />
+                            ))}
+                        </div>
+                    </div>
+                    <div style={{ height: 18, width: 160, background: sk, borderRadius: 6, marginBottom: 16 }} />
+                    <div style={{ height: 120, background: sk, borderRadius: 12 }} />
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div style={{
@@ -260,7 +336,7 @@ const UserProfileScreen = () => {
                 maxWidth: '1000px',
                 margin: '0 auto',
                 width: '100%',
-                padding: '0 24px 24px 24px',
+                padding: `0 ${horizontalPad}px 24px`,
             }}>
                 {/* Header Section */}
                 <div style={{

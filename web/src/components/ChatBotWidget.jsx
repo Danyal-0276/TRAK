@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Bot, MessageCircle, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { chatWithBot, clearChatHistory, getChatHistory } from '../utils/Service/api';
+import { useAuth } from '../context/AuthContext';
 
 const QUICK_PROMPTS = [
   'Top tech headlines',
@@ -9,6 +10,7 @@ const QUICK_PROMPTS = [
 ];
 
 const ChatBotWidget = () => {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [renderPanel, setRenderPanel] = useState(false);
   const [input, setInput] = useState('');
@@ -50,8 +52,12 @@ const ChatBotWidget = () => {
         setHistoryLoaded(true);
       }
     };
+    if (!user) {
+      setHistoryLoaded(true);
+      return;
+    }
     loadHistory();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -89,6 +95,10 @@ const ChatBotWidget = () => {
       setLoading(false);
     }
   };
+
+  if (!user) {
+    return null;
+  }
 
   return (
     <div style={{ position: 'fixed', right: 20, bottom: 20, zIndex: 1000 }}>

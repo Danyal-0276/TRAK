@@ -1,17 +1,53 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TrendingUp, Clock, Bookmark, Tag } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../hooks/useResponsive';
-import Text from './ui/Text';
+import { useAuth } from '../context/AuthContext';
+import { getUserKeywordsFromServer } from '../utils/Service/api';
+import { getUserKeywords } from '../utils/userKeywordsStorage';
 
 const AppSidebar = () => {
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
     const { isDesktop } = useResponsive();
+    const { user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
+    const [topicRows, setTopicRows] = useState([]);
+
+    const loadTopics = useCallback(async () => {
+        if (!user) {
+            setTopicRows([]);
+            return;
+        }
+        try {
+            const res = await getUserKeywordsFromServer();
+            const kws = Array.isArray(res?.keywords) ? res.keywords : [];
+            if (kws.length) {
+                setTopicRows(kws.map((t, i) => ({ id: `${i}-${t}`, topic: String(t) })));
+                return;
+            }
+        } catch {
+            /* fall back to local */
+        }
+        const local = getUserKeywords();
+        setTopicRows(local.map((t, i) => ({ id: `${i}-${t}`, topic: String(t) })));
+    }, [user]);
+
+    useEffect(() => {
+        loadTopics();
+        const onKw = () => {
+            loadTopics();
+        };
+        window.addEventListener('trak-keywords-changed', onKw);
+        window.addEventListener('focus', onKw);
+        return () => {
+            window.removeEventListener('trak-keywords-changed', onKw);
+            window.removeEventListener('focus', onKw);
+        };
+    }, [loadTopics]);
 
     // Don't show sidebar on auth pages
     const hideNavPaths = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection'];
@@ -24,19 +60,18 @@ const AppSidebar = () => {
         return null;
     }
 
-    const trendingTopics = [
-        { id: 1, topic: 'Technology', count: '125K' },
-        { id: 2, topic: 'Climate Change', count: '89K' },
-        { id: 3, topic: 'Sports', count: '76K' },
-        { id: 4, topic: 'Business', count: '54K' },
-        { id: 5, topic: 'Science', count: '43K' },
-    ];
-
     const quickLinks = [
         { icon: TrendingUp, label: 'Trending', path: '/trending' },
         { icon: Bookmark, label: 'Bookmarks', path: '/bookmarks' },
         { icon: Clock, label: 'Recent', path: '/recent' },
         { icon: Tag, label: 'Categories', path: '/categories' },
+    ];
+
+    const footerLinks = [
+        { label: 'About', path: '/about' },
+        { label: 'Help', path: '/help' },
+        { label: 'Privacy', path: '/privacy' },
+        { label: 'Terms', path: '/terms' },
     ];
 
     const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
@@ -126,7 +161,7 @@ const AppSidebar = () => {
                 </div>
             </div>
 
-            {/* Trending Topics */}
+            {/* Your tracked topics (from account keywords) */}
             <div>
                 <h3 style={{
                     fontSize: '13px',
@@ -136,13 +171,37 @@ const AppSidebar = () => {
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
                 }}>
-                    Trending Topics
+                    Your topics
                 </h3>
+                {!user ? (
+                    <p style={{ fontSize: '12px', color: textSecondary, margin: 0, lineHeight: 1.5 }}>
+                        Sign in to see the topics you follow.
+                    </p>
+                ) : topicRows.length === 0 ? (
+                    <p style={{ fontSize: '12px', color: textSecondary, margin: 0, lineHeight: 1.5 }}>
+                        No keywords yet.{' '}
+                        <button
+                            type="button"
+                            onClick={() => navigate('/categories')}
+                            style={{
+                                border: 'none',
+                                background: 'transparent',
+                                padding: 0,
+                                color: isDark ? colors.primary || '#818CF8' : '#0f172a',
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                                textDecoration: 'underline',
+                            }}
+                        >
+                            Choose categories
+                        </button>
+                    </p>
+                ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {trendingTopics.map((topic) => (
+                    {topicRows.map((row) => (
                         <div
-                            key={topic.id}
-                            onClick={() => navigate(`/search?q=${encodeURIComponent(topic.topic)}`)}
+                            key={row.id}
+                            onClick={() => navigate(`/search?q=${encodeURIComponent(row.topic)}`)}
                             style={{
                                 padding: '10px 12px',
                                 borderRadius: '6px',
@@ -164,19 +223,19 @@ const AppSidebar = () => {
                                 fontSize: '13px',
                                 fontWeight: '600',
                                 color: textPrimary,
-                                marginBottom: '4px',
                             }}>
-                                #{topic.topic}
+                                #{row.topic}
                             </div>
                             <div style={{
                                 fontSize: '11px',
                                 color: textSecondary,
                             }}>
-                                {topic.count} articles
+                                Search articles
                             </div>
                         </div>
                     ))}
                 </div>
+                )}
             </div>
 
             {/* Footer */}
@@ -191,9 +250,11 @@ const AppSidebar = () => {
                     gap: '8px',
                     marginBottom: '10px',
                 }}>
-                    {['About', 'Help', 'Privacy', 'Terms'].map((link) => (
+                    {footerLinks.map(({ label, path }) => (
                         <button
-                            key={link}
+                            key={path}
+                            type="button"
+                            onClick={() => navigate(path)}
                             style={{
                                 border: 'none',
                                 background: 'transparent',
@@ -202,6 +263,7 @@ const AppSidebar = () => {
                                 cursor: 'pointer',
                                 padding: 0,
                                 transition: 'color 0.2s ease',
+                                textDecoration: location.pathname === path ? 'underline' : 'none',
                             }}
                             onMouseEnter={(e) => {
                                 e.currentTarget.style.color = isDark ? colors.primary || '#818CF8' : '#64748b';
@@ -210,7 +272,7 @@ const AppSidebar = () => {
                                 e.currentTarget.style.color = textSecondary;
                             }}
                         >
-                            {link}
+                            {label}
                         </button>
                     ))}
                 </div>

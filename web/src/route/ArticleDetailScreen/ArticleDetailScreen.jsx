@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { 
     ChevronLeft, 
@@ -19,43 +19,59 @@ import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../
 const ArticleDetailScreen = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const { id } = useParams();
-    const article = location.state?.article || {
-        id: id,
-        title: 'Article Title',
-        source: 'Source',
-        time: '2h ago',
-        category: 'News',
-        fullContent: 'Article content goes here...',
-        description: 'Article description...',
-        excerpt: 'Article excerpt...',
-        upvotes: 24,
-        votes: 24,
-        verified: true,
-        trending: false,
-        readTime: 5,
-    };
+    const { id: routeArticleId } = useParams();
+
+    const article = useMemo(() => {
+        const fromState = location.state?.article;
+        const key = String(routeArticleId || fromState?.id || '').trim();
+        if (fromState && String(fromState.id) === key) {
+            return { ...fromState, id: key };
+        }
+        return {
+            id: key,
+            title: 'Article Title',
+            source: 'Source',
+            time: '2h ago',
+            category: 'News',
+            fullContent: 'Article content goes here...',
+            description: 'Article description...',
+            excerpt: 'Article excerpt...',
+            upvotes: 24,
+            votes: 24,
+            like_count: 0,
+            dislike_count: 0,
+            verified: true,
+            trending: false,
+            readTime: 5,
+        };
+    }, [location.state, routeArticleId]);
+
+    const articleKey = String(article.id || routeArticleId || '').trim();
     const { success } = useUIFeedback();
-    
-    const [reaction, setReactionState] = useState(null); // 'up' | 'down' | null
+
+    const [reaction, setReactionState] = useState(null);
     const [isBookmarked, setIsBookmarked] = useState(false);
-    const [baseVotes, setBaseVotes] = useState(article.upvotes || article.votes || 0);
+    const [likeCount, setLikeCount] = useState(0);
+    const [dislikeCount, setDislikeCount] = useState(0);
     const [reactionPending, setReactionPending] = useState(false);
     const [scrollY, setScrollY] = useState(0);
 
-    const voteCount = Number(baseVotes || 0) + (reaction === 'up' ? 1 : reaction === 'down' ? -1 : 0);
-
     const submitReaction = async (next) => {
-        if (reactionPending) return;
+        if (reactionPending || !articleKey) return;
         const previous = reaction;
         setReactionPending(true);
         setReactionState(next);
-        setReactionForArticle(article.id, next);
+        setReactionForArticle(articleKey, next);
         try {
-            await setReaction(article.id, next === 'up' ? 'like' : next === 'down' ? 'dislike' : 'none');
+            const data = await setReaction(
+                articleKey,
+                next === 'up' ? 'like' : next === 'down' ? 'dislike' : 'none'
+            );
+            setLikeCount(Number(data.like_count ?? 0));
+            setDislikeCount(Number(data.dislike_count ?? 0));
         } catch {
             setReactionState(previous);
-            setReactionForArticle(article.id, previous || null);
+            setReactionForArticle(articleKey, previous || null);
         } finally {
             setReactionPending(false);
         }
@@ -65,21 +81,22 @@ const ArticleDetailScreen = () => {
     const handleDislike = () => submitReaction(reaction === 'down' ? null : 'down');
 
     const handleBookmark = async () => {
+        if (!articleKey) return;
         const previous = isBookmarked;
         const next = !previous;
         setIsBookmarked(next);
         const ids = new Set(getBookmarkIds());
-        if (next) ids.add(String(article.id));
-        else ids.delete(String(article.id));
+        if (next) ids.add(articleKey);
+        else ids.delete(articleKey);
         setBookmarkIds(Array.from(ids));
         try {
-            if (previous) await removeBookmark(article.id);
-            else await addBookmark(article.id, article?.title || '', article?.canonical_url || article?.url || '');
+            if (previous) await removeBookmark(articleKey);
+            else await addBookmark(articleKey, article?.title || '', article?.canonical_url || article?.url || '');
         } catch {
             setIsBookmarked(previous);
             const rollback = new Set(getBookmarkIds());
-            if (previous) rollback.add(String(article.id));
-            else rollback.delete(String(article.id));
+            if (previous) rollback.add(articleKey);
+            else rollback.delete(articleKey);
             setBookmarkIds(Array.from(rollback));
         }
     };
@@ -98,10 +115,12 @@ const ArticleDetailScreen = () => {
     };
 
     useEffect(() => {
-        setBaseVotes(article.upvotes || article.votes || 0);
-        const cachedIds = new Set(getBookmarkIds());
-        setIsBookmarked(cachedIds.has(String(article.id)));
-        const cachedReaction = getReactionMap()[String(article.id)] || null;
+        if (!articleKey) return;
+        setLikeCount(Number(article.like_count ?? article.upvotes ?? article.votes ?? 0));
+        setDislikeCount(Number(article.dislike_count ?? 0));
+        const cachedIds = new Set(getBookmarkIds().map(String));
+        setIsBookmarked(cachedIds.has(articleKey));
+        const cachedReaction = getReactionMap()[articleKey] || null;
         setReactionState(cachedReaction);
         (async () => {
             const [bmRes, reactRes] = await Promise.all([
@@ -110,9 +129,9 @@ const ArticleDetailScreen = () => {
             ]);
             const ids = (bmRes.results || []).map((b) => String(b.article_id));
             setBookmarkIds(ids);
-            setIsBookmarked(ids.includes(String(article.id)));
-            const map = mergeReactionRows(reactRes.results || []);
-            setReactionState(map[String(article.id)] || null);
+            setIsBookmarked(ids.includes(articleKey));
+            const map = mergeReactionRows(reactRes.results || [], { replace: false });
+            setReactionState(map[articleKey] || null);
         })();
 
         const handleScroll = () => {
@@ -120,11 +139,11 @@ const ArticleDetailScreen = () => {
         };
 
         window.addEventListener('scroll', handleScroll, { passive: true });
-        
+
         return () => {
             window.removeEventListener('scroll', handleScroll);
         };
-    }, []);
+    }, [articleKey]);
 
     const content = article.fullContent || article.content || article.excerpt || article.description || 'Article content goes here...';
 
@@ -402,7 +421,7 @@ const ArticleDetailScreen = () => {
                                 fontWeight: '600',
                                 color: reaction === 'up' ? '#3b82f6' : '#64748b',
                             }}>
-                                {voteCount}
+                                {likeCount}
                             </span>
                         </button>
 
@@ -449,7 +468,7 @@ const ArticleDetailScreen = () => {
                                 fontWeight: '600',
                                 color: reaction === 'down' ? '#ef4444' : '#64748b',
                             }}>
-                                {voteCount}
+                                {dislikeCount}
                             </span>
                         </button>
                     </div>

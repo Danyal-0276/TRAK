@@ -14,6 +14,8 @@ import {
   StatusBar,
   Dimensions,
   TouchableOpacity,
+  Share,
+  Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
@@ -24,7 +26,8 @@ import { NewsCard } from "../../components/NewsCard";
 import { useTheme } from "../../theme/ThemeContext";
 import { loadExplorePage } from "../../utils/loadFeed";
 import Text from "../../components/ui/Text";
-import { Search } from "lucide-react-native";
+import { Search, MoreHorizontal } from "lucide-react-native";
+import { submitArticleReport } from "../../api/newsApi";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
 
 const { width, height } = Dimensions.get('window');
@@ -636,12 +639,63 @@ const SearchScreen = ({ navigation }) => {
             </Text>
           </View>
 
-          <View style={{ zIndex: 50 }}>
-            <SearchBar
-              ref={searchRef}
-              onSearch={handleSearch}
-              initialQuery={searchQuery}
-            />
+          <View style={{ zIndex: 50, flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <SearchBar
+                ref={searchRef}
+                onSearch={handleSearch}
+                initialQuery={searchQuery}
+              />
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                Alert.alert('Discover', 'Choose an action', [
+                  {
+                    text: 'Export results',
+                    onPress: () => {
+                      const rows = filteredNews.slice(0, 80).map((a) => ({
+                        id: a.id,
+                        title: a.title,
+                        url: a.canonical_url || a.url,
+                      }));
+                      Share.share({ title: 'TRAK export', message: JSON.stringify(rows, null, 2) }).catch(() => {});
+                    },
+                  },
+                  {
+                    text: 'Report / Flag',
+                    style: 'destructive',
+                    onPress: async () => {
+                      const first = filteredNews[0];
+                      try {
+                        await submitArticleReport({
+                          article_id: first?.id ? String(first.id) : '',
+                          url: first?.canonical_url || first?.url || '',
+                          reason: 'discover_flag',
+                        });
+                        Alert.alert('Thanks', 'Your report was sent.');
+                      } catch (e) {
+                        Alert.alert('Error', e?.message || 'Could not submit.');
+                      }
+                    },
+                  },
+                  { text: 'Cancel', style: 'cancel' },
+                ]);
+              }}
+              style={{
+                marginTop: 4,
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              accessibilityLabel="More discover actions"
+            >
+              <MoreHorizontal size={22} color={colors.textSecondary} />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.tabsWrapper}>

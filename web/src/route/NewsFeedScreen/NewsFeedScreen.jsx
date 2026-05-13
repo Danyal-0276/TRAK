@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
-import { addBookmark, getUserFeed, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { addBookmark, getUserFeed, getUserKeywordsFromServer, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
@@ -26,19 +26,29 @@ const NewsFeedScreen = () => {
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const tabFromUrl = searchParams.get('tab');
-    const [activeTab, setActiveTab] = useState(tabFromUrl || 'For you');
+    const rawTab = searchParams.get('tab');
+    const normalizedTab =
+        rawTab === 'Following' || rawTab === 'Recent' ? 'For you' : rawTab || 'For you';
+    const [activeTab, setActiveTab] = useState(
+        ['For you', 'Bookmarks', 'Trending'].includes(normalizedTab) ? normalizedTab : 'For you'
+    );
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
     const [votedItems, setVotedItems] = useState({});
     const [newsData, setNewsData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedArticle, setSelectedArticle] = useState(null);
-    const [articleLiked, setArticleLiked] = useState(false);
-    const [articleDisliked, setArticleDisliked] = useState(false);
-    const [articleBookmarked, setArticleBookmarked] = useState(false);
-    const [articleLikeCount, setArticleLikeCount] = useState(0);
-    const [articleDislikeCount, setArticleDislikeCount] = useState(0);
+    const [feedKeywords, setFeedKeywords] = useState([]);
     const { success } = useUIFeedback();
+
+    const refreshKeywords = useCallback(async () => {
+        try {
+            const res = await getUserKeywordsFromServer();
+            const kws = res?.keywords;
+            setFeedKeywords(Array.isArray(kws) ? kws : []);
+        } catch {
+            setFeedKeywords([]);
+        }
+    }, []);
 
     const loadNews = async () => {
         try {
@@ -53,20 +63,26 @@ const NewsFeedScreen = () => {
                 listReactions().catch(() => ({ results: [] })),
             ]);
             const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
-            const serverReactions = mergeReactionRows(reactions.results || []);
-            const reactionMap = { ...cachedReactions, ...serverReactions };
-            const mapped = (response.results || []).map((item, idx) => ({
-                ...item,
-                id: item.id || item.canonical_url || String(idx),
-                description: item.content || item.excerpt,
-                fullContent: item.content || item.excerpt,
-                category: item.topic_keywords?.[0] || 'General',
-                time: item.published_at ? new Date(item.published_at).toLocaleString() : 'Recently',
-                votes: 0,
-                upvotes: 0,
-                verified: item.credibility?.label === 'real',
-                userReaction: reactionMap[String(item.id || item.canonical_url || String(idx))] || null,
-            }));
+            const reactionMap = mergeReactionRows(reactions.results || [], { replace: false });
+            const mapped = (response.results || []).map((item, idx) => {
+                const aid = item.id || item.canonical_url || String(idx);
+                const likes = Number(item.like_count ?? item.upvotes ?? 0);
+                const dislikes = Number(item.dislike_count ?? 0);
+                return {
+                    ...item,
+                    id: aid,
+                    description: item.content || item.excerpt,
+                    fullContent: item.content || item.excerpt,
+                    category: item.topic_keywords?.[0] || 'General',
+                    time: item.published_at ? new Date(item.published_at).toLocaleString() : 'Recently',
+                    like_count: likes,
+                    dislike_count: dislikes,
+                    upvotes: likes,
+                    verified: item.credibility?.label === 'real',
+                    trending: Boolean(item.topic_keywords?.length),
+                    userReaction: reactionMap[String(aid)] || null,
+                };
+            });
             setNewsData(mapped);
             setBookmarkedItems(bookmarked);
             setBookmarkIds(Array.from(bookmarked));
@@ -76,6 +92,7 @@ const NewsFeedScreen = () => {
             setNewsData([]);
         } finally {
             setLoading(false);
+            refreshKeywords();
         }
     };
 
@@ -84,19 +101,19 @@ const NewsFeedScreen = () => {
     }, []);
 
     useEffect(() => {
-        if (tabFromUrl) {
-            setActiveTab(tabFromUrl);
+        refreshKeywords();
+    }, [refreshKeywords]);
+
+    useEffect(() => {
+        if (rawTab) {
+            const t =
+                rawTab === 'Following' || rawTab === 'Recent' ? 'For you' : rawTab;
+            if (['For you', 'Bookmarks', 'Trending'].includes(t)) setActiveTab(t);
         }
-    }, [tabFromUrl]);
+    }, [rawTab]);
 
     const handleArticlePress = (article) => {
         setSelectedArticle(article);
-        setArticleLikeCount(article.upvotes || article.votes || 0);
-        setArticleDislikeCount(3);
-        setArticleLiked(false);
-        setArticleDisliked(false);
-        setArticleBookmarked(bookmarkedItems.has(article.id));
-        // Scroll to top of article detail
         setTimeout(() => {
             const element = document.querySelector('[data-article-detail]');
             if (element) {
@@ -109,40 +126,30 @@ const NewsFeedScreen = () => {
         setSelectedArticle(null);
     };
 
-    const handleArticleLike = () => {
-        if (articleDisliked) {
-            setArticleDisliked(false);
-            setArticleDislikeCount(articleDislikeCount - 1);
-        }
-        setArticleLiked(!articleLiked);
-        setArticleLikeCount(articleLiked ? articleLikeCount - 1 : articleLikeCount + 1);
-    };
-
-    const handleArticleDislike = () => {
-        if (articleLiked) {
-            setArticleLiked(false);
-            setArticleLikeCount(articleLikeCount - 1);
-        }
-        setArticleDisliked(!articleDisliked);
-        setArticleDislikeCount(articleDisliked ? articleDislikeCount - 1 : articleDislikeCount + 1);
-    };
+    const articleDetailReaction = selectedArticle
+        ? votedItems[String(selectedArticle.id)] ?? null
+        : null;
+    const articleBookmarked = selectedArticle
+        ? bookmarkedItems.has(String(selectedArticle.id)) || bookmarkedItems.has(selectedArticle.id)
+        : false;
 
     const handleArticleBookmark = () => {
         if (selectedArticle) {
             handleBookmark(selectedArticle.id);
-            setArticleBookmarked(!articleBookmarked);
         }
     };
 
     const handleArticleShare = () => {
-        if (navigator.share && selectedArticle) {
+        if (!selectedArticle) return;
+        const url = selectedArticle.canonical_url || selectedArticle.url || window.location.href;
+        if (navigator.share) {
             navigator.share({
                 title: selectedArticle.title,
                 text: selectedArticle.excerpt || selectedArticle.description,
-                url: window.location.href,
+                url,
             });
-        } else if (selectedArticle) {
-            navigator.clipboard.writeText(window.location.href);
+        } else {
+            navigator.clipboard.writeText(url);
             success('Link copied to clipboard!');
         }
     };
@@ -152,49 +159,68 @@ const NewsFeedScreen = () => {
         const previousVote = votedItems[id];
         const newVote = previousVote === type ? null : type;
 
-        setVotedItems(prev => ({
+        setVotedItems((prev) => ({
             ...prev,
-            [id]: newVote
+            [id]: newVote,
         }));
         setReactionForArticle(id, newVote);
 
         try {
-            await setReaction(id, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
+            const data = await setReaction(
+                id,
+                newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none'
+            );
+            const likes = Number(data.like_count ?? 0);
+            const dislikes = Number(data.dislike_count ?? 0);
+            setNewsData((prev) =>
+                prev.map((n) =>
+                    String(n.id) !== id
+                        ? n
+                        : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes }
+                )
+            );
+            setSelectedArticle((prev) =>
+                prev && String(prev.id) === id
+                    ? { ...prev, like_count: likes, dislike_count: dislikes, upvotes: likes }
+                    : prev
+            );
         } catch (error) {
-            setVotedItems(prev => ({
+            setVotedItems((prev) => ({
                 ...prev,
-                [id]: previousVote
+                [id]: previousVote,
             }));
             setReactionForArticle(id, previousVote || null);
         }
     };
 
     const handleBookmark = async (itemId) => {
-        const article = newsData.find((n) => String(n.id) === String(itemId));
-        setBookmarkedItems(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(itemId)) {
-                newSet.delete(itemId);
+        const id = String(itemId);
+        const article = newsData.find((n) => String(n.id) === id);
+        const wasBookmarked = bookmarkedItems.has(id);
+        setBookmarkedItems((prev) => {
+            const newSet = new Set([...prev].map(String));
+            if (newSet.has(id)) {
+                newSet.delete(id);
             } else {
-                newSet.add(itemId);
+                newSet.add(id);
             }
             setBookmarkIds(Array.from(newSet));
             return newSet;
         });
 
         try {
-            const isBookmarked = bookmarkedItems.has(itemId);
-            if (isBookmarked) {
-                await removeBookmark(itemId);
+            if (wasBookmarked) {
+                await removeBookmark(id);
             } else {
-                await addBookmark(itemId, article?.title || '', article?.canonical_url || article?.url || '');
+                await addBookmark(id, article?.title || '', article?.canonical_url || article?.url || '');
             }
         } catch (error) {
             console.error('Error bookmarking:', error);
-            setBookmarkedItems(prev => {
-                const rollback = new Set(prev);
-                if (rollback.has(itemId)) rollback.delete(itemId);
-                else rollback.add(itemId);
+            setBookmarkedItems((prev) => {
+                const rollback = new Set([...prev].map(String));
+                if (rollback.has(id)) rollback.delete(id);
+                else rollback.add(id);
+                setBookmarkIds(Array.from(rollback));
                 return rollback;
             });
         }
@@ -206,9 +232,23 @@ const NewsFeedScreen = () => {
     const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
     const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
 
-    const visibleNews = activeTab === 'Bookmarks'
-        ? newsData.filter((n) => bookmarkedItems.has(n.id) || bookmarkedItems.has(String(n.id)))
-        : newsData;
+    const hasFeedPersonalization = feedKeywords.length > 0;
+    const visibleNews = useMemo(() => {
+        if (activeTab === 'For you' && !hasFeedPersonalization) {
+            return [];
+        }
+        if (activeTab === 'Bookmarks') {
+            return newsData.filter((n) => bookmarkedItems.has(String(n.id)) || bookmarkedItems.has(n.id));
+        }
+        if (activeTab === 'Trending') {
+            return [...newsData].sort((a, b) => {
+                const ak = (a.topic_keywords?.length || 0) + (a.trending ? 2 : 0);
+                const bk = (b.topic_keywords?.length || 0) + (b.trending ? 2 : 0);
+                return bk - ak;
+            });
+        }
+        return newsData;
+    }, [newsData, activeTab, hasFeedPersonalization, bookmarkedItems]);
 
     return (
         <div style={{
@@ -259,7 +299,7 @@ const NewsFeedScreen = () => {
                     overflowX: isMobile ? 'auto' : 'visible',
                     WebkitOverflowScrolling: 'touch',
                 }}>
-                    {['For you', 'Following', 'Trending', 'Bookmarks'].map((tab) => (
+                    {['For you', 'Bookmarks', 'Trending'].map((tab) => (
                         <button
                             key={tab}
                             onClick={() => {
@@ -477,41 +517,42 @@ const NewsFeedScreen = () => {
                                 borderRadius: '10px',
                             }}>
                                 <button
-                                    onClick={handleArticleLike}
+                                    type="button"
+                                    onClick={() => selectedArticle && handleVote(selectedArticle.id, 'up')}
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '6px',
                                         padding: '6px 12px',
                                         border: 'none',
-                                        background: articleLiked ? (isDark ? colors.surface || '#1E293B' : '#ffffff') : 'transparent',
+                                        background: articleDetailReaction === 'up' ? (isDark ? colors.surface || '#1E293B' : '#ffffff') : 'transparent',
                                         borderRadius: '8px',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease',
-                                        boxShadow: articleLiked ? (isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)') : 'none',
+                                        boxShadow: articleDetailReaction === 'up' ? (isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)') : 'none',
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (!articleLiked) {
+                                        if (articleDetailReaction !== 'up') {
                                             e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#ffffff';
                                         }
                                     }}
                                     onMouseLeave={(e) => {
-                                        if (!articleLiked) {
+                                        if (articleDetailReaction !== 'up') {
                                             e.currentTarget.style.backgroundColor = 'transparent';
                                         }
                                     }}
                                 >
                                     <ChevronUp 
                                         size={16} 
-                                        color={articleLiked ? '#3b82f6' : textSecondary} 
-                                        strokeWidth={articleLiked ? 2.5 : 2}
+                                        color={articleDetailReaction === 'up' ? '#3b82f6' : textSecondary} 
+                                        strokeWidth={articleDetailReaction === 'up' ? 2.5 : 2}
                                     />
                                     <span style={{
                                         fontSize: '13px',
                                         fontWeight: '600',
-                                        color: articleLiked ? '#3b82f6' : textSecondary,
+                                        color: articleDetailReaction === 'up' ? '#3b82f6' : textSecondary,
                                     }}>
-                                        {articleLikeCount}
+                                        Like ({Number(selectedArticle?.like_count ?? selectedArticle?.upvotes ?? 0)})
                                     </span>
                                 </button>
 
@@ -522,41 +563,42 @@ const NewsFeedScreen = () => {
                                 }} />
 
                                 <button
-                                    onClick={handleArticleDislike}
+                                    type="button"
+                                    onClick={() => selectedArticle && handleVote(selectedArticle.id, 'down')}
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
                                         gap: '6px',
                                         padding: '6px 12px',
                                         border: 'none',
-                                        background: articleDisliked ? (isDark ? colors.surface || '#1E293B' : '#ffffff') : 'transparent',
+                                        background: articleDetailReaction === 'down' ? (isDark ? colors.surface || '#1E293B' : '#ffffff') : 'transparent',
                                         borderRadius: '8px',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease',
-                                        boxShadow: articleDisliked ? (isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)') : 'none',
+                                        boxShadow: articleDetailReaction === 'down' ? (isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)') : 'none',
                                     }}
                                     onMouseEnter={(e) => {
-                                        if (!articleDisliked) {
+                                        if (articleDetailReaction !== 'down') {
                                             e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#ffffff';
                                         }
                                     }}
                                     onMouseLeave={(e) => {
-                                        if (!articleDisliked) {
+                                        if (articleDetailReaction !== 'down') {
                                             e.currentTarget.style.backgroundColor = 'transparent';
                                         }
                                     }}
                                 >
                                     <ChevronDown 
                                         size={16} 
-                                        color={articleDisliked ? '#ef4444' : textSecondary} 
-                                        strokeWidth={articleDisliked ? 2.5 : 2}
+                                        color={articleDetailReaction === 'down' ? '#ef4444' : textSecondary} 
+                                        strokeWidth={articleDetailReaction === 'down' ? 2.5 : 2}
                                     />
                                     <span style={{
                                         fontSize: '13px',
                                         fontWeight: '600',
-                                        color: articleDisliked ? '#ef4444' : textSecondary,
+                                        color: articleDetailReaction === 'down' ? '#ef4444' : textSecondary,
                                     }}>
-                                        {articleDislikeCount}
+                                        Dislike ({Number(selectedArticle?.dislike_count ?? 0)})
                                     </span>
                                 </button>
                             </div>
@@ -623,19 +665,124 @@ const NewsFeedScreen = () => {
                 {/* News Cards Grid */}
                 {loading ? (
                     <div style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        minHeight: '500px',
+                        display: 'grid',
+                        gridTemplateColumns: isMobile
+                            ? '1fr'
+                            : isTablet
+                            ? 'repeat(auto-fill, minmax(280px, 1fr))'
+                            : 'repeat(auto-fill, minmax(320px, 1fr))',
+                        gap: isMobile ? '16px' : isTablet ? '20px' : '24px',
                     }}>
-                        <div style={{
-                            width: '32px',
-                            height: '32px',
-                            border: '3px solid #e5e7eb',
-                            borderTop: '3px solid #0f172a',
-                            borderRadius: '50%',
-                            animation: 'spin 0.8s linear infinite',
-                        }} />
+                        {Array.from({ length: isMobile ? 4 : 6 }).map((_, i) => (
+                            <div
+                                key={i}
+                                style={{
+                                    backgroundColor: cardBackground,
+                                    borderRadius: '8px',
+                                    border: `1px solid ${borderColor}`,
+                                    overflow: 'hidden',
+                                    minHeight: '280px',
+                                }}
+                            >
+                                <div
+                                    className="trak-feed-skel-shimmer"
+                                    style={{
+                                        height: '180px',
+                                        background: isDark ? '#334155' : '#e5e7eb',
+                                    }}
+                                />
+                                <div style={{ padding: '20px' }}>
+                                    <div
+                                        className="trak-feed-skel-shimmer"
+                                        style={{
+                                            height: '14px',
+                                            width: '45%',
+                                            borderRadius: '4px',
+                                            marginBottom: '16px',
+                                            background: isDark ? '#334155' : '#e5e7eb',
+                                        }}
+                                    />
+                                    <div
+                                        className="trak-feed-skel-shimmer"
+                                        style={{
+                                            height: '18px',
+                                            width: '100%',
+                                            borderRadius: '4px',
+                                            marginBottom: '8px',
+                                            background: isDark ? '#334155' : '#e5e7eb',
+                                        }}
+                                    />
+                                    <div
+                                        className="trak-feed-skel-shimmer"
+                                        style={{
+                                            height: '18px',
+                                            width: '80%',
+                                            borderRadius: '4px',
+                                            marginBottom: '16px',
+                                            background: isDark ? '#334155' : '#e5e7eb',
+                                        }}
+                                    />
+                                    <div
+                                        className="trak-feed-skel-shimmer"
+                                        style={{
+                                            height: '12px',
+                                            width: '100%',
+                                            borderRadius: '4px',
+                                            marginBottom: '8px',
+                                            background: isDark ? '#475569' : '#f1f5f9',
+                                        }}
+                                    />
+                                    <div
+                                        className="trak-feed-skel-shimmer"
+                                        style={{
+                                            height: '12px',
+                                            width: '70%',
+                                            borderRadius: '4px',
+                                            marginTop: '24px',
+                                            background: isDark ? '#475569' : '#f1f5f9',
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                ) : visibleNews.length === 0 ? (
+                    <div style={{
+                        textAlign: 'center',
+                        padding: isMobile ? '32px 16px' : '48px 24px',
+                        maxWidth: '420px',
+                        margin: '0 auto',
+                    }}>
+                        {activeTab === 'For you' && !hasFeedPersonalization ? (
+                            <>
+                                <h2 style={{ fontSize: '20px', fontWeight: '700', color: textPrimary, marginBottom: '8px' }}>
+                                    Choose your interests
+                                </h2>
+                                <p style={{ fontSize: '15px', color: textSecondary, lineHeight: 1.5, marginBottom: '20px' }}>
+                                    Select news categories to see a personalized For You feed.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => navigate('/tag-selection', { state: { fromSettings: true } })}
+                                    style={{
+                                        padding: '12px 20px',
+                                        backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',
+                                        color: '#ffffff',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        fontSize: '15px',
+                                    }}
+                                >
+                                    Pick categories
+                                </button>
+                            </>
+                        ) : (
+                            <p style={{ fontSize: '16px', color: textSecondary }}>
+                                {activeTab === 'Bookmarks' ? 'No bookmarked articles yet.' : 'No articles to show.'}
+                            </p>
+                        )}
                     </div>
                 ) : (
                     <div style={{
@@ -664,9 +811,13 @@ const NewsFeedScreen = () => {
 
 
             <style>{`
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
+                @keyframes trakShimmer {
+                    0% { opacity: 0.45; }
+                    50% { opacity: 1; }
+                    100% { opacity: 0.45; }
+                }
+                .trak-feed-skel-shimmer {
+                    animation: trakShimmer 1.2s ease-in-out infinite;
                 }
                 h1 {
                     margin-top: 0 !important;

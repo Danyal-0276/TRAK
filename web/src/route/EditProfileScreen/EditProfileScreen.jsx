@@ -13,9 +13,13 @@ import {
     AlertCircle
 } from 'lucide-react';
 import { getProfile, updateProfile } from '../../utils/Service/api';
+import { useTheme } from '../../theme/ThemeContext';
+import { SkeletonPageBlocks } from '../../components/skeletons/SkeletonLayouts';
 
 const EditProfileScreen = () => {
     const navigate = useNavigate();
+    const { theme } = useTheme();
+    const isDark = theme.mode === 'dark';
     const fileInputRef = useRef(null);
     
     const [formData, setFormData] = useState({
@@ -299,9 +303,11 @@ const EditProfileScreen = () => {
                 </div>
 
                 {profileLoading ? (
-                    <div style={{ padding: '24px', color: '#64748b', fontSize: '14px' }}>Loading profile...</div>
+                    <SkeletonPageBlocks isDark={isDark} colors={theme.colors} minHeight="520px" />
                 ) : null}
 
+                {!profileLoading && (
+                <>
                 {/* Success Message */}
                 {showSuccess && (
                     <div style={{
@@ -659,6 +665,8 @@ const EditProfileScreen = () => {
                         )}
                     </button>
                 </div>
+                </>
+                )}
             </div>
             <style>{`
                 @keyframes spin {

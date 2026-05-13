@@ -45,6 +45,11 @@ const UserCard = ({ user, onEdit, onDelete }) => {
               {user.status}
             </Text>
           </View>
+          {user.isAdmin ? (
+            <View style={[styles.statusBadge, { backgroundColor: `${colors.error}18` }]}>
+              <Text variant="caption" style={[styles.statusText, { color: colors.error }]}>Admin</Text>
+            </View>
+          ) : null}
           <Text variant="caption" color={colors.textTertiary} style={styles.itemDate}>
             Joined: {user.joinDate}
           </Text>
@@ -58,13 +63,15 @@ const UserCard = ({ user, onEdit, onDelete }) => {
         >
           <Edit2 size={18} color={colors.primary} />
         </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: `${colors.error}15` }]} 
-          onPress={() => onDelete(user.id)}
-          activeOpacity={0.7}
-        >
-          <Trash2 size={18} color={colors.error} />
-        </TouchableOpacity>
+        {onDelete ? (
+          <TouchableOpacity 
+            style={[styles.actionButton, { backgroundColor: `${colors.error}15` }]} 
+            onPress={() => onDelete(user.id)}
+            activeOpacity={0.7}
+          >
+            <Trash2 size={18} color={colors.error} />
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   );

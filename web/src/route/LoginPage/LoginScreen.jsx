@@ -9,7 +9,7 @@ import { useUIFeedback } from '../../components/ui/UIFeedback';
 const LoginScreen = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { login, sendOtp, verifyOtp, socialLogin, completeSocialLogin } = useAuth();
+    const { login, completeSocialLogin } = useAuth();
     const { error: showError } = useUIFeedback();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -17,8 +17,6 @@ const LoginScreen = () => {
     const [errors, setErrors] = useState({});
     const [showPassword, setShowPassword] = useState(false);
     const [socialLoading, setSocialLoading] = useState(null);
-    const [authMode, setAuthMode] = useState('email');
-    const [otpMeta, setOtpMeta] = useState({ message: '', devCode: '' });
 
     useEffect(() => {
         const ticket = searchParams.get('social_ticket');
@@ -42,69 +40,21 @@ const LoginScreen = () => {
         setErrors({});
 
         setLoading(true);
-        if (authMode === 'email') {
-            if (!email.trim()) {
-                setErrors(prev => ({ ...prev, email: 'Email is required' }));
-                setLoading(false);
-                return;
-            }
-            if (!password) {
-                setErrors(prev => ({ ...prev, password: 'Password is required' }));
-                setLoading(false);
-                return;
-            }
-            try {
-                const userData = await login(email, password);
-                navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed');
-            } catch (error) {
-                setErrors(prev => ({ ...prev, password: error.message || 'Invalid email or password' }));
-            } finally {
-                setLoading(false);
-            }
-            return;
-        }
-
         if (!email.trim()) {
-            setErrors(prev => ({ ...prev, email: 'Phone is required' }));
+            setErrors(prev => ({ ...prev, email: 'Email is required' }));
             setLoading(false);
             return;
         }
-        if (!password.trim()) {
-            setErrors(prev => ({ ...prev, password: 'Verification code is required' }));
+        if (!password) {
+            setErrors(prev => ({ ...prev, password: 'Password is required' }));
             setLoading(false);
             return;
         }
         try {
-            const userData = await verifyOtp(email.trim(), password.trim());
+            const userData = await login(email, password);
             navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed');
         } catch (error) {
-            setErrors(prev => ({ ...prev, password: error.message || 'Invalid code' }));
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleRequestOtp = async () => {
-        if (!email.trim()) {
-            setErrors(prev => ({ ...prev, email: 'Phone is required' }));
-            return;
-        }
-        if (!/^\+?[\d\s\-()]{7,20}$/.test(email.trim())) {
-            setErrors(prev => ({ ...prev, email: 'Enter a valid phone number' }));
-            return;
-        }
-        setErrors({});
-        setOtpMeta({ message: '', devCode: '' });
-        setLoading(true);
-        try {
-            const payload = await sendOtp(email.trim());
-            setOtpMeta({
-                message: payload?.detail || 'Verification code sent.',
-                devCode: payload?.dev_code ? String(payload.dev_code) : '',
-            });
-            setErrors(prev => ({ ...prev, password: '' }));
-        } catch (error) {
-            setErrors(prev => ({ ...prev, password: error.message }));
+            setErrors(prev => ({ ...prev, password: error.message || 'Invalid email or password' }));
         } finally {
             setLoading(false);
         }
@@ -147,7 +97,6 @@ const LoginScreen = () => {
                 position: 'relative',
                 zIndex: 1,
             }}>
-                {/* Logo */}
                 <div style={{ marginBottom: '48px', textAlign: 'left' }}>
                     <img 
                         src="/images/whiteLogo.svg" 
@@ -175,47 +124,11 @@ const LoginScreen = () => {
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
-                        {authMode === 'email'
-                            ? 'Enter your email and password to continue'
-                            : 'Enter phone and verification code to continue'}
+                        Enter your email and password to continue
                     </p>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '20px' }}>
-                    <button
-                        type="button"
-                        onClick={() => { setAuthMode('email'); setErrors({}); }}
-                        style={{
-                            padding: '10px 12px',
-                            borderRadius: '6px',
-                            border: authMode === 'email' ? '1px solid #0f172a' : '1px solid #cbd5e1',
-                            backgroundColor: authMode === 'email' ? '#0f172a' : '#ffffff',
-                            color: authMode === 'email' ? '#ffffff' : '#0f172a',
-                            fontWeight: '500',
-                            cursor: 'pointer',
-                        }}
-                    >
-                        Login with Email
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => { setAuthMode('phone'); setErrors({}); setOtpMeta({ message: '', devCode: '' }); }}
-                        style={{
-                            padding: '10px 12px',
-                            borderRadius: '6px',
-                            border: authMode === 'phone' ? '1px solid #0f172a' : '1px solid #cbd5e1',
-                            backgroundColor: authMode === 'phone' ? '#0f172a' : '#ffffff',
-                            color: authMode === 'phone' ? '#ffffff' : '#0f172a',
-                            fontWeight: '500',
-                            cursor: 'pointer',
-                        }}
-                    >
-                        Login with Phone
-                    </button>
-                </div>
-
                 <form onSubmit={handleSubmit}>
-                    {/* Email Field */}
                     <div style={{ marginBottom: '20px' }}>
                         <label style={{
                             display: 'block',
@@ -224,13 +137,13 @@ const LoginScreen = () => {
                             color: '#0f172a',
                             marginBottom: '8px',
                         }}>
-                            {authMode === 'email' ? 'Email address' : 'Phone number'}
+                            Email address
                         </label>
                         <input
-                            type={authMode === 'email' ? 'email' : 'text'}
+                            type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
-                            placeholder={authMode === 'email' ? 'you@example.com' : '+923001234567'}
+                            placeholder="you@example.com"
                             style={{
                                 width: '100%',
                                 padding: '11px 14px',
@@ -264,15 +177,8 @@ const LoginScreen = () => {
                                 {errors.email}
                             </p>
                         )}
-                        {authMode === 'phone' && otpMeta.message ? (
-                            <p style={{ color: '#166534', fontSize: '13px', margin: '6px 0 0 0' }}>
-                                {otpMeta.message}
-                                {otpMeta.devCode ? ` Test code: ${otpMeta.devCode}` : ''}
-                            </p>
-                        ) : null}
                     </div>
 
-                    {/* Password/Code Field */}
                     <div style={{ marginBottom: '24px' }}>
                         <div style={{ 
                             display: 'flex', 
@@ -285,34 +191,24 @@ const LoginScreen = () => {
                                 fontWeight: '500',
                                 color: '#0f172a',
                             }}>
-                                {authMode === 'email' ? 'Password' : 'Verification Code'}
+                                Password
                             </label>
-                            {authMode === 'email' ? (
-                                <Link to="/forgot-password" style={{
-                                    fontSize: '14px',
-                                    color: '#0f172a',
-                                    textDecoration: 'none',
-                                    fontWeight: '500',
-                                }}>
-                                    Forgot password?
-                                </Link>
-                            ) : (
-                                <button
-                                    type="button"
-                                    onClick={handleRequestOtp}
-                                    style={{ fontSize: '14px', color: '#0f172a', background: 'transparent', border: 'none', fontWeight: '500', cursor: 'pointer' }}
-                                >
-                                    Send code
-                                </button>
-                            )}
+                            <Link to="/forgot-password" style={{
+                                fontSize: '14px',
+                                color: '#0f172a',
+                                textDecoration: 'none',
+                                fontWeight: '500',
+                            }}>
+                                Forgot password?
+                            </Link>
                         </div>
                         <div style={{ position: 'relative' }}>
                             <input
-                                type={authMode === 'email' ? (showPassword ? 'text' : 'password') : 'text'}
+                                type={showPassword ? 'text' : 'password'}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                placeholder={authMode === 'email' ? 'Enter your password' : 'Enter 6-digit code'}
-                                autoComplete={authMode === 'email' ? 'current-password' : 'one-time-code'}
+                                placeholder="Enter your password"
+                                autoComplete="current-password"
                                 style={{
                                     width: '100%',
                                     padding: '11px 45px 11px 14px',
@@ -337,27 +233,25 @@ const LoginScreen = () => {
                                     }
                                 }}
                             />
-                            {authMode === 'email' ? (
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    style={{
-                                        position: 'absolute',
-                                        right: '14px',
-                                        top: '50%',
-                                        transform: 'translateY(-50%)',
-                                        background: 'transparent',
-                                        border: 'none',
-                                        cursor: 'pointer',
-                                        color: '#64748b',
-                                        padding: '4px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                    }}
-                                >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                                </button>
-                            ) : null}
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                style={{
+                                    position: 'absolute',
+                                    right: '14px',
+                                    top: '50%',
+                                    transform: 'translateY(-50%)',
+                                    background: 'transparent',
+                                    border: 'none',
+                                    cursor: 'pointer',
+                                    color: '#64748b',
+                                    padding: '4px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                }}
+                            >
+                                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                            </button>
                         </div>
                         {errors.password && (
                             <p style={{ 
@@ -370,7 +264,6 @@ const LoginScreen = () => {
                         )}
                     </div>
 
-                    {/* Submit Button */}
                     <button
                         type="submit"
                         disabled={loading}
@@ -406,14 +299,13 @@ const LoginScreen = () => {
                     >
                         {loading ? 'Signing in...' : (
                             <>
-                                {authMode === 'email' ? 'Sign in' : 'Verify & Sign in'}
+                                Sign in
                                 <ArrowRight size={18} />
                             </>
                         )}
                     </button>
                 </form>
 
-                {/* Divider */}
                 <div style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -430,7 +322,6 @@ const LoginScreen = () => {
                     <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
                 </div>
 
-                    {/* Social Buttons */}
                     <div style={{ 
                         display: 'flex',
                         gap: '12px', 
@@ -450,20 +341,20 @@ const LoginScreen = () => {
                             )
                         },
                         { 
-                            name: 'GitHub', 
-                            key: 'github',
+                            name: 'Apple', 
+                            key: 'apple',
                             icon: (
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#000000">
-                                    <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z"/>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
                                 </svg>
                             )
                         },
                         { 
-                            name: 'Twitter', 
-                            key: 'twitter',
+                            name: 'Facebook', 
+                            key: 'facebook',
                             icon: (
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#1DA1F2">
-                                    <path d="M23.953 4.57a10 10 0 01-2.825.775 4.958 4.958 0 002.163-2.723c-.951.555-2.005.959-3.127 1.184a4.92 4.92 0 00-8.384 4.482C7.69 8.095 4.067 6.13 1.64 3.162a4.822 4.822 0 00-.666 2.475c0 1.71.87 3.213 2.188 4.096a4.904 4.904 0 01-2.228-.616v.06a4.923 4.923 0 003.946 4.827 4.996 4.996 0 01-2.212.085 4.936 4.936 0 004.604 3.417 9.867 9.867 0 01-6.102 2.105c-.39 0-.779-.023-1.17-.067a13.995 13.995 0 007.557 2.209c9.053 0 13.998-7.496 13.998-13.985 0-.21 0-.42-.015-.63A9.935 9.935 0 0024 4.59z"/>
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="#1877F2">
+                                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
                                 </svg>
                             )
                         },
@@ -475,7 +366,7 @@ const LoginScreen = () => {
                                 onClick={async () => {
                                     setSocialLoading(provider.key);
                                     try {
-                                        if (provider.key === 'google' || provider.key === 'github') {
+                                        if (['google', 'apple', 'facebook'].includes(provider.key)) {
                                             startSocialOAuth(provider.key);
                                             return;
                                         }
@@ -486,7 +377,7 @@ const LoginScreen = () => {
                                         setSocialLoading(null);
                                     }
                                 }}
-                                disabled={socialLoading !== null || provider.key === 'twitter'}
+                                disabled={socialLoading !== null}
                                 style={{
                                     flex: 1,
                                     padding: '11px 16px',
@@ -503,7 +394,7 @@ const LoginScreen = () => {
                                     alignItems: 'center',
                                     justifyContent: 'center',
                                     gap: '8px',
-                                    opacity: socialLoading !== null && !isLoading ? 0.6 : (provider.key === 'twitter' ? 0.5 : 1),
+                                    opacity: socialLoading !== null && !isLoading ? 0.6 : 1,
                                 }}
                                 onMouseEnter={(e) => {
                                     if (socialLoading === null) {
@@ -536,7 +427,6 @@ const LoginScreen = () => {
                     })}
                     </div>
 
-                {/* Sign Up Link */}
                 <div style={{ textAlign: 'center' }}>
                     <p style={{ 
                         fontSize: '15px', 

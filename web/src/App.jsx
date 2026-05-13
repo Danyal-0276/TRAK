@@ -4,11 +4,13 @@ import { AuthProvider } from './context/AuthContext';
 import AppRouter from './navigation/AppRouter';
 import ChatBotWidget from './components/ChatBotWidget';
 import { UIFeedbackProvider } from './components/ui/UIFeedback';
+import { GlobalSkeletonStyles } from './components/skeletons/SkeletonLayouts';
 import './App.css';
 
 const App = () => {
   return (
     <ThemeProvider initialMode="light">
+      <GlobalSkeletonStyles />
       <UIFeedbackProvider>
         <AuthProvider>
           <div style={{ 

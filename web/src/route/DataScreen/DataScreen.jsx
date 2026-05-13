@@ -16,6 +16,7 @@ import {
     CheckCircle,
     RefreshCw
 } from 'lucide-react';
+import { SkeletonStatCards, SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 
 const DataScreen = () => {
     const { theme } = useTheme();
@@ -289,14 +290,11 @@ const DataScreen = () => {
                     </div>
 
                     {loading ? (
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'center',
-                            padding: '40px',
-                        }}>
-                            <RefreshCw size={24} color={textSecondary} style={{
-                                animation: 'spin 1s linear infinite',
-                            }} />
+                        <div>
+                            <SkeletonStatCards count={3} isDark={isDark} colors={colors} />
+                            <div style={{ marginTop: 20 }}>
+                                <SkeletonListRows rows={6} isDark={isDark} colors={colors} />
+                            </div>
                         </div>
                     ) : (
                         <>

@@ -3,7 +3,8 @@ import React, { useState, useRef, useEffect } from "react";
 import { ScrollView, SafeAreaView, StyleSheet, StatusBar, Animated, Dimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
-import { User, Bell, Lock, Tag, Database, Info, LogOut, Moon, FileText } from "lucide-react-native";
+import { User, Bell, Lock, Tag, Database, Info, LogOut, Moon, FileText, Mail } from "lucide-react-native";
+import { getNotificationPreferences, patchNotificationPreferences } from "../../api/notificationsApi";
 
 import SettingsHeader from "./components/SettingsHeader";
 import SettingsSection from "./components/SettingsSection";
@@ -19,7 +20,8 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function SettingsScreen({ navigation }) {
   const [pushEnabled, setPushEnabled] = useState(true);
-  const [keywordAlerts, setKeywordAlerts] = useState(false);
+  const [emailEnabled, setEmailEnabled] = useState(true);
+  const [keywordAlerts, setKeywordAlerts] = useState(true);
   const [quietHours, setQuietHours] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { colors } = theme;
@@ -72,6 +74,19 @@ export default function SettingsScreen({ navigation }) {
   useEffect(() => {
     resetTabBarVisibility();
     return () => resetTabBarVisibility();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const p = await getNotificationPreferences();
+        setPushEnabled(!!p.push_enabled);
+        setEmailEnabled(!!p.email_enabled);
+        setKeywordAlerts(!!p.keyword_alerts);
+      } catch {
+        /* defaults */
+      }
+    })();
   }, []);
 
   const handleScroll = (event) => {
@@ -195,24 +210,75 @@ export default function SettingsScreen({ navigation }) {
           />
         </SettingsSection>
 
+        <Card style={{ marginBottom: theme.spacing.lg }}>
+          <Text variant="subtitle" color={theme.colors.textPrimary}>
+            Feed &amp; channels
+          </Text>
+          <Text variant="caption" color={theme.colors.textSecondary} style={{ marginTop: theme.spacing.xs }}>
+            Topics you follow for your personalized feed
+          </Text>
+        </Card>
+
+        <SettingsSection>
+          <SettingsRow
+            icon={<Tag size={22} color={colors.primary} />}
+            label="Following news channels"
+            onPress={() => navigation.navigate("TagSelection", { fromSettings: true, selectedTags: [] })}
+          />
+        </SettingsSection>
+
+        <Card style={{ marginBottom: theme.spacing.md }}>
+          <Text variant="subtitle" color={theme.colors.textPrimary}>
+            Notification preferences
+          </Text>
+        </Card>
+
         <SettingsSection>
           <SettingsRow
             icon={<Bell size={22} color={colors.primary} />}
-            label="Push Notifications"
+            label="Push notifications"
             switchEnabled
             switchValue={pushEnabled}
-            onSwitchChange={setPushEnabled}
+            onSwitchChange={async (v) => {
+              setPushEnabled(v);
+              try {
+                await patchNotificationPreferences({ push_enabled: v });
+              } catch {
+                setPushEnabled(!v);
+              }
+            }}
+          />
+          <SettingsRow
+            icon={<Mail size={22} color={colors.primary} />}
+            label="Email notifications"
+            switchEnabled
+            switchValue={emailEnabled}
+            onSwitchChange={async (v) => {
+              setEmailEnabled(v);
+              try {
+                await patchNotificationPreferences({ email_enabled: v });
+              } catch {
+                setEmailEnabled(!v);
+              }
+            }}
           />
           <SettingsRow
             icon={<Tag size={22} color={colors.primary} />}
-            label="Keyword Alerts"
+            label="Keyword alerts"
             switchEnabled
             switchValue={keywordAlerts}
-            onSwitchChange={setKeywordAlerts}
+            onSwitchChange={async (v) => {
+              setKeywordAlerts(v);
+              try {
+                await patchNotificationPreferences({ keyword_alerts: v });
+              } catch {
+                setKeywordAlerts(!v);
+              }
+            }}
           />
           <SettingsRow
             icon={<Moon size={22} color={colors.primary} />}
-            label="Quiet Hours"
+            label="Quiet hours"
             switchEnabled
             switchValue={quietHours}
             onSwitchChange={setQuietHours}
@@ -229,14 +295,6 @@ export default function SettingsScreen({ navigation }) {
             icon={<FileText size={22} color={colors.primary} />}
             label="Terms of Service"
             onPress={() => navigation.getParent()?.navigate("TermsScreen")}
-          />
-        </SettingsSection>
-
-        <SettingsSection>
-          <SettingsRow
-            icon={<Tag size={22} color={colors.primary} />}
-            label="Manage Categories"
-            onPress={() => navigation.navigate("TagSelection", { fromSettings: true, selectedTags: [] })}
           />
         </SettingsSection>
 

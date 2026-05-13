@@ -3,19 +3,17 @@
 // ============================================
 import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
-import { TrendingUp, Bookmark, Clock } from 'lucide-react-native';
+import { TrendingUp, Bookmark } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 
-export const TabBar = ({ activeTab, setActiveTab, navigation }) => {
+export const TabBar = ({ activeTab, setActiveTab }) => {
     const { theme } = useTheme();
     const { colors } = theme;
-    
+
     const tabItems = [
-        { name: 'For you', icon: null, stackScreen: null },
-        { name: 'Following', icon: null, stackScreen: null },
-        { name: 'Trending', icon: TrendingUp, stackScreen: 'Trending' },
-        { name: 'Bookmarks', icon: Bookmark, stackScreen: 'Bookmarks' },
-        { name: 'Recent', icon: Clock, stackScreen: 'Recent' },
+        { name: 'For you', icon: null },
+        { name: 'Bookmarks', icon: Bookmark },
+        { name: 'Trending', icon: TrendingUp },
     ];
 
     return (
@@ -38,13 +36,7 @@ export const TabBar = ({ activeTab, setActiveTab, navigation }) => {
                                     backgroundColor: isActive ? colors.primary + '15' : 'transparent',
                                 }
                             ]}
-                            onPress={() => {
-                                if (tab.stackScreen && navigation) {
-                                    navigation.getParent()?.navigate(tab.stackScreen);
-                                    return;
-                                }
-                                setActiveTab(tab.name);
-                            }}
+                            onPress={() => setActiveTab(tab.name)}
                             activeOpacity={0.7}
                         >
                             {Icon && (

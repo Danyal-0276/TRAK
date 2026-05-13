@@ -4,9 +4,14 @@ import { NewsCard } from '../../components/NewsCard';
 import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
+import { useTheme } from '../../theme/ThemeContext';
+import { SkeletonFeedGrid } from '../../components/skeletons/SkeletonLayouts';
 
 const BookmarksScreen = () => {
     const navigate = useNavigate();
+    const { theme } = useTheme();
+    const isDark = theme.mode === 'dark';
+    const { colors } = theme;
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
     const [votedItems, setVotedItems] = useState({});
     const [newsData, setNewsData] = useState([]);
@@ -16,7 +21,7 @@ const BookmarksScreen = () => {
         try {
             setLoading(true);
             const cachedIds = getBookmarkIds();
-            if (cachedIds.length) setBookmarkedItems(new Set(cachedIds));
+            if (cachedIds.length) setBookmarkedItems(new Set(cachedIds.map(String)));
             const cachedReactions = getReactionMap();
             if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
             const [response, reactRes] = await Promise.all([
@@ -27,20 +32,30 @@ const BookmarksScreen = () => {
             const ids = new Set(rows.map((r) => String(r.article_id)));
             setBookmarkedItems(ids);
             setBookmarkIds(Array.from(ids));
-            setVotedItems(mergeReactionRows(reactRes.results || []));
+            setVotedItems(mergeReactionRows(reactRes.results || [], { replace: false }));
             const detailed = await Promise.all(
                 rows.map(async (r) => {
+                    const aid = String(r.article_id ?? '').trim();
                     try {
-                        const full = await getUserArticleDetail(r.article_id);
+                        const full = await getUserArticleDetail(aid);
+                        const likes = Number(full.like_count ?? full.upvotes ?? 0);
+                        const dislikes = Number(full.dislike_count ?? 0);
                         return {
                             ...full,
-                            id: full.id || r.article_id || r.id,
-                            time: full.time || (r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently'),
-                            category: full.category || 'Saved',
+                            id: aid,
+                            description: full.content || full.excerpt,
+                            fullContent: full.content || full.excerpt,
+                            category: full.topic_keywords?.[0] || 'Saved',
+                            time: full.published_at ? new Date(full.published_at).toLocaleString() : (r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently'),
+                            like_count: likes,
+                            dislike_count: dislikes,
+                            upvotes: likes,
+                            verified: full.credibility?.label === 'real',
+                            trending: Boolean(full.topic_keywords?.length),
                         };
                     } catch {
                         return {
-                            id: r.article_id || r.id,
+                            id: aid,
                             title: r.title || 'Saved article',
                             source: 'TRAK',
                             excerpt: '',
@@ -49,8 +64,9 @@ const BookmarksScreen = () => {
                             canonical_url: r.url || '',
                             category: 'Saved',
                             time: r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently',
+                            like_count: 0,
+                            dislike_count: 0,
                             upvotes: 0,
-                            votes: 0,
                         };
                     }
                 })
@@ -68,11 +84,12 @@ const BookmarksScreen = () => {
     }, []);
 
     const handleArticlePress = async (article) => {
+        const aid = String(article.id);
         try {
-            const full = await getUserArticleDetail(article.id);
-            navigate(`/article/${article.id}`, { state: { article: full } });
+            const full = await getUserArticleDetail(aid);
+            navigate(`/article/${encodeURIComponent(aid)}`, { state: { article: { ...full, id: aid } } });
         } catch {
-            navigate(`/article/${article.id}`, { state: { article } });
+            navigate(`/article/${encodeURIComponent(aid)}`, { state: { article: { ...article, id: aid } } });
         }
     };
 
@@ -81,53 +98,66 @@ const BookmarksScreen = () => {
         const previousVote = votedItems[id];
         const newVote = previousVote === type ? null : type;
 
-        setVotedItems(prev => ({
+        setVotedItems((prev) => ({
             ...prev,
-            [id]: newVote
+            [id]: newVote,
         }));
         setReactionForArticle(id, newVote);
 
         try {
-            await setReaction(id, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
+            const data = await setReaction(
+                id,
+                newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none'
+            );
+            const likes = Number(data.like_count ?? 0);
+            const dislikes = Number(data.dislike_count ?? 0);
+            setNewsData((prev) =>
+                prev.map((n) =>
+                    String(n.id) !== id ? n : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes }
+                )
+            );
         } catch (error) {
-            setVotedItems(prev => ({
+            setVotedItems((prev) => ({
                 ...prev,
-                [id]: previousVote
+                [id]: previousVote,
             }));
             setReactionForArticle(id, previousVote || null);
         }
     };
 
     const handleBookmark = async (itemId) => {
-        setBookmarkedItems(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(itemId)) {
-                newSet.delete(itemId);
-            } else {
-                newSet.add(itemId);
-            }
-            setBookmarkIds(Array.from(newSet));
-            return newSet;
+        const id = String(itemId);
+        const wasBookmarked = bookmarkedItems.has(id);
+
+        setBookmarkedItems((prev) => {
+            const next = new Set([...prev].map(String));
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            setBookmarkIds(Array.from(next));
+            return next;
         });
 
         try {
-            const exists = bookmarkedItems.has(itemId) || bookmarkedItems.has(String(itemId));
-            const item = newsData.find((n) => String(n.id) === String(itemId));
-            if (exists) await removeBookmark(itemId);
-            else await addBookmark(itemId, item?.title || '', item?.canonical_url || item?.url || '');
+            const item = newsData.find((n) => String(n.id) === id);
+            if (wasBookmarked) await removeBookmark(id);
+            else await addBookmark(id, item?.title || '', item?.canonical_url || item?.url || '');
             await loadBookmarks();
         } catch (error) {
             console.error('Error bookmarking:', error);
+            await loadBookmarks();
         }
     };
 
-    // Filter to show only bookmarked items
-    const bookmarkedNews = newsData.filter(item => bookmarkedItems.has(item.id));
+    const bookmarkedNews = newsData.filter((item) => bookmarkedItems.has(String(item.id)));
+
+    const pageBg = isDark ? colors.background || '#0F172A' : '#ffffff';
+    const headingColor = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+    const subColor = isDark ? colors.textSecondary || '#94a3b8' : '#64748b';
 
     return (
         <div style={{
             minHeight: '100vh',
-            backgroundColor: '#ffffff',
+            backgroundColor: pageBg,
             paddingTop: '0',
             marginTop: '0',
         }}>
@@ -137,7 +167,6 @@ const BookmarksScreen = () => {
                 width: '100%',
                 padding: '0 24px 24px 24px',
             }}>
-                {/* Header Section */}
                 <div style={{
                     marginTop: '0',
                     marginBottom: '24px',
@@ -146,7 +175,7 @@ const BookmarksScreen = () => {
                     <h1 style={{
                         fontSize: '28px',
                         fontWeight: '700',
-                        color: '#0f172a',
+                        color: headingColor,
                         margin: '0 0 8px 0',
                         paddingTop: '0',
                         letterSpacing: '-0.5px',
@@ -155,7 +184,7 @@ const BookmarksScreen = () => {
                     </h1>
                     <p style={{
                         fontSize: '15px',
-                        color: '#64748b',
+                        color: subColor,
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
@@ -163,31 +192,16 @@ const BookmarksScreen = () => {
                     </p>
                 </div>
 
-                {/* News Cards Grid */}
                 {loading ? (
-                    <div style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        minHeight: '500px',
-                    }}>
-                        <div style={{
-                            width: '32px',
-                            height: '32px',
-                            border: '3px solid #e5e7eb',
-                            borderTop: '3px solid #0f172a',
-                            borderRadius: '50%',
-                            animation: 'spin 0.8s linear infinite',
-                        }} />
-                    </div>
+                    <SkeletonFeedGrid count={6} isDark={isDark} colors={colors} />
                 ) : bookmarkedNews.length === 0 ? (
                     <div style={{
                         textAlign: 'center',
                         padding: '60px 20px',
-                        color: '#64748b',
+                        color: subColor,
                     }}>
                         <p style={{ fontSize: '16px', margin: 0 }}>No bookmarked articles yet.</p>
-                        <p style={{ fontSize: '14px', margin: '8px 0 0 0', color: '#9ca3af' }}>
+                        <p style={{ fontSize: '14px', margin: '8px 0 0 0', color: subColor }}>
                             Start bookmarking articles to see them here.
                         </p>
                     </div>
@@ -199,7 +213,7 @@ const BookmarksScreen = () => {
                     }}>
                         {bookmarkedNews.map((item) => (
                             <NewsCard
-                                key={item.id}
+                                key={String(item.id)}
                                 item={item}
                                 onPress={() => handleArticlePress(item)}
                                 votedItems={votedItems}
@@ -212,10 +226,6 @@ const BookmarksScreen = () => {
                 )}
             </div>
             <style>{`
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
                 h1 {
                     margin-top: 0 !important;
                     padding-top: 0 !important;
@@ -226,4 +236,3 @@ const BookmarksScreen = () => {
 };
 
 export default BookmarksScreen;
-

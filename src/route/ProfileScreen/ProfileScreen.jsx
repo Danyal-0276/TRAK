@@ -14,17 +14,24 @@ import { useAuth } from "../../context/AuthContext";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
 import { addBookmark, confirmProfileVerification, getProfile, getUserArticleDetail, listBookmarks, removeBookmark, requestProfileVerification, setReaction } from "../../utils/Service/api";
 import Text from "../../components/ui/Text";
+import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PROFILE_CACHE_KEY = "trak_profile_cache_v1";
 const PROFILE_BOOKMARKS_CACHE_KEY = "trak_profile_bookmarks_cache_v1";
+
+function stripLastLogin(obj) {
+  if (!obj || typeof obj !== "object") return obj;
+  const { last_login: _ignored, ...rest } = obj;
+  return rest;
+}
 
 const UserProfileScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { colors } = theme;
   const { logout, isAdmin, user } = useAuth();
   const [bookmarks, setBookmarks] = useState([]);
-  const [profile, setProfile] = useState(user || null);
+  const [profile, setProfile] = useState(() => stripLastLogin(user || null));
   const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
   const [votedItems, setVotedItems] = useState({});
   const [verificationChannel, setVerificationChannel] = useState("email");
@@ -36,6 +43,7 @@ const UserProfileScreen = ({ navigation }) => {
   const [stats, setStats] = useState({ following: 0, followers: 0, saved: 0 });
   const [avatarActionOpen, setAvatarActionOpen] = useState(false);
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
+  const [uiReady, setUiReady] = useState(false);
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
@@ -50,7 +58,8 @@ const UserProfileScreen = ({ navigation }) => {
       if (rawProfile) {
         const cachedProfile = JSON.parse(rawProfile);
         if (cachedProfile && typeof cachedProfile === "object") {
-          setProfile((prev) => prev || cachedProfile);
+          const cleaned = stripLastLogin(cachedProfile);
+          setProfile((prev) => prev || cleaned);
         }
       }
     } catch (_) {
@@ -73,7 +82,7 @@ const UserProfileScreen = ({ navigation }) => {
 
   const loadProfileData = useCallback(async () => {
     try {
-      const p = await getProfile();
+      const p = stripLastLogin(await getProfile());
       setProfile(p);
       await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(p));
       setStats((prev) => ({
@@ -133,6 +142,8 @@ const UserProfileScreen = ({ navigation }) => {
     } catch {
       setBookmarks([]);
       setBookmarkedItems(new Set());
+    } finally {
+      setUiReady(true);
     }
   }, []);
 
@@ -244,7 +255,7 @@ const UserProfileScreen = ({ navigation }) => {
     setVerifyingCode(true);
     setVerifyMessage("");
     try {
-      const updated = await confirmProfileVerification({ channel: verificationChannel, code: verificationCode.trim() });
+      const updated = stripLastLogin(await confirmProfileVerification({ channel: verificationChannel, code: verificationCode.trim() }));
       setProfile(updated);
       setVerificationCode("");
       setDevCodeHint("");
@@ -255,6 +266,29 @@ const UserProfileScreen = ({ navigation }) => {
       setVerifyingCode(false);
     }
   };
+
+  if (!uiReady && !profile) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+        <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+        <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+          <SkeletonPlaceholder borderRadius={8} backgroundColor={colors.border} highlightColor={colors.surface}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 24 }}>
+              <View style={{ width: 100, height: 100, borderRadius: 50 }} />
+              <View style={{ marginLeft: 16, flex: 1 }}>
+                <View style={{ height: 22, width: '55%', marginBottom: 10 }} />
+                <View style={{ height: 14, width: '35%', marginBottom: 12 }} />
+                <View style={{ height: 40, width: '100%' }} />
+              </View>
+            </View>
+            <View style={{ height: 14, width: '40%', marginBottom: 12 }} />
+            <View style={{ height: 120, width: '100%', marginBottom: 12 }} />
+            <View style={{ height: 120, width: '100%' }} />
+          </SkeletonPlaceholder>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
