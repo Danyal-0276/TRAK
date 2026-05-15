@@ -2,9 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import Text from '../../components/ui/Text';
+import { useAuth } from '../../context/AuthContext';
 
 const OpeningScreen = () => {
     const navigate = useNavigate();
+    const { user, loading, isAdmin } = useAuth();
+
+    useEffect(() => {
+        if (loading) return;
+        if (user?.role === 'admin' || isAdmin) {
+            navigate('/admin/dashboard', { replace: true });
+        } else if (user) {
+            navigate('/newsfeed', { replace: true });
+        }
+    }, [user, loading, isAdmin, navigate]);
     const [logoScale, setLogoScale] = useState(0);
     const [logoOpacity, setLogoOpacity] = useState(0);
     const [brandOpacity, setBrandOpacity] = useState(0);

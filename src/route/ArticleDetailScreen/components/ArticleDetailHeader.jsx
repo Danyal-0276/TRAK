@@ -6,7 +6,7 @@ import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { ChevronLeft, MoreHorizontal } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 
-export const ArticleDetailHeader = ({ onBackPress }) => {
+export const ArticleDetailHeader = ({ onBackPress, onMorePress }) => {
     const { theme } = useTheme();
     const { colors } = theme;
     
@@ -28,7 +28,9 @@ export const ArticleDetailHeader = ({ onBackPress }) => {
             </TouchableOpacity>
             <TouchableOpacity 
                 style={[styles.moreButton, { backgroundColor: colors.backgroundSecondary }]}
+                onPress={onMorePress}
                 activeOpacity={0.7}
+                accessibilityLabel="More options"
             >
                 <MoreHorizontal size={20} color={colors.textSecondary} />
             </TouchableOpacity>

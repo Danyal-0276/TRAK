@@ -14,6 +14,7 @@ import { NewsCard } from '../../components/NewsCard';
 import { useTheme } from '../../theme/ThemeContext';
 import { loadFeedItems } from '../../utils/loadFeed';
 import Text from '../../components/ui/Text';
+import { buildArticleDetailParams } from '../../utils/articleNavigation';
 
 const TrendingScreen = ({ navigation }) => {
     const { theme } = useTheme();
@@ -41,7 +42,7 @@ const TrendingScreen = ({ navigation }) => {
     }, [loadNews]);
 
     const handleArticlePress = (article) => {
-        navigation.navigate('ArticleDetail', { article });
+        navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
     };
 
     const handleVote = async (itemId, type) => {

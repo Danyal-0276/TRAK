@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Settings as SettingsIcon, Plus, Trash2 } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import ToggleSwitch from '../components/ToggleSwitch';
@@ -7,6 +7,9 @@ import SettingRow from '../components/SettingRow';
 import Text from '../../../components/ui/Text';
 import LinearGradient from 'react-native-linear-gradient';
 import { useFeedback } from '../../../components/ui/FeedbackProvider';
+
+const LANGUAGE_OPTIONS = ['English', 'Urdu', 'Arabic', 'French', 'Spanish'];
+const TIMEZONE_OPTIONS = ['UTC', 'Asia/Karachi', 'Asia/Dubai', 'Europe/London', 'America/New_York'];
 
 const SettingsTab = ({
   settings,
@@ -79,18 +82,42 @@ const SettingsTab = ({
           Language & Region
         </Text>
         <SettingRow label="Language">
-          <View style={[styles.settingValueButton, { backgroundColor: colors.primary }]}>
+          <TouchableOpacity
+            style={[styles.settingValueButton, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              Alert.alert('Language', 'Select language', [
+                ...LANGUAGE_OPTIONS.map((lang) => ({
+                  text: lang,
+                  onPress: () => onSettingsChange({ language: lang }),
+                })),
+                { text: 'Cancel', style: 'cancel' },
+              ]);
+            }}
+            activeOpacity={0.85}
+          >
             <Text variant="caption" color={colors.surface} style={styles.settingValueText}>
-              {settings.language}
+              {settings.language || 'English'}
             </Text>
-          </View>
+          </TouchableOpacity>
         </SettingRow>
         <SettingRow label="Timezone">
-          <View style={[styles.settingValueButton, { backgroundColor: colors.primary }]}>
+          <TouchableOpacity
+            style={[styles.settingValueButton, { backgroundColor: colors.primary }]}
+            onPress={() => {
+              Alert.alert('Timezone', 'Select timezone', [
+                ...TIMEZONE_OPTIONS.map((tz) => ({
+                  text: tz,
+                  onPress: () => onSettingsChange({ timezone: tz }),
+                })),
+                { text: 'Cancel', style: 'cancel' },
+              ]);
+            }}
+            activeOpacity={0.85}
+          >
             <Text variant="caption" color={colors.surface} style={styles.settingValueText}>
-              {settings.timezone}
+              {settings.timezone || 'UTC'}
             </Text>
-          </View>
+          </TouchableOpacity>
         </SettingRow>
       </View>
 

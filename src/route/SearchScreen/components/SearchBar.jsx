@@ -31,7 +31,7 @@ const SCREEN_WIDTH = Dimensions.get("window").width;
 const COLLAPSED_WIDTH = 50;
 const EXPANDED_WIDTH = SCREEN_WIDTH * 0.9;
 
-const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
+const SearchBar = forwardRef(({ onSearch, initialQuery = "", embedded = false }, ref) => {
   const { theme } = useTheme();
   const { colors } = theme;
   const [focused, setFocused] = useState(false);
@@ -174,6 +174,29 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
     hideHistory,
     collapseKeepText,
   }));
+
+  if (embedded) {
+    return (
+      <View style={[styles.embeddedWrap, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+        <Search size={20} color={colors.textSecondary} style={styles.embeddedIcon} />
+        <TextInput
+          ref={inputRef}
+          style={[styles.embeddedInput, { color: colors.textPrimary }]}
+          placeholder="Search news, topics, sources..."
+          placeholderTextColor={colors.textTertiary}
+          value={query}
+          onChangeText={handleChangeText}
+          onSubmitEditing={handleSearchSubmit}
+          returnKeyType="search"
+        />
+        {query.length > 0 ? (
+          <TouchableOpacity onPress={handleCrossPress} style={styles.embeddedClear}>
+            <X size={18} color={colors.textSecondary} />
+          </TouchableOpacity>
+        ) : null}
+      </View>
+    );
+  }
 
   return (
     <>
@@ -444,6 +467,23 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   alertButton: { paddingVertical: 10, paddingHorizontal: 20, borderRadius: 8 },
+  embeddedWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '100%',
+    minHeight: 48,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+  },
+  embeddedIcon: { marginRight: 8 },
+  embeddedInput: {
+    flex: 1,
+    fontSize: 16,
+    paddingVertical: 10,
+    minWidth: 0,
+  },
+  embeddedClear: { padding: 4 },
 });
 
 export default SearchBar;

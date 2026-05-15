@@ -27,13 +27,19 @@ export function mapApiItem(a, userKeywords = []) {
     const matchedKeywords = computeMatchedKeywords(topicKeywords, userKeywords);
     const categoryLabel = matchedKeywords[0] || labelStr || 'news';
     return {
-        id: a.id,
-        source: a.source || 'TRAK',
+        id: a.id || a._id,
+        source: a.source || a.source_key || '',
+        canonical_url: a.canonical_url || a.url || '',
+        url: a.url || a.canonical_url || '',
         time: a.published_at ? String(a.published_at).slice(0, 16) : '',
         title: a.title || '',
         excerpt: a.excerpt || '',
         content: a.content || '',
         fullContent: a.content || '',
+        like_count: Number(a.like_count ?? a.upvotes ?? 0),
+        dislike_count: Number(a.dislike_count ?? 0),
+        upvotes: Number(a.like_count ?? a.upvotes ?? 0),
+        readTime: 4,
         categories: matchedKeywords.length ? matchedKeywords : topicKeywords.slice(0, 3),
         category: categoryLabel,
         trending: cred.label_code === 2 || cred.label === 'suspicious',

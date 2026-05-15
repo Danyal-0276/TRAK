@@ -13,6 +13,10 @@ import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
 import { addBookmark, confirmProfileVerification, getProfile, getUserArticleDetail, listBookmarks, removeBookmark, requestProfileVerification, setReaction } from "../../utils/Service/api";
+import { resolveArticleSource } from "../../utils/articleSource";
+import ChatBotWidget from "../../components/ChatBotWidget";
+import { buildArticleDetailParams } from "../../utils/articleNavigation";
+import { useFeedback } from "../../components/ui/FeedbackProvider";
 import Text from "../../components/ui/Text";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 
@@ -30,6 +34,7 @@ const UserProfileScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { colors } = theme;
   const { logout, isAdmin, user } = useAuth();
+  const { confirm } = useFeedback();
   const [bookmarks, setBookmarks] = useState([]);
   const [profile, setProfile] = useState(() => stripLastLogin(user || null));
   const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
@@ -96,49 +101,30 @@ const UserProfileScreen = ({ navigation }) => {
     try {
       const response = await listBookmarks();
       const rows = response.results || [];
-      const quickRows = rows.map((r) => ({
-        id: r.article_id || r.id,
-        title: r.title || "Saved article",
-        source: "TRAK",
-        excerpt: "",
-        content: "",
-        summary: "",
-        date: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
-        time: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
-        category: "Saved",
-        readTime: 4,
-        votes: 0,
-      }));
+      const quickRows = rows.map((r) => {
+        const aid = String(r.article_id || r.id || "");
+        return {
+          id: aid,
+          article_id: aid,
+          title: r.title || "Saved article",
+          source: resolveArticleSource(r),
+          excerpt: r.excerpt || "",
+          content: r.content || r.excerpt || "",
+          canonical_url: r.url || r.canonical_url || "",
+          url: r.url || r.canonical_url || "",
+          date: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
+          time: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
+          category: "Saved",
+          readTime: 4,
+          votes: 0,
+          like_count: 0,
+          dislike_count: 0,
+        };
+      });
       setBookmarks(quickRows);
       setBookmarkedItems(new Set(quickRows.map((b) => String(b.id))));
       setStats((prev) => ({ ...prev, saved: quickRows.length }));
-
-      const detailed = await Promise.allSettled(
-        rows.map(async (r) => {
-          const full = await getUserArticleDetail(r.article_id);
-          return {
-            ...full,
-            id: full.id || r.article_id || r.id,
-            source: full.source || "TRAK",
-            title: full.title || r.title || "Saved article",
-            excerpt: full.excerpt || full.content || "",
-            content: full.content || full.excerpt || "",
-            date: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
-            time: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
-            category: full.category || "Saved",
-            readTime: full.readTime || 4,
-            votes: Number(full.votes || 0),
-          };
-        })
-      );
-      const cleaned = detailed.map((r, i) => {
-        if (r.status === "fulfilled" && r.value) return r.value;
-        return quickRows[i];
-      });
-      setBookmarks(cleaned);
-      setBookmarkedItems(new Set(cleaned.map((b) => String(b.id))));
-      setStats((prev) => ({ ...prev, saved: cleaned.length }));
-      await AsyncStorage.setItem(PROFILE_BOOKMARKS_CACHE_KEY, JSON.stringify(cleaned));
+      await AsyncStorage.setItem(PROFILE_BOOKMARKS_CACHE_KEY, JSON.stringify(quickRows));
     } catch {
       setBookmarks([]);
       setBookmarkedItems(new Set());
@@ -209,25 +195,56 @@ const UserProfileScreen = ({ navigation }) => {
   };
 
   const handleVote = async (itemId, type) => {
-    const previousVote = votedItems[itemId];
-    const newVote = previousVote === type ? null : type;
-    setVotedItems((prev) => ({ ...prev, [itemId]: newVote }));
+    const id = String(itemId);
+    let previousVote = null;
+    let newVote = null;
+    setVotedItems((prev) => {
+      previousVote = prev[id] ?? null;
+      newVote = previousVote === type ? null : type;
+      return { ...prev, [id]: newVote };
+    });
+    setBookmarks((prev) =>
+      prev.map((n) => {
+        if (String(n.id) !== id) return n;
+        let likes = Number(n.like_count ?? n.upvotes ?? 0);
+        let dislikes = Number(n.dislike_count ?? 0);
+        if (previousVote === 'up') likes -= 1;
+        if (previousVote === 'down') dislikes -= 1;
+        if (newVote === 'up') likes += 1;
+        if (newVote === 'down') dislikes += 1;
+        return {
+          ...n,
+          like_count: Math.max(0, likes),
+          dislike_count: Math.max(0, dislikes),
+          upvotes: Math.max(0, likes),
+          userReaction: newVote,
+        };
+      })
+    );
     try {
-      await setReaction(itemId, newVote === "up" ? "like" : newVote === "down" ? "dislike" : "none");
+      await setReaction(id, newVote === "up" ? "like" : newVote === "down" ? "dislike" : "none");
     } catch {
-      setVotedItems((prev) => ({ ...prev, [itemId]: previousVote }));
+      setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
     }
   };
 
   const handleBookmark = async (itemId) => {
+    const id = String(itemId);
+    const exists = bookmarkedItems.has(id);
+    const item = bookmarks.find((n) => String(n.id) === id);
+    setBookmarkedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+    setBookmarks((prev) => (exists ? prev.filter((b) => String(b.id) !== id) : prev));
+    setStats((prev) => ({ ...prev, saved: Math.max(0, prev.saved + (exists ? -1 : 0)) }));
     try {
-      const exists = bookmarkedItems.has(itemId) || bookmarkedItems.has(String(itemId));
-      const item = bookmarks.find((n) => String(n.id) === String(itemId));
-      if (exists) await removeBookmark(itemId);
-      else await addBookmark(itemId, item?.title || "", item?.canonical_url || item?.url || "");
-      await loadProfileData();
+      if (exists) await removeBookmark(id);
+      else await addBookmark(id, item?.title || "", item?.canonical_url || item?.url || "");
     } catch {
-      // ignore and keep ui stable
+      await loadProfileData();
     }
   };
 
@@ -291,6 +308,7 @@ const UserProfileScreen = ({ navigation }) => {
   }
 
   return (
+    <>
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
       
@@ -432,7 +450,9 @@ const UserProfileScreen = ({ navigation }) => {
         <ProfileActions navigation={navigation} />
         <BookmarkList
           bookmarks={bookmarks}
-          onPressArticle={(article) => navigation.navigate("ArticleDetail", { article })}
+          onPressArticle={(article) => {
+            navigation.navigate("ArticleDetail", buildArticleDetailParams(article));
+          }}
           votedItems={votedItems}
           bookmarkedItems={bookmarkedItems}
           onVote={handleVote}
@@ -440,6 +460,13 @@ const UserProfileScreen = ({ navigation }) => {
         />
         <LogoutButton
           onLogout={async () => {
+            const accepted = await confirm({
+              title: "Logout",
+              message: "Are you sure you want to log out?",
+              confirmText: "Logout",
+              danger: true,
+            });
+            if (!accepted) return;
             await logout();
             navigation.reset({ index: 0, routes: [{ name: "OpeningScreen" }] });
           }}
@@ -480,6 +507,8 @@ const UserProfileScreen = ({ navigation }) => {
         </Pressable>
       </Modal>
     </SafeAreaView>
+    <ChatBotWidget />
+  </>
   );
 };
 

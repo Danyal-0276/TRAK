@@ -2,7 +2,11 @@
 // FILE: components/TabBar.jsx
 // ============================================
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, LayoutAnimation, Platform, UIManager } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+    UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 import { TrendingUp, Bookmark } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 
@@ -36,7 +40,10 @@ export const TabBar = ({ activeTab, setActiveTab }) => {
                                     backgroundColor: isActive ? colors.primary + '15' : 'transparent',
                                 }
                             ]}
-                            onPress={() => setActiveTab(tab.name)}
+                            onPress={() => {
+                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                setActiveTab(tab.name);
+                            }}
                             activeOpacity={0.7}
                         >
                             {Icon && (

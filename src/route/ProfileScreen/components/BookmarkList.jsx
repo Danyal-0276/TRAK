@@ -12,7 +12,7 @@ const BookmarkList = ({ bookmarks, onPressArticle, votedItems, bookmarkedItems, 
   return (
     <View style={{ marginBottom: spacing.xl }}>
       <Text variant="subtitle" style={{ marginBottom: spacing.md }}>
-        My Reports (Bookmarks)
+        Saved bookmarks
       </Text>
       {bookmarks.length === 0 ? (
         <View style={{ paddingVertical: spacing.md }}>

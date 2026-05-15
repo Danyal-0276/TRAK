@@ -14,11 +14,10 @@ import NewsFeedScreen from '../route/NewsFeedScreen/NewsFeedScreen';
 import SearchScreen from '../route/SearchScreen/SearchScreen';
 import NotificationsScreen from '../route/NotificationsScreen/NotificationsScreen';
 import ProfileScreen from '../route/ProfileScreen/ProfileScreen';
-import AdminScreen from '../route/AdminScreen/AdminScreen';
+import AdminShell from '../route/AdminScreen/components/AdminShell';
 import AdminDashboardScreen from '../route/AdminScreen/AdminDashboardScreen';
 import AdminUsersScreen from '../route/AdminScreen/AdminUsersScreen';
 import AdminArticlesScreen from '../route/AdminScreen/AdminArticlesScreen';
-import AdminAnalyticsScreen from '../route/AdminScreen/AdminAnalyticsScreen';
 import AdminNotificationsScreen from '../route/AdminScreen/AdminNotificationsScreen';
 import AdminSettingsScreen from '../route/AdminScreen/AdminSettingsScreen';
 import SettingsScreen from '../route/SettingsScreen/SettingsScreen';
@@ -34,12 +33,14 @@ import TrendingScreen from '../route/TrendingScreen/TrendingScreen';
 import BookmarksScreen from '../route/BookmarksScreen/BookmarksScreen';
 import RecentScreen from '../route/RecentScreen/RecentScreen';
 import ProtectedRoute from '../components/ProtectedRoute';
+import UserOnlyRoute from '../components/UserOnlyRoute';
 
 const RouterContent = () => {
   const location = useLocation();
   const { isDesktop } = useResponsive();
   const isAuthPage = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'].includes(location.pathname);
-  const isMainAppPage = !isAuthPage;
+  const isAdminPage = location.pathname.startsWith('/admin');
+  const isMainAppPage = !isAuthPage && !isAdminPage;
 
   return (
     <div 
@@ -70,29 +71,31 @@ const RouterContent = () => {
         <Route path="/privacy" element={<PrivacyScreen />} />
         
         {/* Main App Routes */}
-        <Route path="/newsfeed" element={<ProtectedRoute><NewsFeedScreen /></ProtectedRoute>} />
-        <Route path="/search" element={<ProtectedRoute><SearchScreen /></ProtectedRoute>} />
-        <Route path="/notifications" element={<ProtectedRoute><NotificationsScreen /></ProtectedRoute>} />
-        <Route path="/profile" element={<ProtectedRoute><ProfileScreen /></ProtectedRoute>} />
-        <Route path="/settings" element={<ProtectedRoute><SettingsScreen /></ProtectedRoute>} />
-        <Route path="/edit-profile" element={<ProtectedRoute><EditProfileScreen /></ProtectedRoute>} />
-        <Route path="/data" element={<ProtectedRoute><DataScreen /></ProtectedRoute>} />
-        <Route path="/categories" element={<ProtectedRoute><CategoriesScreen /></ProtectedRoute>} />
-        <Route path="/about" element={<ProtectedRoute><AboutScreen /></ProtectedRoute>} />
-        <Route path="/help" element={<ProtectedRoute><HelpScreen /></ProtectedRoute>} />
-        <Route path="/trending" element={<ProtectedRoute><TrendingScreen /></ProtectedRoute>} />
-        <Route path="/bookmarks" element={<ProtectedRoute><BookmarksScreen /></ProtectedRoute>} />
-        <Route path="/recent" element={<ProtectedRoute><RecentScreen /></ProtectedRoute>} />
-        <Route path="/article/:id" element={<ProtectedRoute><ArticleDetailScreen /></ProtectedRoute>} />
+        <Route path="/newsfeed" element={<UserOnlyRoute><NewsFeedScreen /></UserOnlyRoute>} />
+        <Route path="/search" element={<UserOnlyRoute><SearchScreen /></UserOnlyRoute>} />
+        <Route path="/notifications" element={<UserOnlyRoute><NotificationsScreen /></UserOnlyRoute>} />
+        <Route path="/profile" element={<UserOnlyRoute><ProfileScreen /></UserOnlyRoute>} />
+        <Route path="/settings" element={<UserOnlyRoute><SettingsScreen /></UserOnlyRoute>} />
+        <Route path="/edit-profile" element={<UserOnlyRoute><EditProfileScreen /></UserOnlyRoute>} />
+        <Route path="/data" element={<UserOnlyRoute><DataScreen /></UserOnlyRoute>} />
+        <Route path="/categories" element={<UserOnlyRoute><CategoriesScreen /></UserOnlyRoute>} />
+        <Route path="/about" element={<UserOnlyRoute><AboutScreen /></UserOnlyRoute>} />
+        <Route path="/help" element={<UserOnlyRoute><HelpScreen /></UserOnlyRoute>} />
+        <Route path="/trending" element={<UserOnlyRoute><TrendingScreen /></UserOnlyRoute>} />
+        <Route path="/bookmarks" element={<UserOnlyRoute><BookmarksScreen /></UserOnlyRoute>} />
+        <Route path="/recent" element={<UserOnlyRoute><RecentScreen /></UserOnlyRoute>} />
+        <Route path="/article/:id" element={<UserOnlyRoute><ArticleDetailScreen /></UserOnlyRoute>} />
         
-        {/* Admin Routes */}
-        <Route path="/admin" element={<ProtectedRoute requireAdmin={true}><Navigate to="/admin/dashboard" replace /></ProtectedRoute>} />
-        <Route path="/admin/dashboard" element={<ProtectedRoute requireAdmin={true}><AdminDashboardScreen /></ProtectedRoute>} />
-        <Route path="/admin/users" element={<ProtectedRoute requireAdmin={true}><AdminUsersScreen /></ProtectedRoute>} />
-        <Route path="/admin/articles" element={<ProtectedRoute requireAdmin={true}><AdminArticlesScreen /></ProtectedRoute>} />
-        <Route path="/admin/analytics" element={<ProtectedRoute requireAdmin={true}><AdminAnalyticsScreen /></ProtectedRoute>} />
-        <Route path="/admin/notifications" element={<ProtectedRoute requireAdmin={true}><AdminNotificationsScreen /></ProtectedRoute>} />
-        <Route path="/admin/settings" element={<ProtectedRoute requireAdmin={true}><AdminSettingsScreen /></ProtectedRoute>} />
+        {/* Admin-only panel (same as mobile — no newsfeed chrome) */}
+        <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminShell /></ProtectedRoute>}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboardScreen />} />
+          <Route path="users" element={<AdminUsersScreen />} />
+          <Route path="articles" element={<AdminArticlesScreen />} />
+          <Route path="analytics" element={<Navigate to="/admin/dashboard" replace />} />
+          <Route path="notifications" element={<AdminNotificationsScreen />} />
+          <Route path="settings" element={<AdminSettingsScreen />} />
+        </Route>
         
         {/* Default redirect */}
         <Route path="*" element={<Navigate to="/" replace />} />

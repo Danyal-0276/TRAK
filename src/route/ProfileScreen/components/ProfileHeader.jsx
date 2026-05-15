@@ -43,11 +43,22 @@ const ProfileHeader = ({ name, username, bio, avatarUri, verified, onPressAvatar
         </TouchableOpacity>
         <View style={styles.headerText}>
           <View style={styles.nameRow}>
-            <Text variant="title" style={[styles.name, { color: colors.textPrimary }]}>{name}</Text>
+            <Text
+              variant="title"
+              style={[styles.name, { color: colors.textPrimary, flex: 1 }]}
+              numberOfLines={1}
+              ellipsizeMode="tail"
+            >
+              {name}
+            </Text>
             {verified ? <CheckCircle2 size={18} color="#2563EB" /> : null}
           </View>
-          <Text variant="caption" color={colors.textSecondary} style={styles.username}>{username}</Text>
-          <Text variant="body" color={colors.textSecondary} style={styles.bio}>{bio}</Text>
+          <Text variant="caption" color={colors.textSecondary} style={styles.username} numberOfLines={1}>
+            {username}
+          </Text>
+          <Text variant="body" color={colors.textSecondary} style={styles.bio} numberOfLines={3}>
+            {bio}
+          </Text>
         </View>
       </View>
     </Card>
@@ -63,6 +74,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
+    minWidth: 0,
   },
   avatarContainer: {
     marginRight: 16,

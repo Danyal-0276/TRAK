@@ -4,8 +4,6 @@ import React, { useState, useEffect } from 'react';
 import AppNavigation from './src/navigation/AppNavigation';
 import SplashScreen from 'react-native-splash-screen';
 import CustomSplashScreen from './src/components/SplashScreen';
-import ChatBotWidget from './src/components/ChatBotWidget';
-
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from './src/theme/ThemeContext';
 import { AuthProvider } from './src/context/AuthContext';
@@ -69,7 +67,6 @@ const App = () => {
                 <SafeAreaProvider>
                     <AuthProvider>
                         <AppNavigation />
-                        <ChatBotWidget />
                     </AuthProvider>
                 </SafeAreaProvider>
             </FeedbackProvider>

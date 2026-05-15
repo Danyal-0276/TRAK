@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
-import { mockApi } from '../../utils/Service/mockApi';
+import { loadExplorePage } from '../../utils/loadFeed';
+import { fetchPlatformCategories } from '../../utils/Service/api';
 import { NewsCard } from '../../components/NewsCard';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { 
@@ -37,27 +38,47 @@ const CategoriesScreen = () => {
     const loadNews = async () => {
         try {
             setLoading(true);
-            const response = await mockApi.getNewsFeed();
-            const newsData = response.data || [];
+            const [plat, page] = await Promise.all([
+                fetchPlatformCategories().catch(() => ({ categories: [], connections: [] })),
+                loadExplorePage({ limit: 200 }),
+            ]);
+            const newsData = page.items || [];
             setAllNews(newsData);
-            
-            // Extract unique categories with counts
+
+            const normName = (c) =>
+                (typeof c === 'string' ? c : c?.name || c?.id || '')
+                    .trim()
+                    .replace(/\b\w/g, (ch) => ch.toUpperCase());
+
+            const adminNames = (plat.categories || []).map(normName).filter(Boolean);
             const categoryMap = new Map();
-            newsData.forEach(article => {
-                if (article.category) {
-                    const count = categoryMap.get(article.category) || 0;
-                    categoryMap.set(article.category, count + 1);
+            for (const name of adminNames) {
+                categoryMap.set(name, 0);
+            }
+            newsData.forEach((article) => {
+                const keys = [
+                    article.category,
+                    ...(article.categories || []),
+                    ...(article.topic_keywords || []),
+                ].filter(Boolean);
+                for (const raw of keys) {
+                    const name = normName(raw);
+                    if (!name) continue;
+                    categoryMap.set(name, (categoryMap.get(name) || 0) + 1);
                 }
             });
-            
+
             const categoryList = Array.from(categoryMap.entries())
                 .map(([name, count]) => ({ name, count }))
-                .sort((a, b) => b.count - a.count); // Sort by count descending
-            
+                .sort((a, b) => b.count - a.count);
+
             setCategories(categoryList);
             setFilteredNews(newsData);
         } catch (error) {
             console.error("Error loading categories:", error);
+            setAllNews([]);
+            setCategories([]);
+            setFilteredNews([]);
         } finally {
             setLoading(false);
         }

@@ -2,7 +2,7 @@
 // ============================================
 // FILE: screens/ArticleDetailScreen.jsx
 // ============================================
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import {
     View,
     StyleSheet,
@@ -11,6 +11,9 @@ import {
     Animated,
     Dimensions,
 } from 'react-native';
+import { shareArticle, openArticleMenu } from '../../utils/articleMenu';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
+import { FeedSkeleton } from '../../components/FeedSkeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { ArticleDetailHeader } from './components/ArticleDetailHeader';
@@ -20,6 +23,7 @@ import { ArticleActions } from './components/ArticleActions';
 import { useTheme } from '../../theme/ThemeContext';
 import { fetchArticle } from '../../api/newsApi';
 import { mapApiItem } from '../../utils/loadFeed';
+import { normalizeArticleForDetail } from '../../utils/articleNavigation';
 import { getAccessToken } from '../../api/client';
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
@@ -29,17 +33,19 @@ const { width, height } = Dimensions.get('window');
 
 const ArticleDetailScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
+    const feedback = useFeedback();
     const { colors } = theme;
-    const [article, setArticle] = useState(route.params?.article || {});
+    const initialArticle = normalizeArticleForDetail(route.params?.article || {});
+    const [article, setArticle] = useState(initialArticle);
     const [reaction, setReactionState] = useState(null); // 'up' | 'down' | null
     const [reactionPending, setReactionPending] = useState(false);
     const [isBookmarked, setIsBookmarked] = useState(false);
-    const [baseVotes, setBaseVotes] = useState(Number(route.params?.article?.votes || 0));
-    const articleId = String(route.params?.articleId || route.params?.article?.id || '');
-    const voteCount = useMemo(() => {
-        const delta = reaction === 'up' ? 1 : reaction === 'down' ? -1 : 0;
-        return Number(baseVotes || 0) + delta;
-    }, [baseVotes, reaction]);
+    const [likeCount, setLikeCount] = useState(Number(initialArticle.like_count ?? 0));
+    const [dislikeCount, setDislikeCount] = useState(Number(initialArticle.dislike_count ?? 0));
+    const [detailLoading, setDetailLoading] = useState(
+        !initialArticle.title && !initialArticle.fullContent && !initialArticle.excerpt
+    );
+    const articleId = String(route.params?.articleId || initialArticle.id || '');
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -49,22 +55,32 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     const circle2Anim = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        const fromNav = route.params?.article;
-        if (fromNav && Object.keys(fromNav).length) {
+        const fromNav = normalizeArticleForDetail(route.params?.article || {});
+        if (fromNav.id) {
             setArticle(fromNav);
+            setDetailLoading(false);
         }
-        const id = route.params?.articleId || fromNav?.id;
+        const id = String(route.params?.articleId || fromNav.id || '').trim();
         let cancelled = false;
         (async () => {
-            if (!id) return;
+            if (!id) {
+                setDetailLoading(false);
+                return;
+            }
             const token = await getAccessToken();
-            if (!token) return;
+            if (!token) {
+                setDetailLoading(false);
+                return;
+            }
+            const needsLoader = !fromNav.title && !fromNav.fullContent && !fromNav.excerpt;
+            if (needsLoader) setDetailLoading(true);
             try {
-                const doc = await fetchArticle(String(id));
+                const doc = await fetchArticle(id);
                 if (cancelled) return;
-                const mapped = mapApiItem(doc);
-                setArticle((prev) => ({ ...prev, ...mapped }));
-                setBaseVotes(Number(mapped.votes || route.params?.article?.votes || 0));
+                const mapped = normalizeArticleForDetail(mapApiItem(doc));
+                setArticle((prev) => ({ ...prev, ...mapped, id }));
+                setLikeCount(Number(doc.like_count ?? mapped.like_count ?? 0));
+                setDislikeCount(Number(doc.dislike_count ?? mapped.dislike_count ?? 0));
                 const [cachedBmIds, bRes, rRes] = await Promise.all([
                     getBookmarkIds().catch(() => []),
                     listBookmarks().catch(() => ({ results: [] })),
@@ -82,6 +98,8 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 setReactionState(rowVal ?? rv ?? null);
             } catch (e) {
                 console.warn('Article fetch:', e?.message);
+            } finally {
+                if (!cancelled) setDetailLoading(false);
             }
         })();
         return () => {
@@ -134,7 +152,9 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         setReactionForArticle(articleId, next).catch(() => {});
         setReactionPending(true);
         try {
-            await setReaction(articleId, next === 'up' ? 'like' : next === 'down' ? 'dislike' : 'none');
+            const data = await setReaction(articleId, next === 'up' ? 'like' : next === 'down' ? 'dislike' : 'none');
+            setLikeCount(Number(data.like_count ?? likeCount));
+            setDislikeCount(Number(data.dislike_count ?? dislikeCount));
         } catch {
             setReactionForArticle(articleId, previous || null).catch(() => {});
             setReactionState(previous);
@@ -151,7 +171,9 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         setReactionForArticle(articleId, next).catch(() => {});
         setReactionPending(true);
         try {
-            await setReaction(articleId, next === 'up' ? 'like' : next === 'down' ? 'dislike' : 'none');
+            const data = await setReaction(articleId, next === 'up' ? 'like' : next === 'down' ? 'dislike' : 'none');
+            setLikeCount(Number(data.like_count ?? likeCount));
+            setDislikeCount(Number(data.dislike_count ?? dislikeCount));
         } catch {
             setReactionForArticle(articleId, previous || null).catch(() => {});
             setReactionState(previous);
@@ -186,8 +208,11 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     };
 
     const handleShare = () => {
-        // Implement share functionality
-        console.log('Share article');
+        shareArticle(article);
+    };
+
+    const handleMoreMenu = () => {
+        openArticleMenu({ ...article, id: articleId }, feedback);
     };
 
     return (
@@ -252,10 +277,15 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                         transform: [{ translateY: slideAnim }],
                     }}
                 >
-                    <ArticleDetailHeader onBackPress={handleBackPress} />
+                    <ArticleDetailHeader onBackPress={handleBackPress} onMorePress={handleMoreMenu} />
                 </Animated.View>
 
                 {/* Article Content */}
+                {detailLoading ? (
+                    <View style={{ padding: 16, flex: 1 }}>
+                        <FeedSkeleton colors={colors} count={2} />
+                    </View>
+                ) : (
                 <ScrollView 
                     style={[styles.scrollContainer, { backgroundColor: 'transparent' }]} 
                     showsVerticalScrollIndicator={false}
@@ -321,6 +351,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                         <View style={styles.bottomSpacer} />
                     </Animated.View>
                 </ScrollView>
+                )}
 
                 {/* Bottom Actions */}
                 <Animated.View
@@ -337,8 +368,8 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                     }}
                 >
                     <ArticleActions 
-                        likeCount={voteCount}
-                        dislikeCount={0}
+                        likeCount={likeCount}
+                        dislikeCount={dislikeCount}
                         isLiked={reaction === 'up'}
                         isDisliked={reaction === 'down'}
                         isBookmarked={isBookmarked}

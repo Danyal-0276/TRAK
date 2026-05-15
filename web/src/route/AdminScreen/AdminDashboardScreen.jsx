@@ -10,12 +10,12 @@ import {
     Activity,
     ArrowRight,
     Play,
-    ChevronRight,
-    Bell,
-    SlidersHorizontal,
 } from 'lucide-react';
-import { getAdminAnalytics, postAdminPipelineRun } from '../../api/adminApi';
-import AdminBreakdownTable from './components/AdminBreakdownTable';
+import { postAdminPipelineRun } from '../../api/adminApi';
+import AdminAnalyticsSection from './components/AdminAnalyticsSection';
+import { loadAdminOverview, buildOverviewStatCards } from './loadAdminOverview';
+import { toUserTrendChartData } from './mockAdminData';
+import AdminChartSection from './components/AdminChartSection';
 import { SkeletonStatCards, SkeletonTableRows } from '../../components/skeletons/SkeletonLayouts';
 
 const AdminDashboardScreen = () => {
@@ -25,6 +25,11 @@ const AdminDashboardScreen = () => {
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
     const [snapshot, setSnapshot] = useState(null);
+    const [modelMetrics, setModelMetrics] = useState(null);
+    const [keywords, setKeywords] = useState([]);
+    const [mockAnalytics, setMockAnalytics] = useState(null);
+    const [overviewUsers, setOverviewUsers] = useState([]);
+    const [articleCount, setArticleCount] = useState(0);
     const [loading, setLoading] = useState(true);
     const [pipelineBusy, setPipelineBusy] = useState(false);
 
@@ -41,60 +46,40 @@ const AdminDashboardScreen = () => {
     const loadStats = async () => {
         try {
             setLoading(true);
-            const data = await getAdminAnalytics();
-            setSnapshot(data);
+            const data = await loadAdminOverview();
+            setSnapshot(data.serverAnalytics);
+            setModelMetrics(data.modelMetrics);
+            setKeywords(data.keywords);
+            setMockAnalytics(data.mockAnalytics);
+            setOverviewUsers(data.users);
+            setArticleCount(data.articles.length);
         } catch (error) {
             console.error('Error loading admin stats:', error);
             setSnapshot(null);
+            setModelMetrics(null);
+            setMockAnalytics(null);
         } finally {
             setLoading(false);
         }
     };
 
-    const pipelineKeyCount = snapshot?.raw_by_pipeline_status
-        ? Object.keys(snapshot.raw_by_pipeline_status).length
-        : 0;
-    const credKeyCount = snapshot?.processed_by_credibility_label
-        ? Object.keys(snapshot.processed_by_credibility_label).length
-        : 0;
-
-    const rawEntries = snapshot?.raw_by_pipeline_status
-        ? Object.entries(snapshot.raw_by_pipeline_status).sort((a, b) => b[1] - a[1])
-        : [];
-    const credEntries = snapshot?.processed_by_credibility_label
-        ? Object.entries(snapshot.processed_by_credibility_label).sort((a, b) => b[1] - a[1])
-        : [];
-
-    const statCards = [
-        {
-            icon: FileText,
-            label: 'Raw articles',
-            value: snapshot != null ? String(snapshot.raw_total ?? 0) : '—',
-            color: '#f59e0b',
-            path: '/admin/articles?scope=raw',
-        },
-        {
-            icon: BarChart3,
-            label: 'Processed',
-            value: snapshot != null ? String(snapshot.processed_total ?? 0) : '—',
-            color: '#10b981',
-            path: '/admin/articles?scope=processed',
-        },
-        {
-            icon: Activity,
-            label: 'Pipeline states',
-            value: snapshot != null ? String(pipelineKeyCount) : '—',
-            color: '#3b82f6',
-            path: '/admin/analytics',
-        },
-        {
-            icon: Hash,
-            label: 'Credibility labels',
-            value: snapshot != null ? String(credKeyCount) : '—',
-            color: '#8b5cf6',
-            path: '/admin/analytics',
-        },
+    const statMeta = [
+        { icon: FileText, color: '#f59e0b' },
+        { icon: BarChart3, color: '#10b981' },
+        { icon: Activity, color: '#3b82f6' },
+        { icon: Hash, color: '#8b5cf6' },
     ];
+
+    const statCards = buildOverviewStatCards({
+        serverAnalytics: snapshot,
+        articles: { length: articleCount },
+        users: overviewUsers,
+    }).map((card, index) => ({
+        ...card,
+        icon: statMeta[index]?.icon || FileText,
+        color: statMeta[index]?.color || '#64748b',
+        value: loading ? '—' : card.value,
+    }));
 
     const runPipeline = async () => {
         setPipelineBusy(true);
@@ -135,17 +120,6 @@ const AdminDashboardScreen = () => {
                     marginBottom: isMobile ? '20px' : '32px',
                     paddingTop: '0',
                 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: textSecondary, marginBottom: '10px', flexWrap: 'wrap' }}>
-                        <span style={{ color: textPrimary, fontWeight: 600 }}>Admin</span>
-                        <ChevronRight size={14} />
-                        <span>Dashboard</span>
-                        <span style={{ color: borderColor, margin: '0 4px' }}>|</span>
-                        <button type="button" onClick={() => navigate('/admin/analytics')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Analytics</button>
-                        <span style={{ color: borderColor }}>·</span>
-                        <button type="button" onClick={() => navigate('/admin/notifications')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Notifications</button>
-                        <span style={{ color: borderColor }}>·</span>
-                        <button type="button" onClick={() => navigate('/admin/settings')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Platform settings</button>
-                    </div>
                     <h1 style={{
                         fontSize: getResponsiveFontSize(isMobile, isTablet, 28),
                         fontWeight: '700',
@@ -154,7 +128,7 @@ const AdminDashboardScreen = () => {
                         paddingTop: '0',
                         letterSpacing: '-0.5px',
                     }}>
-                        Admin Dashboard
+                        Dashboard Overview
                     </h1>
                     <p style={{
                         fontSize: '15px',
@@ -162,7 +136,7 @@ const AdminDashboardScreen = () => {
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
-                        Overview of your platform statistics and management
+                        Platform stats, analytics, and pipeline controls (same as mobile admin overview)
                     </p>
                 </div>
 
@@ -264,170 +238,9 @@ const AdminDashboardScreen = () => {
                         color: textPrimary,
                         margin: '0 0 20px 0',
                     }}>
-                        Quick Actions
+                        Pipeline
                     </h2>
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                        gap: '12px',
-                    }}>
-                        <button
-                            onClick={() => navigate('/admin/users')}
-                            style={{
-                                padding: '16px',
-                                border: `1px solid ${borderColor}`,
-                                background: 'transparent',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                transition: 'all 0.2s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
-                                e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                                e.currentTarget.style.borderColor = borderColor;
-                            }}
-                        >
-                            <div style={{
-                                fontSize: '15px',
-                                fontWeight: '600',
-                                color: textPrimary,
-                                marginBottom: '4px',
-                            }}>
-                                Manage Users
-                            </div>
-                            <div style={{
-                                fontSize: '13px',
-                                color: textSecondary,
-                            }}>
-                                View and manage all users
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => navigate('/admin/articles')}
-                            style={{
-                                padding: '16px',
-                                border: `1px solid ${borderColor}`,
-                                background: 'transparent',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                transition: 'all 0.2s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
-                                e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                                e.currentTarget.style.borderColor = borderColor;
-                            }}
-                        >
-                            <div style={{
-                                fontSize: '15px',
-                                fontWeight: '600',
-                                color: textPrimary,
-                                marginBottom: '4px',
-                            }}>
-                                Manage Articles
-                            </div>
-                            <div style={{
-                                fontSize: '13px',
-                                color: textSecondary,
-                            }}>
-                                View and manage all articles
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => navigate('/admin/analytics')}
-                            style={{
-                                padding: '16px',
-                                border: `1px solid ${borderColor}`,
-                                background: 'transparent',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                transition: 'all 0.2s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
-                                e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                                e.currentTarget.style.borderColor = borderColor;
-                            }}
-                        >
-                            <div style={{
-                                fontSize: '15px',
-                                fontWeight: '600',
-                                color: textPrimary,
-                                marginBottom: '4px',
-                            }}>
-                                View Analytics
-                            </div>
-                            <div style={{
-                                fontSize: '13px',
-                                color: textSecondary,
-                            }}>
-                                Platform analytics and insights
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => navigate('/admin/notifications')}
-                            style={{
-                                padding: '16px',
-                                border: `1px solid ${borderColor}`,
-                                background: 'transparent',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                transition: 'all 0.2s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
-                                e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                                e.currentTarget.style.borderColor = borderColor;
-                            }}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                <Bell size={18} color={textPrimary} />
-                                <span style={{ fontSize: '15px', fontWeight: '600', color: textPrimary }}>Admin notifications</span>
-                            </div>
-                            <div style={{ fontSize: '13px', color: textSecondary }}>Delivery log and system notices</div>
-                        </button>
-                        <button
-                            onClick={() => navigate('/admin/settings')}
-                            style={{
-                                padding: '16px',
-                                border: `1px solid ${borderColor}`,
-                                background: 'transparent',
-                                borderRadius: '8px',
-                                cursor: 'pointer',
-                                textAlign: 'left',
-                                transition: 'all 0.2s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
-                                e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                                e.currentTarget.style.borderColor = borderColor;
-                            }}
-                        >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-                                <SlidersHorizontal size={18} color={textPrimary} />
-                                <span style={{ fontSize: '15px', fontWeight: '600', color: textPrimary }}>Platform settings</span>
-                            </div>
-                            <div style={{ fontSize: '13px', color: textSecondary }}>Categories and connections (Mongo)</div>
-                        </button>
+                    <div style={{ maxWidth: 420 }}>
                         <button
                             type="button"
                             onClick={runPipeline}
@@ -468,79 +281,53 @@ const AdminDashboardScreen = () => {
                     </div>
                 </div>
 
-                {snapshot != null && !loading && (
-                    <div style={{ marginBottom: 32 }}>
-                        <h2 style={{
-                            fontSize: '20px',
-                            fontWeight: '700',
-                            color: textPrimary,
-                            margin: '0 0 16px 0',
-                        }}>
-                            Analytics preview
-                        </h2>
-                        <p style={{ fontSize: '14px', color: textSecondary, margin: '0 0 16px 0', lineHeight: 1.5 }}>
-                            Same breakdowns as the full analytics page — open <button type="button" onClick={() => navigate('/admin/analytics')} style={{ border: 'none', background: 'transparent', padding: 0, color: isDark ? colors.primary || '#818CF8' : '#0f172a', cursor: 'pointer', fontWeight: 600, textDecoration: 'underline' }}>Analytics</button> for model metrics and raw JSON.
-                        </p>
-                        <AdminBreakdownTable
-                            title="Raw articles by pipeline_status"
-                            entries={rawEntries}
-                            textPrimary={textPrimary}
-                            textSecondary={textSecondary}
-                            borderColor={borderColor}
-                            cardBackground={cardBackground}
-                        />
-                        <AdminBreakdownTable
-                            title="Processed articles by credibility_label"
-                            entries={credEntries}
-                            textPrimary={textPrimary}
-                            textSecondary={textSecondary}
-                            borderColor={borderColor}
-                            cardBackground={cardBackground}
-                        />
+                {!loading && (
+                  <>
+                    <AdminChartSection
+                      title="User trend"
+                      dateRange="Last 7 days"
+                      data={toUserTrendChartData()}
+                      lines={[{ dataKey: 'value', color: '#6366f1', strokeWidth: 3, showDots: false }]}
+                      yAxisSuffix="K"
+                      colors={{
+                        textPrimary,
+                        textSecondary,
+                        grid: borderColor,
+                        cardBackground,
+                      }}
+                    />
+                    <div style={{ backgroundColor: cardBackground, borderRadius: '12px', border: `1px solid ${borderColor}`, padding: '24px', marginBottom: '32px', overflowX: 'auto' }}>
+                      <h2 style={{ fontSize: '18px', fontWeight: 700, color: textPrimary, margin: '0 0 16px 0' }}>Top keywords</h2>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
+                        <thead>
+                          <tr style={{ borderBottom: `1px solid ${borderColor}` }}>
+                            <th style={{ textAlign: 'left', padding: '8px 0', color: textSecondary }}>Keyword</th>
+                            <th style={{ textAlign: 'right', padding: '8px 0', color: textSecondary }}>Searches</th>
+                            <th style={{ textAlign: 'right', padding: '8px 0', color: textSecondary }}>Trend</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {keywords.map((k) => (
+                            <tr key={k.id} style={{ borderBottom: `1px solid ${borderColor}` }}>
+                              <td style={{ padding: '10px 0', color: textPrimary }}>{k.word}</td>
+                              <td style={{ padding: '10px 0', textAlign: 'right', color: textPrimary }}>{k.searches}</td>
+                              <td style={{ padding: '10px 0', textAlign: 'right', color: textSecondary }}>{k.trend}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
+                    <AdminAnalyticsSection
+                      serverAnalytics={snapshot}
+                      modelMetrics={modelMetrics}
+                      mockAnalytics={mockAnalytics}
+                      colors={{ textPrimary, textSecondary, border: borderColor, primary: colors.primary || '#3b82f6' }}
+                      cardBackground={cardBackground}
+                      borderColor={borderColor}
+                    />
+                  </>
                 )}
 
-                {/* DB snapshot */}
-                <div style={{
-                    backgroundColor: cardBackground,
-                    borderRadius: '12px',
-                    border: `1px solid ${borderColor}`,
-                    padding: '24px',
-                }}>
-                    <h2 style={{
-                        fontSize: '20px',
-                        fontWeight: '700',
-                        color: textPrimary,
-                        margin: '0 0 12px 0',
-                    }}>
-                        Database snapshot
-                    </h2>
-                    <p style={{
-                        fontSize: '14px',
-                        color: textSecondary,
-                        margin: '0 0 16px 0',
-                        lineHeight: 1.5,
-                    }}>
-                        {snapshot == null && !loading
-                            ? 'Could not load analytics. Check that you are logged in as an admin and the API is running.'
-                            : 'Counts come from MongoDB (raw_articles / processed_articles), same as the admin API.'}
-                    </p>
-                    {snapshot != null && (
-                        <pre style={{
-                            margin: 0,
-                            padding: '12px',
-                            borderRadius: '8px',
-                            backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f9fafb',
-                            border: `1px solid ${borderColor}`,
-                            fontSize: '12px',
-                            color: textPrimary,
-                            overflow: 'auto',
-                            maxHeight: '280px',
-                        }}>
-                            {JSON.stringify(snapshot, null, 2)}
-                        </pre>
-                    )}
-                </div>
             </div>
         </div>
         </>

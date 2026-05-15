@@ -1,17 +1,13 @@
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
-import Navigation from '../components/Navigation';
-import Header from '../components/Header';
-import AppSidebar from '../components/AppSidebar';
+import AppChrome from './AppChrome';
 import RouterContent from './RouterContent';
 
 const AppRouter = () => {
   return (
     <BrowserRouter>
-      <Header />
-      <AppSidebar />
+      <AppChrome />
       <RouterContent />
-      <Navigation />
     </BrowserRouter>
   );
 };

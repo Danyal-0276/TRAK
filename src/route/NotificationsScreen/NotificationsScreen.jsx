@@ -9,6 +9,7 @@ import * as notificationsApi from "../../api/notificationsApi";
 import { openNotificationsSocket } from "../../api/notificationsRealtime";
 import { useTheme } from "../../theme/ThemeContext";
 import Text from "../../components/ui/Text";
+import PageScreenHeader from "../../components/ui/PageScreenHeader";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -179,7 +180,7 @@ const NotificationsScreen = () => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right', 'bottom']}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
       
       {/* Gradient background */}
@@ -249,40 +250,40 @@ const NotificationsScreen = () => {
         pointerEvents="none"
       />
       
-      {/* Header with Mark All as Read button */}
-      <Animated.View 
-        style={[
-          styles.header, 
-          {
-            backgroundColor: colors.surface,
-            borderBottomColor: colors.border,
-            paddingTop: Math.max(insets.top, 12),
-            opacity: fadeAnim,
-            transform: [{ translateY: slideAnim }],
-          }
-        ]}
+      <View
+        style={[styles.statusBarCover, { height: insets.top, backgroundColor: colors.surface }]}
+        pointerEvents="none"
+      />
+
+      <Animated.View
+        style={{
+          opacity: fadeAnim,
+          transform: [{ translateY: slideAnim }],
+        }}
       >
-        <View style={styles.headerContent}>
-          <View>
-            <Text variant="title" style={[styles.title, { color: colors.textPrimary }]}>Notifications</Text>
-            {unreadCount > 0 && (
-              <Text variant="caption" color={colors.textSecondary} style={styles.subtitle}>
-                {unreadCount} unread {unreadCount === 1 ? 'notification' : 'notifications'}
-              </Text>
-            )}
-          </View>
-          {unreadCount > 0 && (
-            <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
-              <TouchableOpacity 
-                style={[styles.markAllButton, { backgroundColor: colors.primary }]}
-                onPress={markAllAsRead}
-                activeOpacity={0.8}
-              >
-                <Text variant="caption" color={colors.surface} style={styles.markAllText}>Mark all as read</Text>
-              </TouchableOpacity>
-            </Animated.View>
-          )}
-        </View>
+        <PageScreenHeader
+          title="Notifications"
+          subtitle={
+            unreadCount > 0
+              ? `${unreadCount} unread ${unreadCount === 1 ? 'notification' : 'notifications'}`
+              : 'Stay updated on your feed and alerts'
+          }
+          rightAction={
+            unreadCount > 0 ? (
+              <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+                <TouchableOpacity
+                  style={[styles.markAllButton, { backgroundColor: colors.primary }]}
+                  onPress={markAllAsRead}
+                  activeOpacity={0.8}
+                >
+                  <Text variant="caption" color={colors.surface} style={styles.markAllText}>
+                    Mark all read
+                  </Text>
+                </TouchableOpacity>
+              </Animated.View>
+            ) : null
+          }
+        />
       </Animated.View>
 
       {/* Tabs */}
@@ -349,25 +350,12 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
   },
-  header: {
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    zIndex: 10,
-  },
-  headerContent: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  title: {
-    marginBottom: 4,
-    fontSize: 28,
-    fontWeight: "700",
-  },
-  subtitle: {
-    fontSize: 14,
-    marginTop: 2,
+  statusBarCover: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 70,
   },
   markAllButton: {
     paddingHorizontal: 16,

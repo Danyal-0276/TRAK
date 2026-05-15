@@ -15,19 +15,23 @@ import {
   Dimensions,
   TouchableOpacity,
   Share,
-  Alert,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
 import SearchBar from "./components/SearchBar";
+import DiscoverHeader from "./components/DiscoverHeader";
 import Tabs from "./components/tabs";
+import { buildArticleDetailParams } from "../../utils/articleNavigation";
 import TrendingTopics from "./components/TrendingTopics";
 import { NewsCard } from "../../components/NewsCard";
+import { FeedSkeleton } from "../../components/FeedSkeleton";
+import ChatBotWidget from "../../components/ChatBotWidget";
+import { useArticleInteractions } from "../../hooks/useArticleInteractions";
 import { useTheme } from "../../theme/ThemeContext";
 import { loadExplorePage } from "../../utils/loadFeed";
 import Text from "../../components/ui/Text";
-import { Search, MoreHorizontal } from "lucide-react-native";
-import { submitArticleReport } from "../../api/newsApi";
+import { Search } from "lucide-react-native";
+import { useFeedback } from "../../components/ui/FeedbackProvider";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
 
 const { width, height } = Dimensions.get('window');
@@ -158,6 +162,8 @@ const SkeletonCard = ({ colors }) => {
 const SearchScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { colors } = theme;
+  const insets = useSafeAreaInsets();
+  const feedback = useFeedback();
   const [allNews, setAllNews] = useState([]);
   const [filteredNews, setFilteredNews] = useState([]);
   const [trendingTopics, setTrendingTopics] = useState([]);
@@ -165,8 +171,16 @@ const SearchScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("All");
-  const [votedItems, setVotedItems] = useState({});
-  const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
+  const {
+    votedItems,
+    bookmarkedItems,
+    handleVote,
+    handleBookmark,
+    syncFromServer,
+  } = useArticleInteractions({
+    articles: allNews,
+    onArticlesPatch: setAllNews,
+  });
   const [topSectionHeight, setTopSectionHeight] = useState(220);
   const [nextCursor, setNextCursor] = useState(null);
   const [hasMore, setHasMore] = useState(true);
@@ -501,44 +515,7 @@ const SearchScreen = ({ navigation }) => {
   };
 
   const handleArticlePress = (article) => {
-    navigation.navigate('ArticleDetail', { article });
-  };
-
-  const handleVote = async (itemId, type) => {
-    const previousVote = votedItems[itemId];
-    const newVote = previousVote === type ? null : type;
-
-    setVotedItems(prev => ({
-      ...prev,
-      [itemId]: newVote
-    }));
-
-    try {
-      /* votes not persisted — API TBD */
-    } catch (error) {
-      setVotedItems(prev => ({
-        ...prev,
-        [itemId]: previousVote
-      }));
-    }
-  };
-
-  const handleBookmark = async (itemId) => {
-    setBookmarkedItems(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(itemId)) {
-        newSet.delete(itemId);
-      } else {
-        newSet.add(itemId);
-      }
-      return newSet;
-    });
-
-    try {
-      /* bookmarks not persisted — API TBD */
-    } catch (error) {
-      console.error('Error bookmarking:', error);
-    }
+    navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
   };
 
   const handleTabPress = (category) => {
@@ -616,13 +593,18 @@ const SearchScreen = ({ navigation }) => {
         pointerEvents="none"
       />
 
-      <SafeAreaView style={[styles.screenWrapper, { backgroundColor: 'transparent' }]}>
+      <View
+        style={[styles.statusBarCover, { height: insets.top, backgroundColor: colors.surface }]}
+        pointerEvents="none"
+      />
+
+      <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.screenWrapper, { backgroundColor: 'transparent' }]}>
         <Animated.View
           style={[
             styles.topSection,
             {
               opacity: fadeAnim,
-              transform: [{ translateY: Animated.add(translateY, topSectionTranslateY) }],
+              transform: [{ translateY: topSectionTranslateY }],
             },
           ]}
           onLayout={(e) => {
@@ -630,72 +612,15 @@ const SearchScreen = ({ navigation }) => {
             if (h > 0 && h !== topSectionHeight) setTopSectionHeight(h);
           }}
         >
-          <View style={styles.headerSection}>
-            <Text variant="title" style={[styles.headerTitle, { color: colors.textPrimary }]}>
-              Discover News
-            </Text>
-            <Text variant="body" color={colors.textSecondary} style={styles.headerSubtitle}>
-              Search and explore trending topics
-            </Text>
-          </View>
+          <DiscoverHeader />
 
-          <View style={{ zIndex: 50, flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <SearchBar
-                ref={searchRef}
-                onSearch={handleSearch}
-                initialQuery={searchQuery}
-              />
-            </View>
-            <TouchableOpacity
-              onPress={() => {
-                Alert.alert('Discover', 'Choose an action', [
-                  {
-                    text: 'Export results',
-                    onPress: () => {
-                      const rows = filteredNews.slice(0, 80).map((a) => ({
-                        id: a.id,
-                        title: a.title,
-                        url: a.canonical_url || a.url,
-                      }));
-                      Share.share({ title: 'TRAK export', message: JSON.stringify(rows, null, 2) }).catch(() => {});
-                    },
-                  },
-                  {
-                    text: 'Report / Flag',
-                    style: 'destructive',
-                    onPress: async () => {
-                      const first = filteredNews[0];
-                      try {
-                        await submitArticleReport({
-                          article_id: first?.id ? String(first.id) : '',
-                          url: first?.canonical_url || first?.url || '',
-                          reason: 'discover_flag',
-                        });
-                        Alert.alert('Thanks', 'Your report was sent.');
-                      } catch (e) {
-                        Alert.alert('Error', e?.message || 'Could not submit.');
-                      }
-                    },
-                  },
-                  { text: 'Cancel', style: 'cancel' },
-                ]);
-              }}
-              style={{
-                marginTop: 4,
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                borderWidth: 1,
-                borderColor: colors.border,
-                backgroundColor: colors.surface,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-              accessibilityLabel="More discover actions"
-            >
-              <MoreHorizontal size={22} color={colors.textSecondary} />
-            </TouchableOpacity>
+          <View style={styles.searchRow}>
+            <SearchBar
+              embedded
+              ref={searchRef}
+              onSearch={handleSearch}
+              initialQuery={searchQuery}
+            />
           </View>
 
           <View style={styles.tabsWrapper}>
@@ -732,13 +657,7 @@ const SearchScreen = ({ navigation }) => {
         }
       >
         {loading ? (
-          <>
-            <SkeletonCard colors={colors} />
-            <SkeletonCard colors={colors} />
-            <SkeletonCard colors={colors} />
-            <SkeletonCard colors={colors} />
-            <SkeletonCard colors={colors} />
-          </>
+          <FeedSkeleton colors={colors} count={5} />
         ) : filteredNews.length === 0 ? (
           <>
             <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
@@ -791,6 +710,7 @@ const SearchScreen = ({ navigation }) => {
         )}
       </Animated.ScrollView>
       </SafeAreaView>
+      <ChatBotWidget />
     </View>
   );
 };
@@ -830,6 +750,13 @@ const styles = StyleSheet.create({
     top: height * 0.4,
     right: -50,
   },
+  statusBarCover: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 70,
+  },
   screenWrapper: {
     flex: 1,
   },
@@ -838,21 +765,37 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
     zIndex: 60,
   },
+  searchRow: {
+    width: '100%',
+    maxWidth: '100%',
+    paddingHorizontal: 16,
+    paddingBottom: 10,
+    zIndex: 50,
+  },
   headerSection: {
-    alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 20,
-    paddingHorizontal: 24,
+    alignItems: 'flex-start',
+    paddingTop: 12,
+    paddingBottom: 10,
+    paddingHorizontal: 16,
+    width: '100%',
   },
   headerTitle: {
-    marginBottom: 8,
-    textAlign: 'center',
+    marginBottom: 4,
+    fontSize: 26,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    width: '100%',
   },
   headerSubtitle: {
-    textAlign: 'center',
-    lineHeight: 22,
+    textAlign: 'left',
+    lineHeight: 20,
+    fontSize: 14,
+    width: '100%',
   },
   tabsWrapper: {
     height: 48,

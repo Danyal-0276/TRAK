@@ -20,12 +20,16 @@ import LinearGradient from 'react-native-linear-gradient';
 import { FeedHeader } from './components/FeedHeader';
 import { TabBar } from './components/TabBar';
 import { NewsCard } from '../../components/NewsCard';
+import { FeedSkeleton } from '../../components/FeedSkeleton';
+import ChatBotWidget from '../../components/ChatBotWidget';
 import { addBookmark, getUserFeed, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { fetchUserKeywords } from '../../api/newsApi';
 import { useTheme } from '../../theme/ThemeContext';
 import { resetTabBarVisibility, setTabBarHidden } from '../../navigation/tabBarVisibility';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
+import { resolveArticleSource } from '../../utils/articleSource';
+import { buildArticleDetailParams } from '../../utils/articleNavigation';
 
 const { width, height } = Dimensions.get('window');
 
@@ -115,8 +119,18 @@ const NewsFeedScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [feedKeywords, setFeedKeywords] = useState([]);
+    const [skipEntryAnim, setSkipEntryAnim] = useState(false);
+    const tabMounted = useRef(false);
 
     const insets = useSafeAreaInsets();
+
+    useEffect(() => {
+        if (!tabMounted.current) {
+            tabMounted.current = true;
+            return;
+        }
+        setSkipEntryAnim(true);
+    }, [activeTab]);
 
     // Animation refs
     const scrollY = useRef(new Animated.Value(0)).current;
@@ -139,7 +153,7 @@ const NewsFeedScreen = ({ navigation }) => {
                 return {
                     ...item,
                     id: aid,
-                    source: item.source || 'Source',
+                    source: resolveArticleSource(item),
                     time: item.published_at
                         ? new Date(item.published_at).toLocaleString()
                         : 'Recently',
@@ -180,7 +194,14 @@ const NewsFeedScreen = ({ navigation }) => {
         }
     }, []);
 
-    const syncInteractionsFromServer = useCallback(async () => {
+    const lastSyncRef = useRef(0);
+    const voteTimerRef = useRef({});
+
+    const syncInteractionsFromServer = useCallback(async (force = false) => {
+        const now = Date.now();
+        if (!force && now - lastSyncRef.current < 45000) return;
+        lastSyncRef.current = now;
+
         const [bmRes, reactRes] = await Promise.all([
             listBookmarks().catch(() => ({ results: [] })),
             listReactions().catch(() => ({ results: [] })),
@@ -201,7 +222,7 @@ const NewsFeedScreen = ({ navigation }) => {
 
     useFocusEffect(
         useCallback(() => {
-            syncInteractionsFromServer();
+            syncInteractionsFromServer(false);
             refreshKeywords();
         }, [syncInteractionsFromServer, refreshKeywords])
     );
@@ -236,6 +257,7 @@ const NewsFeedScreen = ({ navigation }) => {
         }).start();
         await loadNews();
         await refreshKeywords();
+        await syncInteractionsFromServer(true);
         setRefreshing(false);
     };
 
@@ -276,47 +298,68 @@ const NewsFeedScreen = ({ navigation }) => {
     );
 
     const handleArticlePress = (article) => {
-        navigation.navigate('ArticleDetail', { article });
+        navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
     };
 
     const handleVote = async (itemId, type) => {
         const id = String(itemId);
-        const previousVote = votedItems[id];
-        const newVote = previousVote === type ? null : type;
+        let newVote = null;
+        let previousVote = null;
 
-        setVotedItems((prev) => ({
-            ...prev,
-            [id]: newVote,
-        }));
+        setVotedItems((prev) => {
+            previousVote = prev[id] ?? null;
+            newVote = previousVote === type ? null : type;
+            return { ...prev, [id]: newVote };
+        });
+
+        setNewsData((prev) =>
+            prev.map((n) => {
+                if (String(n.id) !== id) return n;
+                let likes = Number(n.like_count ?? n.upvotes ?? 0);
+                let dislikes = Number(n.dislike_count ?? 0);
+                if (previousVote === 'up') likes -= 1;
+                if (previousVote === 'down') dislikes -= 1;
+                if (newVote === 'up') likes += 1;
+                if (newVote === 'down') dislikes += 1;
+                return {
+                    ...n,
+                    like_count: Math.max(0, likes),
+                    dislike_count: Math.max(0, dislikes),
+                    upvotes: Math.max(0, likes),
+                    userReaction: newVote,
+                };
+            })
+        );
         setReactionForArticle(id, newVote).catch(() => {});
 
-        try {
-            const data = await setReaction(
-                id,
-                newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none'
-            );
-            const likes = Number(data.like_count ?? 0);
-            const dislikes = Number(data.dislike_count ?? 0);
-            setNewsData((prev) =>
-                prev.map((n) =>
-                    String(n.id) !== id
-                        ? n
-                        : {
-                              ...n,
-                              like_count: likes,
-                              dislike_count: dislikes,
-                              upvotes: likes,
-                              userReaction: newVote,
-                          }
-                )
-            );
-        } catch (error) {
-            setVotedItems((prev) => ({
-                ...prev,
-                [id]: previousVote,
-            }));
-            setReactionForArticle(id, previousVote || null).catch(() => {});
-        }
+        if (voteTimerRef.current[id]) clearTimeout(voteTimerRef.current[id]);
+        voteTimerRef.current[id] = setTimeout(async () => {
+            delete voteTimerRef.current[id];
+            try {
+                const data = await setReaction(
+                    id,
+                    newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none'
+                );
+                const likes = Number(data.like_count ?? 0);
+                const dislikes = Number(data.dislike_count ?? 0);
+                setNewsData((prev) =>
+                    prev.map((n) =>
+                        String(n.id) !== id
+                            ? n
+                            : {
+                                  ...n,
+                                  like_count: likes,
+                                  dislike_count: dislikes,
+                                  upvotes: likes,
+                                  userReaction: newVote,
+                              }
+                    )
+                );
+            } catch {
+                setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
+                setReactionForArticle(id, previousVote || null).catch(() => {});
+            }
+        }, 280);
     };
 
     const handleBookmark = async (itemId) => {
@@ -432,13 +475,7 @@ const NewsFeedScreen = ({ navigation }) => {
                     <View style={{ height: TOTAL_HEADER_HEIGHT + insets.top + 8 }} />
 
                     {loading ? (
-                        <>
-                            <SkeletonCard colors={colors} />
-                            <SkeletonCard colors={colors} />
-                            <SkeletonCard colors={colors} />
-                            <SkeletonCard colors={colors} />
-                            <SkeletonCard colors={colors} />
-                        </>
+                        <FeedSkeleton colors={colors} count={5} />
                     ) : filteredNews.length === 0 ? (
                         <View style={{ paddingHorizontal: 24, paddingTop: 24, alignItems: 'center' }}>
                             {activeTab === 'For you' && !hasFeedPersonalization ? (
@@ -468,7 +505,7 @@ const NewsFeedScreen = ({ navigation }) => {
                     ) : (
                         filteredNews.map((item, index) => (
                             <NewsCard
-                                key={item.id}
+                                key={`${activeTab}-${item.id}`}
                                 item={item}
                                 onPress={() => handleArticlePress(item)}
                                 votedItems={votedItems}
@@ -476,12 +513,14 @@ const NewsFeedScreen = ({ navigation }) => {
                                 onVote={handleVote}
                                 onBookmark={handleBookmark}
                                 index={index}
+                                animateEntry={!skipEntryAnim && index < 6}
                             />
                         ))
                     )}
                     <View style={styles.endPadding} />
                 </Animated.ScrollView>
             </View>
+            <ChatBotWidget />
         </View>
     );
 };

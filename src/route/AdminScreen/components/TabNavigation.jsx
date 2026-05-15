@@ -1,6 +1,10 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { BarChart3, TrendingUp, Users, FileText, Bell, Settings as SettingsIcon } from 'lucide-react-native';
+import { View, TouchableOpacity, StyleSheet, ScrollView, LayoutAnimation, Platform, UIManager } from 'react-native';
+
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+import { BarChart3, Users, FileText, Bell, Settings as SettingsIcon } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import LinearGradient from 'react-native-linear-gradient';
 
@@ -9,8 +13,7 @@ const TabNavigation = ({ activeTab, onTabChange }) => {
   const { colors } = theme;
   
   const tabs = [
-    { id: 'dashboard', icon: BarChart3 },
-    { id: 'analytics', icon: TrendingUp },
+    { id: 'overview', icon: BarChart3 },
     { id: 'users', icon: Users },
     { id: 'articles', icon: FileText },
     { id: 'notifications', icon: Bell },
@@ -35,7 +38,10 @@ const TabNavigation = ({ activeTab, onTabChange }) => {
               style={[styles.tabButton, isActive && { 
                 backgroundColor: `${colors.primary}15`,
               }]}
-              onPress={() => onTabChange(id)}
+              onPress={() => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                onTabChange(id);
+              }}
               activeOpacity={0.7}
             >
               {isActive ? (
