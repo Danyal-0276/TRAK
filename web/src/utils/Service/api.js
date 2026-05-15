@@ -236,6 +236,8 @@ export const getUserArticleDetail = (articleId) => authRequest(`/api/user/articl
 
 export const getUserKeywordsFromServer = () => authRequest('/api/user/keywords/');
 
+export const fetchPlatformCategories = () => authRequest('/api/user/platform-categories/');
+
 export const submitArticleReport = (payload) =>
   authRequest('/api/user/reports/', {
     method: 'POST',

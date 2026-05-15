@@ -13,7 +13,7 @@ export function mapApiItem(a) {
   const dislikes = Number(a.dislike_count ?? 0);
   return {
     id: a.id,
-    source: a.source || 'TRAK',
+    source: a.source || a.source_key || '',
     time: a.published_at ? String(a.published_at).slice(0, 16) : '',
     title: a.title || '',
     excerpt: a.excerpt || '',

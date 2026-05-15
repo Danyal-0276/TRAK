@@ -28,6 +28,7 @@ import SettingsTab from './screens/SettingsTab';
 import EditModal from './components/EditModal';
 import ListModal from './components/ListModal';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
+import { normAdminList, toAdminPayloadList } from '../../utils/adminLists';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -57,7 +58,7 @@ const AdminScreen = ({ navigation }) => {
   const { colors } = theme;
   const insets = useSafeAreaInsets();
   const { confirm, error: showError } = useFeedback();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState('overview');
   const [users, setUsers] = useState([]);
   const [apiArticles, setApiArticles] = useState([]);
   const [serverAnalytics, setServerAnalytics] = useState(null);
@@ -189,11 +190,16 @@ const AdminScreen = ({ navigation }) => {
     }));
     const settingsData = {
       notifications: !!settingsRes.notifications_enabled_default,
+      pushNotification: !!settingsRes.notifications_enabled_default,
+      emailNotification: !!settingsRes.notifications_enabled_default,
+      inAppNotification: !!settingsRes.notifications_enabled_default,
       connections: !!settingsRes.allow_external_connections,
       moderationMode: settingsRes.moderation_mode || 'review',
+      language: settingsRes.language || 'English',
+      timezone: settingsRes.timezone || 'UTC',
     };
-    const categoriesData = settingsRes.categories || [];
-    const connectionsData = settingsRes.connections || [];
+    const categoriesData = normAdminList(settingsRes.categories || []);
+    const connectionsData = normAdminList(settingsRes.connections || []);
     setUsers(usersData);
     setKeywords(keywordsData);
     setNotifications(notificationsData);
@@ -216,22 +222,13 @@ const AdminScreen = ({ navigation }) => {
     }
   };
 
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await logout();
-            navigation.reset({ index: 0, routes: [{ name: 'OpeningScreen' }] });
-          } catch {
-            Alert.alert('Logout', 'Could not logout. Please try again.');
-          }
-        },
-      },
-    ]);
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigation.reset({ index: 0, routes: [{ name: 'OpeningScreen' }] });
+    } catch {
+      Alert.alert('Logout', 'Could not logout. Please try again.');
+    }
   };
 
   const stats = serverAnalytics
@@ -252,6 +249,7 @@ const AdminScreen = ({ navigation }) => {
       ];
 
   const handleTabChange = (tab) => {
+    if (tab === activeTab) return;
     setActiveTab(tab);
     setSearchQuery('');
   };
@@ -309,43 +307,64 @@ const AdminScreen = ({ navigation }) => {
   };
 
   const handleSettingsChange = async (updates) => {
-    const updated = await patchAdminSettings({
-      notifications_enabled_default: !!updates.notifications,
-      allow_external_connections: !!updates.connections,
+    const pushOn =
+      updates.pushNotification !== undefined
+        ? updates.pushNotification
+        : updates.emailNotification !== undefined
+          ? updates.emailNotification
+          : updates.inAppNotification !== undefined
+            ? updates.inAppNotification
+            : settings.pushNotification;
+    const payload = {
+      notifications_enabled_default: pushOn !== undefined ? !!pushOn : !!settings.notifications,
+      allow_external_connections:
+        updates.connections !== undefined ? !!updates.connections : !!settings.connections,
       moderation_mode: updates.moderationMode || settings.moderationMode || 'review',
-      categories,
-      connections,
-    });
+      categories: toAdminPayloadList(categories),
+      connections: toAdminPayloadList(connections),
+      language: updates.language || settings.language || 'English',
+      timezone: updates.timezone || settings.timezone || 'UTC',
+    };
+    const updated = await patchAdminSettings(payload);
     setSettings({
       notifications: !!updated.notifications_enabled_default,
+      pushNotification: !!updated.notifications_enabled_default,
+      emailNotification: !!updated.notifications_enabled_default,
+      inAppNotification: !!updated.notifications_enabled_default,
       connections: !!updated.allow_external_connections,
       moderationMode: updated.moderation_mode || 'review',
+      language: updated.language || 'English',
+      timezone: updated.timezone || 'UTC',
     });
   };
 
   const handleAddCategory = async () => {
-    if (categoryInput.trim()) {
-      await patchAdminSettings({ categories: [...categories, categoryInput.trim()] });
-      setCategoryInput('');
-      loadData();
-    }
+    const name = categoryInput.trim();
+    if (!name) return;
+    const next = [...toAdminPayloadList(categories), name];
+    await patchAdminSettings({ categories: next });
+    setCategoryInput('');
+    loadData();
   };
 
   const handleRemoveCategory = async (id) => {
-    await patchAdminSettings({ categories: categories.filter((c) => c.id !== id && c !== id) });
+    const next = toAdminPayloadList(categories).filter((c) => c !== id);
+    await patchAdminSettings({ categories: next });
     loadData();
   };
 
   const handleAddConnection = async () => {
-    if (connectionInput.trim()) {
-      await patchAdminSettings({ connections: [...connections, connectionInput.trim()] });
-      setConnectionInput('');
-      loadData();
-    }
+    const name = connectionInput.trim();
+    if (!name) return;
+    const next = [...toAdminPayloadList(connections), name];
+    await patchAdminSettings({ connections: next });
+    setConnectionInput('');
+    loadData();
   };
 
   const handleRemoveConnection = async (id) => {
-    await patchAdminSettings({ connections: connections.filter((c) => c.id !== id && c !== id) });
+    const next = toAdminPayloadList(connections).filter((c) => c !== id);
+    await patchAdminSettings({ connections: next });
     loadData();
   };
 
@@ -470,16 +489,16 @@ const AdminScreen = ({ navigation }) => {
         contentContainerStyle={styles.mainScrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {activeTab === 'dashboard' && (
-          <DashboardTab
-            stats={stats}
-            keywords={keywords}
-            onRunPipeline={runPipeline}
-            pipelineRunning={pipelineRunning}
-          />
-        )}
-        {activeTab === 'analytics' && (
-          <AnalyticsTab analytics={analytics} serverAnalytics={serverAnalytics} modelMetrics={modelMetrics} />
+        {(activeTab === 'overview' || activeTab === 'dashboard' || activeTab === 'analytics') && (
+          <>
+            <DashboardTab
+              stats={stats}
+              keywords={keywords}
+              onRunPipeline={runPipeline}
+              pipelineRunning={pipelineRunning}
+            />
+            <AnalyticsTab analytics={analytics} serverAnalytics={serverAnalytics} modelMetrics={modelMetrics} />
+          </>
         )}
         {activeTab === 'users' && (
           <UsersTab

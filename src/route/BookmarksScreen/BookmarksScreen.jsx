@@ -14,6 +14,7 @@ import { NewsCard } from '../../components/NewsCard';
 import { useTheme } from '../../theme/ThemeContext';
 import { addBookmark, getUserArticleDetail, listBookmarks, removeBookmark, setReaction } from '../../utils/Service/api';
 import Text from '../../components/ui/Text';
+import { buildArticleDetailParams } from '../../utils/articleNavigation';
 
 const BookmarksScreen = ({ navigation }) => {
     const { theme } = useTheme();
@@ -71,7 +72,7 @@ const BookmarksScreen = ({ navigation }) => {
     }, [loadNews]);
 
     const handleArticlePress = (article) => {
-        navigation.navigate('ArticleDetail', { article });
+        navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
     };
 
     const handleVote = async (itemId, type) => {

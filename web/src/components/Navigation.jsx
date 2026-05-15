@@ -31,7 +31,7 @@ const Navigation = () => {
 
     // Don't show navigation on auth pages
     const hideNavPaths = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'];
-    if (hideNavPaths.includes(location.pathname)) {
+    if (hideNavPaths.includes(location.pathname) || location.pathname.startsWith('/admin')) {
         return null;
     }
 

@@ -13,6 +13,7 @@ import { SelectedCount } from './components/SelectedCount';
 import { Tag } from './components/Tag';
 import { ContinueButton } from './components/ContinueButton';
 import { newsTagsWithSubcategories } from './constants/newsCategories';
+import { fetchPlatformCategories } from '../../api/newsApi';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
 import { getUserKeywords } from '../../utils/userKeywordsStorage';
@@ -27,7 +28,34 @@ const TagSelectionScreen = ({ navigation, route }) => {
     const subTagAnimMap = useRef({}).current;
     const [searchText, setSearchText] = useState('');
     const [loading, setLoading] = useState(false);
+    const [tagsMap, setTagsMap] = useState(newsTagsWithSubcategories);
     const { fromSettings = false, fromSignup = false, selectedTags: incomingSelectedTags = [] } = route?.params || {};
+
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            try {
+                const data = await fetchPlatformCategories();
+                const adminCats = (data.categories || [])
+                    .map((c) => (typeof c === 'string' ? c : c?.name || c?.id || ''))
+                    .map((s) => String(s).trim().toLowerCase().replace(/\s+/g, '-'))
+                    .filter(Boolean);
+                if (!adminCats.length || !mounted) return;
+                setTagsMap((prev) => {
+                    const next = { ...prev };
+                    for (const key of adminCats) {
+                        if (!next[key]) next[key] = [];
+                    }
+                    return next;
+                });
+            } catch (_) {
+                /* keep defaults */
+            }
+        })();
+        return () => {
+            mounted = false;
+        };
+    }, []);
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -111,9 +139,9 @@ const TagSelectionScreen = ({ navigation, route }) => {
             if (!seed.length || !mounted) return;
 
             const next = new Set();
-            const mainTags = Object.keys(newsTagsWithSubcategories);
+            const mainTags = Object.keys(tagsMap);
             for (const main of mainTags) {
-                const subs = newsTagsWithSubcategories[main] || [];
+                const subs = tagsMap[main] || [];
                 if (seed.includes(main)) {
                     next.add(main);
                 }
@@ -131,16 +159,16 @@ const TagSelectionScreen = ({ navigation, route }) => {
         return () => {
             mounted = false;
         };
-    }, [incomingSelectedTags, fromSignup]);
+    }, [incomingSelectedTags, fromSignup, tagsMap]);
 
-    const mainTags = Object.keys(newsTagsWithSubcategories);
+    const mainTags = Object.keys(tagsMap);
 
     const animateLayout = () => {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     };
 
     const runSubtagOpenAnimation = (mainTag) => {
-        const subcategories = newsTagsWithSubcategories[mainTag] || [];
+        const subcategories = tagsMap[mainTag] || [];
         const anims = subcategories.map((subTag, index) => {
             const key = `${mainTag}::${subTag}`;
             if (!subTagAnimMap[key]) {
@@ -189,7 +217,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
         animateLayout();
         setExpandedMainTags((expanded) => expanded.filter((t) => t !== tag));
         setSelectedTags((prev) => {
-            const subcategories = newsTagsWithSubcategories[tag] || [];
+            const subcategories = tagsMap[tag] || [];
             return prev.filter((t) => t !== tag && !subcategories.includes(t));
         });
     };
@@ -424,8 +452,8 @@ const TagSelectionScreen = ({ navigation, route }) => {
                     >
                         {filteredTags.map((tag, index) => {
                             const isSelected = selectedTags.includes(tag);
-                            const subcategories = newsTagsWithSubcategories[tag] || [];
-                            const selectedSubCount = (newsTagsWithSubcategories[tag] || []).filter((sub) =>
+                            const subcategories = tagsMap[tag] || [];
+                            const selectedSubCount = (tagsMap[tag] || []).filter((sub) =>
                                 selectedTags.includes(sub)
                             ).length;
                             const isExpanded = expandedMainTags.includes(tag);

@@ -1,3 +1,6 @@
+/**
+ * Admin REST client — same `/api/admin/*` endpoints as mobile (`TRAK/src/api/adminApi.js`).
+ */
 import { ADMIN_PREFIX } from '../config/api';
 import { apiFetch } from './client';
 

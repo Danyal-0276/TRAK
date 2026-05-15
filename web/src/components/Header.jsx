@@ -37,7 +37,7 @@ const Header = () => {
 
     // Don't show header on auth pages
     const hideHeaderPaths = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'];
-    if (hideHeaderPaths.includes(location.pathname)) {
+    if (hideHeaderPaths.includes(location.pathname) || location.pathname.startsWith('/admin')) {
         return null;
     }
 
@@ -54,11 +54,6 @@ const Header = () => {
         { path: '/categories', label: 'Categories' },
         { path: '/about', label: 'About' },
     ];
-
-    // Add admin link if user is admin
-    if (isAdmin) {
-        navLinks.push({ path: '/admin/dashboard', label: 'Admin' });
-    }
 
     return (
         <header style={{

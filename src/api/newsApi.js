@@ -63,6 +63,15 @@ export async function submitArticleReport(payload) {
     return res.json();
 }
 
+export async function fetchPlatformCategories() {
+    const res = await apiFetch(`${USER_PREFIX}/platform-categories/`, {}, API_BASE);
+    if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || `Categories ${res.status}`);
+    }
+    return res.json();
+}
+
 export async function fetchUserKeywords() {
     const res = await apiFetch(`${USER_PREFIX}/keywords/`, {}, API_BASE);
     if (!res.ok) {

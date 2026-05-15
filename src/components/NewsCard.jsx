@@ -1,8 +1,11 @@
 // ============================================
 // FILE: components/NewsCard.jsx
 // ============================================
-import React, { useRef, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform, Share } from 'react-native';
+import React, { useRef, useEffect, memo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { resolveArticleSource } from '../utils/articleSource';
+import { shareArticle, openArticleMenu } from '../utils/articleMenu';
+import { useFeedback } from './ui/FeedbackProvider';
 import {
     ChevronUp,
     ChevronDown,
@@ -15,11 +18,21 @@ import {
 } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 
-export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark, index = 0 }) => {
+function NewsCardInner({
+    item,
+    onPress,
+    votedItems,
+    bookmarkedItems,
+    onVote,
+    onBookmark,
+    index = 0,
+    animateEntry = false,
+}) {
     const { theme } = useTheme();
+    const feedback = useFeedback();
     const { colors } = theme;
     const safeId = item?.id != null ? String(item.id) : `news-${index}`;
-    const safeSource = String(item?.source || 'TRAK');
+    const safeSource = resolveArticleSource(item);
     const safeTitle = String(item?.title || 'Untitled');
     const safeExcerpt = String(item?.excerpt || item?.content || '');
     const safeCategory = String(item?.category || 'General');
@@ -29,26 +42,31 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const currentReaction = (votedItems && votedItems[safeId] !== undefined) ? votedItems[safeId] : initialReaction;
     const isBookmarked =
         bookmarkedItems?.has?.(item?.id) || bookmarkedItems?.has?.(String(item?.id));
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(20)).current;
+    const fadeAnim = useRef(new Animated.Value(animateEntry ? 0 : 1)).current;
+    const slideAnim = useRef(new Animated.Value(animateEntry ? 20 : 0)).current;
 
     useEffect(() => {
+        if (!animateEntry) {
+            fadeAnim.setValue(1);
+            slideAnim.setValue(0);
+            return;
+        }
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
-                duration: 400,
-                delay: index * 50,
+                duration: 300,
+                delay: Math.min(index, 3) * 30,
                 useNativeDriver: true,
             }),
             Animated.spring(slideAnim, {
                 toValue: 0,
                 friction: 8,
                 tension: 40,
-                delay: index * 50,
+                delay: Math.min(index, 3) * 30,
                 useNativeDriver: true,
             }),
         ]).start();
-    }, []);
+    }, [animateEntry, index, fadeAnim, slideAnim]);
 
     const cardStyles = StyleSheet.create({
         container: {
@@ -281,7 +299,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                         </View>
                         <View style={cardStyles.sourceInfo}>
                             <View style={cardStyles.sourceNameRow}>
-                                <Text style={cardStyles.sourceName}>{safeSource}</Text>
+                                <Text style={cardStyles.sourceName} numberOfLines={1}>{safeSource}</Text>
                                 {item.verified && (
                                     <CheckCircle size={14} color={colors.verified} fill={colors.verified} />
                                 )}
@@ -296,7 +314,11 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                     </View>
                     <TouchableOpacity
                         style={cardStyles.moreButton}
-                        onPress={(e) => e.stopPropagation()}
+                        onPress={(e) => {
+                            e.stopPropagation();
+                            openArticleMenu(item, feedback);
+                        }}
+                        accessibilityLabel="More options"
                     >
                         <MoreHorizontal size={20} color={colors.textSecondary} />
                     </TouchableOpacity>
@@ -381,18 +403,9 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
 
                         <TouchableOpacity
                             style={cardStyles.actionButton}
-                            onPress={async (e) => {
+                            onPress={(e) => {
                                 e.stopPropagation();
-                                const url = item.canonical_url || item.url || '';
-                                try {
-                                    await Share.share({
-                                        title: safeTitle,
-                                        message: url ? `${safeTitle}\n${url}` : safeTitle,
-                                        url: Platform.OS === 'ios' ? url : undefined,
-                                    });
-                                } catch (_) {
-                                    /* user dismissed share sheet */
-                                }
+                                shareArticle(item);
                             }}
                         >
                             <Share2 size={18} color={colors.textSecondary} strokeWidth={2} />
@@ -403,4 +416,22 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
         </TouchableOpacity>
         </Animated.View>
     );
-};
+}
+
+function propsAreEqual(prev, next) {
+    const id = String(prev.item?.id);
+    const prevVote = prev.votedItems?.[id] ?? prev.item?.userReaction;
+    const nextVote = next.votedItems?.[id] ?? next.item?.userReaction;
+    const prevBm = prev.bookmarkedItems?.has?.(id) || prev.bookmarkedItems?.has?.(prev.item?.id);
+    const nextBm = next.bookmarkedItems?.has?.(id) || next.bookmarkedItems?.has?.(next.item?.id);
+    return (
+        id === String(next.item?.id) &&
+        prevVote === nextVote &&
+        prevBm === nextBm &&
+        prev.item?.like_count === next.item?.like_count &&
+        prev.item?.dislike_count === next.item?.dislike_count &&
+        prev.item?.title === next.item?.title
+    );
+}
+
+export const NewsCard = memo(NewsCardInner, propsAreEqual);

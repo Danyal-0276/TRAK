@@ -1,7 +1,7 @@
 // SettingsScreen.jsx
 import React, { useState, useRef, useEffect } from "react";
-import { ScrollView, SafeAreaView, StyleSheet, StatusBar, Animated, Dimensions } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ScrollView, StyleSheet, StatusBar, Animated, Dimensions, View } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
 import { User, Bell, Lock, Tag, Database, Info, LogOut, Moon, FileText, Mail } from "lucide-react-native";
 import { getNotificationPreferences, patchNotificationPreferences } from "../../api/notificationsApi";
@@ -12,6 +12,7 @@ import SettingsRow from "./components/SettingsRow";
 import ThemeSwitchButton from "./components/ThemeSwitchButton";
 import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
+import { useFeedback } from "../../components/ui/FeedbackProvider";
 import Card from "../../components/ui/Card";
 import Text from "../../components/ui/Text";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
@@ -26,9 +27,9 @@ export default function SettingsScreen({ navigation }) {
   const { theme, toggleTheme } = useTheme();
   const { colors } = theme;
   const { logout } = useAuth();
+  const { confirm } = useFeedback();
   const darkTheme = theme.mode === "dark";
   const insets = useSafeAreaInsets();
-  const contentPaddingTop = Math.max(insets.top, theme.spacing.md);
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -100,8 +101,13 @@ export default function SettingsScreen({ navigation }) {
   };
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}> 
+    <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+
+      <View
+        style={[styles.statusBarCover, { height: insets.top, backgroundColor: colors.surface }]}
+        pointerEvents="none"
+      />
       
       {/* Gradient background */}
       <LinearGradient
@@ -170,25 +176,28 @@ export default function SettingsScreen({ navigation }) {
         pointerEvents="none"
       />
       
-      <Animated.ScrollView
-        contentContainerStyle={[
-          styles.scroll,
-          {
-            paddingTop: contentPaddingTop,
-            paddingHorizontal: theme.spacing.md,
-            paddingBottom: theme.spacing.lg,
-          },
-        ]}
+      <Animated.View
         style={{
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
         }}
+      >
+        <SettingsHeader />
+      </Animated.View>
+
+      <Animated.ScrollView
+        contentContainerStyle={[
+          styles.scroll,
+          {
+            paddingTop: theme.spacing.md,
+            paddingHorizontal: theme.spacing.md,
+            paddingBottom: theme.spacing.lg,
+          },
+        ]}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        <SettingsHeader />
-
         <Card style={{ marginBottom: theme.spacing.lg }}>
           <Text variant="subtitle" color={theme.colors.textPrimary}>
             Your Account
@@ -324,6 +333,13 @@ export default function SettingsScreen({ navigation }) {
             label="Log Out"
             labelColor={colors.error}
             onPress={async () => {
+              const accepted = await confirm({
+                title: "Logout",
+                message: "Are you sure you want to log out?",
+                confirmText: "Logout",
+                danger: true,
+              });
+              if (!accepted) return;
               await logout();
               const root = navigation.getParent()?.getParent();
               root?.reset({ index: 0, routes: [{ name: "OpeningScreen" }] });
@@ -337,6 +353,13 @@ export default function SettingsScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  statusBarCover: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 70,
+  },
   gradientBackground: {
     position: 'absolute',
     top: 0,
