@@ -7,12 +7,17 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:966052710818:android:c8169bab5dffee58d08afb",
+        "mobilesdk_app_id": "1:966052710818:android:0f878af96dc6ee37d08afb",
         "android_client_info": {
-          "package_name": "com.trak"
+          "package_name": "com.traknews.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "966052710818-9qmi9krb8675cr5ioor5c5qbuokuv393.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDI3BYh8cacX3K9RmyyLq6BtqUgtoWa94M"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "966052710818-9qmi9krb8675cr5ioor5c5qbuokuv393.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

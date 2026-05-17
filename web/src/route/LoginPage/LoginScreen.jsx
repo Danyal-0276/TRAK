@@ -9,7 +9,7 @@ import { useUIFeedback } from '../../components/ui/UIFeedback';
 const LoginScreen = () => {
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
-    const { login, completeSocialLogin } = useAuth();
+    const { login, completeSocialLogin, loginWithGoogle } = useAuth();
     const { error: showError } = useUIFeedback();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -366,7 +366,12 @@ const LoginScreen = () => {
                                 onClick={async () => {
                                     setSocialLoading(provider.key);
                                     try {
-                                        if (['google', 'apple', 'facebook'].includes(provider.key)) {
+                                        if (provider.key === 'google') {
+                                            const userData = await loginWithGoogle();
+                                            navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed', { replace: true });
+                                            return;
+                                        }
+                                        if (['apple', 'facebook'].includes(provider.key)) {
                                             startSocialOAuth(provider.key);
                                             return;
                                         }

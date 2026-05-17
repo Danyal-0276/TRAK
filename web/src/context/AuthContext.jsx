@@ -1,10 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { signInWithPopup } from 'firebase/auth';
+import { auth, googleProvider } from '../firebase';
 import {
     clearAuthTokens,
     completeSocialOAuth,
     getAccessToken,
     getCurrentUser,
     loginWithEmailPassword,
+    loginWithFirebase,
     loginWithOtp,
     loginWithSocial,
     registerWithEmail,
@@ -59,6 +62,13 @@ export const AuthProvider = ({ children }) => {
         return applySession(session);
     };
 
+    const loginWithGoogle = async () => {
+        const result = await signInWithPopup(auth, googleProvider);
+        const idToken = await result.user.getIdToken();
+        const session = await loginWithFirebase(idToken);
+        return applySession(session);
+    };
+
     const logout = () => {
         clearAuthTokens();
         setUser(null);
@@ -74,6 +84,7 @@ export const AuthProvider = ({ children }) => {
         verifyOtp,
         socialLogin,
         completeSocialLogin,
+        loginWithGoogle,
         isAuthenticated: Boolean(getAccessToken() && user),
         logout,
     };

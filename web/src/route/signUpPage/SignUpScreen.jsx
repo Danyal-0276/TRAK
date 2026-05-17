@@ -7,7 +7,7 @@ import { startSocialOAuth } from '../../utils/Service/api';
 
 const SignUpScreen = () => {
     const navigate = useNavigate();
-    const { register, socialLogin } = useAuth();
+    const { register, loginWithGoogle } = useAuth();
     const [fullName, setFullName] = useState('');
     const [phone, setPhone] = useState('');
     const [email, setEmail] = useState('');
@@ -630,7 +630,12 @@ const SignUpScreen = () => {
                                 onClick={async () => {
                                     setSocialLoading(provider.key);
                                     try {
-                                        if (['google', 'apple', 'facebook'].includes(provider.key)) {
+                                        if (provider.key === 'google') {
+                                            const userData = await loginWithGoogle();
+                                            navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed', { replace: true });
+                                            return;
+                                        }
+                                        if (['apple', 'facebook'].includes(provider.key)) {
                                             startSocialOAuth(provider.key);
                                             return;
                                         }

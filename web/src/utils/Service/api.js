@@ -143,6 +143,13 @@ export const completeSocialOAuth = (ticket) =>
     body: JSON.stringify({ ticket }),
   });
 
+export const loginWithFirebase = (idToken) =>
+  request('/api/auth/firebase/', {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify({ id_token: idToken }),
+  });
+
 export const authRequest = async (path, options = {}) => {
   const doReq = (token) =>
     fetch(`${API_BASE_URL}${path}`, {
