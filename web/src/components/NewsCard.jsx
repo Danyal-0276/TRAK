@@ -221,24 +221,20 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                         margin: '0 0 8px 0',
                         color: textPrimary,
                         letterSpacing: '-0.2px',
-                        flex: 1,
                     }}>
                         {item.title || 'News Title'}
                     </h3>
 
-                    {/* Description */}
-                    {item.description && (
+                    {/* Summary (full text, card height grows with content) */}
+                    {(item.description || item.excerpt || item.summary) && (
                         <p style={{
                             fontSize: '13px',
                             lineHeight: '1.5',
                             margin: '0 0 16px 0',
                             color: textSecondary,
-                            display: '-webkit-box',
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical',
-                            overflow: 'hidden',
+                            whiteSpace: 'pre-wrap',
                         }}>
-                            {item.description}
+                            {item.description || item.excerpt || item.summary}
                         </p>
                     )}
 

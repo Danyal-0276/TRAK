@@ -158,9 +158,10 @@ const NewsFeedScreen = ({ navigation }) => {
                         ? new Date(item.published_at).toLocaleString()
                         : 'Recently',
                     title: item.title || 'Untitled',
-                    excerpt: item.excerpt || item.content || '',
-                    content: item.content || item.excerpt || '',
-                    fullContent: item.content || item.excerpt || '',
+                    excerpt: item.excerpt || item.summary || '',
+                    summary: item.summary || item.excerpt || '',
+                    content: item.content || item.full_content || '',
+                    fullContent: item.full_content || item.content || '',
                     category: item.topic_keywords?.[0] || 'General',
                     verified: item.credibility?.label === 'real',
                     trending: Boolean(item.topic_keywords?.length),

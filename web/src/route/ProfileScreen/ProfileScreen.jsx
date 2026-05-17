@@ -127,8 +127,10 @@ const UserProfileScreen = () => {
                             like_count: likes,
                             dislike_count: dislikes,
                             upvotes: likes,
-                            description: full.content || full.excerpt,
-                            fullContent: full.content || full.excerpt,
+                            description: full.excerpt || full.summary || '',
+                            excerpt: full.excerpt || full.summary || '',
+                            content: full.content || full.full_content || '',
+                            fullContent: full.full_content || full.content || '',
                         };
                     } catch {
                         return {

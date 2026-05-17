@@ -181,7 +181,7 @@ const SearchScreen = ({ navigation }) => {
     articles: allNews,
     onArticlesPatch: setAllNews,
   });
-  const [topSectionHeight, setTopSectionHeight] = useState(220);
+  const [topSectionHeight, setTopSectionHeight] = useState(152);
   const [nextCursor, setNextCursor] = useState(null);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -605,6 +605,8 @@ const SearchScreen = ({ navigation }) => {
             {
               opacity: fadeAnim,
               transform: [{ translateY: topSectionTranslateY }],
+              backgroundColor: colors.surface,
+              borderBottomColor: colors.borderLight,
             },
           ]}
           onLayout={(e) => {
@@ -623,13 +625,11 @@ const SearchScreen = ({ navigation }) => {
             />
           </View>
 
-          <View style={styles.tabsWrapper}>
-            <Tabs
-              categories={categories}
-              activeTab={activeTab}
-              onTabPress={handleTabPress}
-            />
-          </View>
+          <Tabs
+            categories={categories}
+            activeTab={activeTab}
+            onTabPress={handleTabPress}
+          />
         </Animated.View>
 
       <Animated.ScrollView
@@ -769,12 +769,13 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     overflow: 'hidden',
     zIndex: 60,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   searchRow: {
     width: '100%',
     maxWidth: '100%',
     paddingHorizontal: 16,
-    paddingBottom: 10,
+    paddingBottom: 8,
     zIndex: 50,
   },
   headerSection: {
@@ -796,9 +797,6 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     fontSize: 14,
     width: '100%',
-  },
-  tabsWrapper: {
-    height: 48,
   },
   contentArea: {
     flex: 1,

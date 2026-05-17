@@ -15,6 +15,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { addBookmark, getUserArticleDetail, listBookmarks, removeBookmark, setReaction } from '../../utils/Service/api';
 import Text from '../../components/ui/Text';
 import { buildArticleDetailParams } from '../../utils/articleNavigation';
+import { mapApiItem } from '../../utils/loadFeed';
 
 const BookmarksScreen = ({ navigation }) => {
     const { theme } = useTheme();
@@ -33,11 +34,12 @@ const BookmarksScreen = ({ navigation }) => {
                 rows.map(async (r) => {
                     try {
                         const full = await getUserArticleDetail(r.article_id);
+                        const mapped = mapApiItem(full);
                         return {
-                            ...full,
-                            id: full.id || r.article_id || r.id,
-                            time: full.time || (r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently'),
-                            category: full.category || 'Saved',
+                            ...mapped,
+                            id: mapped.id || r.article_id || r.id,
+                            time: mapped.time || (r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently'),
+                            category: mapped.category || 'Saved',
                         };
                     } catch {
                         return {

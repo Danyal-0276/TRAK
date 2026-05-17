@@ -3,44 +3,46 @@ import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import Text from '../../../components/ui/Text';
 
+/** Horizontal pill filters for Discover categories. */
 const Tabs = ({ categories, activeTab, onTabPress }) => {
   const { theme } = useTheme();
   const { colors } = theme;
 
   return (
-    <View style={[styles.wrap, { backgroundColor: colors.surface, borderBottomColor: colors.borderLight }]}>
+    <View style={styles.wrap}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabsRow}
+        contentContainerStyle={styles.row}
       >
         {categories.map((cat) => {
           const isActive = activeTab === cat;
           return (
             <TouchableOpacity
               key={cat}
-              style={styles.tabHit}
+              style={[
+                styles.pill,
+                {
+                  backgroundColor: isActive ? colors.primary : colors.backgroundSecondary,
+                  borderColor: isActive ? colors.primary : colors.borderLight,
+                },
+              ]}
               onPress={() => onTabPress(cat)}
-              activeOpacity={0.75}
+              activeOpacity={0.8}
             >
               <Text
                 variant="body"
                 style={[
-                  styles.tabText,
+                  styles.pillText,
                   {
-                    color: isActive ? colors.primary : colors.textSecondary,
-                    fontWeight: isActive ? '700' : '500',
+                    color: isActive ? colors.textInverse || '#fff' : colors.textSecondary,
+                    fontWeight: isActive ? '700' : '600',
                   },
                 ]}
                 numberOfLines={1}
               >
                 {cat}
               </Text>
-              {isActive ? (
-                <View style={[styles.indicator, { backgroundColor: colors.primary }]} />
-              ) : (
-                <View style={styles.indicatorPlaceholder} />
-              )}
             </TouchableOpacity>
           );
         })}
@@ -52,39 +54,23 @@ const Tabs = ({ categories, activeTab, onTabPress }) => {
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
-    maxWidth: '100%',
-    overflow: 'hidden',
-    borderBottomWidth: 1,
-  },
-  tabsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 12,
-    paddingTop: 4,
-    alignItems: 'flex-end',
-  },
-  tabHit: {
-    paddingHorizontal: 14,
-    paddingTop: 10,
     paddingBottom: 8,
-    marginRight: 4,
+  },
+  row: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
     alignItems: 'center',
-    minWidth: 56,
   },
-  tabText: {
-    fontSize: 14,
-    letterSpacing: 0.2,
+  pill: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginRight: 8,
   },
-  indicator: {
-    marginTop: 8,
-    height: 3,
-    width: '100%',
-    borderRadius: 2,
-  },
-  indicatorPlaceholder: {
-    marginTop: 8,
-    height: 3,
-    width: '100%',
-    opacity: 0,
+  pillText: {
+    fontSize: 13,
+    letterSpacing: 0.1,
   },
 });
 

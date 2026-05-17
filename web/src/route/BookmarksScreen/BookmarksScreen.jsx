@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
 import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { mapApiItem } from '../../utils/loadFeed';
+import { normalizeArticleForDetail } from '../../utils/articleNavigation';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { useTheme } from '../../theme/ThemeContext';
@@ -43,8 +45,10 @@ const BookmarksScreen = () => {
                         return {
                             ...full,
                             id: aid,
-                            description: full.content || full.excerpt,
-                            fullContent: full.content || full.excerpt,
+                            description: full.excerpt || full.summary || '',
+                            excerpt: full.excerpt || full.summary || '',
+                            content: full.content || full.full_content || '',
+                            fullContent: full.full_content || full.content || '',
                             category: full.topic_keywords?.[0] || 'Saved',
                             time: full.published_at ? new Date(full.published_at).toLocaleString() : (r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently'),
                             like_count: likes,
@@ -87,9 +91,10 @@ const BookmarksScreen = () => {
         const aid = String(article.id);
         try {
             const full = await getUserArticleDetail(aid);
-            navigate(`/article/${encodeURIComponent(aid)}`, { state: { article: { ...full, id: aid } } });
+            const mapped = normalizeArticleForDetail(mapApiItem(full));
+            navigate(`/article/${encodeURIComponent(aid)}`, { state: { article: { ...mapped, id: aid } } });
         } catch {
-            navigate(`/article/${encodeURIComponent(aid)}`, { state: { article: { ...article, id: aid } } });
+            navigate(`/article/${encodeURIComponent(aid)}`, { state: { article: normalizeArticleForDetail({ ...article, id: aid }) } });
         }
     };
 

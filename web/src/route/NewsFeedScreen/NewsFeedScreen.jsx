@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
+import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
 import { addBookmark, getUserFeed, getUserKeywordsFromServer, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -71,8 +72,11 @@ const NewsFeedScreen = () => {
                 return {
                     ...item,
                     id: aid,
-                    description: item.content || item.excerpt,
-                    fullContent: item.content || item.excerpt,
+                    description: item.excerpt || item.summary || '',
+                    excerpt: item.excerpt || item.summary || '',
+                    summary: item.summary || item.excerpt || '',
+                    content: item.content || item.full_content || '',
+                    fullContent: item.full_content || item.content || '',
                     category: item.topic_keywords?.[0] || 'General',
                     time: item.published_at ? new Date(item.published_at).toLocaleString() : 'Recently',
                     like_count: likes,
@@ -490,13 +494,14 @@ const NewsFeedScreen = () => {
                             color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
                             marginBottom: '24px',
                         }}>
-                            {(selectedArticle.fullContent || selectedArticle.content || selectedArticle.excerpt || selectedArticle.description || 'Article content goes here...').split('\n').map((paragraph, index) => (
-                                <p key={index} style={{
-                                    margin: '0 0 16px 0',
-                                }}>
-                                    {paragraph || '\u00A0'}
-                                </p>
-                            ))}
+                            <ArticleBodyParagraphs
+                                content={selectedArticle.fullContent || selectedArticle.content || selectedArticle.full_content || ''}
+                                paragraphStyle={{
+                                    fontSize: '16px',
+                                    lineHeight: '1.7',
+                                    color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
+                                }}
+                            />
                         </div>
 
                         {/* Actions */}

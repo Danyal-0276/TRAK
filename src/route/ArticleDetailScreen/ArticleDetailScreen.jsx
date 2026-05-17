@@ -343,7 +343,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                             <ArticleContent 
                                 category={article.category}
                                 title={article.title}
-                                content={article.fullContent || article.excerpt || 'Full article content goes here...'}
+                                content={article.fullContent || article.content || article.full_content || 'Full article content goes here...'}
                             />
                         </Animated.View>
 

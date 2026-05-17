@@ -1,282 +1,112 @@
-// ============================================
-// TrendingTopics.jsx - Trending News Topics
-// ============================================
-import React from "react";
+import React from 'react';
 import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    ScrollView,
-} from "react-native";
-import { TrendingUp, Flame, Zap } from "lucide-react-native";
-import { useTheme } from "../../../theme/ThemeContext";
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  ScrollView,
+} from 'react-native';
+import { TrendingUp } from 'lucide-react-native';
+import { useTheme } from '../../../theme/ThemeContext';
 
+/** Compact trending chips — one row, minimal chrome. */
 const TrendingTopics = ({ topics, onTopicPress, searchQuery }) => {
-    const { theme } = useTheme();
-    const { colors } = theme;
-    
-    // Hide when user is actively searching
-    if (searchQuery && searchQuery.trim()) return null;
+  const { theme } = useTheme();
+  const { colors } = theme;
 
-    const rankedTopics = Array.isArray(topics) ? topics.slice(0, 8) : [];
-    const featured = rankedTopics[0];
+  if (searchQuery && searchQuery.trim()) return null;
 
-    // Show empty state if no topics
-    if (!topics || topics.length === 0) {
-        return (
-            <View style={[styles.container, { 
-                backgroundColor: colors.surface,
-                borderBottomColor: colors.borderLight,
-            }]}>
-                <View style={styles.header}>
-                    <View style={[styles.iconWrapper, { backgroundColor: colors.warning + '20' }]}>
-                        <Flame size={18} color={colors.warning} />
-                    </View>
-                    <Text style={[styles.title, { color: colors.textPrimary }]}>Trending Now</Text>
-                </View>
-                <View style={styles.emptyState}>
-                    <Text style={[styles.emptyText, { color: colors.textSecondary }]}>
-                        No trending topics at the moment
-                    </Text>
-                </View>
-            </View>
-        );
-    }
+  const ranked = Array.isArray(topics) ? topics.slice(0, 10) : [];
+  if (ranked.length === 0) return null;
 
-    return (
-        <View style={[styles.container, {
-            backgroundColor: colors.surface,
-            borderBottomColor: colors.borderLight,
-            shadowColor: colors.shadowDark || '#000',
-        }]}>
-            <View style={styles.headerRow}>
-                <View style={[styles.headerLeft, { backgroundColor: colors.warning + '15', borderColor: colors.warning + '30' }]}>
-                    <Flame size={18} color={colors.warning} />
-                    <Text style={[styles.title, { color: colors.textPrimary }]}>Trend Radar</Text>
-                </View>
-                <View style={[styles.livePill, { backgroundColor: colors.primary + '18', borderColor: colors.primary + '35' }]}>
-                    <Zap size={12} color={colors.primary} />
-                    <Text style={[styles.liveText, { color: colors.primary }]}>Live</Text>
-                </View>
-            </View>
-
+  return (
+    <View style={[styles.wrap, { borderBottomColor: colors.borderLight }]}>
+      <View style={styles.labelRow}>
+        <TrendingUp size={14} color={colors.primary} strokeWidth={2.5} />
+        <Text style={[styles.label, { color: colors.textSecondary }]}>Trending</Text>
+      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+      >
+        {ranked.map((topic, index) => {
+          const hot = topic.trending || index < 2;
+          return (
             <TouchableOpacity
-                style={[styles.featuredCard, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderLight }]}
-                onPress={() => onTopicPress(featured?.name)}
-                activeOpacity={0.85}
+              key={topic.id || `${topic.name}-${index}`}
+              style={[
+                styles.chip,
+                {
+                  backgroundColor: hot ? colors.primary + '12' : colors.backgroundSecondary,
+                  borderColor: hot ? colors.primary + '35' : colors.borderLight,
+                },
+              ]}
+              onPress={() => onTopicPress(topic.name)}
+              activeOpacity={0.75}
             >
-                <View style={styles.featuredTop}>
-                    <Text style={[styles.featuredLabel, { color: colors.textSecondary }]}>Top Signal</Text>
-                    <View style={[styles.rankBadge, { backgroundColor: colors.warning + '20' }]}>
-                        <TrendingUp size={12} color={colors.warning} />
-                        <Text style={[styles.rankBadgeText, { color: colors.warning }]}>#1</Text>
-                    </View>
-                </View>
-                <View style={styles.featuredMiddle}>
-                    <Text style={styles.featuredIcon}>{featured?.icon || "📰"}</Text>
-                    <View style={styles.featuredCopy}>
-                        <Text style={[styles.featuredName, { color: colors.textPrimary }]} numberOfLines={1}>
-                            {featured?.name || "Top Topic"}
-                        </Text>
-                        <Text style={[styles.featuredCount, { color: colors.textSecondary }]}>
-                            {featured?.count || "0 in feed"}
-                        </Text>
-                    </View>
-                </View>
+              {index < 3 ? (
+                <Text style={[styles.rank, { color: colors.primary }]}>{index + 1}</Text>
+              ) : null}
+              <Text
+                style={[styles.chipText, { color: colors.textPrimary }]}
+                numberOfLines={1}
+              >
+                {topic.name || 'Topic'}
+              </Text>
             </TouchableOpacity>
-
-            <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-            >
-                {rankedTopics.slice(1).map((topic, index) => {
-                    const rank = index + 2;
-                    const momentumWidth = Math.max(22, 72 - index * 8);
-                    return (
-                    <TouchableOpacity
-                        key={topic.id}
-                        style={[styles.topicChip, {
-                            backgroundColor: colors.backgroundSecondary,
-                            borderColor: colors.borderLight
-                        }]}
-                        onPress={() => onTopicPress(topic.name)}
-                        activeOpacity={0.85}
-                    >
-                        <View style={styles.chipHeader}>
-                            <View style={[styles.rankCircle, { backgroundColor: colors.primary + '16' }]}>
-                                <Text style={[styles.rankText, { color: colors.primary }]}>{rank}</Text>
-                            </View>
-                            <Text style={styles.chipIcon}>{topic.icon || "📰"}</Text>
-                        </View>
-                        <Text style={[styles.topicName, { color: colors.textPrimary }]} numberOfLines={1}>
-                            {topic.name || "Topic"}
-                        </Text>
-                        <Text style={[styles.topicCount, { color: colors.textSecondary }]}>
-                            {topic.count || "0 in feed"}
-                        </Text>
-                        <View style={[styles.momentumTrack, { backgroundColor: colors.borderLight }]}>
-                            <View
-                                style={[
-                                    styles.momentumBar,
-                                    { width: momentumWidth, backgroundColor: topic.trending ? colors.warning : colors.primary },
-                                ]}
-                            />
-                        </View>
-                    </TouchableOpacity>
-                    );
-                })}
-            </ScrollView>
-        </View>
-    );
+          );
+        })}
+      </ScrollView>
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        paddingVertical: 20,
-        paddingHorizontal: 20,
-        borderBottomWidth: 1,
-    },
-    headerRow: {
-        flexDirection: "row",
-        alignItems: "center",
-        justifyContent: "space-between",
-        marginBottom: 14,
-    },
-    headerLeft: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 8,
-        borderRadius: 14,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderWidth: 1,
-    },
-    title: {
-        fontSize: 17,
-        fontWeight: "700",
-    },
-    livePill: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 6,
-        borderWidth: 1,
-        borderRadius: 999,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-    },
-    liveText: {
-        fontSize: 12,
-        fontWeight: "700",
-    },
-    featuredCard: {
-        borderWidth: 1,
-        borderRadius: 16,
-        padding: 14,
-        marginBottom: 12,
-    },
-    featuredTop: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 10,
-    },
-    featuredLabel: {
-        fontSize: 12,
-        fontWeight: "600",
-        textTransform: "uppercase",
-        letterSpacing: 0.7,
-    },
-    rankBadge: {
-        flexDirection: "row",
-        alignItems: "center",
-        gap: 4,
-        borderRadius: 10,
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-    },
-    rankBadgeText: {
-        fontSize: 11,
-        fontWeight: "700",
-    },
-    featuredMiddle: {
-        flexDirection: "row",
-        alignItems: "center",
-    },
-    featuredIcon: {
-        fontSize: 28,
-        marginRight: 12,
-    },
-    featuredCopy: {
-        flex: 1,
-    },
-    featuredName: {
-        fontSize: 17,
-        fontWeight: "700",
-        marginBottom: 4,
-    },
-    featuredCount: {
-        fontSize: 13,
-        fontWeight: "500",
-    },
-    scrollContent: {
-        paddingRight: 20,
-    },
-    topicChip: {
-        borderRadius: 14,
-        padding: 12,
-        marginRight: 12,
-        width: 136,
-        borderWidth: 1,
-    },
-    chipHeader: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginBottom: 8,
-    },
-    rankCircle: {
-        width: 22,
-        height: 22,
-        borderRadius: 11,
-        justifyContent: "center",
-        alignItems: "center",
-    },
-    rankText: {
-        fontSize: 11,
-        fontWeight: "700",
-    },
-    chipIcon: {
-        fontSize: 18,
-    },
-    topicName: {
-        fontSize: 13,
-        fontWeight: "700",
-        marginBottom: 4,
-    },
-    topicCount: {
-        fontSize: 12,
-        fontWeight: "500",
-        marginBottom: 10,
-    },
-    momentumTrack: {
-        height: 5,
-        borderRadius: 999,
-        overflow: "hidden",
-    },
-    momentumBar: {
-        height: "100%",
-        borderRadius: 999,
-    },
-    emptyState: {
-        paddingVertical: 20,
-        paddingHorizontal: 20,
-    },
-    emptyText: {
-        fontSize: 14,
-        textAlign: 'center',
-    },
+  wrap: {
+    paddingTop: 4,
+    paddingBottom: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+  },
+  scroll: {
+    paddingRight: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 999,
+    borderWidth: 1,
+    maxWidth: 160,
+    marginRight: 8,
+  },
+  rank: {
+    fontSize: 11,
+    fontWeight: '800',
+    marginRight: 6,
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    flexShrink: 1,
+  },
 });
 
 export default TrendingTopics;

@@ -6,11 +6,13 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import TextComponent from '../../../components/ui/Text';
+import { splitArticleParagraphs } from '../../../utils/articleParagraphs';
 
 export const ArticleContent = ({ category, title, content }) => {
     const { theme } = useTheme();
     const { colors } = theme;
-    
+    const paragraphs = splitArticleParagraphs(content);
+
     return (
         <View style={styles.container}>
             {/* Category Badge */}
@@ -26,10 +28,18 @@ export const ArticleContent = ({ category, title, content }) => {
                 {title}
             </TextComponent>
 
-            {/* Full Content */}
-            <TextComponent variant="body" style={[styles.content, { color: colors.textSecondary }]}>
-                {content}
-            </TextComponent>
+            {/* Full Content — one block per paragraph */}
+            <View style={styles.contentBlocks}>
+                {paragraphs.map((paragraph, index) => (
+                    <TextComponent
+                        key={`p-${index}`}
+                        variant="body"
+                        style={[styles.content, { color: colors.textSecondary }]}
+                    >
+                        {paragraph}
+                    </TextComponent>
+                ))}
+            </View>
         </View>
     );
 };
@@ -59,10 +69,12 @@ const styles = StyleSheet.create({
         marginBottom: 24,
         letterSpacing: -0.5,
     },
+    contentBlocks: {},
     content: {
         fontSize: 17,
         lineHeight: 30,
         fontWeight: '400',
+        marginBottom: 18,
     },
 });
 

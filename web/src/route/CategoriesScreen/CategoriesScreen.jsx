@@ -4,6 +4,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { loadExplorePage } from '../../utils/loadFeed';
 import { fetchPlatformCategories } from '../../utils/Service/api';
 import { NewsCard } from '../../components/NewsCard';
+import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { 
     TrendingUp,
@@ -480,13 +481,14 @@ const CategoriesScreen = () => {
                             color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
                             marginBottom: '24px',
                         }}>
-                            {(selectedArticle.fullContent || selectedArticle.content || selectedArticle.excerpt || selectedArticle.description || 'Article content goes here...').split('\n').map((paragraph, index) => (
-                                <p key={index} style={{
-                                    margin: '0 0 16px 0',
-                                }}>
-                                    {paragraph || '\u00A0'}
-                                </p>
-                            ))}
+                            <ArticleBodyParagraphs
+                                content={selectedArticle.fullContent || selectedArticle.content || selectedArticle.full_content || ''}
+                                paragraphStyle={{
+                                    fontSize: '16px',
+                                    lineHeight: '1.7',
+                                    color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
+                                }}
+                            />
                         </div>
 
                         {/* Actions */}
