@@ -9,8 +9,9 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import Text from '../../components/ui/Text';
 import { UserPlus } from 'lucide-react-native';
-import { setTokens } from '../../api/client';
-import { loginWithSocialDemo, saveAuthSession } from '../../utils/Service/api';
+import { formatGoogleAuthError, getFirebaseIdTokenFromGoogle } from '../../auth/googleSignIn';
+import { applyAuthSession } from '../../auth/applyAuthSession';
+import { loginWithFirebase } from '../../utils/Service/api';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 
 const { width, height } = Dimensions.get('window');
@@ -141,18 +142,30 @@ const SignUpScreen = ({ navigation }) => {
     };
 
     const handleSocialSignUp = async (provider) => {
+        if (provider !== 'google') {
+            showError('This sign-up method is not available yet.');
+            return;
+        }
+
         setLoadingProvider(provider);
-        
         try {
-            const syntheticEmail = `${provider}_mobile_signup_${Date.now()}@trak.local`;
-            const session = await loginWithSocialDemo(provider, syntheticEmail);
-            await setTokens(session.access, session.refresh);
-            await saveAuthSession(session);
+            const firebaseIdToken = await getFirebaseIdTokenFromGoogle();
+            const session = await loginWithFirebase(firebaseIdToken);
+            if (!session?.access) {
+                throw new Error('Server did not return a sign-up session');
+            }
+            await applyAuthSession(session);
             await bootstrap();
-            success(`Signed up with ${provider}`);
-            navigation.navigate('TagSelection', { fromSignup: true });
+            success('Signed up with Google');
+            navigation.reset({
+                index: 0,
+                routes: [{ name: 'TagSelection', params: { fromSignup: true } }],
+            });
         } catch (error) {
-            showError(error.message);
+            const message = formatGoogleAuthError(error);
+            if (!/cancel/i.test(message)) {
+                showError(message);
+            }
         } finally {
             setLoadingProvider(null);
         }

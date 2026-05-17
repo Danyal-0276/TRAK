@@ -632,7 +632,11 @@ const SignUpScreen = () => {
                                     try {
                                         if (provider.key === 'google') {
                                             const userData = await loginWithGoogle();
-                                            navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed', { replace: true });
+                                            if (userData.role === 'admin') {
+                                                navigate('/admin/dashboard', { replace: true });
+                                                return;
+                                            }
+                                            navigate('/tag-selection', { state: { fromSignup: true }, replace: true });
                                             return;
                                         }
                                         if (['apple', 'facebook'].includes(provider.key)) {

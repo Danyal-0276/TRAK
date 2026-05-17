@@ -2,12 +2,12 @@ import React from 'react';
 import { TouchableOpacity, StyleSheet, Image, ActivityIndicator } from 'react-native';
 import colors from '../../../utils/colors';
 
-export const SocialButton = ({ iconSource, onPress, style, loading }) => (
+export const SocialButton = ({ iconSource, onPress, style, loading, disabled }) => (
     <TouchableOpacity 
-        style={[styles.socialButton, style]} 
+        style={[styles.socialButton, style, (loading || disabled) && styles.disabled]} 
         onPress={onPress}
         activeOpacity={0.7}
-        disabled={loading}
+        disabled={loading || disabled}
     >
         {loading ? (
             <ActivityIndicator size="small" color={colors.primary} />
@@ -45,5 +45,8 @@ const styles = StyleSheet.create({
     iconImage: {
         width: 24,
         height: 24,
+    },
+    disabled: {
+        opacity: 0.5,
     },
 });

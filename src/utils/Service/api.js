@@ -126,6 +126,13 @@ export const loginWithOtp = (identity, code) =>
 export const loginWithSocialDemo = (provider, email) =>
   Promise.reject(new Error('Demo social login is disabled.'));
 
+export const loginWithFirebase = (idToken) =>
+  request('/api/auth/firebase/', {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify({ id_token: idToken }),
+  });
+
 export const authRequest = async (path, options = {}) => {
   const access = await getAccessToken();
   const doReq = (token) =>

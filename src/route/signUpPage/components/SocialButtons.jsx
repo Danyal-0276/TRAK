@@ -7,34 +7,40 @@ const FacebookIcon = require('../../../assets/images/facebook-logo-png-23.png');
 const GoogleIcon = require('../../../assets/images/google.png');
 const AppleIcon = require('../../../assets/images/apple-logo-icon-14915.png');
 
-export const SocialButtons = ({ onSocialPress, loadingProvider }) => (
-    <View style={styles.container}>
-        <View style={styles.divider}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or sign up with</Text>
-            <View style={styles.dividerLine} />
+export const SocialButtons = ({ onSocialPress, loadingProvider }) => {
+    const busy = loadingProvider != null;
+    return (
+        <View style={styles.container}>
+            <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or sign up with</Text>
+                <View style={styles.dividerLine} />
+            </View>
+            <View style={styles.socialButtons}>
+                <SocialButton
+                    iconSource={FacebookIcon}
+                    onPress={() => onSocialPress('facebook')}
+                    loading={loadingProvider === 'facebook'}
+                    disabled={busy && loadingProvider !== 'facebook'}
+                    style={styles.buttonSpacing}
+                />
+                <SocialButton
+                    iconSource={GoogleIcon}
+                    onPress={() => onSocialPress('google')}
+                    loading={loadingProvider === 'google'}
+                    disabled={busy && loadingProvider !== 'google'}
+                    style={styles.buttonSpacing}
+                />
+                <SocialButton
+                    iconSource={AppleIcon}
+                    onPress={() => onSocialPress('apple')}
+                    loading={loadingProvider === 'apple'}
+                    disabled={busy && loadingProvider !== 'apple'}
+                />
+            </View>
         </View>
-        <View style={styles.socialButtons}>
-            <SocialButton 
-                iconSource={FacebookIcon}
-                onPress={() => onSocialPress('facebook')}
-                loading={loadingProvider === 'facebook'}
-                style={styles.buttonSpacing}
-            />
-            <SocialButton 
-                iconSource={GoogleIcon}
-                onPress={() => onSocialPress('google')}
-                loading={loadingProvider === 'google'}
-                style={styles.buttonSpacing}
-            />
-            <SocialButton 
-                iconSource={AppleIcon}
-                onPress={() => onSocialPress('apple')}
-                loading={loadingProvider === 'apple'}
-            />
-        </View>
-    </View>
-);
+    );
+};
 
 const styles = StyleSheet.create({
     container: {

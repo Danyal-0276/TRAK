@@ -8,11 +8,9 @@ import { Footer } from './components/Footer';
 import { useTheme } from '../../theme/ThemeContext';
 import Text from '../../components/ui/Text';
 import { useAuth } from '../../context/AuthContext';
-import { setTokens } from '../../api/client';
-import {
-    loginWithSocialDemo,
-    saveAuthSession,
-} from '../../utils/Service/api';
+import { formatGoogleAuthError, getFirebaseIdTokenFromGoogle } from '../../auth/googleSignIn';
+import { applyAuthSession } from '../../auth/applyAuthSession';
+import { loginWithFirebase } from '../../utils/Service/api';
 
 const { width, height } = Dimensions.get('window');
 
@@ -91,18 +89,28 @@ const LoginScreen = ({ navigation }) => {
     }, []);
 
     const handleSocialLogin = async (provider) => {
+        if (provider !== 'google') {
+            setNotice({ type: 'error', text: 'This sign-in method is not available yet.' });
+            return;
+        }
+
         setLoadingProvider(provider);
-        
+        setNotice(null);
         try {
-            const syntheticEmail = `${provider}_mobile_user_${Date.now()}@trak.local`;
-            const session = await loginWithSocialDemo(provider, syntheticEmail);
-            await setTokens(session.access, session.refresh);
-            await saveAuthSession(session);
+            const firebaseIdToken = await getFirebaseIdTokenFromGoogle();
+            const session = await loginWithFirebase(firebaseIdToken);
+            if (!session?.access) {
+                throw new Error('Server did not return a login session');
+            }
+            await applyAuthSession(session);
             await bootstrap();
             const dest = session.user?.role === 'admin' ? 'AdminScreen' : 'NewsFeed';
             navigation.reset({ index: 0, routes: [{ name: dest }] });
         } catch (error) {
-            setNotice({ type: 'error', text: error.message || 'Failed to login with social provider' });
+            const message = formatGoogleAuthError(error);
+            if (!/cancel/i.test(message)) {
+                setNotice({ type: 'error', text: message });
+            }
         } finally {
             setLoadingProvider(null);
         }
