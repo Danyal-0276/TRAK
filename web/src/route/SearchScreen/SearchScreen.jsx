@@ -5,6 +5,7 @@ import SearchBar from "./components/SearchBar";
 import Tabs from "./components/tabs";
 import TrendingTopics from "./components/TrendingTopics";
 import { NewsCard } from "../../components/NewsCard";
+import { MasonryFeed, MasonryFeedSkeleton } from "../../components/MasonryFeed";
 import { ArticleBodyParagraphs } from "../../components/ArticleBodyParagraphs";
 import { loadFeedItems } from "../../utils/loadFeed";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
@@ -920,64 +921,13 @@ const SearchScreen = () => {
 
                 {/* Content Area */}
                 {loading ? (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                        gap: '24px',
-                    }}>
-                        {Array.from({ length: 6 }).map((_, i) => (
-                            <div
-                                key={i}
-                                style={{
-                                    backgroundColor: cardBackground,
-                                    borderRadius: '8px',
-                                    border: `1px solid ${borderColor}`,
-                                    overflow: 'hidden',
-                                    minHeight: '260px',
-                                }}
-                            >
-                                <div
-                                    className="trak-search-skel-shimmer"
-                                    style={{
-                                        height: '160px',
-                                        background: isDark ? '#334155' : '#e5e7eb',
-                                    }}
-                                />
-                                <div style={{ padding: '20px' }}>
-                                    <div
-                                        className="trak-search-skel-shimmer"
-                                        style={{
-                                            height: '14px',
-                                            width: '40%',
-                                            borderRadius: '4px',
-                                            marginBottom: '14px',
-                                            background: isDark ? '#334155' : '#e5e7eb',
-                                        }}
-                                    />
-                                    <div
-                                        className="trak-search-skel-shimmer"
-                                        style={{
-                                            height: '18px',
-                                            width: '100%',
-                                            borderRadius: '4px',
-                                            marginBottom: '8px',
-                                            background: isDark ? '#334155' : '#e5e7eb',
-                                        }}
-                                    />
-                                    <div
-                                        className="trak-search-skel-shimmer"
-                                        style={{
-                                            height: '12px',
-                                            width: '90%',
-                                            borderRadius: '4px',
-                                            marginTop: '20px',
-                                            background: isDark ? '#475569' : '#f1f5f9',
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <MasonryFeedSkeleton
+                        count={6}
+                        gap={24}
+                        cardBackground={cardBackground}
+                        borderColor={borderColor}
+                        isDark={isDark}
+                    />
                 ) : filteredNews.length === 0 ? (
                     <div style={{
                         display: 'flex',
@@ -1121,15 +1071,12 @@ const SearchScreen = () => {
                             </>
                         )}
                         
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                            gap: '24px',
-                        }}>
+                        <MasonryFeed gap={24}>
                             {filteredNews.map((item) => (
                                 <NewsCard 
                                     key={item.id} 
                                     item={item}
+                                    layout="masonry"
                                     onPress={() => handleArticlePress(item)}
                                     votedItems={votedItems}
                                     bookmarkedItems={bookmarkedItems}
@@ -1137,7 +1084,7 @@ const SearchScreen = () => {
                                     onBookmark={handleBookmark}
                                 />
                             ))}
-                        </div>
+                        </MasonryFeed>
                     </div>
                 )}
             </div>

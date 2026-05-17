@@ -5,6 +5,7 @@ import { apiFetch, getAccessToken, setTokens } from '../api/client';
 import { clearAuthSession as clearStoredAuthSession, saveAuthSession } from '../utils/Service/api';
 import { registerDeviceToken } from '../api/notificationsApi';
 import { getOrCreatePushToken } from '../api/pushToken';
+import { formatNetworkError } from '../utils/networkError';
 
 const AuthContext = createContext(null);
 const USER_CACHE_KEY = 'trak_user_cache_v1';
@@ -93,11 +94,16 @@ export function AuthProvider({ children }) {
         if (__DEV__) {
             console.warn('[auth] login POST', url);
         }
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-            body: JSON.stringify({ email: email.trim().toLowerCase(), password: normalizedPassword }),
-        });
+        let res;
+        try {
+            res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({ email: email.trim().toLowerCase(), password: normalizedPassword }),
+            });
+        } catch (err) {
+            throw new Error(formatNetworkError(err, 'sign in'));
+        }
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
             throw new Error(data.detail || data.non_field_errors?.[0] || 'Login failed');

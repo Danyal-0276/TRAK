@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
+import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
 import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
 import { addBookmark, getUserFeed, getUserKeywordsFromServer, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { useTheme } from '../../theme/ThemeContext';
@@ -669,88 +670,13 @@ const NewsFeedScreen = () => {
 
                 {/* News Cards Grid */}
                 {loading ? (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMobile
-                            ? '1fr'
-                            : isTablet
-                            ? 'repeat(auto-fill, minmax(280px, 1fr))'
-                            : 'repeat(auto-fill, minmax(320px, 1fr))',
-                        gap: isMobile ? '16px' : isTablet ? '20px' : '24px',
-                    }}>
-                        {Array.from({ length: isMobile ? 4 : 6 }).map((_, i) => (
-                            <div
-                                key={i}
-                                style={{
-                                    backgroundColor: cardBackground,
-                                    borderRadius: '8px',
-                                    border: `1px solid ${borderColor}`,
-                                    overflow: 'hidden',
-                                    minHeight: '280px',
-                                }}
-                            >
-                                <div
-                                    className="trak-feed-skel-shimmer"
-                                    style={{
-                                        height: '180px',
-                                        background: isDark ? '#334155' : '#e5e7eb',
-                                    }}
-                                />
-                                <div style={{ padding: '20px' }}>
-                                    <div
-                                        className="trak-feed-skel-shimmer"
-                                        style={{
-                                            height: '14px',
-                                            width: '45%',
-                                            borderRadius: '4px',
-                                            marginBottom: '16px',
-                                            background: isDark ? '#334155' : '#e5e7eb',
-                                        }}
-                                    />
-                                    <div
-                                        className="trak-feed-skel-shimmer"
-                                        style={{
-                                            height: '18px',
-                                            width: '100%',
-                                            borderRadius: '4px',
-                                            marginBottom: '8px',
-                                            background: isDark ? '#334155' : '#e5e7eb',
-                                        }}
-                                    />
-                                    <div
-                                        className="trak-feed-skel-shimmer"
-                                        style={{
-                                            height: '18px',
-                                            width: '80%',
-                                            borderRadius: '4px',
-                                            marginBottom: '16px',
-                                            background: isDark ? '#334155' : '#e5e7eb',
-                                        }}
-                                    />
-                                    <div
-                                        className="trak-feed-skel-shimmer"
-                                        style={{
-                                            height: '12px',
-                                            width: '100%',
-                                            borderRadius: '4px',
-                                            marginBottom: '8px',
-                                            background: isDark ? '#475569' : '#f1f5f9',
-                                        }}
-                                    />
-                                    <div
-                                        className="trak-feed-skel-shimmer"
-                                        style={{
-                                            height: '12px',
-                                            width: '70%',
-                                            borderRadius: '4px',
-                                            marginTop: '24px',
-                                            background: isDark ? '#475569' : '#f1f5f9',
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <MasonryFeedSkeleton
+                        count={isMobile ? 4 : 6}
+                        gap={isMobile ? 16 : isTablet ? 20 : 24}
+                        cardBackground={cardBackground}
+                        borderColor={borderColor}
+                        isDark={isDark}
+                    />
                 ) : visibleNews.length === 0 ? (
                     <div style={{
                         textAlign: 'center',
@@ -790,19 +716,12 @@ const NewsFeedScreen = () => {
                         )}
                     </div>
                 ) : (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMobile 
-                            ? '1fr' 
-                            : isTablet 
-                            ? 'repeat(auto-fill, minmax(280px, 1fr))' 
-                            : 'repeat(auto-fill, minmax(320px, 1fr))',
-                        gap: isMobile ? '16px' : isTablet ? '20px' : '24px',
-                    }}>
+                    <MasonryFeed gap={isMobile ? 16 : isTablet ? 20 : 24}>
                         {visibleNews.map((item) => (
                             <NewsCard
                                 key={item.id}
                                 item={item}
+                                layout="masonry"
                                 onPress={() => handleArticlePress(item)}
                                 votedItems={votedItems}
                                 bookmarkedItems={bookmarkedItems}
@@ -810,7 +729,7 @@ const NewsFeedScreen = () => {
                                 onBookmark={handleBookmark}
                             />
                         ))}
-                    </div>
+                    </MasonryFeed>
                 )}
             </div>
 

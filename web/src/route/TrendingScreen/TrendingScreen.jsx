@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
 import { mockApi } from '../../utils/Service/mockApi';
 import { useTheme } from '../../theme/ThemeContext';
-import { SkeletonFeedGrid } from '../../components/skeletons/SkeletonLayouts';
+import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
 
 const TrendingScreen = () => {
     const navigate = useNavigate();
@@ -113,7 +113,7 @@ const TrendingScreen = () => {
 
                 {/* News Cards Grid */}
                 {loading ? (
-                    <SkeletonFeedGrid count={6} isDark={theme.mode === 'dark'} colors={theme.colors} />
+                    <MasonryFeedSkeleton count={6} gap={24} cardBackground="#ffffff" borderColor="#e5e7eb" isDark={theme.mode === 'dark'} />
                 ) : newsData.length === 0 ? (
                     <div style={{
                         textAlign: 'center',
@@ -123,15 +123,12 @@ const TrendingScreen = () => {
                         <p style={{ fontSize: '16px', margin: 0 }}>No trending articles at the moment.</p>
                     </div>
                 ) : (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                        gap: '24px',
-                    }}>
+                    <MasonryFeed gap={24}>
                         {newsData.map((item) => (
                             <NewsCard
                                 key={item.id}
                                 item={item}
+                                layout="masonry"
                                 onPress={() => handleArticlePress(item)}
                                 votedItems={votedItems}
                                 bookmarkedItems={bookmarkedItems}
@@ -139,7 +136,7 @@ const TrendingScreen = () => {
                                 onBookmark={handleBookmark}
                             />
                         ))}
-                    </div>
+                    </MasonryFeed>
                 )}
             </div>
             <style>{`

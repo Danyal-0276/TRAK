@@ -7,7 +7,7 @@ import { normalizeArticleForDetail } from '../../utils/articleNavigation';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { useTheme } from '../../theme/ThemeContext';
-import { SkeletonFeedGrid } from '../../components/skeletons/SkeletonLayouts';
+import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
 
 const BookmarksScreen = () => {
     const navigate = useNavigate();
@@ -198,7 +198,13 @@ const BookmarksScreen = () => {
                 </div>
 
                 {loading ? (
-                    <SkeletonFeedGrid count={6} isDark={isDark} colors={colors} />
+                    <MasonryFeedSkeleton
+                        count={6}
+                        gap={24}
+                        cardBackground={isDark ? colors.surface || '#1E293B' : '#ffffff'}
+                        borderColor={isDark ? colors.border || '#334155' : '#e5e7eb'}
+                        isDark={isDark}
+                    />
                 ) : bookmarkedNews.length === 0 ? (
                     <div style={{
                         textAlign: 'center',
@@ -211,15 +217,12 @@ const BookmarksScreen = () => {
                         </p>
                     </div>
                 ) : (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                        gap: '24px',
-                    }}>
+                    <MasonryFeed gap={24}>
                         {bookmarkedNews.map((item) => (
                             <NewsCard
                                 key={String(item.id)}
                                 item={item}
+                                layout="masonry"
                                 onPress={() => handleArticlePress(item)}
                                 votedItems={votedItems}
                                 bookmarkedItems={bookmarkedItems}
@@ -227,7 +230,7 @@ const BookmarksScreen = () => {
                                 onBookmark={handleBookmark}
                             />
                         ))}
-                    </div>
+                    </MasonryFeed>
                 )}
             </div>
             <style>{`

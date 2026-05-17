@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { NewsCard } from "../../components/NewsCard";
+import { MasonryFeed } from "../../components/MasonryFeed";
 import { useTheme } from "../../theme/ThemeContext";
 import { useResponsive } from "../../hooks/useResponsive";
 import { 
@@ -799,15 +800,12 @@ const UserProfileScreen = () => {
                             </p>
                         </div>
                     ) : (
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                            gap: '20px',
-                        }}>
+                        <MasonryFeed gap={20}>
                             {bookmarks.map((item) => (
                                 <NewsCard
                                     key={item.id}
                                     item={item}
+                                    layout="masonry"
                                     onPress={() => navigate(`/article/${item.id}`, { state: { article: item } })}
                                     votedItems={votedItems}
                                     bookmarkedItems={bookmarkedItems}
@@ -815,7 +813,7 @@ const UserProfileScreen = () => {
                                     onBookmark={handleBookmark}
                                 />
                             ))}
-                        </div>
+                        </MasonryFeed>
                     )}
                 </div>
             </div>

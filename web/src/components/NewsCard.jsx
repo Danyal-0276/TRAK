@@ -12,7 +12,8 @@ import {
     ArrowRight,
 } from 'lucide-react';
 
-export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark }) => {
+export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark, layout = 'grid' }) => {
+    const isMasonry = layout === 'masonry';
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
@@ -33,17 +34,17 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
             style={{
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                height: '100%',
+                height: isMasonry ? 'auto' : '100%',
                 display: 'flex',
                 flexDirection: 'column',
             }}
         >
             <div style={{
                 backgroundColor: cardBackground,
-                borderRadius: '8px',
+                borderRadius: isMasonry ? '16px' : '8px',
                 border: `1px solid ${borderColor}`,
                 overflow: 'hidden',
-                height: '100%',
+                height: isMasonry ? 'auto' : '100%',
                 display: 'flex',
                 flexDirection: 'column',
                 transition: 'all 0.2s ease',
@@ -104,7 +105,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                     </div>
                 )}
 
-                <div style={{ padding: '20px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{ padding: isMasonry ? '16px' : '20px', flex: isMasonry ? '0 0 auto' : 1, display: 'flex', flexDirection: 'column' }}>
                     {/* Header */}
                     <div style={{
                         display: 'flex',
@@ -245,7 +246,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                         justifyContent: 'space-between',
                         paddingTop: '12px',
                         borderTop: `1px solid ${borderColor}`,
-                        marginTop: 'auto',
+                        marginTop: isMasonry ? '12px' : 'auto',
                     }}>
                         <div style={{
                             display: 'flex',

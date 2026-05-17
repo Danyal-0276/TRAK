@@ -644,7 +644,7 @@ const SearchScreen = ({ navigation }) => {
         }}
         contentContainerStyle={[
           styles.scrollContainer,
-          { paddingTop: Math.max(0, (topSectionHeight || 0) - 6) },
+          { paddingTop: Math.max(0, (topSectionHeight || 0) + 14) },
           !loading && filteredNews.length === 0 ? styles.noResultsContainer : null,
         ]}
         refreshControl={
