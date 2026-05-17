@@ -15,7 +15,7 @@ import {
     CheckCircle,
     X
 } from 'lucide-react';
-import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
+import { SkeletonCategoryGrid, getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
 import {
     buildCategoryList,
     articleMatchesCategory,
@@ -238,9 +238,9 @@ const CategoriesScreen = () => {
                 {/* Categories Grid */}
                 {loading ? (
                     <div>
-                        <SkeletonListRows rows={5} isDark={isDark} colors={colors} />
+                        <SkeletonCategoryGrid count={8} isDark={isDark} colors={colors} />
                         <div style={{ marginTop: 28 }}>
-                            <MasonryFeedSkeleton count={4} gap={24} cardBackground={cardBackground} borderColor={borderColor} isDark={isDark} />
+                            <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(isDark, colors)} />
                         </div>
                     </div>
                 ) : categories.length === 0 ? (

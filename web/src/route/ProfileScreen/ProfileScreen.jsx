@@ -1,25 +1,26 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { NewsCard } from "../../components/NewsCard";
-import { MasonryFeed } from "../../components/MasonryFeed";
+import { MasonryFeed, MasonryFeedSkeleton } from "../../components/MasonryFeed";
+import { getSkeletonFeedProps } from "../../components/skeletons/SkeletonLayouts";
 import { useTheme } from "../../theme/ThemeContext";
 import { useResponsive } from "../../hooks/useResponsive";
-import { 
-    Edit, 
-    Settings, 
-    Bookmark, 
-    User, 
-    Mail, 
-    Phone, 
+import {
+    Edit,
+    Settings,
+    Bookmark,
+    Mail,
+    Phone,
     Calendar,
     LogOut,
     CheckCircle,
-    TrendingUp,
     Users,
     BookOpen,
     Loader2,
     ShieldCheck,
-} from "lucide-react";
+    ChevronRight,
+} from 'lucide-react';
+import './ProfileScreen.css';
 import {
     addBookmark,
     clearAuthTokens,
@@ -37,6 +38,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
 import { getBookmarkIds, setBookmarkIds } from "../../utils/bookmarksStorage";
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from "../../utils/reactionsStorage";
+import { mapApiItem } from "../../utils/loadFeed";
 
 function profileCacheKey() {
     const u = getCurrentUser();
@@ -54,6 +56,15 @@ function stripLastLogin(obj) {
     if (!obj || typeof obj !== 'object') return obj;
     const { last_login: _ignored, ...rest } = obj;
     return rest;
+}
+
+function formatJoined(dateStr) {
+    if (!dateStr) return null;
+    try {
+        return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    } catch {
+        return null;
+    }
 }
 
 const UserProfileScreen = () => {
@@ -120,28 +131,34 @@ const UserProfileScreen = () => {
                     const aid = String(row.article_id ?? "").trim();
                     try {
                         const full = await getUserArticleDetail(aid);
-                        const likes = Number(full.like_count ?? full.upvotes ?? 0);
-                        const dislikes = Number(full.dislike_count ?? 0);
+                        const mapped = mapApiItem({ ...full, id: aid });
                         return {
-                            ...full,
+                            ...mapped,
                             id: aid,
-                            like_count: likes,
-                            dislike_count: dislikes,
-                            upvotes: likes,
-                            description: full.excerpt || full.summary || '',
-                            excerpt: full.excerpt || full.summary || '',
-                            content: full.content || full.full_content || '',
-                            fullContent: full.full_content || full.content || '',
+                            description: mapped.excerpt || mapped.summary || '',
+                            excerpt: mapped.excerpt || mapped.summary || '',
+                            summary: mapped.summary || mapped.excerpt || '',
+                            content: mapped.content || mapped.fullContent || '',
+                            fullContent: mapped.fullContent || mapped.content || '',
+                            category: full.topic_keywords?.[0] || mapped.category || 'Saved',
+                            time: full.published_at
+                                ? new Date(full.published_at).toLocaleString()
+                                : (row.created_at ? new Date(row.created_at).toLocaleString() : mapped.time || 'Recently'),
+                            verified: full.credibility?.label === 'real',
+                            trending: Boolean(full.topic_keywords?.length),
+                            image: full.image || full.image_url || mapped.image,
                         };
                     } catch {
                         return {
                             id: aid,
                             title: row.title || "Saved article",
                             source: "TRAK",
-                            excerpt: row.url || "",
-                            description: row.url || "",
+                            excerpt: "",
+                            description: "",
+                            summary: "",
+                            content: "",
                             canonical_url: row.url || "",
-                            fullContent: row.url || "",
+                            fullContent: "",
                             category: "Saved",
                             time: row.created_at ? new Date(row.created_at).toLocaleString() : "Recently",
                             like_count: 0,
@@ -229,10 +246,10 @@ const UserProfileScreen = () => {
         }
     };
 
-    const items = [
-        { label: 'Following', value: userStats.following, icon: Users },
-        { label: 'Followers', value: userStats.followers, icon: TrendingUp },
-        { label: 'Saved', value: userStats.saved, icon: BookOpen },
+    const statItems = [
+        { label: 'Following', value: userStats.following, icon: Users, onClick: null },
+        { label: 'Followers', value: userStats.followers, icon: Users, onClick: null },
+        { label: 'Saved', value: userStats.saved, icon: BookOpen, onClick: () => navigate('/bookmarks') },
     ];
 
     const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
@@ -240,9 +257,13 @@ const UserProfileScreen = () => {
     const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
     const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
     const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
-    const isAdmin = profile?.role === "admin";
+    const accent = isDark ? colors.primary || '#818CF8' : '#0f172a';
+    const accentSoft = isDark ? 'rgba(129, 140, 248, 0.14)' : '#eff6ff';
+    const joinedLabel = formatJoined(profile?.date_joined);
+    const isAdmin = profile?.role === 'admin';
     const emailVerified = isAdmin ? true : Boolean(profile?.email_verified);
     const phoneVerified = isAdmin ? true : Boolean(profile?.phone_verified);
+    const feedGap = isMobile ? 16 : isTablet ? 20 : 24;
 
     const sendVerificationCode = async () => {
         setSendingCode(true);
@@ -304,246 +325,166 @@ const UserProfileScreen = () => {
         return (
             <div style={{ minHeight: '100vh', backgroundColor: backgroundColor, paddingTop: 0 }}>
                 <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%', padding: `0 ${horizontalPad}px 24px` }}>
-                    <div style={{ height: 28, width: 120, background: sk, borderRadius: 6, marginBottom: 20, marginTop: 8 }} />
+                    <div className="trak-sk-pulse" style={{ height: 28, width: 120, backgroundColor: sk, borderRadius: 6, marginBottom: 20, marginTop: 8 }} />
                     <div style={{ height: 220, background: cardBackground, border: `1px solid ${borderColor}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
                         <div style={{ display: 'flex', gap: 24 }}>
-                            <div style={{ width: 100, height: 100, borderRadius: 12, background: sk }} />
+                            <div className="trak-sk-pulse" style={{ width: 100, height: 100, borderRadius: 12, backgroundColor: sk }} />
                             <div style={{ flex: 1 }}>
-                                <div style={{ height: 24, width: '45%', background: sk, borderRadius: 6, marginBottom: 12 }} />
-                                <div style={{ height: 16, width: '30%', background: sk, borderRadius: 6, marginBottom: 16 }} />
-                                <div style={{ height: 14, width: '100%', background: sk, borderRadius: 6, marginBottom: 8 }} />
-                                <div style={{ height: 14, width: '90%', background: sk, borderRadius: 6 }} />
+                                <div style={{ height: 24, width: '45%', backgroundColor: sk, borderRadius: 6, marginBottom: 12 }} />
+                                <div style={{ height: 16, width: '30%', backgroundColor: sk, borderRadius: 6, marginBottom: 16 }} />
+                                <div style={{ height: 14, width: '100%', backgroundColor: sk, borderRadius: 6, marginBottom: 8 }} />
+                                <div style={{ height: 14, width: '90%', backgroundColor: sk, borderRadius: 6 }} />
                             </div>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 24, paddingTop: 24, borderTop: `1px solid ${borderColor}` }}>
                             {[1, 2, 3].map((i) => (
-                                <div key={i} style={{ height: 72, background: sk, borderRadius: 8 }} />
+                                <div key={i} style={{ height: 72, backgroundColor: sk, borderRadius: 8 }} />
                             ))}
                         </div>
                     </div>
-                    <div style={{ height: 18, width: 160, background: sk, borderRadius: 6, marginBottom: 16 }} />
-                    <div style={{ height: 120, background: sk, borderRadius: 12 }} />
+                    <div className="trak-sk-pulse" style={{ height: 18, width: 160, backgroundColor: sk, borderRadius: 6, marginBottom: 16 }} />
+                    <MasonryFeedSkeleton count={4} gap={20} {...getSkeletonFeedProps(isDark, colors)} />
                 </div>
             </div>
         );
     }
 
-    return (
-        <div style={{
-            minHeight: '100vh',
-            backgroundColor: backgroundColor,
-            paddingTop: '0',
-            marginTop: '0',
-        }}>
-            <div style={{
-                maxWidth: '1000px',
-                margin: '0 auto',
-                width: '100%',
-                padding: `0 ${horizontalPad}px 24px`,
-            }}>
-                {/* Header Section */}
-                <div style={{
-                    marginTop: '0',
-                    marginBottom: '24px',
-                    paddingTop: '0',
-                }}>
-                    <h1 style={{
-                        fontSize: '28px',
-                        fontWeight: '700',
-                        color: textPrimary,
-                        margin: '0 0 8px 0',
-                        paddingTop: '0',
-                        letterSpacing: '-0.5px',
-                    }}>
-                        Profile
-                    </h1>
-                    <p style={{
-                        fontSize: '15px',
-                        color: textSecondary,
-                        margin: '0',
-                        lineHeight: '1.5',
-                    }}>
-                        Manage your profile and preferences
-                    </p>
-                </div>
+    const profileVars = {
+        '--profile-border': borderColor,
+        '--profile-surface': cardBackground,
+        '--profile-bg-secondary': isDark ? colors.surfaceElevated || '#334155' : '#f8fafc',
+        '--profile-accent': accent,
+        '--profile-accent-soft': accentSoft,
+    };
 
-                {/* Profile Header Card */}
-                <div style={{
-                    backgroundColor: cardBackground,
-                    borderRadius: '12px',
-                    border: `1px solid ${borderColor}`,
-                    padding: '32px',
-                    marginBottom: '32px',
-                    boxShadow: isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
-                }}>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: '24px',
-                        marginBottom: '24px',
-                    }}>
-                        {/* Avatar */}
+    const ActionRow = ({ icon: Icon, label, subtitle, onClick, danger }) => (
+        <button type="button" className="trak-profile-action-row" onClick={onClick}>
+            <span className={`trak-profile-action-icon${danger ? ' danger' : ''}`}>
+                <Icon size={18} color={danger ? '#ef4444' : accent} strokeWidth={2.25} />
+            </span>
+            <span className="trak-profile-action-text">
+                <span className="trak-profile-action-label" style={{ color: danger ? '#ef4444' : textPrimary }}>
+                    {label}
+                </span>
+                {subtitle ? (
+                    <span className="trak-profile-action-sub" style={{ color: textSecondary }}>
+                        {subtitle}
+                    </span>
+                ) : null}
+            </span>
+            <ChevronRight size={18} color={textSecondary} />
+        </button>
+    );
+
+    return (
+        <div className="trak-profile" style={{ ...profileVars, backgroundColor }}>
+            <div
+                className="trak-profile-inner"
+                style={{ padding: `0 ${horizontalPad}px 48px` }}
+            >
+                <h1 className="trak-profile-page-title" style={{ color: textPrimary }}>Profile</h1>
+                <p className="trak-profile-page-sub" style={{ color: textSecondary }}>
+                    Your account, saved reads, and preferences
+                </p>
+
+                <div className="trak-profile-hero" style={{ marginBottom: 20 }}>
+                    <div className="trak-profile-hero-band">
+                        <div className="trak-profile-hero-glow" />
+                    </div>
+                    <div className="trak-profile-avatar-wrap">
                         <div
+                            className="trak-profile-avatar"
                             onMouseDown={() => setShowAvatarMenu(true)}
-                            style={{
-                            width: '100px',
-                            height: '100px',
-                            borderRadius: '12px',
-                            backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            flexShrink: 0,
-                            boxShadow: isDark ? '0 4px 12px rgba(129, 140, 248, 0.3)' : '0 4px 12px rgba(0, 0, 0, 0.1)',
-                            position: 'relative',
-                            cursor: 'pointer',
-                        }}>
+                            role="button"
+                            tabIndex={0}
+                        >
                             {profile?.avatar_image ? (
-                                <img src={profile.avatar_image} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                <img src={profile.avatar_image} alt="Profile" />
                             ) : (
-                                <span style={{
-                                    fontSize: '36px',
-                                    fontWeight: '700',
-                                    color: '#ffffff',
-                                    letterSpacing: '0.5px',
-                                }}>
+                                <span className="trak-profile-avatar-initials">
                                     {(profile?.full_name || profile?.email || 'U').trim().charAt(0).toUpperCase()}
                                 </span>
                             )}
-                            {showAvatarMenu ? (
-                                <div style={{
+                        </div>
+                        {(profile?.email_verified || profile?.phone_verified) && (
+                            <div className="trak-profile-verified-dot">
+                                <CheckCircle size={16} color="#2563eb" fill="#2563eb" />
+                            </div>
+                        )}
+                        {showAvatarMenu ? (
+                            <div
+                                style={{
                                     position: 'absolute',
-                                    top: '104px',
-                                    left: 0,
+                                    top: '100%',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    marginTop: 8,
                                     background: cardBackground,
                                     border: `1px solid ${borderColor}`,
-                                    borderRadius: '8px',
+                                    borderRadius: '12px',
                                     boxShadow: '0 8px 20px rgba(0,0,0,0.15)',
-                                    zIndex: 12,
+                                    zIndex: 20,
                                     minWidth: '160px',
-                                }}>
-                                    <button type="button" onClick={() => { setShowAvatarMenu(false); fileInputRef.current?.click(); }} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', background: 'transparent', border: 'none', color: textPrimary, cursor: 'pointer' }}>Change image</button>
-                                    <button type="button" onClick={() => { setShowAvatarMenu(false); if (profile?.avatar_image) setShowAvatarPreview(true); }} style={{ width: '100%', textAlign: 'left', padding: '10px 12px', background: 'transparent', border: 'none', color: profile?.avatar_image ? textPrimary : textSecondary, cursor: profile?.avatar_image ? 'pointer' : 'not-allowed' }}>Display image</button>
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                <button type="button" onClick={() => { setShowAvatarMenu(false); fileInputRef.current?.click(); }} style={{ width: '100%', textAlign: 'left', padding: '10px 14px', background: 'transparent', border: 'none', color: textPrimary, cursor: 'pointer' }}>Change image</button>
+                                <button type="button" onClick={() => { setShowAvatarMenu(false); if (profile?.avatar_image) setShowAvatarPreview(true); }} style={{ width: '100%', textAlign: 'left', padding: '10px 14px', background: 'transparent', border: 'none', color: profile?.avatar_image ? textPrimary : textSecondary, cursor: profile?.avatar_image ? 'pointer' : 'not-allowed' }}>Display image</button>
+                            </div>
+                        ) : null}
+                        <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarFileChange} style={{ display: 'none' }} />
+                    </div>
+
+                    <div className="trak-profile-hero-content trak-profile-body">
+                        <h2 className="trak-profile-name" style={{ color: textPrimary }}>
+                            {profile?.full_name || profile?.email?.split('@')[0] || 'User'}
+                        </h2>
+                        <p className="trak-profile-username" style={{ color: textSecondary }}>
+                            @{profile?.username || (profile?.email || 'user').split('@')[0]}
+                        </p>
+                        <p className="trak-profile-bio" style={{ color: textSecondary }}>
+                            {profile?.bio || 'Add a short bio so others know what you follow.'}
+                        </p>
+
+                        <div className="trak-profile-chips">
+                            {profile?.email ? (
+                                <div className="trak-profile-chip" style={{ color: textSecondary }}>
+                                    <Mail size={14} color={textSecondary} />
+                                    <span>{profile.email}</span>
+                                    <span style={{ color: emailVerified ? '#16a34a' : textSecondary }}>{emailVerified ? '✓' : '·'}</span>
                                 </div>
                             ) : null}
-                            <input ref={fileInputRef} type="file" accept="image/*" onChange={handleAvatarFileChange} style={{ display: 'none' }} />
-                        </div>
-
-                        {/* User Info */}
-                        <div style={{ flex: 1 }}>
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                                marginBottom: '8px',
-                            }}>
-                                <h2 style={{
-                                    fontSize: '24px',
-                                    fontWeight: '700',
-                                    color: textPrimary,
-                                    margin: '0',
-                                    letterSpacing: '-0.5px',
-                                }}>
-                                    {profile?.full_name || profile?.email?.split('@')[0] || 'User'}
-                                </h2>
-                                {(profile?.email_verified || profile?.phone_verified) && (
-                                    <CheckCircle size={18} color="#2563eb" fill="#2563eb" />
-                                )}
-                            </div>
-                            <div style={{
-                                fontSize: '15px',
-                                color: textSecondary,
-                                marginBottom: '12px',
-                            }}>
-                                @{profile?.username || (profile?.email || "user").split("@")[0]}
-                            </div>
-                            <div style={{
-                                fontSize: '15px',
-                                color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
-                                lineHeight: '1.6',
-                                marginBottom: '16px',
-                            }}>
-                                {profile?.bio || "Set up your profile details and verify email/phone for a trusted badge."}
-                            </div>
-                            <div style={{
-                                display: 'flex',
-                                flexWrap: 'wrap',
-                                gap: '16px',
-                            }}>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    fontSize: '14px',
-                                    color: textSecondary,
-                                }}>
-                                    <Mail size={14} color={textSecondary} />
-                                    <span>{profile?.email || "No email"}</span>
-                                    <span style={{ marginLeft: 6, color: emailVerified ? "#2563eb" : "#ef4444", fontSize: 12 }}>
-                                        {emailVerified ? "Verified" : "Unverified"}
-                                    </span>
-                                </div>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    fontSize: '14px',
-                                    color: textSecondary,
-                                }}>
+                            {profile?.phone ? (
+                                <div className="trak-profile-chip" style={{ color: textSecondary }}>
                                     <Phone size={14} color={textSecondary} />
-                                    <span>{profile?.phone || "No phone added"}</span>
-                                    <span style={{ marginLeft: 6, color: phoneVerified ? "#2563eb" : "#ef4444", fontSize: 12 }}>
-                                        {phoneVerified ? "Verified" : "Unverified"}
-                                    </span>
+                                    <span>{profile.phone}</span>
+                                    <span style={{ color: phoneVerified ? '#16a34a' : textSecondary }}>{phoneVerified ? '✓' : '·'}</span>
                                 </div>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    fontSize: '14px',
-                                    color: textSecondary,
-                                }}>
+                            ) : null}
+                            {joinedLabel ? (
+                                <div className="trak-profile-chip" style={{ color: textSecondary }}>
                                     <Calendar size={14} color={textSecondary} />
-                                    <span>Joined Jan 2024</span>
+                                    <span>Joined {joinedLabel}</span>
                                 </div>
-                            </div>
+                            ) : null}
                         </div>
                     </div>
 
-                    {/* Stats */}
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: '16px',
-                        paddingTop: '24px',
-                        borderTop: `1px solid ${borderColor}`,
-                    }}>
-                        {items.map((item) => {
+                    <div className="trak-profile-stats" style={{ padding: '0 24px 20px' }}>
+                        {statItems.map((item) => {
                             const Icon = item.icon;
                             return (
                                 <div
                                     key={item.label}
-                                    onClick={() => {
-                                        if (item.label === 'Saved') navigate('/bookmarks');
-                                    }}
+                                    onClick={item.onClick || undefined}
+                                    className={item.onClick ? 'trak-profile-stat trak-profile-stat-clickable' : 'trak-profile-stat'}
                                     style={{
                                         padding: '16px',
-                                        backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f9fafb',
-                                        borderRadius: '8px',
+                                        backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f8fafc',
+                                        borderRadius: '14px',
                                         border: `1px solid ${borderColor}`,
                                         textAlign: 'center',
-                                        transition: 'all 0.2s ease',
-                                        cursor: item.label === 'Saved' ? 'pointer' : 'default',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (item.label !== 'Saved') return;
-                                        e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f3f4f6';
-                                        e.currentTarget.style.borderColor = isDark ? colors.borderLight || '#475569' : '#d1d5db';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (item.label !== 'Saved') return;
-                                        e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
-                                        e.currentTarget.style.borderColor = borderColor;
+                                        cursor: item.onClick ? 'pointer' : 'default',
                                     }}
                                 >
                                     <div style={{
@@ -573,115 +514,17 @@ const UserProfileScreen = () => {
                         })}
                     </div>
 
-                    {/* Action Buttons */}
-                    <div style={{
-                        display: 'flex',
-                        gap: '12px',
-                        marginTop: '24px',
-                        paddingTop: '24px',
-                        borderTop: `1px solid ${borderColor}`,
-                    }}>
-                        <button
-                            onClick={() => navigate('/edit-profile')}
-                            style={{
-                                padding: '12px 24px',
-                                backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',
-                                color: '#ffffff',
-                                border: 'none',
-                                borderRadius: '8px',
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px',
-                                transition: 'all 0.2s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.primaryDark || '#6366F1' : '#1e293b';
-                                e.currentTarget.style.transform = 'translateY(-1px)';
-                                e.currentTarget.style.boxShadow = isDark 
-                                    ? '0 4px 12px rgba(129, 140, 248, 0.3)' 
-                                    : '0 4px 12px rgba(0, 0, 0, 0.15)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
-                                e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = 'none';
-                            }}
-                        >
-                            <Edit size={16} />
-                            Edit Profile
-                        </button>
-                        <button
-                            onClick={() => navigate('/settings')}
-                            style={{
-                                padding: '12px 24px',
-                                backgroundColor: cardBackground,
-                                color: textPrimary,
-                                border: `1px solid ${borderColor}`,
-                                borderRadius: '8px',
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px',
-                                transition: 'all 0.2s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
-                                e.currentTarget.style.borderColor = isDark ? colors.borderLight || '#475569' : '#d1d5db';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = cardBackground;
-                                e.currentTarget.style.borderColor = borderColor;
-                            }}
-                        >
-                            <Settings size={16} />
-                            Settings
-                        </button>
-                        <button
-                            onClick={handleLogout}
-                            style={{
-                                padding: '12px 24px',
-                                backgroundColor: cardBackground,
-                                color: '#ef4444',
-                                border: '1px solid #fee2e2',
-                                borderRadius: '8px',
-                                fontSize: '14px',
-                                fontWeight: '600',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '8px',
-                                transition: 'all 0.2s ease',
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#fef2f2';
-                                e.currentTarget.style.borderColor = '#fecaca';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = cardBackground;
-                                e.currentTarget.style.borderColor = '#fee2e2';
-                            }}
-                        >
-                            <LogOut size={16} />
-                            Log Out
-                        </button>
-                    </div>
+                </div>
+
+                <h2 className="trak-profile-section-title" style={{ color: textPrimary }}>Account</h2>
+                <div className="trak-profile-actions">
+                    <ActionRow icon={Edit} label="Edit profile" subtitle="Name, bio, avatar, contact info" onClick={() => navigate('/edit-profile')} />
+                    <ActionRow icon={Settings} label="Settings" subtitle="Notifications, interests, privacy" onClick={() => navigate('/settings')} />
+                    <ActionRow icon={LogOut} label="Log out" subtitle="Sign out of this device" onClick={handleLogout} danger />
+                </div>
 
                     {!isAdmin && (!emailVerified || !phoneVerified) && (
-                        <div style={{
-                            marginTop: '20px',
-                            padding: '16px',
-                            borderRadius: '10px',
-                            border: `1px solid ${borderColor}`,
-                            backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f8fafc',
-                        }}>
+                        <div className="trak-profile-verify">
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                                 <ShieldCheck size={16} color={textPrimary} />
                                 <span style={{ fontSize: '14px', fontWeight: '700', color: textPrimary }}>
@@ -724,83 +567,40 @@ const UserProfileScreen = () => {
                             ) : null}
                         </div>
                     )}
+
+                <section className="trak-profile-saved">
+                <div className="trak-profile-saved-header">
+                    <div className="trak-profile-saved-title-row">
+                        <div className="trak-profile-saved-icon">
+                            <Bookmark size={18} color={accent} strokeWidth={2.25} />
+                        </div>
+                        <div>
+                            <h2 className="trak-profile-section-title" style={{ color: textPrimary, margin: 0 }}>
+                                Saved articles
+                            </h2>
+                            <p style={{ margin: '2px 0 0', fontSize: 12, color: textSecondary, fontWeight: 500 }}>
+                                {bookmarks.length} {bookmarks.length === 1 ? 'bookmark' : 'bookmarks'}
+                            </p>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Bookmarks Section */}
-                <div>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        marginBottom: '24px',
-                    }}>
-                        <Bookmark size={24} color={textPrimary} />
-                        <h2 style={{
-                            fontSize: '22px',
-                            fontWeight: '700',
-                            color: textPrimary,
-                            margin: '0',
-                        }}>
-                            Saved Articles
-                        </h2>
-                        {bookmarks.length > 0 && (
-                            <span style={{
-                                fontSize: '14px',
-                                color: textSecondary,
-                                fontWeight: '500',
-                            }}>
-                                ({bookmarks.length})
-                            </span>
-                        )}
-                    </div>
-
                     {loading ? (
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'center',
-                            alignItems: 'center',
-                            minHeight: '300px',
-                        }}>
-                            <div style={{
-                                width: '32px',
-                                height: '32px',
-                                border: `3px solid ${borderColor}`,
-                                borderTop: `3px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`,
-                                borderRadius: '50%',
-                                animation: 'spin 0.8s linear infinite',
-                            }} />
-                        </div>
+                        <MasonryFeedSkeleton count={isMobile ? 4 : 6} gap={feedGap} {...getSkeletonFeedProps(isDark, colors)} />
                     ) : bookmarks.length === 0 ? (
-                        <div style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '80px 20px',
-                            backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f9fafb',
-                            borderRadius: '12px',
-                            border: `1px solid ${borderColor}`,
-                        }}>
-                            <Bookmark size={48} color={textSecondary} style={{ marginBottom: '16px' }} />
-                            <h3 style={{
-                                fontSize: '18px',
-                                fontWeight: '600',
-                                color: textPrimary,
-                                margin: '0 0 8px 0',
-                            }}>
-                                No saved articles
+                        <div className="trak-profile-empty">
+                            <div className="trak-profile-empty-icon">
+                                <Bookmark size={28} color={accent} strokeWidth={2} />
+                            </div>
+                            <h3 style={{ fontSize: 17, fontWeight: 700, color: textPrimary, margin: '0 0 6px' }}>
+                                Nothing saved yet
                             </h3>
-                            <p style={{
-                                fontSize: '14px',
-                                color: textSecondary,
-                                margin: '0',
-                                textAlign: 'center',
-                            }}>
-                                Articles you bookmark will appear here
+                            <p style={{ fontSize: 14, color: textSecondary, margin: 0, textAlign: 'center', lineHeight: 1.5 }}>
+                                Bookmark articles from your feed and they will show up here.
                             </p>
                         </div>
                     ) : (
-                        <MasonryFeed gap={20}>
+                        <MasonryFeed gap={feedGap}>
                             {bookmarks.map((item) => (
                                 <NewsCard
                                     key={item.id}
@@ -815,7 +615,7 @@ const UserProfileScreen = () => {
                             ))}
                         </MasonryFeed>
                     )}
-                </div>
+                </section>
             </div>
             {showAvatarPreview ? (
                 <div onClick={() => setShowAvatarPreview(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 2000 }}>

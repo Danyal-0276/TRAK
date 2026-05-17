@@ -105,7 +105,12 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                     </div>
                 )}
 
-                <div style={{ padding: isMasonry ? '16px' : '20px', flex: isMasonry ? '0 0 auto' : 1, display: 'flex', flexDirection: 'column' }}>
+                <div style={{
+                    padding: isMasonry ? '16px' : '20px',
+                    flex: isMasonry ? '0 0 auto' : 1,
+                    display: 'flex',
+                    flexDirection: 'column',
+                }}>
                     {/* Header */}
                     <div style={{
                         display: 'flex',
@@ -118,6 +123,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             alignItems: 'center',
                             gap: '8px',
                             flex: 1,
+                            minWidth: 0,
                         }}>
                             <div style={{
                                 width: '32px',
@@ -137,16 +143,20 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                     {item.source?.substring(0, 2).toUpperCase() || 'N'}
                                 </span>
                             </div>
-                            <div>
+                            <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{
                                     display: 'flex',
                                     alignItems: 'center',
                                     gap: '4px',
+                                    minWidth: 0,
                                 }}>
                                     <span style={{
                                         fontSize: '13px',
                                         fontWeight: '600',
                                         color: textPrimary,
+                                        overflow: 'hidden',
+                                        textOverflow: 'ellipsis',
+                                        whiteSpace: 'nowrap',
                                     }}>
                                         {item.source || 'Source'}
                                     </span>
@@ -214,6 +224,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                         </div>
                     )}
 
+                    {/* Title */}
                     {/* Title */}
                     <h3 style={{
                         fontSize: '18px',

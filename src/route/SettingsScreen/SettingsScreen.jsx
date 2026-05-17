@@ -232,7 +232,7 @@ export default function SettingsScreen({ navigation }) {
           <SettingsRow
             icon={<Tag size={22} color={colors.primary} />}
             label="Following news channels"
-            onPress={() => navigation.navigate("TagSelection", { fromSettings: true, selectedTags: [] })}
+            onPress={() => navigation.navigate("TagSelection", { fromSettings: true })}
           />
         </SettingsSection>
 

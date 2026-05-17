@@ -9,7 +9,6 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
 import { NewsCard } from '../../components/NewsCard';
 import { useTheme } from '../../theme/ThemeContext';
 import { addBookmark, getUserArticleDetail, listBookmarks, removeBookmark, setReaction } from '../../utils/Service/api';
@@ -104,9 +103,6 @@ const BookmarksScreen = ({ navigation }) => {
         <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
             <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             <View style={[styles.header, { borderBottomColor: colors.borderLight, backgroundColor: colors.surface }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
-                    <ArrowLeft size={22} color={colors.textPrimary} />
-                </TouchableOpacity>
                 <View style={styles.headerText}>
                     <Text variant="title" style={{ color: colors.textPrimary }}>
                         Bookmarks
@@ -169,7 +165,6 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         gap: 8,
     },
-    backBtn: { padding: 8 },
     headerText: { flex: 1 },
     list: { paddingBottom: 120 },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },

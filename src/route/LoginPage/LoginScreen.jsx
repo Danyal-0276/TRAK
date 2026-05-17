@@ -221,7 +221,7 @@ const LoginScreen = ({ navigation }) => {
                             transform: [{ translateY: slideAnim }],
                         }}
                     >
-                        <Header onBackPress={() => navigation.navigate('OpeningScreen')} />
+                        <Header />
                     </Animated.View>
                     
                     <Animated.View 

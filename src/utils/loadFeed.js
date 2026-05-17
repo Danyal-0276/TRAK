@@ -1,7 +1,8 @@
 import { mockApi } from './Service/mockApi';
 import { fetchExplore, fetchExplorePage, fetchFeed } from '../api/newsApi';
 import { getAccessToken } from '../api/client';
-import { getUserKeywords } from './userKeywordsStorage';
+import { loadUserKeywords } from './userKeywordsStorage';
+import { filterFeedByUserKeywords } from './feedKeywordMatch';
 
 /** Production builds: no mock feed fallback (aligns with TRAKL production readiness). */
 const allowMockFallback = typeof __DEV__ !== 'undefined' ? __DEV__ : true;
@@ -68,12 +69,16 @@ export async function loadFeedItems(options = {}) {
     const token = await getAccessToken();
     if (token) {
         try {
-            const userKeywords = await getUserKeywords();
+            const userKeywords = await loadUserKeywords();
             const json =
                 mode === 'explore'
                     ? await fetchExplore(1000, q)
                     : await fetchFeed(80, q);
-            return (json.results || []).map((a) => mapApiItem(a, userKeywords));
+            const items = (json.results || []).map((a) => mapApiItem(a, userKeywords));
+            if (mode === 'user') {
+                return filterFeedByUserKeywords(items, userKeywords);
+            }
+            return items;
         } catch (e) {
             if (!allowMockFallback) {
                 console.error(e);
@@ -101,7 +106,7 @@ export async function loadExplorePage(options = {}) {
     if (!token) {
         return { items: [], nextCursor: null, hasMore: false };
     }
-    const userKeywords = await getUserKeywords();
+    const userKeywords = await loadUserKeywords();
     const json = await fetchExplorePage(limit, q, cursor);
     return {
         items: (json.results || []).map((a) => mapApiItem(a, userKeywords)),

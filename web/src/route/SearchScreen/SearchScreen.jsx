@@ -6,6 +6,7 @@ import Tabs from "./components/tabs";
 import TrendingTopics from "./components/TrendingTopics";
 import { NewsCard } from "../../components/NewsCard";
 import { MasonryFeed, MasonryFeedSkeleton } from "../../components/MasonryFeed";
+import { getSkeletonFeedProps } from "../../components/skeletons/SkeletonLayouts";
 import { ArticleBodyParagraphs } from "../../components/ArticleBodyParagraphs";
 import { loadFeedItems } from "../../utils/loadFeed";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
@@ -921,13 +922,7 @@ const SearchScreen = () => {
 
                 {/* Content Area */}
                 {loading ? (
-                    <MasonryFeedSkeleton
-                        count={6}
-                        gap={24}
-                        cardBackground={cardBackground}
-                        borderColor={borderColor}
-                        isDark={isDark}
-                    />
+                    <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(isDark, colors)} />
                 ) : filteredNews.length === 0 ? (
                     <div style={{
                         display: 'flex',
@@ -1089,14 +1084,6 @@ const SearchScreen = () => {
                 )}
             </div>
             <style>{`
-                @keyframes trakSearchShimmer {
-                    0% { opacity: 0.45; }
-                    50% { opacity: 1; }
-                    100% { opacity: 0.45; }
-                }
-                .trak-search-skel-shimmer {
-                    animation: trakSearchShimmer 1.2s ease-in-out infinite;
-                }
                 h1 {
                     margin-top: 0 !important;
                     padding-top: 0 !important;

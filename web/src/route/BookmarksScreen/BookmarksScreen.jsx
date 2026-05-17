@@ -8,6 +8,7 @@ import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { useTheme } from '../../theme/ThemeContext';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
+import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
 
 const BookmarksScreen = () => {
     const navigate = useNavigate();
@@ -198,13 +199,7 @@ const BookmarksScreen = () => {
                 </div>
 
                 {loading ? (
-                    <MasonryFeedSkeleton
-                        count={6}
-                        gap={24}
-                        cardBackground={isDark ? colors.surface || '#1E293B' : '#ffffff'}
-                        borderColor={isDark ? colors.border || '#334155' : '#e5e7eb'}
-                        isDark={isDark}
-                    />
+                    <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(isDark, colors)} />
                 ) : bookmarkedNews.length === 0 ? (
                     <div style={{
                         textAlign: 'center',

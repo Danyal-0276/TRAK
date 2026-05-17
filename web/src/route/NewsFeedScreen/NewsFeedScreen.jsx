@@ -2,13 +2,16 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
+import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
 import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
 import { addBookmark, getUserFeed, getUserKeywordsFromServer, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { loadUserKeywords } from '../../utils/userKeywordsStorage';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
+import { filterFeedByUserKeywords } from '../../utils/feedKeywordMatch';
 import { 
     ArrowLeft, 
     ChevronUp, 
@@ -43,18 +46,20 @@ const NewsFeedScreen = () => {
     const { success } = useUIFeedback();
 
     const refreshKeywords = useCallback(async () => {
-        try {
-            const res = await getUserKeywordsFromServer();
-            const kws = res?.keywords;
-            setFeedKeywords(Array.isArray(kws) ? kws : []);
-        } catch {
-            setFeedKeywords([]);
-        }
+        const kws = await loadUserKeywords(getUserKeywordsFromServer);
+        setFeedKeywords(Array.isArray(kws) ? kws : []);
+        return kws;
     }, []);
 
     const loadNews = async () => {
         try {
             setLoading(true);
+            const keywords = await refreshKeywords();
+            if (!keywords?.length) {
+                setNewsData([]);
+                return;
+            }
+
             const cachedBookmarks = new Set(getBookmarkIds());
             if (cachedBookmarks.size) setBookmarkedItems(cachedBookmarks);
             const cachedReactions = getReactionMap();
@@ -97,7 +102,6 @@ const NewsFeedScreen = () => {
             setNewsData([]);
         } finally {
             setLoading(false);
-            refreshKeywords();
         }
     };
 
@@ -106,8 +110,10 @@ const NewsFeedScreen = () => {
     }, []);
 
     useEffect(() => {
-        refreshKeywords();
-    }, [refreshKeywords]);
+        if (!feedKeywords.length) {
+            setNewsData([]);
+        }
+    }, [feedKeywords]);
 
     useEffect(() => {
         if (rawTab) {
@@ -252,8 +258,11 @@ const NewsFeedScreen = () => {
                 return bk - ak;
             });
         }
+        if (activeTab === 'For you') {
+            return filterFeedByUserKeywords(newsData, feedKeywords);
+        }
         return newsData;
-    }, [newsData, activeTab, hasFeedPersonalization, bookmarkedItems]);
+    }, [newsData, activeTab, hasFeedPersonalization, bookmarkedItems, feedKeywords]);
 
     return (
         <div style={{
@@ -673,9 +682,7 @@ const NewsFeedScreen = () => {
                     <MasonryFeedSkeleton
                         count={isMobile ? 4 : 6}
                         gap={isMobile ? 16 : isTablet ? 20 : 24}
-                        cardBackground={cardBackground}
-                        borderColor={borderColor}
-                        isDark={isDark}
+                        {...getSkeletonFeedProps(isDark, colors)}
                     />
                 ) : visibleNews.length === 0 ? (
                     <div style={{
@@ -709,6 +716,10 @@ const NewsFeedScreen = () => {
                                     Pick categories
                                 </button>
                             </>
+                        ) : activeTab === 'For you' && hasFeedPersonalization ? (
+                            <p style={{ fontSize: '16px', color: textSecondary, lineHeight: 1.5 }}>
+                                No articles match your interests yet. Try adding more categories or keywords, then refresh.
+                            </p>
                         ) : (
                             <p style={{ fontSize: '16px', color: textSecondary }}>
                                 {activeTab === 'Bookmarks' ? 'No bookmarked articles yet.' : 'No articles to show.'}
@@ -735,14 +746,6 @@ const NewsFeedScreen = () => {
 
 
             <style>{`
-                @keyframes trakShimmer {
-                    0% { opacity: 0.45; }
-                    50% { opacity: 1; }
-                    100% { opacity: 0.45; }
-                }
-                .trak-feed-skel-shimmer {
-                    animation: trakShimmer 1.2s ease-in-out infinite;
-                }
                 h1 {
                     margin-top: 0 !important;
                     padding-top: 0 !important;

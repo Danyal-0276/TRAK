@@ -4,6 +4,7 @@ import { NewsCard } from '../../components/NewsCard';
 import { mockApi } from '../../utils/Service/mockApi';
 import { useTheme } from '../../theme/ThemeContext';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
+import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
 
 const RecentScreen = () => {
     const navigate = useNavigate();
@@ -125,7 +126,7 @@ const RecentScreen = () => {
 
                 {/* News Cards Grid */}
                 {loading ? (
-                    <MasonryFeedSkeleton count={6} gap={24} cardBackground="#ffffff" borderColor="#e5e7eb" isDark={theme.mode === 'dark'} />
+                    <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(theme.mode === 'dark', theme.colors)} />
                 ) : (
                     <MasonryFeed gap={24}>
                         {newsData.map((item) => (

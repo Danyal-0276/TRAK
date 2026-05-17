@@ -46,9 +46,6 @@ const DataScreen = ({ navigation }) => {
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.btn} onPress={() => navigation.goBack()}>
-          <Text style={styles.btnText}>Back</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );

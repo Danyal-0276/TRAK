@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "966052710818",
+    "project_id": "trak-46a8f",
+    "storage_bucket": "trak-46a8f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:966052710818:android:c8169bab5dffee58d08afb",
+        "android_client_info": {
+          "package_name": "com.trak"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDI3BYh8cacX3K9RmyyLq6BtqUgtoWa94M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

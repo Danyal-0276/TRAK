@@ -6,6 +6,7 @@ import AuthStack from './AuthStack.jsx';
 import MainAppStack from './MainAppStack.jsx';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeContext';
+import { defaultStackScreenOptions } from './stackScreenOptions';
 import {
     EditProfileScreen,
     PrivacyScreen,
@@ -24,7 +25,7 @@ const Stack = createNativeStackNavigator();
 const RootStack = ({ initialRouteName }) => (
     <Stack.Navigator
         initialRouteName={initialRouteName}
-        screenOptions={{ headerShown: false }}
+        screenOptions={defaultStackScreenOptions}
     >
         {/* Auth Stack - contains OpeningScreen as initial */}
         <Stack.Screen name="OpeningScreen" component={AuthStack} />

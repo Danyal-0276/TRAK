@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
-import { ChevronLeft, Mail, Shield } from 'lucide-react-native';
+import { Mail, Shield } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { requestPasswordReset } from '../../api/authPasswordApi';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
@@ -201,26 +201,6 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
                             },
                         ]}
                     >
-                        <Animated.View
-                            style={[
-                                styles.header,
-                                {
-                                    opacity: fadeAnim,
-                                    transform: [{ translateY: slideAnim }],
-                                },
-                            ]}
-                        >
-                            <TouchableOpacity 
-                                style={[styles.backButton, {
-                                    backgroundColor: colors.backgroundSecondary,
-                                    borderColor: colors.border,
-                                }]}
-                                onPress={() => navigation.goBack()}
-                            >
-                                <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.5} />
-                            </TouchableOpacity>
-                        </Animated.View>
-
                         <Animated.View 
                             style={[
                                 styles.headerContent,
