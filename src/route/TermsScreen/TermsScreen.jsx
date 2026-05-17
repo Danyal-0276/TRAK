@@ -1,7 +1,6 @@
 import React from 'react';
-import { ScrollView, View, StyleSheet, StatusBar, TouchableOpacity } from 'react-native';
+import { ScrollView, View, StyleSheet, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import Text from '../../components/ui/Text';
 
@@ -16,7 +15,7 @@ const Section = ({ title, children, colors }) => (
     </View>
 );
 
-const TermsScreen = ({ navigation }) => {
+const TermsScreen = () => {
     const { theme } = useTheme();
     const { colors } = theme;
 
@@ -24,10 +23,7 @@ const TermsScreen = ({ navigation }) => {
         <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
             <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             <View style={[styles.header, { borderBottomColor: colors.borderLight }]}>
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={12}>
-                    <ArrowLeft size={22} color={colors.textPrimary} />
-                </TouchableOpacity>
-                <Text variant="title" style={{ color: colors.textPrimary, flex: 1 }}>
+                <Text variant="title" style={{ color: colors.textPrimary }}>
                     Terms of Service
                 </Text>
             </View>
@@ -79,7 +75,6 @@ const styles = StyleSheet.create({
         paddingVertical: 8,
         borderBottomWidth: 1,
     },
-    backBtn: { padding: 8 },
     scroll: { paddingTop: 16, paddingBottom: 32 },
     updated: { marginBottom: 24 },
     section: { marginBottom: 28 },

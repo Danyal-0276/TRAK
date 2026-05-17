@@ -1,5 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { defaultStackScreenOptions } from './stackScreenOptions';
 import {
     OpeningScreen,
     LoginScreen,
@@ -31,7 +32,7 @@ const authScreens = [
 const AuthStack = () => (
     <Stack.Navigator
         initialRouteName="OpeningScreen"
-        screenOptions={{ headerShown: false }}
+        screenOptions={defaultStackScreenOptions}
     >
         {authScreens.map((screen) => (
             <Stack.Screen key={screen.name} {...screen} />

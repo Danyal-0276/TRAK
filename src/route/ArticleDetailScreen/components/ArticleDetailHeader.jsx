@@ -1,32 +1,24 @@
-// ============================================
-// FILE: components/ArticleDetailHeader.jsx
-// ============================================
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { ChevronLeft, MoreHorizontal } from 'lucide-react-native';
+import { MoreHorizontal } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 
-export const ArticleDetailHeader = ({ onBackPress, onMorePress }) => {
+export const ArticleDetailHeader = ({ onMorePress }) => {
     const { theme } = useTheme();
     const { colors } = theme;
-    
+
     return (
-        <View style={[
-            styles.header, 
-            { 
-                backgroundColor: colors.surface, 
-                borderBottomColor: colors.borderLight,
-                shadowColor: colors.shadowDark || '#000',
-            }
-        ]}>
-            <TouchableOpacity 
-                style={[styles.backButton, { backgroundColor: colors.backgroundSecondary }]}
-                onPress={onBackPress}
-                activeOpacity={0.7}
-            >
-                <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.5} />
-            </TouchableOpacity>
-            <TouchableOpacity 
+        <View
+            style={[
+                styles.header,
+                {
+                    backgroundColor: colors.surface,
+                    borderBottomColor: colors.borderLight,
+                    shadowColor: colors.shadowDark || '#000',
+                },
+            ]}
+        >
+            <TouchableOpacity
                 style={[styles.moreButton, { backgroundColor: colors.backgroundSecondary }]}
                 onPress={onMorePress}
                 activeOpacity={0.7}
@@ -41,7 +33,7 @@ export const ArticleDetailHeader = ({ onBackPress, onMorePress }) => {
 const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
+        justifyContent: 'flex-end',
         alignItems: 'center',
         paddingHorizontal: 20,
         paddingVertical: 14,
@@ -56,13 +48,6 @@ const styles = StyleSheet.create({
                 elevation: 4,
             },
         }),
-    },
-    backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
     },
     moreButton: {
         width: 40,

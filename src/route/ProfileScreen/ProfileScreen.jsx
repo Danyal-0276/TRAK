@@ -2,13 +2,12 @@ import React, { useState, useRef, useEffect } from "react";
 import { useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { ScrollView, StatusBar, StyleSheet, Animated, View, Dimensions, TextInput, TouchableOpacity, Modal, Pressable, Image } from "react-native";
+import { ScrollView, StatusBar, StyleSheet, Animated, View, TouchableOpacity, Modal, Pressable, Image } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
-import LinearGradient from "react-native-linear-gradient";
 import ProfileHeader from "./components/ProfileHeader";
 import ProfileActions from "./components/ProfileActions";
 import BookmarkList from "./components/BookmarkList";
-import LogoutButton from "./components/LogoutButton";
+import VerificationCard from "./components/VerificationCard";
 import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
@@ -20,7 +19,6 @@ import { useFeedback } from "../../components/ui/FeedbackProvider";
 import Text from "../../components/ui/Text";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PROFILE_CACHE_KEY = "trak_profile_cache_v1";
 const PROFILE_BOOKMARKS_CACHE_KEY = "trak_profile_bookmarks_cache_v1";
 
@@ -53,10 +51,6 @@ const UserProfileScreen = ({ navigation }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
   const lastScrollY = useRef(0);
-  const circle1Anim = useRef(new Animated.Value(0)).current;
-  const circle2Anim = useRef(new Animated.Value(0)).current;
-  const circle3Anim = useRef(new Animated.Value(0)).current;
-
   const hydrateFromCache = useCallback(async () => {
     try {
       const rawProfile = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
@@ -109,7 +103,8 @@ const UserProfileScreen = ({ navigation }) => {
           title: r.title || "Saved article",
           source: resolveArticleSource(r),
           excerpt: r.excerpt || "",
-          content: r.content || r.excerpt || "",
+          content: "",
+          fullContent: "",
           canonical_url: r.url || r.canonical_url || "",
           url: r.url || r.canonical_url || "",
           date: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
@@ -146,24 +141,6 @@ const UserProfileScreen = ({ navigation }) => {
         toValue: 0,
         friction: 8,
         tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.timing(circle1Anim, {
-        toValue: 1,
-        duration: 1000,
-        delay: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(circle2Anim, {
-        toValue: 1,
-        duration: 1000,
-        delay: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(circle3Anim, {
-        toValue: 1,
-        duration: 1000,
-        delay: 600,
         useNativeDriver: true,
       }),
     ]).start();
@@ -307,169 +284,82 @@ const UserProfileScreen = ({ navigation }) => {
     );
   }
 
+  const handleLogout = async () => {
+    const accepted = await confirm({
+      title: 'Log out',
+      message: 'Are you sure you want to sign out?',
+      confirmText: 'Log out',
+      danger: true,
+    });
+    if (!accepted) return;
+    await logout();
+    navigation.reset({ index: 0, routes: [{ name: 'OpeningScreen' }] });
+  };
+
+  const emailVerified = isAdmin ? true : Boolean(profile?.email_verified);
+  const phoneVerified = isAdmin ? true : Boolean(profile?.phone_verified);
+
   return (
     <>
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
-      
-      {/* Gradient background */}
-      <LinearGradient
-        colors={theme.mode === 'dark' 
-          ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
-          : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
-        }
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientBackground}
-      />
-      
-      {/* Animated decorative circles */}
-      <Animated.View 
-        style={[
-          styles.accentCircle1, 
-          { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.12' : '0.05'})`,
-            opacity: circle1Anim,
-            transform: [
-              {
-                scale: circle1Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-            ],
-          }
-        ]}
-        pointerEvents="none"
-      />
-      <Animated.View 
-        style={[
-          styles.accentCircle2, 
-          { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.10' : '0.04'})`,
-            opacity: circle2Anim,
-            transform: [
-              {
-                scale: circle2Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-            ],
-          }
-        ]}
-        pointerEvents="none"
-      />
-      <Animated.View 
-        style={[
-          styles.accentCircle3, 
-          { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.08' : '0.03'})`,
-            opacity: circle3Anim,
-            transform: [
-              {
-                scale: circle3Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-            ],
-          }
-        ]}
-        pointerEvents="none"
-      />
-      
-      <Animated.ScrollView 
+
+      <Animated.ScrollView
         contentContainerStyle={styles.scrollContent}
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
+        <Text style={[styles.pageTitle, { color: colors.textPrimary }]}>Profile</Text>
+        <Text style={[styles.pageSub, { color: colors.textSecondary }]}>
+          Your account, saved reads, and preferences
+        </Text>
+
         <ProfileHeader
-          name={profile?.full_name || profile?.email?.split("@")[0] || "User"}
-          username={`@${profile?.username || (profile?.email || "user").split("@")[0]}`}
-          bio={profile?.bio || "Complete your profile and verify your contact details."}
-          avatarUri={profile?.avatar_image || ""}
+          name={profile?.full_name || profile?.email?.split('@')[0] || 'User'}
+          username={`@${profile?.username || (profile?.email || 'user').split('@')[0]}`}
+          bio={profile?.bio || 'Add a short bio so others know what you follow.'}
+          avatarUri={profile?.avatar_image || ''}
           verified={isAdmin ? true : Boolean(profile?.email_verified || profile?.phone_verified)}
+          email={profile?.email}
+          phone={profile?.phone}
+          emailVerified={emailVerified}
+          phoneVerified={phoneVerified}
+          dateJoined={profile?.date_joined}
+          stats={stats}
           onLongPressAvatar={() => setAvatarActionOpen(true)}
           onPressAvatar={() => {
             if (profile?.avatar_image) setAvatarPreviewOpen(true);
           }}
         />
-        {!isAdmin && (
-          <View style={{
-            marginBottom: 16,
-            padding: 12,
-            borderRadius: 12,
-            borderWidth: 1,
-            borderColor: colors.border,
-            backgroundColor: colors.surface,
-          }}>
-            <Text style={{ color: colors.textPrimary, fontSize: 14, fontWeight: "700", marginBottom: 8 }}>
-              Verify your account
-            </Text>
-            <View style={{ flexDirection: "row", gap: 8, marginBottom: 10 }}>
-              <TouchableOpacity onPress={() => setVerificationChannel("email")} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: verificationChannel === "email" ? colors.primary : colors.border }}>
-                <Text style={{ color: colors.textPrimary, fontSize: 12 }}>Email</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setVerificationChannel("phone")} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: verificationChannel === "phone" ? colors.primary : colors.border }}>
-                <Text style={{ color: colors.textPrimary, fontSize: 12 }}>Phone</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={sendVerificationCode} disabled={sendingCode} style={{ paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, backgroundColor: colors.primary }}>
-                <Text style={{ color: colors.textInverse, fontSize: 12 }}>{sendingCode ? "Sending..." : "Send code"}</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              <TextInput
-                value={verificationCode}
-                onChangeText={setVerificationCode}
-                placeholder="Enter code"
-                placeholderTextColor={colors.textTertiary}
-                style={{
-                  flex: 1,
-                  borderWidth: 1,
-                  borderColor: colors.border,
-                  borderRadius: 8,
-                  paddingVertical: 8,
-                  paddingHorizontal: 10,
-                  color: colors.textPrimary,
-                }}
-              />
-              <TouchableOpacity onPress={confirmVerificationCode} disabled={verifyingCode} style={{ paddingVertical: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: colors.border, borderRadius: 8 }}>
-                <Text style={{ color: colors.textPrimary, fontSize: 12 }}>{verifyingCode ? "..." : "Verify"}</Text>
-              </TouchableOpacity>
-            </View>
-            {verifyMessage ? <Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 8 }}>{verifyMessage}</Text> : null}
-            {devCodeHint ? <Text style={{ color: colors.primary, fontSize: 12, marginTop: 4 }}>Test code: {devCodeHint}</Text> : null}
-          </View>
-        )}
-        <View style={styles.sectionGap}>
-          <StatsRow stats={stats} />
-        </View>
-        <ProfileActions navigation={navigation} />
+
+        {!isAdmin && (!emailVerified || !phoneVerified) ? (
+          <VerificationCard
+            channel={verificationChannel}
+            onChannelChange={setVerificationChannel}
+            code={verificationCode}
+            onCodeChange={setVerificationCode}
+            onSend={sendVerificationCode}
+            onConfirm={confirmVerificationCode}
+            sending={sendingCode}
+            verifying={verifyingCode}
+            message={verifyMessage}
+            devHint={devCodeHint}
+          />
+        ) : null}
+
+        <ProfileActions navigation={navigation} onLogout={handleLogout} />
         <BookmarkList
           bookmarks={bookmarks}
           onPressArticle={(article) => {
-            navigation.navigate("ArticleDetail", buildArticleDetailParams(article));
+            navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
           }}
+          onViewAll={() => navigation.navigate('Bookmarks')}
           votedItems={votedItems}
           bookmarkedItems={bookmarkedItems}
           onVote={handleVote}
           onBookmark={handleBookmark}
-        />
-        <LogoutButton
-          onLogout={async () => {
-            const accepted = await confirm({
-              title: "Logout",
-              message: "Are you sure you want to log out?",
-              confirmText: "Logout",
-              danger: true,
-            });
-            if (!accepted) return;
-            await logout();
-            navigation.reset({ index: 0, routes: [{ name: "OpeningScreen" }] });
-          }}
         />
       </Animated.ScrollView>
 
@@ -512,73 +402,20 @@ const UserProfileScreen = ({ navigation }) => {
   );
 };
 
-const StatsRow = ({ stats }) => {
-  const { theme } = useTheme();
-  const { colors, spacing, radius } = theme;
-  const items = [
-    { label: 'Following', value: String(stats?.following ?? 0) },
-    { label: 'Followers', value: String(stats?.followers ?? 0) },
-    { label: 'Saved', value: String(stats?.saved ?? 0) },
-  ];
-
-  return (
-    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
-      {items.map((item) => (
-        <View
-          key={item.label}
-          style={{
-            flex: 1,
-            backgroundColor: colors.surface,
-            borderRadius: radius.md,
-            paddingVertical: spacing.md,
-            alignItems: 'center',
-            borderWidth: 1,
-            borderColor: colors.border,
-          }}
-        >
-          <Animated.Text style={{ color: colors.textPrimary, fontSize: 20, fontWeight: '800' }}>{item.value}</Animated.Text>
-          <Animated.Text style={{ color: colors.textSecondary, fontSize: 12, marginTop: 4 }}>{item.label}</Animated.Text>
-        </View>
-      ))}
-    </View>
-  );
-};
-
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  gradientBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+  scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 },
+  pageTitle: {
+    fontSize: 28,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    marginBottom: 4,
   },
-  accentCircle1: {
-    position: 'absolute',
-    width: 350,
-    height: 350,
-    borderRadius: 175,
-    top: -100,
-    right: -100,
+  pageSub: {
+    fontSize: 15,
+    lineHeight: 22,
+    marginBottom: 20,
   },
-  accentCircle2: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    bottom: 200,
-    left: -80,
-  },
-  accentCircle3: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    top: SCREEN_HEIGHT * 0.4,
-    right: -50,
-  },
-  scrollContent: { padding: 20, paddingBottom: 120 },
-  sectionGap: { marginTop: 8, marginBottom: 20 },
   modalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",

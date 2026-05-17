@@ -140,10 +140,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         ]).start();
     }, []);
 
-    const handleBackPress = () => {
-        navigation.goBack();
-    };
-
     const handleLike = async () => {
         if (reactionPending) return;
         const previous = reaction;
@@ -277,7 +273,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                         transform: [{ translateY: slideAnim }],
                     }}
                 >
-                    <ArticleDetailHeader onBackPress={handleBackPress} onMorePress={handleMoreMenu} />
+                    <ArticleDetailHeader onMorePress={handleMoreMenu} />
                 </Animated.View>
 
                 {/* Article Content */}
@@ -343,7 +339,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                             <ArticleContent 
                                 category={article.category}
                                 title={article.title}
-                                content={article.fullContent || article.excerpt || 'Full article content goes here...'}
+                                content={article.fullContent || article.content || article.full_content || 'Full article content goes here...'}
                             />
                         </Animated.View>
 

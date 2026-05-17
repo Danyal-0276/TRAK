@@ -1,4 +1,4 @@
-package com.trak
+package com.traknews.app
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

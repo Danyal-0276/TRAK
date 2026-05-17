@@ -4,6 +4,8 @@ import { useTheme } from '../../theme/ThemeContext';
 import { loadExplorePage } from '../../utils/loadFeed';
 import { fetchPlatformCategories } from '../../utils/Service/api';
 import { NewsCard } from '../../components/NewsCard';
+import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
+import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { 
     TrendingUp,
@@ -13,7 +15,13 @@ import {
     CheckCircle,
     X
 } from 'lucide-react';
-import { SkeletonFeedGrid, SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
+import { SkeletonCategoryGrid, getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
+import {
+    buildCategoryList,
+    articleMatchesCategory,
+    getCategoryIcon,
+} from '../../utils/categoryMatch';
+import { Search } from 'lucide-react';
 
 const CategoriesScreen = () => {
     const { theme } = useTheme();
@@ -34,6 +42,7 @@ const CategoriesScreen = () => {
     const [articleBookmarked, setArticleBookmarked] = useState(false);
     const [articleLikeCount, setArticleLikeCount] = useState(0);
     const [articleDislikeCount, setArticleDislikeCount] = useState(0);
+    const [categorySearch, setCategorySearch] = useState('');
 
     const loadNews = async () => {
         try {
@@ -45,33 +54,10 @@ const CategoriesScreen = () => {
             const newsData = page.items || [];
             setAllNews(newsData);
 
-            const normName = (c) =>
-                (typeof c === 'string' ? c : c?.name || c?.id || '')
-                    .trim()
-                    .replace(/\b\w/g, (ch) => ch.toUpperCase());
-
-            const adminNames = (plat.categories || []).map(normName).filter(Boolean);
-            const categoryMap = new Map();
-            for (const name of adminNames) {
-                categoryMap.set(name, 0);
-            }
-            newsData.forEach((article) => {
-                const keys = [
-                    article.category,
-                    ...(article.categories || []),
-                    ...(article.topic_keywords || []),
-                ].filter(Boolean);
-                for (const raw of keys) {
-                    const name = normName(raw);
-                    if (!name) continue;
-                    categoryMap.set(name, (categoryMap.get(name) || 0) + 1);
-                }
-            });
-
-            const categoryList = Array.from(categoryMap.entries())
-                .map(([name, count]) => ({ name, count }))
-                .sort((a, b) => b.count - a.count);
-
+            const adminNames = (plat.categories || []).map((c) =>
+                typeof c === 'string' ? c : c?.name || c?.id || ''
+            );
+            const categoryList = buildCategoryList(newsData, adminNames);
             setCategories(categoryList);
             setFilteredNews(newsData);
         } catch (error) {
@@ -90,14 +76,16 @@ const CategoriesScreen = () => {
 
     useEffect(() => {
         if (selectedCategory) {
-            const filtered = allNews.filter(item => 
-                item.category === selectedCategory
-            );
-            setFilteredNews(filtered);
+            setFilteredNews(allNews.filter((item) => articleMatchesCategory(item, selectedCategory)));
         } else {
             setFilteredNews(allNews);
         }
     }, [selectedCategory, allNews]);
+
+    const visibleCategories = categories.filter((c) =>
+        c.name.toLowerCase().includes(categorySearch.trim().toLowerCase())
+    );
+    const topCategories = categories.filter((c) => c.count > 0).slice(0, 10);
 
     const handleCategoryClick = (categoryName) => {
         if (selectedCategory === categoryName) {
@@ -250,87 +238,131 @@ const CategoriesScreen = () => {
                 {/* Categories Grid */}
                 {loading ? (
                     <div>
-                        <SkeletonListRows rows={5} isDark={isDark} colors={colors} />
+                        <SkeletonCategoryGrid count={8} isDark={isDark} colors={colors} />
                         <div style={{ marginTop: 28 }}>
-                            <SkeletonFeedGrid count={4} isDark={isDark} colors={colors} columns="repeat(auto-fill, minmax(280px, 1fr))" />
+                            <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(isDark, colors)} />
                         </div>
                     </div>
-                ) : (
+                ) : categories.length === 0 ? (
                     <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-                        gap: '16px',
-                        marginBottom: '40px',
+                        textAlign: 'center',
+                        padding: '48px 24px',
+                        marginBottom: 40,
+                        borderRadius: 12,
+                        border: `1px solid ${borderColor}`,
+                        backgroundColor: cardBackground,
                     }}>
-                        {categories.map((category) => {
-                            const isSelected = selectedCategory === category.name;
-                            return (
-                                <button
-                                    key={category.name}
-                                    onClick={() => handleCategoryClick(category.name)}
-                                    style={{
-                                        padding: '20px',
-                                        border: isSelected 
-                                            ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}` 
-                                            : `1px solid ${borderColor}`,
-                                        background: isSelected 
-                                            ? (isDark ? colors.surfaceElevated || '#334155' : '#f9fafb')
-                                            : cardBackground,
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        textAlign: 'left',
-                                        boxShadow: isSelected 
-                                            ? (isDark ? '0 2px 8px rgba(0, 0, 0, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.08)')
-                                            : (isDark ? '0 1px 3px rgba(0, 0, 0, 0.2)' : '0 1px 3px rgba(0, 0, 0, 0.05)'),
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!isSelected) {
-                                            e.currentTarget.style.borderColor = isDark ? colors.borderLight || '#475569' : '#d1d5db';
-                                            e.currentTarget.style.boxShadow = isDark 
-                                                ? '0 2px 8px rgba(0, 0, 0, 0.3)' 
-                                                : '0 2px 8px rgba(0, 0, 0, 0.08)';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!isSelected) {
-                                            e.currentTarget.style.borderColor = borderColor;
-                                            e.currentTarget.style.boxShadow = isDark 
-                                                ? '0 1px 3px rgba(0, 0, 0, 0.2)' 
-                                                : '0 1px 3px rgba(0, 0, 0, 0.05)';
-                                        }
-                                    }}
-                                >
-                                    <div style={{
-                                        fontSize: '24px',
-                                        marginBottom: '12px',
-                                    }}>
-                                        {category.name === 'Technology' && '💻'}
-                                        {category.name === 'Business' && '📈'}
-                                        {category.name === 'Sports' && '⚽'}
-                                        {category.name === 'Science' && '🔬'}
-                                        {category.name === 'Health' && '🏥'}
-                                        {category.name === 'Entertainment' && '🎬'}
-                                        {category.name === 'Politics' && '🏛️'}
-                                        {category.name === 'Environment' && '🌱'}
-                                    </div>
-                                    <div style={{
-                                        fontSize: '16px',
-                                        fontWeight: isSelected ? '700' : '600',
-                                        color: textPrimary,
-                                        marginBottom: '6px',
-                                    }}>
-                                        {category.name}
-                                    </div>
-                                    <div style={{
-                                        fontSize: '13px',
-                                        color: textSecondary,
-                                    }}>
-                                        {category.count} {category.count === 1 ? 'article' : 'articles'}
-                                    </div>
-                                </button>
-                            );
-                        })}
+                        <div style={{ fontSize: 40, marginBottom: 12 }}>📂</div>
+                        <p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: textPrimary }}>
+                            No categories with articles yet
+                        </p>
+                        <p style={{ margin: '8px 0 0', fontSize: 14, color: textSecondary }}>
+                            Check back after more stories are indexed.
+                        </p>
+                    </div>
+                ) : (
+                    <div style={{ marginBottom: 40 }}>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+                            <div style={{
+                                flex: '1 1 220px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 10,
+                                padding: '10px 14px',
+                                borderRadius: 10,
+                                border: `1px solid ${borderColor}`,
+                                backgroundColor: cardBackground,
+                            }}>
+                                <Search size={18} color={textSecondary} strokeWidth={2} />
+                                <input
+                                    type="search"
+                                    placeholder="Search categories…"
+                                    value={categorySearch}
+                                    onChange={(e) => setCategorySearch(e.target.value)}
+                                    style={{ flex: 1, border: 'none', outline: 'none', fontSize: 14, background: 'transparent', color: textPrimary }}
+                                />
+                            </div>
+                            <span style={{ fontSize: 13, color: textSecondary }}>
+                                {visibleCategories.length} of {categories.length} with articles
+                            </span>
+                        </div>
+                        {topCategories.length > 0 && !categorySearch.trim() ? (
+                            <div style={{ marginBottom: 20 }}>
+                                <p style={{ margin: '0 0 10px', fontSize: 12, fontWeight: 700, color: textSecondary, textTransform: 'uppercase', letterSpacing: 0.5 }}>Popular</p>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                                    {topCategories.map((category) => {
+                                        const isSelected = selectedCategory === category.name;
+                                        return (
+                                            <button key={`pill-${category.key}`} type="button" onClick={() => handleCategoryClick(category.name)}
+                                                style={{
+                                                    display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 14px', borderRadius: 999,
+                                                    border: isSelected ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}` : `1px solid ${borderColor}`,
+                                                    background: isSelected ? (isDark ? colors.surfaceElevated || '#334155' : '#f1f5f9') : cardBackground,
+                                                    cursor: 'pointer', fontSize: 13, fontWeight: 600, color: textPrimary,
+                                                }}>
+                                                <span>{getCategoryIcon(category.name)}</span>
+                                                <span>{category.name}</span>
+                                                <span style={{ fontSize: 11, fontWeight: 700, color: textSecondary, background: isDark ? colors.background || '#0F172A' : '#e2e8f0', padding: '2px 8px', borderRadius: 999 }}>{category.count}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : null}
+                        {visibleCategories.length === 0 ? (
+                            <p style={{ fontSize: 14, color: textSecondary, margin: 0 }}>No categories match &ldquo;{categorySearch}&rdquo;.</p>
+                        ) : (
+                            <div style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                                gap: '16px',
+                            }}>
+                                {visibleCategories.map((category) => {
+                                    const isSelected = selectedCategory === category.name;
+                                    return (
+                                        <button
+                                            key={category.key}
+                                            type="button"
+                                            onClick={() => handleCategoryClick(category.name)}
+                                            style={{
+                                                padding: '20px',
+                                                border: isSelected
+                                                    ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`
+                                                    : `1px solid ${borderColor}`,
+                                                background: isSelected
+                                                    ? (isDark ? colors.surfaceElevated || '#334155' : '#f9fafb')
+                                                    : cardBackground,
+                                                borderRadius: '12px',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.2s ease',
+                                                textAlign: 'left',
+                                                boxShadow: isSelected
+                                                    ? (isDark ? '0 2px 8px rgba(0, 0, 0, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.08)')
+                                                    : (isDark ? '0 1px 3px rgba(0, 0, 0, 0.2)' : '0 1px 3px rgba(0, 0, 0, 0.05)'),
+                                            }}
+                                            onMouseEnter={(e) => {
+                                                if (!isSelected) {
+                                                    e.currentTarget.style.borderColor = isDark ? colors.borderLight || '#475569' : '#d1d5db';
+                                                }
+                                            }}
+                                            onMouseLeave={(e) => {
+                                                if (!isSelected) {
+                                                    e.currentTarget.style.borderColor = borderColor;
+                                                }
+                                            }}
+                                        >
+                                            <div style={{ fontSize: 24, marginBottom: 12 }}>{getCategoryIcon(category.name)}</div>
+                                            <div style={{ fontSize: 16, fontWeight: isSelected ? 700 : 600, color: textPrimary, marginBottom: 6 }}>
+                                                {category.name}
+                                            </div>
+                                            <div style={{ fontSize: 13, color: textSecondary }}>
+                                                {category.count} {category.count === 1 ? 'article' : 'articles'}
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -480,13 +512,14 @@ const CategoriesScreen = () => {
                             color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
                             marginBottom: '24px',
                         }}>
-                            {(selectedArticle.fullContent || selectedArticle.content || selectedArticle.excerpt || selectedArticle.description || 'Article content goes here...').split('\n').map((paragraph, index) => (
-                                <p key={index} style={{
-                                    margin: '0 0 16px 0',
-                                }}>
-                                    {paragraph || '\u00A0'}
-                                </p>
-                            ))}
+                            <ArticleBodyParagraphs
+                                content={selectedArticle.fullContent || selectedArticle.content || selectedArticle.full_content || ''}
+                                paragraphStyle={{
+                                    fontSize: '16px',
+                                    lineHeight: '1.7',
+                                    color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
+                                }}
+                            />
                         </div>
 
                         {/* Actions */}
@@ -729,15 +762,12 @@ const CategoriesScreen = () => {
                                 </p>
                             </div>
                         ) : (
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                                gap: '24px',
-                            }}>
+                            <MasonryFeed gap={24}>
                                 {filteredNews.map((item) => (
                                     <NewsCard
                                         key={item.id}
                                         item={item}
+                                        layout="masonry"
                                         onPress={() => handleArticlePress(item)}
                                         votedItems={votedItems}
                                         bookmarkedItems={bookmarkedItems}
@@ -745,7 +775,7 @@ const CategoriesScreen = () => {
                                         onBookmark={handleBookmark}
                                     />
                                 ))}
-                            </div>
+                            </MasonryFeed>
                         )}
                     </div>
                 )}
@@ -761,15 +791,12 @@ const CategoriesScreen = () => {
                         }}>
                             All Articles
                         </h2>
-                        <div style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                            gap: '24px',
-                        }}>
+                        <MasonryFeed gap={24}>
                             {allNews.map((item) => (
                                 <NewsCard
                                     key={item.id}
                                     item={item}
+                                    layout="masonry"
                                     onPress={() => handleArticlePress(item)}
                                     votedItems={votedItems}
                                     bookmarkedItems={bookmarkedItems}
@@ -777,7 +804,7 @@ const CategoriesScreen = () => {
                                     onBookmark={handleBookmark}
                                 />
                             ))}
-                        </div>
+                        </MasonryFeed>
                     </div>
                 )}
             </div>

@@ -23,7 +23,8 @@ import { NewsCard } from '../../components/NewsCard';
 import { FeedSkeleton } from '../../components/FeedSkeleton';
 import ChatBotWidget from '../../components/ChatBotWidget';
 import { addBookmark, getUserFeed, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
-import { fetchUserKeywords } from '../../api/newsApi';
+import { loadUserKeywords } from '../../utils/userKeywordsStorage';
+import { filterFeedByUserKeywords } from '../../utils/feedKeywordMatch';
 import { useTheme } from '../../theme/ThemeContext';
 import { resetTabBarVisibility, setTabBarHidden } from '../../navigation/tabBarVisibility';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
@@ -140,6 +141,14 @@ const NewsFeedScreen = ({ navigation }) => {
     const loadNews = async () => {
         try {
             setLoading(true);
+            const kws = await loadUserKeywords();
+            const keywords = Array.isArray(kws) ? kws : [];
+            setFeedKeywords(keywords);
+            if (!keywords.length) {
+                setNewsData([]);
+                return;
+            }
+
             const cachedReactions = await getReactionMap().catch(() => ({}));
             const [response, reactionsRes] = await Promise.all([
                 getUserFeed(),
@@ -158,9 +167,10 @@ const NewsFeedScreen = ({ navigation }) => {
                         ? new Date(item.published_at).toLocaleString()
                         : 'Recently',
                     title: item.title || 'Untitled',
-                    excerpt: item.excerpt || item.content || '',
-                    content: item.content || item.excerpt || '',
-                    fullContent: item.content || item.excerpt || '',
+                    excerpt: item.excerpt || item.summary || '',
+                    summary: item.summary || item.excerpt || '',
+                    content: item.content || item.full_content || '',
+                    fullContent: item.full_content || item.content || '',
                     category: item.topic_keywords?.[0] || 'General',
                     verified: item.credibility?.label === 'real',
                     trending: Boolean(item.topic_keywords?.length),
@@ -183,15 +193,6 @@ const NewsFeedScreen = ({ navigation }) => {
 
     useEffect(() => {
         loadNews();
-    }, []);
-
-    const refreshKeywords = useCallback(async () => {
-        try {
-            const kws = await fetchUserKeywords();
-            setFeedKeywords(Array.isArray(kws) ? kws : []);
-        } catch {
-            setFeedKeywords([]);
-        }
     }, []);
 
     const lastSyncRef = useRef(0);
@@ -223,9 +224,15 @@ const NewsFeedScreen = ({ navigation }) => {
     useFocusEffect(
         useCallback(() => {
             syncInteractionsFromServer(false);
-            refreshKeywords();
-        }, [syncInteractionsFromServer, refreshKeywords])
+            loadNews();
+        }, [syncInteractionsFromServer])
     );
+
+    useEffect(() => {
+        if (!feedKeywords.length) {
+            setNewsData([]);
+        }
+    }, [feedKeywords]);
 
     useEffect(() => {
         resetTabBarVisibility();
@@ -256,7 +263,6 @@ const NewsFeedScreen = ({ navigation }) => {
             friction: 8,
         }).start();
         await loadNews();
-        await refreshKeywords();
         await syncInteractionsFromServer(true);
         setRefreshing(false);
     };
@@ -408,8 +414,11 @@ const NewsFeedScreen = ({ navigation }) => {
                 return bk - ak;
             });
         }
+        if (activeTab === 'For you') {
+            return filterFeedByUserKeywords(newsData, feedKeywords);
+        }
         return newsData;
-    }, [newsData, activeTab, hasFeedPersonalization, bookmarkedItems]);
+    }, [newsData, activeTab, hasFeedPersonalization, bookmarkedItems, feedKeywords]);
 
     return (
         <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
@@ -494,12 +503,14 @@ const NewsFeedScreen = ({ navigation }) => {
                                         <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>Pick categories</Text>
                                     </TouchableOpacity>
                                 </>
+                            ) : activeTab === 'For you' && hasFeedPersonalization ? (
+                                <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center', lineHeight: 22 }}>
+                                    No articles match your interests yet. Try adding more categories or keywords, then pull to refresh.
+                                </Text>
                             ) : (
-                                <>
-                                    <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center' }}>
-                                        {activeTab === 'Bookmarks' ? 'No bookmarked articles yet.' : 'No articles to show.'}
-                                    </Text>
-                                </>
+                                <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center' }}>
+                                    {activeTab === 'Bookmarks' ? 'No bookmarked articles yet.' : 'No articles to show.'}
+                                </Text>
                             )}
                         </View>
                     ) : (

@@ -2,10 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
 import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { mapApiItem } from '../../utils/loadFeed';
+import { normalizeArticleForDetail } from '../../utils/articleNavigation';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { useTheme } from '../../theme/ThemeContext';
-import { SkeletonFeedGrid } from '../../components/skeletons/SkeletonLayouts';
+import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
+import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
 
 const BookmarksScreen = () => {
     const navigate = useNavigate();
@@ -43,8 +46,10 @@ const BookmarksScreen = () => {
                         return {
                             ...full,
                             id: aid,
-                            description: full.content || full.excerpt,
-                            fullContent: full.content || full.excerpt,
+                            description: full.excerpt || full.summary || '',
+                            excerpt: full.excerpt || full.summary || '',
+                            content: full.content || full.full_content || '',
+                            fullContent: full.full_content || full.content || '',
                             category: full.topic_keywords?.[0] || 'Saved',
                             time: full.published_at ? new Date(full.published_at).toLocaleString() : (r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently'),
                             like_count: likes,
@@ -87,9 +92,10 @@ const BookmarksScreen = () => {
         const aid = String(article.id);
         try {
             const full = await getUserArticleDetail(aid);
-            navigate(`/article/${encodeURIComponent(aid)}`, { state: { article: { ...full, id: aid } } });
+            const mapped = normalizeArticleForDetail(mapApiItem(full));
+            navigate(`/article/${encodeURIComponent(aid)}`, { state: { article: { ...mapped, id: aid } } });
         } catch {
-            navigate(`/article/${encodeURIComponent(aid)}`, { state: { article: { ...article, id: aid } } });
+            navigate(`/article/${encodeURIComponent(aid)}`, { state: { article: normalizeArticleForDetail({ ...article, id: aid }) } });
         }
     };
 
@@ -193,7 +199,7 @@ const BookmarksScreen = () => {
                 </div>
 
                 {loading ? (
-                    <SkeletonFeedGrid count={6} isDark={isDark} colors={colors} />
+                    <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(isDark, colors)} />
                 ) : bookmarkedNews.length === 0 ? (
                     <div style={{
                         textAlign: 'center',
@@ -206,15 +212,12 @@ const BookmarksScreen = () => {
                         </p>
                     </div>
                 ) : (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                        gap: '24px',
-                    }}>
+                    <MasonryFeed gap={24}>
                         {bookmarkedNews.map((item) => (
                             <NewsCard
                                 key={String(item.id)}
                                 item={item}
+                                layout="masonry"
                                 onPress={() => handleArticlePress(item)}
                                 votedItems={votedItems}
                                 bookmarkedItems={bookmarkedItems}
@@ -222,7 +225,7 @@ const BookmarksScreen = () => {
                                 onBookmark={handleBookmark}
                             />
                         ))}
-                    </div>
+                    </MasonryFeed>
                 )}
             </div>
             <style>{`

@@ -1,5 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { defaultStackScreenOptions } from './stackScreenOptions';
 import NotificationDetailScreen from '../route/NotificationsScreen/components/NotificationDetailScreen';
 import TabNavigator from './TabNavigator.jsx';
 import {
@@ -16,7 +17,7 @@ import {
 const Stack = createNativeStackNavigator();
 
 const MainAppStack = () => (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={defaultStackScreenOptions}>
         <Stack.Screen name="MainTabs" component={TabNavigator} />
         <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
         <Stack.Screen name="Trending" component={TrendingScreen} />

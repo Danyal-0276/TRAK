@@ -1,7 +1,8 @@
 import { mockApi } from './Service/mockApi';
 import { fetchExplore, fetchExplorePage, fetchFeed } from '../api/newsApi';
 import { getAccessToken } from '../api/client';
-import { getUserKeywords } from './userKeywordsStorage';
+import { loadUserKeywords } from './userKeywordsStorage';
+import { filterFeedByUserKeywords } from './feedKeywordMatch';
 
 /** Production builds: no mock feed fallback (aligns with TRAKL production readiness). */
 const allowMockFallback = typeof __DEV__ !== 'undefined' ? __DEV__ : true;
@@ -33,9 +34,10 @@ export function mapApiItem(a, userKeywords = []) {
         url: a.url || a.canonical_url || '',
         time: a.published_at ? String(a.published_at).slice(0, 16) : '',
         title: a.title || '',
-        excerpt: a.excerpt || '',
-        content: a.content || '',
-        fullContent: a.content || '',
+        excerpt: a.excerpt || a.summary || '',
+        summary: a.summary || a.excerpt || '',
+        content: a.content || a.full_content || '',
+        fullContent: a.full_content || a.content || '',
         like_count: Number(a.like_count ?? a.upvotes ?? 0),
         dislike_count: Number(a.dislike_count ?? 0),
         upvotes: Number(a.like_count ?? a.upvotes ?? 0),
@@ -67,12 +69,16 @@ export async function loadFeedItems(options = {}) {
     const token = await getAccessToken();
     if (token) {
         try {
-            const userKeywords = await getUserKeywords();
+            const userKeywords = await loadUserKeywords();
             const json =
                 mode === 'explore'
                     ? await fetchExplore(1000, q)
                     : await fetchFeed(80, q);
-            return (json.results || []).map((a) => mapApiItem(a, userKeywords));
+            const items = (json.results || []).map((a) => mapApiItem(a, userKeywords));
+            if (mode === 'user') {
+                return filterFeedByUserKeywords(items, userKeywords);
+            }
+            return items;
         } catch (e) {
             if (!allowMockFallback) {
                 console.error(e);
@@ -100,7 +106,7 @@ export async function loadExplorePage(options = {}) {
     if (!token) {
         return { items: [], nextCursor: null, hasMore: false };
     }
-    const userKeywords = await getUserKeywords();
+    const userKeywords = await loadUserKeywords();
     const json = await fetchExplorePage(limit, q, cursor);
     return {
         items: (json.results || []).map((a) => mapApiItem(a, userKeywords)),

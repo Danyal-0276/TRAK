@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
+import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
+import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
+import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
 import { addBookmark, getUserFeed, getUserKeywordsFromServer, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { loadUserKeywords } from '../../utils/userKeywordsStorage';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
+import { filterFeedByUserKeywords } from '../../utils/feedKeywordMatch';
 import { 
     ArrowLeft, 
     ChevronUp, 
@@ -41,18 +46,20 @@ const NewsFeedScreen = () => {
     const { success } = useUIFeedback();
 
     const refreshKeywords = useCallback(async () => {
-        try {
-            const res = await getUserKeywordsFromServer();
-            const kws = res?.keywords;
-            setFeedKeywords(Array.isArray(kws) ? kws : []);
-        } catch {
-            setFeedKeywords([]);
-        }
+        const kws = await loadUserKeywords(getUserKeywordsFromServer);
+        setFeedKeywords(Array.isArray(kws) ? kws : []);
+        return kws;
     }, []);
 
     const loadNews = async () => {
         try {
             setLoading(true);
+            const keywords = await refreshKeywords();
+            if (!keywords?.length) {
+                setNewsData([]);
+                return;
+            }
+
             const cachedBookmarks = new Set(getBookmarkIds());
             if (cachedBookmarks.size) setBookmarkedItems(cachedBookmarks);
             const cachedReactions = getReactionMap();
@@ -71,8 +78,11 @@ const NewsFeedScreen = () => {
                 return {
                     ...item,
                     id: aid,
-                    description: item.content || item.excerpt,
-                    fullContent: item.content || item.excerpt,
+                    description: item.excerpt || item.summary || '',
+                    excerpt: item.excerpt || item.summary || '',
+                    summary: item.summary || item.excerpt || '',
+                    content: item.content || item.full_content || '',
+                    fullContent: item.full_content || item.content || '',
                     category: item.topic_keywords?.[0] || 'General',
                     time: item.published_at ? new Date(item.published_at).toLocaleString() : 'Recently',
                     like_count: likes,
@@ -92,7 +102,6 @@ const NewsFeedScreen = () => {
             setNewsData([]);
         } finally {
             setLoading(false);
-            refreshKeywords();
         }
     };
 
@@ -101,8 +110,10 @@ const NewsFeedScreen = () => {
     }, []);
 
     useEffect(() => {
-        refreshKeywords();
-    }, [refreshKeywords]);
+        if (!feedKeywords.length) {
+            setNewsData([]);
+        }
+    }, [feedKeywords]);
 
     useEffect(() => {
         if (rawTab) {
@@ -247,8 +258,11 @@ const NewsFeedScreen = () => {
                 return bk - ak;
             });
         }
+        if (activeTab === 'For you') {
+            return filterFeedByUserKeywords(newsData, feedKeywords);
+        }
         return newsData;
-    }, [newsData, activeTab, hasFeedPersonalization, bookmarkedItems]);
+    }, [newsData, activeTab, hasFeedPersonalization, bookmarkedItems, feedKeywords]);
 
     return (
         <div style={{
@@ -490,13 +504,14 @@ const NewsFeedScreen = () => {
                             color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
                             marginBottom: '24px',
                         }}>
-                            {(selectedArticle.fullContent || selectedArticle.content || selectedArticle.excerpt || selectedArticle.description || 'Article content goes here...').split('\n').map((paragraph, index) => (
-                                <p key={index} style={{
-                                    margin: '0 0 16px 0',
-                                }}>
-                                    {paragraph || '\u00A0'}
-                                </p>
-                            ))}
+                            <ArticleBodyParagraphs
+                                content={selectedArticle.fullContent || selectedArticle.content || selectedArticle.full_content || ''}
+                                paragraphStyle={{
+                                    fontSize: '16px',
+                                    lineHeight: '1.7',
+                                    color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
+                                }}
+                            />
                         </div>
 
                         {/* Actions */}
@@ -664,88 +679,11 @@ const NewsFeedScreen = () => {
 
                 {/* News Cards Grid */}
                 {loading ? (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMobile
-                            ? '1fr'
-                            : isTablet
-                            ? 'repeat(auto-fill, minmax(280px, 1fr))'
-                            : 'repeat(auto-fill, minmax(320px, 1fr))',
-                        gap: isMobile ? '16px' : isTablet ? '20px' : '24px',
-                    }}>
-                        {Array.from({ length: isMobile ? 4 : 6 }).map((_, i) => (
-                            <div
-                                key={i}
-                                style={{
-                                    backgroundColor: cardBackground,
-                                    borderRadius: '8px',
-                                    border: `1px solid ${borderColor}`,
-                                    overflow: 'hidden',
-                                    minHeight: '280px',
-                                }}
-                            >
-                                <div
-                                    className="trak-feed-skel-shimmer"
-                                    style={{
-                                        height: '180px',
-                                        background: isDark ? '#334155' : '#e5e7eb',
-                                    }}
-                                />
-                                <div style={{ padding: '20px' }}>
-                                    <div
-                                        className="trak-feed-skel-shimmer"
-                                        style={{
-                                            height: '14px',
-                                            width: '45%',
-                                            borderRadius: '4px',
-                                            marginBottom: '16px',
-                                            background: isDark ? '#334155' : '#e5e7eb',
-                                        }}
-                                    />
-                                    <div
-                                        className="trak-feed-skel-shimmer"
-                                        style={{
-                                            height: '18px',
-                                            width: '100%',
-                                            borderRadius: '4px',
-                                            marginBottom: '8px',
-                                            background: isDark ? '#334155' : '#e5e7eb',
-                                        }}
-                                    />
-                                    <div
-                                        className="trak-feed-skel-shimmer"
-                                        style={{
-                                            height: '18px',
-                                            width: '80%',
-                                            borderRadius: '4px',
-                                            marginBottom: '16px',
-                                            background: isDark ? '#334155' : '#e5e7eb',
-                                        }}
-                                    />
-                                    <div
-                                        className="trak-feed-skel-shimmer"
-                                        style={{
-                                            height: '12px',
-                                            width: '100%',
-                                            borderRadius: '4px',
-                                            marginBottom: '8px',
-                                            background: isDark ? '#475569' : '#f1f5f9',
-                                        }}
-                                    />
-                                    <div
-                                        className="trak-feed-skel-shimmer"
-                                        style={{
-                                            height: '12px',
-                                            width: '70%',
-                                            borderRadius: '4px',
-                                            marginTop: '24px',
-                                            background: isDark ? '#475569' : '#f1f5f9',
-                                        }}
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
+                    <MasonryFeedSkeleton
+                        count={isMobile ? 4 : 6}
+                        gap={isMobile ? 16 : isTablet ? 20 : 24}
+                        {...getSkeletonFeedProps(isDark, colors)}
+                    />
                 ) : visibleNews.length === 0 ? (
                     <div style={{
                         textAlign: 'center',
@@ -778,6 +716,10 @@ const NewsFeedScreen = () => {
                                     Pick categories
                                 </button>
                             </>
+                        ) : activeTab === 'For you' && hasFeedPersonalization ? (
+                            <p style={{ fontSize: '16px', color: textSecondary, lineHeight: 1.5 }}>
+                                No articles match your interests yet. Try adding more categories or keywords, then refresh.
+                            </p>
                         ) : (
                             <p style={{ fontSize: '16px', color: textSecondary }}>
                                 {activeTab === 'Bookmarks' ? 'No bookmarked articles yet.' : 'No articles to show.'}
@@ -785,19 +727,12 @@ const NewsFeedScreen = () => {
                         )}
                     </div>
                 ) : (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: isMobile 
-                            ? '1fr' 
-                            : isTablet 
-                            ? 'repeat(auto-fill, minmax(280px, 1fr))' 
-                            : 'repeat(auto-fill, minmax(320px, 1fr))',
-                        gap: isMobile ? '16px' : isTablet ? '20px' : '24px',
-                    }}>
+                    <MasonryFeed gap={isMobile ? 16 : isTablet ? 20 : 24}>
                         {visibleNews.map((item) => (
                             <NewsCard
                                 key={item.id}
                                 item={item}
+                                layout="masonry"
                                 onPress={() => handleArticlePress(item)}
                                 votedItems={votedItems}
                                 bookmarkedItems={bookmarkedItems}
@@ -805,20 +740,12 @@ const NewsFeedScreen = () => {
                                 onBookmark={handleBookmark}
                             />
                         ))}
-                    </div>
+                    </MasonryFeed>
                 )}
             </div>
 
 
             <style>{`
-                @keyframes trakShimmer {
-                    0% { opacity: 0.45; }
-                    50% { opacity: 1; }
-                    100% { opacity: 0.45; }
-                }
-                .trak-feed-skel-shimmer {
-                    animation: trakShimmer 1.2s ease-in-out infinite;
-                }
                 h1 {
                     margin-top: 0 !important;
                     padding-top: 0 !important;

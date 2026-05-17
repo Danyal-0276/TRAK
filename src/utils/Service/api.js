@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE } from '../../config/api';
+import { formatNetworkError } from '../networkError';
 
 const API_BASE_URL = API_BASE;
 
@@ -28,7 +29,12 @@ const parseError = async (res) => {
 };
 
 async function request(path, options = {}) {
-  const res = await fetch(`${API_BASE_URL}${path}`, options);
+  let res;
+  try {
+    res = await fetch(`${API_BASE_URL}${path}`, options);
+  } catch (err) {
+    throw new Error(formatNetworkError(err));
+  }
   if (!res.ok) {
     await parseError(res);
   }
@@ -119,6 +125,13 @@ export const loginWithOtp = (identity, code) =>
 
 export const loginWithSocialDemo = (provider, email) =>
   Promise.reject(new Error('Demo social login is disabled.'));
+
+export const loginWithFirebase = (idToken) =>
+  request('/api/auth/firebase/', {
+    method: 'POST',
+    headers: jsonHeaders,
+    body: JSON.stringify({ id_token: idToken }),
+  });
 
 export const authRequest = async (path, options = {}) => {
   const access = await getAccessToken();

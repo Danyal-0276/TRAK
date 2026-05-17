@@ -2,7 +2,7 @@
 // FILE: components/NewsCard.jsx
 // ============================================
 import React, { useRef, useEffect, memo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
 import { resolveArticleSource } from '../utils/articleSource';
 import { shareArticle, openArticleMenu } from '../utils/articleMenu';
 import { useFeedback } from './ui/FeedbackProvider';
@@ -34,7 +34,7 @@ function NewsCardInner({
     const safeId = item?.id != null ? String(item.id) : `news-${index}`;
     const safeSource = resolveArticleSource(item);
     const safeTitle = String(item?.title || 'Untitled');
-    const safeExcerpt = String(item?.excerpt || item?.content || '');
+    const safeExcerpt = String(item?.excerpt || item?.summary || '');
     const safeCategory = String(item?.category || 'General');
     const likeCount = Number(item?.like_count ?? item?.upvotes ?? 0);
     const dislikeCount = Number(item?.dislike_count ?? 0);
@@ -328,9 +328,9 @@ function NewsCardInner({
                 <Text style={cardStyles.title}>{safeTitle}</Text>
 
                 {/* Excerpt */}
-                <Text style={cardStyles.excerpt} numberOfLines={3}>
-                    {safeExcerpt}
-                </Text>
+                {safeExcerpt ? (
+                    <Text style={cardStyles.excerpt}>{safeExcerpt}</Text>
+                ) : null}
 
                 {/* Category & Trending */}
                 <View style={cardStyles.metaRow}>
@@ -430,7 +430,8 @@ function propsAreEqual(prev, next) {
         prevBm === nextBm &&
         prev.item?.like_count === next.item?.like_count &&
         prev.item?.dislike_count === next.item?.dislike_count &&
-        prev.item?.title === next.item?.title
+        prev.item?.title === next.item?.title &&
+        prev.item?.excerpt === next.item?.excerpt
     );
 }
 

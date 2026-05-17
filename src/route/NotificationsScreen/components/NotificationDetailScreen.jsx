@@ -13,7 +13,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import LinearGradient from "react-native-linear-gradient";
-import { ChevronLeft, MessageCircle, Heart, UserPlus, Hash, Settings, X } from "lucide-react-native";
+import { MessageCircle, Heart, UserPlus, Hash, Settings, X } from "lucide-react-native";
 import { useTheme } from "../../../theme/ThemeContext";
 import Text from "../../../components/ui/Text";
 import { getIcon } from "../utils/getIcon";
@@ -131,23 +131,6 @@ const NotificationDetailScreen = () => {
     return colors[type] || colors.default;
   };
 
-  const handleBackPress = () => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideUpAnim, {
-        toValue: 30,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      navigation.goBack();
-    });
-  };
-
   if (loading) {
     return (
       <SafeAreaView style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
@@ -259,17 +242,7 @@ const NotificationDetailScreen = () => {
           }
         ]}
       >
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={handleBackPress}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.backButtonInner, { backgroundColor: colors.backgroundSecondary }]}>
-            <ChevronLeft size={20} color={colors.textPrimary} />
-          </View>
-        </TouchableOpacity>
         <Text variant="title" style={[styles.headerTitle, { color: colors.textPrimary }]}>Details</Text>
-        <View style={styles.headerPlaceholder} />
       </Animated.View>
 
       <ScrollView 
@@ -533,9 +506,8 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   header: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
@@ -546,22 +518,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  backButton: {
-    padding: 4,
-  },
-  backButtonInner: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   headerTitle: {
     fontSize: 20,
     fontWeight: "700",
-  },
-  headerPlaceholder: {
-    width: 40,
   },
   scrollView: {
     flex: 1,

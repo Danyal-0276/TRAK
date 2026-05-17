@@ -26,7 +26,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
 import { trackKeywords } from '../../api/newsApi';
 import { getAccessToken } from '../../api/client';
-import { getUserKeywords, setUserKeywords } from '../../utils/userKeywordsStorage';
+import { loadUserKeywords, setUserKeywords, invalidateUserKeywordsCache } from '../../utils/userKeywordsStorage';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { newsTagsWithSubcategories } from '../TagSelectionScreen/constants/newsCategories';
 
@@ -44,7 +44,9 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
     const [loading, setLoading] = useState(false);
     
     // Get selected tags from previous screen
-    const { selectedTags = [], fromSettings = false } = route.params || {};
+    const { fromSettings = false } = route.params || {};
+    const selectedTags = Array.isArray(route.params?.selectedTags) ? route.params.selectedTags : [];
+    const keywordsLoaded = useRef(false);
     const goToSettings = () => {
         navigation.navigate('MainTabs', { screen: 'Settings' });
     };
@@ -115,11 +117,18 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
     }, []);
 
     useEffect(() => {
+        if (keywordsLoaded.current) return;
+        keywordsLoaded.current = true;
+        let mounted = true;
         (async () => {
-            const saved = await getUserKeywords();
+            const saved = await loadUserKeywords();
+            if (!mounted) return;
             const customOnly = saved.filter((k) => !BUILTIN_TAXONOMY_TERMS.has(String(k || '').toLowerCase()));
             if (customOnly.length) setSelectedKeywords(customOnly);
         })();
+        return () => {
+            mounted = false;
+        };
     }, []);
 
     const addKeyword = () => {
@@ -166,6 +175,7 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
                 try {
                     await trackKeywords(merged);
                     await setUserKeywords(merged);
+                    invalidateUserKeywordsCache();
                 } catch (e) {
                     console.warn('track-keywords:', e?.message);
                 }
@@ -276,7 +286,7 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
                             transform: [{ translateY: slideAnim }],
                         }}
                     >
-                        <Header onBack={() => navigation.goBack()} />
+                        <Header />
                     </Animated.View>
 
                     <Animated.View 

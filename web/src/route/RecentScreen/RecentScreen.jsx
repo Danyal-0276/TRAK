@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
 import { mockApi } from '../../utils/Service/mockApi';
 import { useTheme } from '../../theme/ThemeContext';
-import { SkeletonFeedGrid } from '../../components/skeletons/SkeletonLayouts';
+import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
+import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
 
 const RecentScreen = () => {
     const navigate = useNavigate();
@@ -125,17 +126,14 @@ const RecentScreen = () => {
 
                 {/* News Cards Grid */}
                 {loading ? (
-                    <SkeletonFeedGrid count={6} isDark={theme.mode === 'dark'} colors={theme.colors} />
+                    <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(theme.mode === 'dark', theme.colors)} />
                 ) : (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
-                        gap: '24px',
-                    }}>
+                    <MasonryFeed gap={24}>
                         {newsData.map((item) => (
                             <NewsCard
                                 key={item.id}
                                 item={item}
+                                layout="masonry"
                                 onPress={() => handleArticlePress(item)}
                                 votedItems={votedItems}
                                 bookmarkedItems={bookmarkedItems}
@@ -143,7 +141,7 @@ const RecentScreen = () => {
                                 onBookmark={handleBookmark}
                             />
                         ))}
-                    </div>
+                    </MasonryFeed>
                 )}
             </div>
             <style>{`

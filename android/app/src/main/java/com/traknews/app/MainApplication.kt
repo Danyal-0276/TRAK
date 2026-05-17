@@ -1,4 +1,4 @@
-package com.trak
+package com.traknews.app
 
 import android.app.Application
 import com.facebook.react.PackageList

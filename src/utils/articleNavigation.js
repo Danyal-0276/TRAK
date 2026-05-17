@@ -4,15 +4,18 @@ export function normalizeArticleForDetail(item) {
     return { id: '', title: 'Untitled', excerpt: '', content: '', fullContent: '' };
   }
   const id = String(item.id || item.article_id || item._id || '').trim();
-  const content = item.fullContent || item.content || item.excerpt || item.summary || '';
+  const excerpt = item.excerpt || item.summary || '';
+  const fullContent =
+    item.fullContent || item.full_content || item.content || '';
   return {
     ...item,
     id,
     article_id: id,
     title: item.title || 'Untitled',
-    excerpt: item.excerpt || content,
-    content: item.content || content,
-    fullContent: content,
+    excerpt,
+    summary: excerpt,
+    content: fullContent,
+    fullContent,
     canonical_url: item.canonical_url || item.url || '',
     url: item.url || item.canonical_url || '',
     readTime: item.readTime || 4,

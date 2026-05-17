@@ -9,8 +9,58 @@ export function GlobalSkeletonStyles() {
         50% { opacity: 1; }
         100% { opacity: 0.42; }
       }
-      .trak-sk-pulse { animation: trak-sk-pulse 1.15s ease-in-out infinite; }
+      .trak-sk-pulse,
+      .trak-feed-skel-shimmer,
+      .trak-search-skel-shimmer {
+        animation: trak-sk-pulse 1.15s ease-in-out infinite;
+      }
     `}</style>
+    );
+}
+
+/** Shared theme tokens for masonry / feed skeletons. */
+export function getSkeletonFeedProps(isDark, colors = {}) {
+    return {
+        cardBackground: isDark ? colors.surface || '#1E293B' : '#ffffff',
+        borderColor: isDark ? colors.border || '#334155' : '#e5e7eb',
+        bar1: isDark ? '#334155' : '#e5e7eb',
+        bar2: isDark ? '#475569' : '#f1f5f9',
+        isDark: !!isDark,
+    };
+}
+
+/** Category browse grid placeholder (Categories page). */
+export function SkeletonCategoryGrid({ count = 8, isDark, colors = {} }) {
+    const cardBg = isDark ? colors.surface || '#1E293B' : '#ffffff';
+    const border = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const bar = isDark ? '#334155' : '#e5e7eb';
+    const bar2 = isDark ? '#475569' : '#f1f5f9';
+    return (
+        <div
+            style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+                gap: 16,
+                marginBottom: 32,
+            }}
+        >
+            {Array.from({ length: count }).map((_, i) => (
+                <div
+                    key={i}
+                    style={{
+                        padding: 20,
+                        borderRadius: 12,
+                        border: `1px solid ${border}`,
+                        backgroundColor: cardBg,
+                        minHeight: 108,
+                    }}
+                >
+                    <div className="trak-sk-pulse" style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: bar, marginBottom: 12 }} />
+                    <div className="trak-sk-pulse" style={{ width: '70%', height: 14, borderRadius: 4, backgroundColor: bar, marginBottom: 8 }} />
+                    <div className="trak-sk-pulse" style={{ width: '40%', height: 12, borderRadius: 4, backgroundColor: bar2 }} />
+                </div>
+            ))}
+        </div>
     );
 }
 

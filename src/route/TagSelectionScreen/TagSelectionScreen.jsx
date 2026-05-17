@@ -1,7 +1,7 @@
 // ============================================
 // FILE: screens/TagSelectionScreen.jsx
 // ============================================
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, StatusBar, ScrollView, Animated, Dimensions, LayoutAnimation, Platform, UIManager } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
@@ -16,9 +16,23 @@ import { newsTagsWithSubcategories } from './constants/newsCategories';
 import { fetchPlatformCategories } from '../../api/newsApi';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
-import { getUserKeywords } from '../../utils/userKeywordsStorage';
+import { loadUserKeywords } from '../../utils/userKeywordsStorage';
 
 const { width, height } = Dimensions.get('window');
+
+function keywordVariants(term) {
+    const base = String(term || '').trim().toLowerCase();
+    if (!base) return [];
+    const slug = base.replace(/\s+/g, '-');
+    const spaced = base.replace(/-/g, ' ');
+    return [...new Set([base, slug, spaced])];
+}
+
+function seedMatchesTag(seed, tag) {
+    const variants = new Set(keywordVariants(seed));
+    const tagVariants = keywordVariants(tag);
+    return tagVariants.some((t) => variants.has(t));
+}
 
 const TagSelectionScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
@@ -29,7 +43,10 @@ const TagSelectionScreen = ({ navigation, route }) => {
     const [searchText, setSearchText] = useState('');
     const [loading, setLoading] = useState(false);
     const [tagsMap, setTagsMap] = useState(newsTagsWithSubcategories);
-    const { fromSettings = false, fromSignup = false, selectedTags: incomingSelectedTags = [] } = route?.params || {};
+    const { fromSettings = false, fromSignup = false } = route?.params || {};
+    const incomingSelectedTags = route?.params?.selectedTags;
+    const savedKeywordsRef = useRef(null);
+    const keywordsFetchStarted = useRef(false);
 
     useEffect(() => {
         let mounted = true;
@@ -128,25 +145,23 @@ const TagSelectionScreen = ({ navigation, route }) => {
         ]).start();
     }, []);
 
-    useEffect(() => {
-        if (fromSignup) return;
-        let mounted = true;
-        (async () => {
-            const saved = await getUserKeywords();
-            const seed = [...saved, ...incomingSelectedTags]
+    const applySavedSelections = useCallback(
+        (saved, routeTags) => {
+            const routeList = Array.isArray(routeTags) ? routeTags : [];
+            const seed = [...(saved || []), ...routeList]
                 .map((x) => String(x || '').trim().toLowerCase())
                 .filter(Boolean);
-            if (!seed.length || !mounted) return;
+            if (!seed.length) return;
 
             const next = new Set();
             const mainTags = Object.keys(tagsMap);
             for (const main of mainTags) {
                 const subs = tagsMap[main] || [];
-                if (seed.includes(main)) {
+                if (seed.some((s) => seedMatchesTag(s, main))) {
                     next.add(main);
                 }
                 for (const sub of subs) {
-                    if (seed.includes(sub)) {
+                    if (seed.some((s) => seedMatchesTag(s, sub))) {
                         next.add(main);
                         next.add(sub);
                     }
@@ -155,11 +170,30 @@ const TagSelectionScreen = ({ navigation, route }) => {
             if (next.size) {
                 setSelectedTags(Array.from(next));
             }
+        },
+        [tagsMap]
+    );
+
+    useEffect(() => {
+        if (fromSignup || keywordsFetchStarted.current) return;
+        keywordsFetchStarted.current = true;
+        let mounted = true;
+        (async () => {
+            const saved = await loadUserKeywords();
+            if (!mounted) return;
+            savedKeywordsRef.current = saved;
+            applySavedSelections(saved, incomingSelectedTags);
         })();
         return () => {
             mounted = false;
         };
-    }, [incomingSelectedTags, fromSignup, tagsMap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch once; tagsMap updates handled below
+    }, [fromSignup, incomingSelectedTags]);
+
+    useEffect(() => {
+        if (fromSignup || savedKeywordsRef.current === null) return;
+        applySavedSelections(savedKeywordsRef.current, incomingSelectedTags);
+    }, [tagsMap, fromSignup, applySavedSelections, incomingSelectedTags]);
 
     const mainTags = Object.keys(tagsMap);
 
@@ -348,7 +382,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
                             transform: [{ translateY: slideAnim }],
                         }}
                     >
-                        <Header onBack={() => navigation.goBack()} />
+                        <Header />
                     </Animated.View>
 
                     <Animated.View 

@@ -30,3 +30,26 @@ export function setUserKeywords(keywords) {
   }
   return cleaned;
 }
+
+function hasAuthToken() {
+  return Boolean(
+    window.localStorage.getItem('trak_access_token') ||
+      window.localStorage.getItem('trak_access')
+  );
+}
+
+/** Load keywords from API when signed in (including empty), sync cache; offline uses localStorage. */
+export async function loadUserKeywords(fetchFromServer) {
+  const local = getUserKeywords();
+  if (!hasAuthToken() || typeof fetchFromServer !== 'function') {
+    return local;
+  }
+  try {
+    const res = await fetchFromServer();
+    const normalized = normalize(Array.isArray(res?.keywords) ? res.keywords : []);
+    setUserKeywords(normalized);
+    return normalized;
+  } catch {
+    return local;
+  }
+}

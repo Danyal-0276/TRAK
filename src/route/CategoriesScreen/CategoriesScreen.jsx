@@ -14,12 +14,12 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
-import { ChevronLeft, Plus, Trash2, Tag, CheckCircle, X, AlertCircle } from "lucide-react-native";
+import { Plus, Trash2, Tag, CheckCircle, X, AlertCircle } from "lucide-react-native";
 import { useTheme } from "../../theme/ThemeContext";
 import Text from "../../components/ui/Text";
 import { getAccessToken } from "../../api/client";
 import { trackKeywords } from "../../api/newsApi";
-import { getUserKeywords, setUserKeywords } from "../../utils/userKeywordsStorage";
+import { loadUserKeywords, setUserKeywords } from "../../utils/userKeywordsStorage";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -47,7 +47,7 @@ const CategoriesScreen = ({ navigation }) => {
 
   useEffect(() => {
     (async () => {
-      const saved = await getUserKeywords();
+      const saved = await loadUserKeywords();
       if (saved.length) {
         setCategories(saved);
       }
@@ -287,19 +287,9 @@ const CategoriesScreen = ({ navigation }) => {
           }
         ]}
       >
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()}
-          style={styles.backButton}
-          activeOpacity={0.8}
-        >
-          <View style={[styles.backButtonInner, { backgroundColor: colors.backgroundSecondary }]}>
-            <ChevronLeft size={20} color={colors.textPrimary} />
-          </View>
-        </TouchableOpacity>
         <Text variant="title" style={[styles.title, { color: colors.textPrimary }]}>
           Manage Categories
         </Text>
-        <View style={styles.headerPlaceholder} />
       </Animated.View>
 
       <Animated.ScrollView 
@@ -533,9 +523,8 @@ const styles = StyleSheet.create({
     right: -50,
   },
   header: {
-    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
+    justifyContent: "center",
     paddingHorizontal: 20,
     paddingBottom: 16,
     borderBottomWidth: 1,
@@ -546,22 +535,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 3,
   },
-  backButton: {
-    padding: 4,
-  },
-  backButtonInner: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   title: {
     fontSize: 20,
     fontWeight: "700",
-  },
-  headerPlaceholder: {
-    width: 40,
   },
   scrollContent: {
     padding: 20,

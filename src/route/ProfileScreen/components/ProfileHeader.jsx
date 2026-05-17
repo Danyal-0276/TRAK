@@ -1,135 +1,240 @@
-// components/profile/ProfileHeader.jsx
-import React from "react";
-import { View, Image, StyleSheet, TouchableOpacity } from "react-native";
-import { CheckCircle2 } from "lucide-react-native";
-import LinearGradient from "react-native-linear-gradient";
-import { useTheme } from "../../../theme/ThemeContext";
-import Text from "../../../components/ui/Text";
-import Card from "../../../components/ui/Card";
+import React from 'react';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { CheckCircle2, Mail, Phone, Calendar } from 'lucide-react-native';
+import { useTheme } from '../../../theme/ThemeContext';
+import Text from '../../../components/ui/Text';
+import ProfileAvatar from './ProfileAvatar';
 
-const ProfileHeader = ({ name, username, bio, avatarUri, verified, onPressAvatar, onLongPressAvatar }) => {
+function formatJoined(dateStr) {
+  if (!dateStr) return null;
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  } catch {
+    return null;
+  }
+}
+
+const ProfileHeader = ({
+  name,
+  username,
+  bio,
+  avatarUri,
+  verified,
+  email,
+  phone,
+  emailVerified,
+  phoneVerified,
+  dateJoined,
+  stats,
+  onPressAvatar,
+  onLongPressAvatar,
+}) => {
   const { theme } = useTheme();
-  const { colors, spacing, radius } = theme;
-  
-  const getInitials = (name) => {
-    if (!name) return "U";
-    const parts = name.trim().split(" ");
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-    return name.substring(0, 2).toUpperCase();
-  };
+  const { colors } = theme;
+  const isDark = theme.mode === 'dark';
+  const accent = colors.primary || (isDark ? '#818CF8' : '#0f172a');
+  const accentSoft = colors.primary ? `${colors.primary}18` : isDark ? 'rgba(129,140,248,0.14)' : '#eff6ff';
+  const joined = formatJoined(dateJoined);
+
+  const statItems = [
+    { label: 'Following', value: String(stats?.following ?? 0) },
+    { label: 'Followers', value: String(stats?.followers ?? 0) },
+    { label: 'Saved', value: String(stats?.saved ?? 0) },
+  ];
 
   return (
-    <Card style={{ marginBottom: spacing.lg, overflow: 'hidden' }}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.avatarContainer} activeOpacity={0.9} onPress={onPressAvatar} onLongPress={onLongPressAvatar}>
-          <LinearGradient
-            colors={[colors.primary, `${colors.primary}DD`]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.avatarGradient}
-          >
-            {avatarUri ? (
-              <Image source={{ uri: avatarUri }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatarPlaceholder, { backgroundColor: colors.surface }]}>
-                <Text variant="title" color={colors.primary} style={styles.avatarText}>
-                  {getInitials(name)}
-                </Text>
-              </View>
-            )}
-          </LinearGradient>
-        </TouchableOpacity>
-        <View style={styles.headerText}>
-          <View style={styles.nameRow}>
-            <Text
-              variant="title"
-              style={[styles.name, { color: colors.textPrimary, flex: 1 }]}
-              numberOfLines={1}
-              ellipsizeMode="tail"
-            >
-              {name}
-            </Text>
-            {verified ? <CheckCircle2 size={18} color="#2563EB" /> : null}
+    <View style={[styles.wrap, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
+      <View style={[styles.heroBand, { backgroundColor: accentSoft }]}>
+        <View style={[styles.heroGlow, { backgroundColor: accent }]} />
+      </View>
+
+      <TouchableOpacity
+        style={styles.avatarTouch}
+        activeOpacity={0.9}
+        onPress={onPressAvatar}
+        onLongPress={onLongPressAvatar}
+      >
+        <ProfileAvatar
+          uri={avatarUri}
+          name={name}
+          accent={accent}
+          surfaceColor={colors.surface}
+        />
+        {verified ? (
+          <View style={[styles.verifiedBadge, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
+            <CheckCircle2 size={16} color="#2563EB" fill="#2563EB" />
           </View>
-          <Text variant="caption" color={colors.textSecondary} style={styles.username} numberOfLines={1}>
-            {username}
-          </Text>
-          <Text variant="body" color={colors.textSecondary} style={styles.bio} numberOfLines={3}>
-            {bio}
-          </Text>
+        ) : null}
+      </TouchableOpacity>
+
+      <View style={styles.body}>
+        <Text style={[styles.name, { color: colors.textPrimary }]} numberOfLines={1}>
+          {name}
+        </Text>
+        <Text style={[styles.username, { color: colors.textSecondary }]} numberOfLines={1}>
+          {username}
+        </Text>
+        <Text style={[styles.bio, { color: colors.textSecondary }]} numberOfLines={4}>
+          {bio}
+        </Text>
+
+        <View style={styles.chips}>
+          {email ? (
+            <View style={[styles.chip, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderLight }]}>
+              <Mail size={13} color={colors.textSecondary} />
+              <Text style={[styles.chipText, { color: colors.textSecondary }]} numberOfLines={1}>
+                {email}
+              </Text>
+              <Text style={[styles.chipStatus, { color: emailVerified ? '#16a34a' : colors.textTertiary }]}>
+                {emailVerified ? '✓' : '·'}
+              </Text>
+            </View>
+          ) : null}
+          {phone ? (
+            <View style={[styles.chip, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderLight }]}>
+              <Phone size={13} color={colors.textSecondary} />
+              <Text style={[styles.chipText, { color: colors.textSecondary }]} numberOfLines={1}>
+                {phone}
+              </Text>
+              <Text style={[styles.chipStatus, { color: phoneVerified ? '#16a34a' : colors.textTertiary }]}>
+                {phoneVerified ? '✓' : '·'}
+              </Text>
+            </View>
+          ) : null}
+          {joined ? (
+            <View style={[styles.chip, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderLight }]}>
+              <Calendar size={13} color={colors.textSecondary} />
+              <Text style={[styles.chipText, { color: colors.textSecondary }]}>Joined {joined}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.statsRow}>
+          {statItems.map((item) => (
+            <View
+              key={item.label}
+              style={[styles.statCard, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderLight }]}
+            >
+              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{item.value}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{item.label}</Text>
+            </View>
+          ))}
         </View>
       </View>
-    </Card>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  header: { 
-    flexDirection: "row",
-    padding: 4,
+  wrap: {
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'visible',
+    marginBottom: 16,
   },
-  nameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    minWidth: 0,
+  heroBand: {
+    height: 92,
+    overflow: 'hidden',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
   },
-  avatarContainer: {
-    marginRight: 16,
+  heroGlow: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    top: -60,
+    right: -20,
+    opacity: 0.12,
   },
-  avatarGradient: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    padding: 3,
-    justifyContent: 'center',
+  avatarTouch: {
+    alignSelf: 'center',
+    marginTop: -44,
+    marginBottom: 8,
+    zIndex: 2,
+    paddingHorizontal: 16,
+  },
+  verifiedBadge: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 2,
     alignItems: 'center',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  avatar: {
-    width: 94,
-    height: 94,
-    borderRadius: 47,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-  },
-  avatarPlaceholder: {
-    width: 94,
-    height: 94,
-    borderRadius: 47,
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
     justifyContent: 'center',
+  },
+  body: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+    paddingBottom: 20,
     alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 36,
-    fontWeight: '700',
-  },
-  headerText: { 
-    flex: 1, 
-    justifyContent: "center",
-    paddingVertical: 4,
   },
   name: {
-    fontSize: 24,
-    fontWeight: '700',
-    marginBottom: 4,
+    fontSize: 22,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    textAlign: 'center',
   },
   username: {
     fontSize: 14,
-    marginBottom: 8,
-    fontWeight: '500',
+    fontWeight: '600',
+    marginTop: 4,
+    textAlign: 'center',
   },
   bio: {
     fontSize: 15,
-    lineHeight: 20,
+    lineHeight: 22,
+    marginTop: 12,
+    textAlign: 'center',
+  },
+  chips: {
+    width: '100%',
+    marginTop: 16,
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  chipText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  chipStatus: {
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    width: '100%',
+    marginTop: 18,
+    gap: 10,
+  },
+  statCard: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginTop: 4,
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
 });
 

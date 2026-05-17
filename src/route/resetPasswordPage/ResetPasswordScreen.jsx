@@ -15,7 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
-import { ChevronLeft, Eye, EyeOff, Lock } from 'lucide-react-native';
+import { Eye, EyeOff, Lock } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
 import { confirmPasswordReset } from '../../api/authPasswordApi';
@@ -168,16 +168,6 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                         showsVerticalScrollIndicator={false}
                     >
                         <View style={styles.content}>
-                            <TouchableOpacity
-                                style={[styles.backButton, { 
-                                    backgroundColor: colors.backgroundSecondary, 
-                                    borderColor: colors.border 
-                                }]}
-                                onPress={() => navigation.goBack()}
-                            >
-                                <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.5} />
-                            </TouchableOpacity>
-
                             <View style={styles.headerSection}>
                                 <View style={styles.iconContainer}>
                                     <Lock size={48} color={colors.primary} strokeWidth={2} />

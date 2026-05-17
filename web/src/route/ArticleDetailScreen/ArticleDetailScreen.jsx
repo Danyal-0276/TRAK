@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { 
     ChevronLeft, 
@@ -12,39 +12,25 @@ import {
     ArrowLeft
 } from 'lucide-react';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
-import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
+import { mapApiItem } from '../../utils/loadFeed';
+import { normalizeArticleForDetail } from '../../utils/articleNavigation';
+import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
 
 const ArticleDetailScreen = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { id: routeArticleId } = useParams();
 
-    const article = useMemo(() => {
-        const fromState = location.state?.article;
-        const key = String(routeArticleId || fromState?.id || '').trim();
-        if (fromState && String(fromState.id) === key) {
-            return { ...fromState, id: key };
-        }
-        return {
-            id: key,
-            title: 'Article Title',
-            source: 'Source',
-            time: '2h ago',
-            category: 'News',
-            fullContent: 'Article content goes here...',
-            description: 'Article description...',
-            excerpt: 'Article excerpt...',
-            upvotes: 24,
-            votes: 24,
-            like_count: 0,
-            dislike_count: 0,
-            verified: true,
-            trending: false,
-            readTime: 5,
-        };
-    }, [location.state, routeArticleId]);
+    const initialArticle = normalizeArticleForDetail(
+        location.state?.article || { id: routeArticleId }
+    );
+    const [article, setArticle] = useState(initialArticle);
+    const [detailLoading, setDetailLoading] = useState(
+        !initialArticle.fullContent && !initialArticle.content
+    );
 
     const articleKey = String(article.id || routeArticleId || '').trim();
     const { success } = useUIFeedback();
@@ -115,6 +101,38 @@ const ArticleDetailScreen = () => {
     };
 
     useEffect(() => {
+        const fromNav = normalizeArticleForDetail(location.state?.article || { id: routeArticleId });
+        if (fromNav.id && (fromNav.fullContent || fromNav.content)) {
+            setArticle(fromNav);
+        }
+        const id = String(routeArticleId || fromNav.id || '').trim();
+        if (!id) {
+            setDetailLoading(false);
+            return;
+        }
+        let cancelled = false;
+        const needsLoader = !fromNav.fullContent && !fromNav.content;
+        if (needsLoader) setDetailLoading(true);
+        (async () => {
+            try {
+                const doc = await getUserArticleDetail(id);
+                if (cancelled) return;
+                const mapped = normalizeArticleForDetail(mapApiItem(doc));
+                setArticle((prev) => ({ ...prev, ...mapped, id }));
+                setLikeCount(Number(doc.like_count ?? mapped.like_count ?? 0));
+                setDislikeCount(Number(doc.dislike_count ?? mapped.dislike_count ?? 0));
+            } catch (e) {
+                console.warn('Article fetch:', e?.message);
+            } finally {
+                if (!cancelled) setDetailLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [routeArticleId, location.state?.article]);
+
+    useEffect(() => {
         if (!articleKey) return;
         setLikeCount(Number(article.like_count ?? article.upvotes ?? article.votes ?? 0));
         setDislikeCount(Number(article.dislike_count ?? 0));
@@ -143,9 +161,9 @@ const ArticleDetailScreen = () => {
         return () => {
             window.removeEventListener('scroll', handleScroll);
         };
-    }, [articleKey]);
+    }, [articleKey, article.like_count, article.dislike_count]);
 
-    const content = article.fullContent || article.content || article.excerpt || article.description || 'Article content goes here...';
+    const content = article.fullContent || article.content || article.full_content || 'Article content goes here...';
 
     return (
         <div style={{
@@ -340,13 +358,14 @@ const ArticleDetailScreen = () => {
                     color: '#374151',
                     marginBottom: '40px',
                 }}>
-                    {content.split('\n').map((paragraph, index) => (
-                        <p key={index} style={{
-                            margin: '0 0 20px 0',
-                        }}>
-                            {paragraph || '\u00A0'}
-                        </p>
-                    ))}
+                    {detailLoading ? (
+                        <p style={{ color: '#6b7280' }}>Loading article…</p>
+                    ) : (
+                        <ArticleBodyParagraphs
+                            content={content}
+                            paragraphStyle={{ fontSize: '17px', lineHeight: '1.8', color: '#374151' }}
+                        />
+                    )}
                 </div>
 
                 {/* Divider */}
