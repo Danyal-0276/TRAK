@@ -16,11 +16,11 @@ const AdminNotificationsScreen = () => {
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
 
     useEffect(() => {
         (async () => {

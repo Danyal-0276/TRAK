@@ -42,9 +42,21 @@ export async function getAdminModelMetrics() {
   return parseJson(res);
 }
 
-export async function getAdminUsers(q = '') {
-  const suffix = q ? `?q=${encodeURIComponent(q)}` : '';
+export async function getAdminUsers({ q = '', role = 'all' } = {}) {
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (role && role !== 'all') params.set('role', role);
+  const suffix = params.toString() ? `?${params}` : '';
   const res = await apiFetch(`${ADMIN_PREFIX}/users/${suffix}`);
+  return parseJson(res);
+}
+
+export async function postAdminCreate(email, password) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/admins/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password }),
+  });
   return parseJson(res);
 }
 

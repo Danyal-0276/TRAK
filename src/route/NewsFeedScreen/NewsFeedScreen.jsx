@@ -37,6 +37,8 @@ const { width, height } = Dimensions.get('window');
 const HEADER_HEIGHT = 60;
 const TAB_HEIGHT = 50;
 const TOTAL_HEADER_HEIGHT = HEADER_HEIGHT + TAB_HEIGHT;
+const FEED_PAGE_SIZE = 30;
+const FEED_PREFETCH_PX = 900;
 
 // Skeleton Card Component
 const SkeletonCard = ({ colors }) => {
@@ -121,7 +123,11 @@ const NewsFeedScreen = ({ navigation }) => {
     const [refreshing, setRefreshing] = useState(false);
     const [feedKeywords, setFeedKeywords] = useState([]);
     const [skipEntryAnim, setSkipEntryAnim] = useState(false);
+    const [nextCursor, setNextCursor] = useState(null);
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
     const tabMounted = useRef(false);
+    const loadingMoreRef = useRef(false);
 
     const insets = useSafeAreaInsets();
 
@@ -151,9 +157,11 @@ const NewsFeedScreen = ({ navigation }) => {
 
             const cachedReactions = await getReactionMap().catch(() => ({}));
             const [response, reactionsRes] = await Promise.all([
-                getUserFeed(),
+                getUserFeed({ limit: FEED_PAGE_SIZE }),
                 listReactions().catch(() => ({ results: [] })),
             ]);
+            setNextCursor(response.next_cursor || null);
+            setHasMore(Boolean(response.has_more));
             const reactionMap = await mergeReactionRows(reactionsRes.results || [], { replace: false }).catch(() => cachedReactions);
             const mapped = (response.results || []).map((item, idx) => {
                 const aid = item.id || item.canonical_url || String(idx);
@@ -253,6 +261,52 @@ const NewsFeedScreen = ({ navigation }) => {
     }, []);
 
 
+    const loadMoreFeed = async () => {
+        if (loadingMoreRef.current || !hasMore || !nextCursor) return;
+        loadingMoreRef.current = true;
+        setLoadingMore(true);
+        try {
+            const cachedReactions = await getReactionMap().catch(() => ({}));
+            const response = await getUserFeed({ limit: FEED_PAGE_SIZE, cursor: nextCursor });
+            const reactionMap = cachedReactions;
+            const mapped = (response.results || []).map((item, idx) => {
+                const aid = item.id || item.canonical_url || String(idx);
+                const likes = Number(item.like_count ?? item.upvotes ?? 0);
+                const dislikes = Number(item.dislike_count ?? 0);
+                return {
+                    ...item,
+                    id: aid,
+                    source: resolveArticleSource(item),
+                    time: item.published_at ? new Date(item.published_at).toLocaleString() : 'Recently',
+                    title: item.title || 'Untitled',
+                    excerpt: item.excerpt || item.summary || '',
+                    summary: item.summary || item.excerpt || '',
+                    content: item.content || item.full_content || '',
+                    fullContent: item.full_content || item.content || '',
+                    category: item.topic_keywords?.[0] || 'General',
+                    verified: item.credibility?.label === 'real',
+                    trending: Boolean(item.topic_keywords?.length),
+                    like_count: likes,
+                    dislike_count: dislikes,
+                    upvotes: likes,
+                    readTime: 4,
+                    userReaction: reactionMap[String(aid)] || null,
+                };
+            });
+            setNewsData((prev) => {
+                const seen = new Set(prev.map((p) => String(p.id)));
+                return [...prev, ...mapped.filter((m) => !seen.has(String(m.id)))];
+            });
+            setNextCursor(response.next_cursor || null);
+            setHasMore(Boolean(response.has_more));
+        } catch (e) {
+            console.error('Load more feed failed:', e);
+        } finally {
+            loadingMoreRef.current = false;
+            setLoadingMore(false);
+        }
+    };
+
     const handleRefresh = async () => {
         setRefreshing(true);
         setTabBarHidden(false);
@@ -299,6 +353,11 @@ const NewsFeedScreen = ({ navigation }) => {
                 }
 
                 lastScrollY.current = currentScrollY;
+
+                const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+                const nearBottom =
+                    layoutMeasurement.height + contentOffset.y >= contentSize.height - FEED_PREFETCH_PX;
+                if (nearBottom) loadMoreFeed();
             },
         }
     );

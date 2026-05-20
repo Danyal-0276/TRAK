@@ -148,43 +148,22 @@ const NotificationsScreen = () => {
     const unreadCount = notifications.filter(n => !n.read).length;
     const importantCount = notifications.filter(n => n.important).length;
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            backgroundColor: backgroundColor,
-            paddingTop: '0',
-            marginTop: '0',
-        }}>
-            <div style={{
-                maxWidth: '900px',
-                margin: '0 auto',
-                width: '100%',
-                padding: '0 24px 24px 24px',
-            }}>
-                {/* Header Section */}
-                <div style={{
-                    marginTop: '0',
-                    marginBottom: '24px',
-                    paddingTop: '0',
+        <div className="trak-app-page" style={{ backgroundColor }}>
+            <div className="trak-app-page-inner" style={{ maxWidth: 900 }}>
+                <header className="trak-page-header" style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
                 }}>
                     <div>
-                        <h1 style={{
-                            fontSize: '28px',
-                            fontWeight: '700',
-                            color: textPrimary,
-                            margin: '0 0 8px 0',
-                            paddingTop: '0',
-                            letterSpacing: '-0.5px',
-            }}>
+                        <h1 className="trak-pg-title" style={{ color: textPrimary, marginBottom: 8 }}>
                 Notifications
                         </h1>
                         <p style={{
@@ -226,7 +205,7 @@ const NotificationsScreen = () => {
                             Mark all as read
                         </button>
                     )}
-                </div>
+                </header>
 
                 {/* Tabs */}
                 <div style={{

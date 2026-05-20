@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useResponsive } from '../hooks/useResponsive';
+import { useTheme } from '../theme/ThemeContext';
 import OpeningScreen from '../route/openingScreen/OpeningScreen';
 import LoginScreen from '../route/LoginPage/LoginScreen';
 import SignUpScreen from '../route/signUpPage/SignUpScreen';
@@ -10,6 +11,7 @@ import ResetPasswordScreen from '../route/resetPasswordPage/ResetPasswordScreen'
 import PasswordChangedScreen from '../route/PasswordChangedScreen/PasswordChangedScreen';
 import TagSelectionScreen from '../route/TagSelectionScreen/TagSelectionScreen';
 import KeywordSelectionScreen from '../route/KeywordSelectionScreen/KeywordSelectionScreen';
+import VerifyEmailScreen from '../route/VerifyEmailScreen/VerifyEmailScreen';
 import NewsFeedScreen from '../route/NewsFeedScreen/NewsFeedScreen';
 import SearchScreen from '../route/SearchScreen/SearchScreen';
 import NotificationsScreen from '../route/NotificationsScreen/NotificationsScreen';
@@ -17,6 +19,8 @@ import ProfileScreen from '../route/ProfileScreen/ProfileScreen';
 import AdminShell from '../route/AdminScreen/components/AdminShell';
 import AdminDashboardScreen from '../route/AdminScreen/AdminDashboardScreen';
 import AdminUsersScreen from '../route/AdminScreen/AdminUsersScreen';
+import AdminAdminsScreen from '../route/AdminScreen/AdminAdminsScreen';
+import AdminProfileScreen from '../route/AdminScreen/AdminProfileScreen';
 import AdminArticlesScreen from '../route/AdminScreen/AdminArticlesScreen';
 import AdminNotificationsScreen from '../route/AdminScreen/AdminNotificationsScreen';
 import AdminSettingsScreen from '../route/AdminScreen/AdminSettingsScreen';
@@ -38,22 +42,23 @@ import UserOnlyRoute from '../components/UserOnlyRoute';
 const RouterContent = () => {
   const location = useLocation();
   const { isDesktop } = useResponsive();
-  const isAuthPage = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'].includes(location.pathname);
+  const { theme } = useTheme();
+  const isAuthPage = ['/', '/login', '/signup', '/verify-email', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'].includes(location.pathname);
   const isAdminPage = location.pathname.startsWith('/admin');
   const isMainAppPage = !isAuthPage && !isAdminPage;
 
+  const shellClass = isMainAppPage && isDesktop ? 'trak-shell-main' : '';
+
   return (
-    <div 
-      data-auth={isAuthPage ? "true" : "false"}
+    <div
+      data-auth={isAuthPage ? 'true' : 'false'}
+      data-theme={theme.mode}
+      className={shellClass || undefined}
       style={{
         minHeight: '100vh',
         width: '100%',
-        backgroundColor: isAuthPage ? '#ffffff' : '#f9fafb',
-        paddingTop: '0',
-        marginTop: '0',
-        paddingRight: isMainAppPage && isDesktop ? '280px' : '0',
-        paddingLeft: '0',
-        transition: 'padding 0.3s ease',
+        background: 'var(--trak-bg)',
+        transition: 'background 0.3s ease, padding 0.3s ease',
       }}
     >
       <Routes>
@@ -61,6 +66,7 @@ const RouterContent = () => {
         <Route path="/" element={<OpeningScreen />} />
         <Route path="/login" element={<LoginScreen />} />
         <Route path="/signup" element={<SignUpScreen />} />
+        <Route path="/verify-email" element={<VerifyEmailScreen />} />
         <Route path="/forgot-password" element={<ForgotPasswordScreen />} />
         <Route path="/forgot-password-code" element={<ForgotPasswordCodeScreen />} />
         <Route path="/reset-password" element={<ResetPasswordScreen />} />
@@ -91,6 +97,8 @@ const RouterContent = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboardScreen />} />
           <Route path="users" element={<AdminUsersScreen />} />
+          <Route path="admins" element={<AdminAdminsScreen />} />
+          <Route path="profile" element={<AdminProfileScreen />} />
           <Route path="articles" element={<AdminArticlesScreen />} />
           <Route path="analytics" element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="notifications" element={<AdminNotificationsScreen />} />

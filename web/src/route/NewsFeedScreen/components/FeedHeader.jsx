@@ -10,7 +10,7 @@ export const FeedHeader = () => {
 
     return (
         <div style={{
-            backgroundColor: '#ffffff',
+            background: 'var(--trak-bg)',
             borderBottom: '1px solid #e2e8f0',
         }}>
             <div style={{

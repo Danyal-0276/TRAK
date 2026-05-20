@@ -93,16 +93,16 @@ const HelpScreen = () => {
     const isDark = theme.mode === 'dark';
     const [openFaq, setOpenFaq] = useState(null);
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
-    const accent = isDark ? colors.primary || '#818CF8' : '#0f172a';
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
+    const accent = colors.primary;
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor, marginTop: 0, paddingTop: 0 }}>
-            <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%', padding: '0 24px 48px 24px' }}>
+        <div className="trak-app-page" style={{ backgroundColor }}>
+            <div className="trak-app-page-inner" style={{ maxWidth: 800, paddingBottom: 48 }}>
                 <div style={{ marginBottom: '28px', paddingTop: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
                         <div
@@ -168,7 +168,7 @@ const HelpScreen = () => {
                                             width: '40px',
                                             height: '40px',
                                             borderRadius: '8px',
-                                            backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f8fafc',
+                                            backgroundColor: colors.backgroundSecondary,
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',

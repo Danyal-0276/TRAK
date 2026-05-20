@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
@@ -43,6 +43,11 @@ const NewsFeedScreen = () => {
     const [loading, setLoading] = useState(true);
     const [selectedArticle, setSelectedArticle] = useState(null);
     const [feedKeywords, setFeedKeywords] = useState([]);
+    const [nextCursor, setNextCursor] = useState('');
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const loadingMoreRef = useRef(false);
+    const FEED_PAGE_SIZE = 30;
     const { success } = useUIFeedback();
 
     const refreshKeywords = useCallback(async () => {
@@ -65,10 +70,12 @@ const NewsFeedScreen = () => {
             const cachedReactions = getReactionMap();
             if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
             const [response, bookmarks, reactions] = await Promise.all([
-                getUserFeed(),
+                getUserFeed({ limit: FEED_PAGE_SIZE }),
                 listBookmarks().catch(() => ({ results: [] })),
                 listReactions().catch(() => ({ results: [] })),
             ]);
+            setNextCursor(response.next_cursor || '');
+            setHasMore(Boolean(response.has_more));
             const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
             const reactionMap = mergeReactionRows(reactions.results || [], { replace: false });
             const mapped = (response.results || []).map((item, idx) => {
@@ -105,9 +112,61 @@ const NewsFeedScreen = () => {
         }
     };
 
+    const loadMoreNews = useCallback(async () => {
+        if (loadingMoreRef.current || !hasMore || !nextCursor) return;
+        loadingMoreRef.current = true;
+        setLoadingMore(true);
+        try {
+            const reactionMap = getReactionMap();
+            const response = await getUserFeed({ limit: FEED_PAGE_SIZE, cursor: nextCursor });
+            const mapped = (response.results || []).map((item, idx) => {
+                const aid = item.id || item.canonical_url || String(idx);
+                const likes = Number(item.like_count ?? item.upvotes ?? 0);
+                const dislikes = Number(item.dislike_count ?? 0);
+                return {
+                    ...item,
+                    id: aid,
+                    description: item.excerpt || item.summary || '',
+                    excerpt: item.excerpt || item.summary || '',
+                    summary: item.summary || item.excerpt || '',
+                    content: item.content || item.full_content || '',
+                    fullContent: item.full_content || item.content || '',
+                    category: item.topic_keywords?.[0] || 'General',
+                    time: item.published_at ? new Date(item.published_at).toLocaleString() : 'Recently',
+                    like_count: likes,
+                    dislike_count: dislikes,
+                    upvotes: likes,
+                    verified: item.credibility?.label === 'real',
+                    trending: Boolean(item.topic_keywords?.length),
+                    userReaction: reactionMap[String(aid)] || null,
+                };
+            });
+            setNewsData((prev) => {
+                const seen = new Set(prev.map((p) => String(p.id)));
+                return [...prev, ...mapped.filter((m) => !seen.has(String(m.id)))];
+            });
+            setNextCursor(response.next_cursor || '');
+            setHasMore(Boolean(response.has_more));
+        } catch (e) {
+            console.error('Load more failed:', e);
+        } finally {
+            loadingMoreRef.current = false;
+            setLoadingMore(false);
+        }
+    }, [hasMore, nextCursor, FEED_PAGE_SIZE]);
+
     useEffect(() => {
         loadNews();
     }, []);
+
+    useEffect(() => {
+        const onScroll = () => {
+            const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 900;
+            if (nearBottom) loadMoreNews();
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, [loadMoreNews]);
 
     useEffect(() => {
         if (!feedKeywords.length) {
@@ -237,11 +296,11 @@ const NewsFeedScreen = () => {
         }
     };
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
 
     const hasFeedPersonalization = feedKeywords.length > 0;
     const visibleNews = useMemo(() => {
@@ -265,95 +324,32 @@ const NewsFeedScreen = () => {
     }, [newsData, activeTab, hasFeedPersonalization, bookmarkedItems, feedKeywords]);
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            backgroundColor: backgroundColor,
-            paddingTop: '0',
-            marginTop: '0',
-        }}>
+        <div className="trak-app-page trak-page-enter">
             <div style={{
                 maxWidth: '1200px',
                 margin: '0 auto',
                 width: '100%',
-                padding: isMobile ? '0 16px 16px 16px' : isTablet ? '0 20px 20px 20px' : '0 24px 24px 24px',
+                padding: isMobile ? '20px 16px 16px' : isTablet ? '24px 20px 20px' : '28px 24px 24px',
             }}>
-                {/* Header Section */}
-                <div style={{
-                    marginTop: '0',
-                    marginBottom: isMobile ? '16px' : '24px',
-                    paddingTop: '0',
-                }}>
-                    <h1 style={{
-                        fontSize: isMobile ? '22px' : isTablet ? '24px' : '28px',
-                        fontWeight: '700',
-                        color: textPrimary,
-                        margin: '0 0 8px 0',
-                        paddingTop: '0',
-                        letterSpacing: '-0.5px',
-                    }}>
-                        Latest News & Articles
-                    </h1>
-                    <p style={{
-                        fontSize: '15px',
-                        color: textSecondary,
-                        margin: '0',
-                        lineHeight: '1.5',
-                    }}>
+                <div style={{ marginBottom: isMobile ? '16px' : '24px' }}>
+                    <h1 className="trak-pg-title">Latest News &amp; Articles</h1>
+                    <p className="trak-pg-sub">
                         Discover trending stories, insights, and updates from around the world
                     </p>
                 </div>
 
-                {/* Tab Bar */}
-                <div style={{
-                    display: 'flex',
-                    gap: isMobile ? '4px' : '8px',
-                    marginBottom: isMobile ? '20px' : '32px',
-                    borderBottom: `1px solid ${borderColor}`,
-                    paddingBottom: '0',
-                    overflowX: isMobile ? 'auto' : 'visible',
-                    WebkitOverflowScrolling: 'touch',
-                }}>
+                <div className="trak-pills">
                     {['For you', 'Bookmarks', 'Trending'].map((tab) => (
                         <button
                             key={tab}
+                            type="button"
+                            className={`trak-pill${activeTab === tab ? ' active' : ''}`}
                             onClick={() => {
                                 setActiveTab(tab);
                                 setSelectedArticle(null);
                             }}
-                            style={{
-                                padding: isMobile ? '8px 12px' : '10px 16px',
-                                border: 'none',
-                                background: 'transparent',
-                                cursor: 'pointer',
-                                transition: 'all 0.2s ease',
-                                borderBottom: activeTab === tab 
-                                    ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}` 
-                                    : '2px solid transparent',
-                                marginBottom: '-1px',
-                                borderRadius: '0',
-                                whiteSpace: 'nowrap',
-                                flexShrink: 0,
-                            }}
-                            onMouseEnter={(e) => {
-                                if (activeTab !== tab) {
-                                    e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (activeTab !== tab) {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                }
-                            }}
                         >
-                            <span style={{
-                                fontSize: '14px',
-                                fontWeight: activeTab === tab ? '600' : '500',
-                                color: activeTab === tab 
-                                    ? (isDark ? colors.primary || '#818CF8' : '#0f172a')
-                                    : textSecondary,
-                            }}>
-                                {tab}
-                            </span>
+                            {tab}
                         </button>
                     ))}
                 </div>
@@ -540,7 +536,7 @@ const NewsFeedScreen = () => {
                                         gap: '6px',
                                         padding: '6px 12px',
                                         border: 'none',
-                                        background: articleDetailReaction === 'up' ? (isDark ? colors.surface || '#1E293B' : '#ffffff') : 'transparent',
+                                        background: articleDetailReaction === 'up' ? (colors.surface) : 'transparent',
                                         borderRadius: '8px',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease',
@@ -548,7 +544,7 @@ const NewsFeedScreen = () => {
                                     }}
                                     onMouseEnter={(e) => {
                                         if (articleDetailReaction !== 'up') {
-                                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#ffffff';
+                                            e.currentTarget.style.backgroundColor = colors.surface;
                                         }
                                     }}
                                     onMouseLeave={(e) => {
@@ -586,7 +582,7 @@ const NewsFeedScreen = () => {
                                         gap: '6px',
                                         padding: '6px 12px',
                                         border: 'none',
-                                        background: articleDetailReaction === 'down' ? (isDark ? colors.surface || '#1E293B' : '#ffffff') : 'transparent',
+                                        background: articleDetailReaction === 'down' ? (colors.surface) : 'transparent',
                                         borderRadius: '8px',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease',
@@ -594,7 +590,7 @@ const NewsFeedScreen = () => {
                                     }}
                                     onMouseEnter={(e) => {
                                         if (articleDetailReaction !== 'down') {
-                                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#ffffff';
+                                            e.currentTarget.style.backgroundColor = colors.surface;
                                         }
                                     }}
                                     onMouseLeave={(e) => {
@@ -727,7 +723,7 @@ const NewsFeedScreen = () => {
                         )}
                     </div>
                 ) : (
-                    <MasonryFeed gap={isMobile ? 16 : isTablet ? 20 : 24}>
+                    <MasonryFeed gap={18}>
                         {visibleNews.map((item) => (
                             <NewsCard
                                 key={item.id}

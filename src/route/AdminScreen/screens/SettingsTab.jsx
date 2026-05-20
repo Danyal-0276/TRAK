@@ -7,6 +7,7 @@ import SettingRow from '../components/SettingRow';
 import Text from '../../../components/ui/Text';
 import LinearGradient from 'react-native-linear-gradient';
 import { useFeedback } from '../../../components/ui/FeedbackProvider';
+import { useAuth } from '../../../context/AuthContext';
 
 const LANGUAGE_OPTIONS = ['English', 'Urdu', 'Arabic', 'French', 'Spanish'];
 const TIMEZONE_OPTIONS = ['UTC', 'Asia/Karachi', 'Asia/Dubai', 'Europe/London', 'America/New_York'];
@@ -30,9 +31,20 @@ const SettingsTab = ({
   const { theme } = useTheme();
   const { confirm } = useFeedback();
   const { colors } = theme;
+  const { user, isSuperAdmin } = useAuth();
 
   return (
     <View style={styles.managementSection}>
+      {user?.email ? (
+        <View style={[styles.profileCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+          <Text variant="subtitle" color={colors.textPrimary}>
+            {user.email}
+          </Text>
+          <Text variant="caption" color={colors.textSecondary} style={{ marginTop: 4 }}>
+            {isSuperAdmin ? 'Super Admin' : 'Administrator'}
+          </Text>
+        </View>
+      ) : null}
       <View style={styles.managementHeader}>
         <View style={styles.headerLeft}>
           <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
@@ -273,6 +285,12 @@ const styles = StyleSheet.create({
   managementSection: {
     paddingHorizontal: 20,
     paddingTop: 8,
+  },
+  profileCard: {
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 20,
   },
   managementHeader: {
     flexDirection: 'row',

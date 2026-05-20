@@ -219,25 +219,15 @@ const DataScreen = () => {
         },
     ];
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            backgroundColor: backgroundColor,
-            paddingTop: '0',
-            marginTop: '0',
-        }}>
-            <div style={{
-                maxWidth: '900px',
-                margin: '0 auto',
-                width: '100%',
-                padding: '0 24px 24px 24px',
-            }}>
+        <div className="trak-app-page" style={{ backgroundColor }}>
+            <div className="trak-app-page-inner" style={{ maxWidth: 900 }}>
                 {/* Header */}
                 <div style={{
                     marginTop: '0',

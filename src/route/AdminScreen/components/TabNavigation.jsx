@@ -4,7 +4,7 @@ import { View, TouchableOpacity, StyleSheet, ScrollView, LayoutAnimation, Platfo
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-import { BarChart3, Users, FileText, Bell, Settings as SettingsIcon } from 'lucide-react-native';
+import { BarChart3, Users, Shield, FileText, Bell, Settings as SettingsIcon } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import LinearGradient from 'react-native-linear-gradient';
 
@@ -15,6 +15,7 @@ const TabNavigation = ({ activeTab, onTabChange }) => {
   const tabs = [
     { id: 'overview', icon: BarChart3 },
     { id: 'users', icon: Users },
+    { id: 'admins', icon: Shield },
     { id: 'articles', icon: FileText },
     { id: 'notifications', icon: Bell },
     { id: 'settings', icon: SettingsIcon },
