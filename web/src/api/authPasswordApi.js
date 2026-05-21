@@ -9,7 +9,13 @@ export async function requestPasswordReset(email) {
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
-    throw new Error(data.detail || data.email?.[0] || 'Could not start reset');
+    const msg =
+      data.detail ||
+      data.email?.[0] ||
+      (res.status === 500
+        ? 'Password reset is temporarily unavailable on the server. Try again after the backend is redeployed, or use a local backend.'
+        : 'Could not start reset');
+    throw new Error(msg);
   }
   return data;
 }
