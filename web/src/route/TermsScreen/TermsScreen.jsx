@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import TrakLogo from '../../components/TrakLogo';
 
 const TermsScreen = () => {
     const navigate = useNavigate();
@@ -14,7 +15,7 @@ const TermsScreen = () => {
                     Back
                 </button>
                 <div className="trak-auth-brand">
-                    <div className="trak-logo-mark">T</div>
+                    <TrakLogo size={32} variant="auto" />
                     <span className="trak-logo-word">TR<em>A</em>K</span>
                 </div>
                 <h1 className="trak-pg-title">Terms of Service</h1>

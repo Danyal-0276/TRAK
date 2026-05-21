@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { AuthPrimaryButton, AuthSecondaryButton } from '../../components/auth/AuthForm';
+import TrakLogo from '../../components/TrakLogo';
 
 const OpeningScreen = () => {
   const navigate = useNavigate();
@@ -33,7 +34,9 @@ const OpeningScreen = () => {
         }}
       >
         <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
-          <div className="trak-welcome-logo">T</div>
+          <div className="trak-welcome-logo">
+            <TrakLogo size={100} variant="auto" />
+          </div>
           <h1 className="trak-welcome-title">TRAK</h1>
           <p
             style={{

@@ -108,6 +108,14 @@ html, body {
   animation: trak-fadeDown 0.5s ease both;
   cursor: pointer;
 }
+.trak-logo-img {
+  display: block;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.trak-logo-wrap .trak-logo-img {
+  animation: trak-float 3s ease-in-out infinite;
+}
 .trak-logo-mark {
   width: 36px;
   height: 36px;
@@ -786,11 +794,9 @@ html, body {
   gap: 10px;
   margin-bottom: 28px;
 }
-.trak-auth-brand .trak-logo-mark {
+.trak-auth-brand .trak-logo-mark,
+.trak-auth-brand .trak-logo-img {
   animation: none;
-  width: 32px;
-  height: 32px;
-  font-size: 13px;
 }
 
 .trak-auth-back {
@@ -1069,20 +1075,16 @@ html, body {
   filter: blur(60px);
 }
 .trak-welcome-logo {
-  width: 100px;
-  height: 100px;
-  border-radius: 24px;
-  background: linear-gradient(135deg, var(--trak-accent), var(--trak-accent2));
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--trak-font-head);
-  font-weight: 800;
-  font-size: 42px;
-  color: #fff;
-  box-shadow: 0 16px 48px color-mix(in srgb, var(--trak-accent) 40%, transparent);
+  margin: 0 auto 24px;
   animation: trak-float 3s ease-in-out infinite;
-  margin-bottom: 24px;
+}
+.trak-welcome-logo .trak-logo-img {
+  width: 100px;
+  height: auto;
+  max-height: 120px;
 }
 .trak-welcome-title {
   font-family: var(--trak-font-disp);

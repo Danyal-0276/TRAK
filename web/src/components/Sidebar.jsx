@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Search, Bell, User, Settings, Bookmark } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import Text from './ui/Text';
+import TrakLogo from './TrakLogo';
 
 const Sidebar = () => {
     const { theme } = useTheme();
@@ -77,7 +78,7 @@ const Sidebar = () => {
                 e.currentTarget.style.backgroundColor = 'transparent';
             }}
             >
-                <img src="/images/blackLogo.svg" alt="TRAK" style={{ width: 36, height: 36 }} />
+                <TrakLogo size={36} variant="black" />
                 <Text variant="title" style={{
                     fontSize: '26px',
                     fontWeight: '800',

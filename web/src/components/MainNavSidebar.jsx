@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import TrakLogo from './TrakLogo';
 import {
   Home,
   Compass,
@@ -83,7 +84,7 @@ export default function MainNavSidebar() {
   return (
     <aside className="trak-main-nav">
       <div className="trak-logo-wrap" onClick={() => navigate('/newsfeed')} role="presentation">
-        <div className="trak-logo-mark">T</div>
+        <TrakLogo size={36} variant="auto" />
         <span className="trak-logo-word">
           TR<em>A</em>K
         </span>
