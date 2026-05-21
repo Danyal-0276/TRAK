@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import Text from '../../components/ui/Text';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
-import { confirmPasswordReset } from '../../api/authPasswordApi';
+import { confirmPasswordReset, confirmPasswordResetWithOtp } from '../../api/authPasswordApi';
 
 const ResetPasswordScreen = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams] = useSearchParams();
+    const otpEmail = (location.state?.email || '').trim().toLowerCase();
+    const resetToken = location.state?.resetToken || '';
+    const fromOtp = Boolean(location.state?.fromOtp && otpEmail && resetToken);
     const [uid, setUid] = useState('');
     const [token, setToken] = useState('');
     const [newPassword, setNewPassword] = useState('');
@@ -19,23 +23,35 @@ const ResetPasswordScreen = () => {
     const hasTokenParams = Boolean(uid.trim() && token.trim());
 
     useEffect(() => {
+        if (fromOtp) return;
         const u = searchParams.get('uid') || '';
         const t = searchParams.get('token') || '';
         setUid(u);
         setToken(t);
-    }, [searchParams]);
+    }, [searchParams, fromOtp]);
+
+    useEffect(() => {
+        if (location.state?.fromOtp && (!otpEmail || !resetToken)) {
+            navigate('/forgot-password-code', {
+                replace: true,
+                state: otpEmail ? { email: otpEmail } : undefined,
+            });
+        }
+    }, [fromOtp, otpEmail, resetToken, navigate, location.state?.fromOtp]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setErrors({});
 
-        if (!uid.trim()) {
-            setErrors((prev) => ({ ...prev, uid: 'Paste the code from your reset email (uid)' }));
-            return;
-        }
-        if (!token.trim()) {
-            setErrors((prev) => ({ ...prev, token: 'Paste the token from your reset link' }));
-            return;
+        if (!fromOtp) {
+            if (!uid.trim()) {
+                setErrors((prev) => ({ ...prev, uid: 'Paste the code from your reset email (uid)' }));
+                return;
+            }
+            if (!token.trim()) {
+                setErrors((prev) => ({ ...prev, token: 'Paste the token from your reset link' }));
+                return;
+            }
         }
         if (!newPassword) {
             setErrors(prev => ({ ...prev, newPassword: 'Password is required' }));
@@ -56,12 +72,21 @@ const ResetPasswordScreen = () => {
 
         setLoading(true);
         try {
-            await confirmPasswordReset({
-                uid: uid.trim(),
-                token: token.trim(),
-                password: newPassword,
-                password_confirm: confirmPassword,
-            });
+            if (fromOtp) {
+                await confirmPasswordResetWithOtp({
+                    email: otpEmail,
+                    reset_token: resetToken,
+                    password: newPassword,
+                    password_confirm: confirmPassword,
+                });
+            } else {
+                await confirmPasswordReset({
+                    uid: uid.trim(),
+                    token: token.trim(),
+                    password: newPassword,
+                    password_confirm: confirmPassword,
+                });
+            }
             navigate('/password-changed');
         } catch (err) {
             setErrors((prev) => ({
@@ -161,7 +186,16 @@ const ResetPasswordScreen = () => {
 
                 <form onSubmit={handleSubmit}>
                     <div style={{ marginBottom: '20px' }}>
-                        {!hasTokenParams ? (
+                        {fromOtp ? (
+                            <p style={{
+                                fontSize: '13px',
+                                color: '#166534',
+                                margin: '0 0 12px 0',
+                                lineHeight: '1.5',
+                            }}>
+                                Code verified for {otpEmail}. Choose your new password below.
+                            </p>
+                        ) : !hasTokenParams ? (
                             <p style={{
                                 fontSize: '13px',
                                 color: '#64748b',
@@ -180,6 +214,7 @@ const ResetPasswordScreen = () => {
                                 Reset link verified. Create your new password below.
                             </p>
                         )}
+                        {!fromOtp ? (
                         <details style={{ marginBottom: '16px' }}>
                             <summary style={{ cursor: 'pointer', color: '#64748b', fontSize: '13px' }}>Show manual uid/token fields</summary>
                             <div style={{ marginTop: '10px' }}>
@@ -251,6 +286,7 @@ const ResetPasswordScreen = () => {
                         )}
                             </div>
                         </details>
+                        ) : null}
                     </div>
 
                     {/* New Password */}

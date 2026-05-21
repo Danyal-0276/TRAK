@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
-import { requestPasswordReset, confirmPasswordResetWithOtp } from '../../api/authPasswordApi';
+import { requestPasswordReset, verifyPasswordResetOtp } from '../../api/authPasswordApi';
 
 const ForgotPasswordCodeScreen = () => {
   const navigate = useNavigate();
@@ -10,10 +10,7 @@ const ForgotPasswordCodeScreen = () => {
   const email = (location.state?.email || '').trim().toLowerCase();
   const devCode = location.state?.devCode || null;
   const emailSent = location.state?.emailSent !== false;
-  const [code, setCode] = useState('');
-  const [password, setPassword] = useState('');
-  const [passwordConfirm, setPasswordConfirm] = useState('');
-  const [showPw, setShowPw] = useState(false);
+  const [code, setCode] = useState(devCode ? String(devCode) : '');
   const [timer, setTimer] = useState(60);
   const [resendLoading, setResendLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -35,29 +32,23 @@ const ForgotPasswordCodeScreen = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    if (!code.trim()) {
-      setError('Enter the code from your email.');
-      return;
-    }
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters.');
-      return;
-    }
-    if (password !== passwordConfirm) {
-      setError('Passwords do not match.');
+    const trimmed = code.replace(/\D/g, '');
+    if (trimmed.length !== 6) {
+      setError('Enter the 6-digit code from your email.');
       return;
     }
     setSubmitLoading(true);
     try {
-      await confirmPasswordResetWithOtp({
-        email,
-        code: code.trim(),
-        password,
-        password_confirm: passwordConfirm,
+      const res = await verifyPasswordResetOtp({ email, code: trimmed });
+      navigate('/reset-password', {
+        state: {
+          email,
+          resetToken: res.reset_token,
+          fromOtp: true,
+        },
       });
-      navigate('/password-changed');
     } catch (err) {
-      setError(err?.message || 'Could not reset password.');
+      setError(err?.message || 'Invalid or expired code.');
     } finally {
       setSubmitLoading(false);
     }
@@ -87,7 +78,7 @@ const ForgotPasswordCodeScreen = () => {
       >
         <button
           type="button"
-          onClick={() => navigate(-1)}
+          onClick={() => navigate('/forgot-password', { replace: true })}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -127,7 +118,7 @@ const ForgotPasswordCodeScreen = () => {
               lineHeight: '1.2',
             }}
           >
-            Enter your code
+            Enter verification code
           </h1>
           <p
             style={{
@@ -139,9 +130,9 @@ const ForgotPasswordCodeScreen = () => {
           >
             {emailSent
               ? 'We sent a 6-digit code to '
-              : 'If your account exists, we tried to send a code to '}
+              : 'If your account exists, a code was sent to '}
             <span style={{ fontWeight: '600', color: '#0f172a' }}>{email || 'your email'}</span>.
-            {emailSent ? ' Check your inbox (and spam), then choose a new password below.' : ' Email delivery may be misconfigured on the server — use the dev code below if shown.'}
+            {emailSent ? ' Check your inbox and spam folder.' : ''}
           </p>
           {devCode ? (
             <p
@@ -161,80 +152,34 @@ const ForgotPasswordCodeScreen = () => {
         </div>
 
         <form onSubmit={handleSubmit}>
-          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#0f172a', marginBottom: '8px' }}>
-            Verification code
+          <label
+            style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#0f172a',
+              marginBottom: '8px',
+            }}
+          >
+            6-digit code
           </label>
           <input
             type="text"
             inputMode="numeric"
             autoComplete="one-time-code"
+            maxLength={6}
             value={code}
-            onChange={(e) => setCode(e.target.value.replace(/\s/g, ''))}
-            placeholder="6-digit code"
+            onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+            placeholder="000000"
             style={{
               width: '100%',
-              padding: '11px 14px',
-              fontSize: '16px',
+              padding: '14px',
+              fontSize: '24px',
+              letterSpacing: '8px',
+              textAlign: 'center',
               border: '1px solid #cbd5e1',
               borderRadius: '6px',
               marginBottom: '20px',
-              boxSizing: 'border-box',
-            }}
-          />
-
-          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#0f172a', marginBottom: '8px' }}>
-            New password
-          </label>
-          <div style={{ position: 'relative', marginBottom: '16px' }}>
-            <input
-              type={showPw ? 'text' : 'password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="At least 8 characters"
-              autoComplete="new-password"
-              style={{
-                width: '100%',
-                padding: '11px 44px 11px 14px',
-                fontSize: '15px',
-                border: '1px solid #cbd5e1',
-                borderRadius: '6px',
-                boxSizing: 'border-box',
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPw(!showPw)}
-              style={{
-                position: 'absolute',
-                right: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                border: 'none',
-                background: 'transparent',
-                cursor: 'pointer',
-                color: '#64748b',
-              }}
-            >
-              {showPw ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
-          </div>
-
-          <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#0f172a', marginBottom: '8px' }}>
-            Confirm password
-          </label>
-          <input
-            type={showPw ? 'text' : 'password'}
-            value={passwordConfirm}
-            onChange={(e) => setPasswordConfirm(e.target.value)}
-            placeholder="Repeat password"
-            autoComplete="new-password"
-            style={{
-              width: '100%',
-              padding: '11px 14px',
-              fontSize: '15px',
-              border: '1px solid #cbd5e1',
-              borderRadius: '6px',
-              marginBottom: '16px',
               boxSizing: 'border-box',
             }}
           />
@@ -245,7 +190,7 @@ const ForgotPasswordCodeScreen = () => {
 
           <button
             type="submit"
-            disabled={submitLoading}
+            disabled={submitLoading || code.replace(/\D/g, '').length !== 6}
             style={{
               width: '100%',
               padding: '12px 20px',
@@ -261,11 +206,12 @@ const ForgotPasswordCodeScreen = () => {
               justifyContent: 'center',
               gap: '8px',
               marginBottom: '20px',
+              opacity: code.replace(/\D/g, '').length !== 6 ? 0.6 : 1,
             }}
           >
-            {submitLoading ? 'Saving…' : (
+            {submitLoading ? 'Verifying…' : (
               <>
-                Reset password
+                Continue
                 <ArrowRight size={18} />
               </>
             )}
@@ -282,7 +228,7 @@ const ForgotPasswordCodeScreen = () => {
                 await requestPasswordReset(email);
                 setTimer(60);
               } catch {
-                /* generic messaging */
+                setError('Could not resend code. Try again.');
               } finally {
                 setResendLoading(false);
               }
@@ -302,7 +248,11 @@ const ForgotPasswordCodeScreen = () => {
                 fontWeight: '500',
               }}
             >
-              {resendLoading ? 'Sending…' : timer > 0 ? `Resend code in 0:${timer.toString().padStart(2, '0')}` : 'Resend code'}
+              {resendLoading
+                ? 'Sending…'
+                : timer > 0
+                  ? `Resend code in 0:${timer.toString().padStart(2, '0')}`
+                  : 'Resend code'}
             </span>
           </button>
         </div>

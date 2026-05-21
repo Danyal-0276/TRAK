@@ -295,7 +295,8 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                         const res = await requestPasswordReset(email.trim());
                                         navigation.navigate('ForgotPasswordCode', {
                                             email: email.trim().toLowerCase(),
-                                            debugResetPreview: res?.debug_reset_preview || null,
+                                            devCode: res?.dev_code || null,
+                                            emailSent: res?.email_sent !== false,
                                         });
                                     } catch (error) {
                                         showError(error?.message || 'Could not send reset email.');
