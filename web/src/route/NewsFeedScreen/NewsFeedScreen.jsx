@@ -11,7 +11,7 @@ import { useResponsive } from '../../hooks/useResponsive';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
-import { filterFeedByUserKeywords } from '../../utils/feedKeywordMatch';
+import { loadExplorePage } from '../../utils/loadFeed';
 import { 
     ArrowLeft, 
     ChevronUp, 
@@ -51,27 +51,8 @@ const NewsFeedScreen = () => {
         return kws;
     }, []);
 
-    const loadNews = async () => {
-        try {
-            setLoading(true);
-            const keywords = await refreshKeywords();
-            if (!keywords?.length) {
-                setNewsData([]);
-                return;
-            }
-
-            const cachedBookmarks = new Set(getBookmarkIds());
-            if (cachedBookmarks.size) setBookmarkedItems(cachedBookmarks);
-            const cachedReactions = getReactionMap();
-            if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
-            const [response, bookmarks, reactions] = await Promise.all([
-                getUserFeed(),
-                listBookmarks().catch(() => ({ results: [] })),
-                listReactions().catch(() => ({ results: [] })),
-            ]);
-            const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
-            const reactionMap = mergeReactionRows(reactions.results || [], { replace: false });
-            const mapped = (response.results || []).map((item, idx) => {
+    const mapFeedResults = (rawItems, reactionMap) =>
+        (rawItems || []).map((item, idx) => {
                 const aid = item.id || item.canonical_url || String(idx);
                 const likes = Number(item.like_count ?? item.upvotes ?? 0);
                 const dislikes = Number(item.dislike_count ?? 0);
@@ -92,8 +73,42 @@ const NewsFeedScreen = () => {
                     trending: Boolean(item.topic_keywords?.length),
                     userReaction: reactionMap[String(aid)] || null,
                 };
-            });
-            setNewsData(mapped);
+        });
+
+    const loadNews = async () => {
+        try {
+            setLoading(true);
+            const keywords = await refreshKeywords();
+
+            const cachedBookmarks = new Set(getBookmarkIds());
+            if (cachedBookmarks.size) setBookmarkedItems(cachedBookmarks);
+            const cachedReactions = getReactionMap();
+            if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
+
+            const [bookmarks, reactions] = await Promise.all([
+                listBookmarks().catch(() => ({ results: [] })),
+                listReactions().catch(() => ({ results: [] })),
+            ]);
+            const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
+            const reactionMap = mergeReactionRows(reactions.results || [], { replace: false });
+
+            let rawItems = [];
+
+            if (keywords?.length) {
+                try {
+                    const response = await getUserFeed({ limit: 50 });
+                    rawItems = response.results || [];
+                } catch (e) {
+                    console.warn('Personalized feed failed, trying explore:', e?.message);
+                }
+            }
+
+            if (!rawItems.length) {
+                const page = await loadExplorePage({ limit: 50 });
+                rawItems = page.items || [];
+            }
+
+            setNewsData(mapFeedResults(rawItems, reactionMap));
             setBookmarkedItems(bookmarked);
             setBookmarkIds(Array.from(bookmarked));
             setVotedItems(reactionMap);
@@ -108,12 +123,6 @@ const NewsFeedScreen = () => {
     useEffect(() => {
         loadNews();
     }, []);
-
-    useEffect(() => {
-        if (!feedKeywords.length) {
-            setNewsData([]);
-        }
-    }, [feedKeywords]);
 
     useEffect(() => {
         if (rawTab) {
@@ -243,11 +252,7 @@ const NewsFeedScreen = () => {
     const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
     const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
 
-    const hasFeedPersonalization = feedKeywords.length > 0;
     const visibleNews = useMemo(() => {
-        if (activeTab === 'For you' && !hasFeedPersonalization) {
-            return [];
-        }
         if (activeTab === 'Bookmarks') {
             return newsData.filter((n) => bookmarkedItems.has(String(n.id)) || bookmarkedItems.has(n.id));
         }
@@ -259,10 +264,10 @@ const NewsFeedScreen = () => {
             });
         }
         if (activeTab === 'For you') {
-            return filterFeedByUserKeywords(newsData, feedKeywords);
+            return newsData;
         }
         return newsData;
-    }, [newsData, activeTab, hasFeedPersonalization, bookmarkedItems, feedKeywords]);
+    }, [newsData, activeTab, bookmarkedItems]);
 
     return (
         <div style={{
