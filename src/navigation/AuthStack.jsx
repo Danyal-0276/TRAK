@@ -12,6 +12,7 @@ import {
     TagSelectionScreen,
     KeywordSelectionScreen,
     TermsScreen,
+    VerifyEmailScreen,
 } from './config/screenImports';
 
 const Stack = createNativeStackNavigator();
@@ -20,6 +21,7 @@ const authScreens = [
     { name: 'OpeningScreen', component: OpeningScreen },
     { name: 'Login', component: LoginScreen },
     { name: 'SignUp', component: SignUpScreen },
+    { name: 'VerifyEmail', component: VerifyEmailScreen },
     { name: 'TagSelection', component: TagSelectionScreen },
     { name: 'KeywordSelection', component: KeywordSelectionScreen },
     { name: 'ForgotPassword', component: ForgotPasswordScreen },

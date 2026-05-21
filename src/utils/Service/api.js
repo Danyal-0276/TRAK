@@ -177,7 +177,12 @@ export const authRequest = async (path, options = {}) => {
   return res.json();
 };
 
-export const getUserFeed = () => authRequest('/api/user/feed/?limit=50');
+export const getUserFeed = ({ limit = 30, cursor = '', q = '' } = {}) => {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set('cursor', String(cursor));
+  if (q) params.set('q', String(q));
+  return authRequest(`/api/user/feed/?${params}`);
+};
 export const getExploreFeed = () => authRequest('/api/user/explore/?limit=200');
 
 export const chatWithBot = (message) =>

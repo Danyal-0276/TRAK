@@ -1,10 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { signInWithPopup } from 'firebase/auth';
-import { auth, googleProvider } from '../firebase';
+import { getFirebaseAuth, getGoogleProvider, isFirebaseConfigured } from '../firebase';
 import {
     clearAuthTokens,
     completeSocialOAuth,
     getAccessToken,
+    getRefreshToken,
     getCurrentUser,
     loginWithEmailPassword,
     loginWithFirebase,
@@ -16,6 +17,10 @@ import {
 } from '../utils/Service/api';
 import { registerDeviceToken } from '../api/notificationsApi';
 import { getOrCreatePushToken } from '../api/pushToken';
+import {
+    resendEmailVerification,
+    verifyEmailCode,
+} from '../api/authEmailApi';
 
 const AuthContext = createContext(null);
 
@@ -63,7 +68,12 @@ export const AuthProvider = ({ children }) => {
     };
 
     const loginWithGoogle = async () => {
-        const result = await signInWithPopup(auth, googleProvider);
+        if (!isFirebaseConfigured()) {
+            throw new Error(
+                'Google sign-in is not configured. Add Firebase keys to TRAK/web/.env (see .env.example), then restart npm run dev.'
+            );
+        }
+        const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
         const idToken = await result.user.getIdToken();
         const session = await loginWithFirebase(idToken);
         return applySession(session);
@@ -74,9 +84,25 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const verifyEmail = async (code) => {
+        const data = await verifyEmailCode(code);
+        if (data?.user) {
+            saveAuthSession({
+                access: getAccessToken(),
+                refresh: getRefreshToken(),
+                user: data.user,
+            });
+            setUser(data.user);
+        }
+        return data;
+    };
+
+    const resendVerificationEmail = () => resendEmailVerification();
+
     const value = {
         user,
         isAdmin: user?.role === 'admin',
+        isSuperAdmin: Boolean(user?.is_super_admin),
         loading,
         login,
         register,
@@ -86,7 +112,10 @@ export const AuthProvider = ({ children }) => {
         completeSocialLogin,
         loginWithGoogle,
         isAuthenticated: Boolean(getAccessToken() && user),
+        isFirebaseConfigured: isFirebaseConfigured(),
         logout,
+        verifyEmail,
+        resendVerificationEmail,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

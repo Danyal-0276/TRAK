@@ -65,8 +65,12 @@ const SignUpScreen = () => {
         setLoading(true);
         setErrors({});
         try {
-            await register(email, password, confirmPassword, fullName, phone);
-            navigate('/tag-selection', { state: { fromSignup: true } });
+            const sessionUser = await register(email, password, confirmPassword, fullName, phone);
+            if (sessionUser?.email_verified) {
+                navigate('/tag-selection', { state: { fromSignup: true } });
+            } else {
+                navigate('/verify-email', { state: { email, fromSignup: true } });
+            }
         } catch (error) {
             const msg = error.message || 'Signup failed';
             const isPasswordError = msg.toLowerCase().includes('password');

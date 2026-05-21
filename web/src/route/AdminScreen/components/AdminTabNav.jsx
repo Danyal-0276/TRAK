@@ -1,11 +1,12 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { BarChart3, Users, FileText, Bell, Settings } from 'lucide-react';
+import { BarChart3, Users, Shield, FileText, Bell, Settings } from 'lucide-react';
 import { useTheme } from '../../../theme/ThemeContext';
 
 const TABS = [
   { id: 'overview', path: '/admin/dashboard', icon: BarChart3, label: 'Overview' },
   { id: 'users', path: '/admin/users', icon: Users, label: 'Users' },
+  { id: 'admins', path: '/admin/admins', icon: Shield, label: 'Admins' },
   { id: 'articles', path: '/admin/articles', icon: FileText, label: 'Articles' },
   { id: 'notifications', path: '/admin/notifications', icon: Bell, label: 'Notifications' },
   { id: 'settings', path: '/admin/settings', icon: Settings, label: 'Settings' },

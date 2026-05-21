@@ -38,7 +38,7 @@ const AdminUsersScreen = () => {
     const loadUsers = useCallback(async () => {
         try {
             setLoading(true);
-            const data = await getAdminUsers(searchQuery.trim());
+            const data = await getAdminUsers({ q: searchQuery.trim(), role: 'user' });
             const mapped = (data.results || []).map((u) => ({
                 id: u.id,
                 name: u.email?.split('@')[0] || 'user',
