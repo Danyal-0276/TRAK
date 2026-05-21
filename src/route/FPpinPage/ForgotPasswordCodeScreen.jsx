@@ -21,6 +21,7 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
   const { error: showError } = useFeedback();
   const email = (route.params?.email || '').trim().toLowerCase();
   const devCode = route.params?.devCode || null;
+  const emailSent = route.params?.emailSent !== false;
   const [code, setCode] = useState(devCode ? String(devCode) : '');
   const [timer, setTimer] = useState(60);
   const [loading, setLoading] = useState(false);
@@ -91,7 +92,9 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
           Enter verification code
         </Text>
         <Text variant="body" color={colors.textSecondary} style={{ textAlign: 'center', marginBottom: 24 }}>
-          We sent a 6-digit code to {email || 'your email'}.
+          {emailSent
+            ? `We sent a 6-digit code to ${email || 'your email'}. Check your inbox and spam.`
+            : `If your account exists, a code was sent to ${email || 'your email'}.`}
         </Text>
 
         {devCode ? (
