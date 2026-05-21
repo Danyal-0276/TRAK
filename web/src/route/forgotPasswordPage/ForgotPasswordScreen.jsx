@@ -199,7 +199,7 @@ const ForgotPasswordScreen = () => {
                             }
                         }}
                     >
-                        {loading ? 'Sending...' : (
+                        {loading ? 'Sending code…' : (
                             <>
                                 Send reset code
                                 <ArrowRight size={18} />

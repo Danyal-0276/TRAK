@@ -16,10 +16,14 @@ export async function fetchWithTimeout(url, options = {}, ms = API_TIMEOUT_MS) {
     if (err?.name === 'AbortError') {
       const isRender =
         typeof url === 'string' && url.includes('onrender.com');
+      const isPasswordReset =
+        typeof url === 'string' && url.includes('password-reset');
       throw new Error(
-        isRender
-          ? 'The server is waking up (Render can take up to a minute). Wait a moment and refresh, or run the backend locally.'
-          : 'Request timed out. Start Django: cd Backend/TRAK_Backend && py manage.py runserver 0.0.0.0:8000'
+        isPasswordReset
+          ? 'Reset request timed out. Redeploy the latest backend (email is sent in the background) or try again in a moment.'
+          : isRender
+            ? 'The server is waking up (Render can take up to a minute). Wait a moment and try again.'
+            : 'Request timed out. Start Django: cd Backend/TRAK_Backend && py manage.py runserver 0.0.0.0:8000'
       );
     }
     throw err;
