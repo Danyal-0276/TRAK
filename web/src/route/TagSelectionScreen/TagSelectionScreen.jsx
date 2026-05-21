@@ -80,27 +80,73 @@ const TagSelectionScreen = () => {
         navigate('/keyword-selection', { state: { selectedTags, fromSettings } });
     };
 
-    const backgroundColor = colors.background;
-    const textPrimary = colors.textPrimary;
-    const textSecondary = colors.textSecondary;
-    const borderColor = colors.border;
-    const cardBackground = colors.surface;
+    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
+    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
+    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
 
     return (
-        <div className="trak-auth-flow-page">
-            <div className="trak-auth-flow-inner">
-                <button type="button" className="trak-auth-back" onClick={() => navigate(-1)}>
-                    <ArrowLeft size={16} />
-                    Back
-                </button>
-                <h1 className="trak-pg-title">
-                    {fromSettings ? 'Manage Categories' : 'Select Your Interests'}
-                </h1>
-                <p className="trak-pg-sub" style={{ marginBottom: 24 }}>
-                    {fromSettings
-                        ? 'Update your category preferences. Next, review custom keywords.'
-                        : 'Choose categories to personalize your news feed'}
-                </p>
+        <div style={{
+            minHeight: '100vh',
+            backgroundColor: backgroundColor,
+            paddingTop: '0',
+            marginTop: '0',
+        }}>
+            <div style={{
+                maxWidth: '1200px',
+                margin: '0 auto',
+                width: '100%',
+                padding: isMobile ? '0 16px 24px 16px' : isTablet ? '0 20px 24px 20px' : '0 24px 24px 24px',
+            }}>
+                {/* Header Section */}
+                <div style={{
+                    marginTop: '0',
+                    marginBottom: isMobile ? '16px' : '24px',
+                    paddingTop: '0',
+                }}>
+                    <button
+                        onClick={() => navigate(-1)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 0',
+                            border: 'none',
+                            background: 'transparent',
+                            color: textSecondary,
+                            fontSize: '15px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            marginBottom: '24px',
+                            alignSelf: 'flex-start',
+                        }}
+                    >
+                        <ArrowLeft size={18} />
+                        Back
+                    </button>
+
+                    <h1 style={{
+                        fontSize: isMobile ? '22px' : isTablet ? '24px' : '28px',
+                        fontWeight: '700',
+                        color: textPrimary,
+                        margin: '0 0 8px 0',
+                        paddingTop: '0',
+                        letterSpacing: '-0.5px',
+                    }}>
+                        {fromSettings ? 'Manage Categories' : 'Select Your Interests'}
+                    </h1>
+                    <p style={{
+                        fontSize: '15px',
+                        color: textSecondary,
+                        margin: '0',
+                        lineHeight: '1.5',
+                    }}>
+                        {fromSettings
+                            ? 'Update your category preferences. Next, review custom keywords.'
+                            : 'Choose categories to personalize your news feed'}
+                    </p>
+                </div>
 
                 {/* Search */}
                 <div style={{ marginBottom: '20px', position: 'relative' }}>
@@ -282,11 +328,30 @@ const TagSelectionScreen = () => {
                     marginTop: 'auto',
                 }}>
                     <button
-                        type="button"
-                        className="trak-btn-primary"
                         onClick={handleContinue}
                         disabled={selectedTags.length === 0}
-                        style={{ opacity: selectedTags.length > 0 ? 1 : 0.55 }}
+                        style={{
+                            width: '100%',
+                            padding: '14px 24px',
+                            backgroundColor: selectedTags.length > 0 ? (isDark ? colors.primary || '#3b82f6' : '#000000') : (isDark ? '#475569' : '#d1d5db'),
+                            color: '#ffffff',
+                            border: 'none',
+                            borderRadius: '10px',
+                            fontSize: '15px',
+                            fontWeight: '600',
+                            cursor: selectedTags.length > 0 ? 'pointer' : 'not-allowed',
+                            transition: 'all 0.2s ease',
+                        }}
+                        onMouseEnter={(e) => {
+                            if (selectedTags.length > 0) {
+                                e.currentTarget.style.backgroundColor = isDark ? '#2563eb' : '#1a1a1a';
+                            }
+                        }}
+                        onMouseLeave={(e) => {
+                            if (selectedTags.length > 0) {
+                                e.currentTarget.style.backgroundColor = isDark ? colors.primary || '#3b82f6' : '#000000';
+                            }
+                        }}
                     >
                         {fromSettings ? 'Next' : 'Continue'} ({selectedTags.length})
                     </button>

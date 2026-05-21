@@ -1,7 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useResponsive } from '../hooks/useResponsive';
-import { useTheme } from '../theme/ThemeContext';
 import OpeningScreen from '../route/openingScreen/OpeningScreen';
 import LoginScreen from '../route/LoginPage/LoginScreen';
 import SignUpScreen from '../route/signUpPage/SignUpScreen';
@@ -42,23 +41,22 @@ import UserOnlyRoute from '../components/UserOnlyRoute';
 const RouterContent = () => {
   const location = useLocation();
   const { isDesktop } = useResponsive();
-  const { theme } = useTheme();
   const isAuthPage = ['/', '/login', '/signup', '/verify-email', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'].includes(location.pathname);
   const isAdminPage = location.pathname.startsWith('/admin');
   const isMainAppPage = !isAuthPage && !isAdminPage;
 
-  const shellClass = isMainAppPage && isDesktop ? 'trak-shell-main' : '';
-
   return (
-    <div
-      data-auth={isAuthPage ? 'true' : 'false'}
-      data-theme={theme.mode}
-      className={shellClass || undefined}
+    <div 
+      data-auth={isAuthPage ? "true" : "false"}
       style={{
         minHeight: '100vh',
         width: '100%',
-        background: 'var(--trak-bg)',
-        transition: 'background 0.3s ease, padding 0.3s ease',
+        backgroundColor: isAuthPage ? '#ffffff' : '#f9fafb',
+        paddingTop: '0',
+        marginTop: '0',
+        paddingRight: isMainAppPage && isDesktop ? '280px' : '0',
+        paddingLeft: '0',
+        transition: 'padding 0.3s ease',
       }}
     >
       <Routes>

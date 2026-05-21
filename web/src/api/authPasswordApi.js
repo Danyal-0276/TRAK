@@ -1,7 +1,8 @@
 import { AUTH_PREFIX } from '../config/api';
+import { fetchWithTimeout } from './fetchWithTimeout';
 
 export async function requestPasswordReset(email) {
-  const res = await fetch(`${AUTH_PREFIX}/password-reset/`, {
+  const res = await fetchWithTimeout(`${AUTH_PREFIX}/password-reset/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ email: email.trim().toLowerCase() }),
@@ -14,7 +15,7 @@ export async function requestPasswordReset(email) {
 }
 
 export async function confirmPasswordReset(body) {
-  const res = await fetch(`${AUTH_PREFIX}/password-reset/confirm/`, {
+  const res = await fetchWithTimeout(`${AUTH_PREFIX}/password-reset/confirm/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify(body),
@@ -27,7 +28,7 @@ export async function confirmPasswordReset(body) {
 }
 
 export async function confirmPasswordResetWithOtp({ email, code, password, password_confirm }) {
-  const res = await fetch(`${AUTH_PREFIX}/password-reset/otp-confirm/`, {
+  const res = await fetchWithTimeout(`${AUTH_PREFIX}/password-reset/otp-confirm/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({

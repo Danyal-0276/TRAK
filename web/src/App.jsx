@@ -6,7 +6,6 @@ import ChatBotWidget from './components/ChatBotWidget';
 import { UIFeedbackProvider } from './components/ui/UIFeedback';
 import { GlobalSkeletonStyles } from './components/skeletons/SkeletonLayouts';
 import './App.css';
-import './theme/trak-theme.css';
 
 const App = () => {
   return (

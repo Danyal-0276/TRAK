@@ -15,16 +15,22 @@ const AboutScreen = () => {
   const isDark = theme.mode === 'dark';
   const { isMobile } = useResponsive();
 
-  const backgroundColor = colors.background;
-  const cardBackground = colors.surface;
-  const textPrimary = colors.textPrimary;
-  const textSecondary = colors.textSecondary;
-  const borderColor = colors.border;
-  const accent = colors.primary;
-  const accentSoft = isDark ? 'rgba(124, 106, 245, 0.14)' : 'var(--trak-accent-pale)';
+  const backgroundColor = isDark ? colors.background || '#0F172A' : '#f8fafc';
+  const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
+  const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+  const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
+  const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+  const accent = isDark ? colors.primary || '#818CF8' : '#0f172a';
+  const accentSoft = isDark ? 'rgba(129, 140, 248, 0.14)' : '#eff6ff';
 
   return (
-    <div className="trak-app-page" style={{ backgroundColor, paddingBottom: 48 }}>
+    <div
+      style={{
+        minHeight: '100vh',
+        backgroundColor,
+        paddingBottom: 48,
+      }}
+    >
       <div
         style={{
           maxWidth: 920,
@@ -255,7 +261,7 @@ const AboutScreen = () => {
             padding: 24,
             borderRadius: 16,
             border: `1px solid ${borderColor}`,
-            background: colors.surfaceElevated,
+            background: isDark ? colors.surfaceElevated || '#334155' : '#ffffff',
             textAlign: 'center',
           }}
         >

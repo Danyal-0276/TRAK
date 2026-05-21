@@ -40,11 +40,11 @@ const AdminSettingsScreen = () => {
   const [listModal, setListModal] = useState(null);
 
   const backgroundColor = isDark ? colors.background || '#0F172A' : '#f9fafb';
-  const cardBackground = colors.surface;
+  const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
   const inputBg = isDark ? colors.backgroundSecondary || '#334155' : '#f8fafc';
-  const textPrimary = colors.textPrimary;
-  const textSecondary = colors.textSecondary;
-  const borderColor = colors.border;
+  const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+  const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
+  const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
   const primary = colors.primary || '#3b82f6';
   const errorColor = colors.error || '#ef4444';
 

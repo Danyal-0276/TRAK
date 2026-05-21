@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
-import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
-import { bookmarkRowToCard } from '../../utils/bookmarkCardMapper';
+import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { mapApiItem } from '../../utils/loadFeed';
 import { normalizeArticleForDetail } from '../../utils/articleNavigation';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
@@ -36,7 +36,47 @@ const BookmarksScreen = () => {
             setBookmarkedItems(ids);
             setBookmarkIds(Array.from(ids));
             setVotedItems(mergeReactionRows(reactRes.results || [], { replace: false }));
-            setNewsData(rows.map(bookmarkRowToCard));
+            const detailed = await Promise.all(
+                rows.map(async (r) => {
+                    const aid = String(r.article_id ?? '').trim();
+                    try {
+                        const full = await getUserArticleDetail(aid);
+                        const likes = Number(full.like_count ?? full.upvotes ?? 0);
+                        const dislikes = Number(full.dislike_count ?? 0);
+                        return {
+                            ...full,
+                            id: aid,
+                            description: full.excerpt || full.summary || '',
+                            excerpt: full.excerpt || full.summary || '',
+                            content: full.content || full.full_content || '',
+                            fullContent: full.full_content || full.content || '',
+                            category: full.topic_keywords?.[0] || 'Saved',
+                            time: full.published_at ? new Date(full.published_at).toLocaleString() : (r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently'),
+                            like_count: likes,
+                            dislike_count: dislikes,
+                            upvotes: likes,
+                            verified: full.credibility?.label === 'real',
+                            trending: Boolean(full.topic_keywords?.length),
+                        };
+                    } catch {
+                        return {
+                            id: aid,
+                            title: r.title || 'Saved article',
+                            source: 'TRAK',
+                            excerpt: '',
+                            description: '',
+                            content: '',
+                            canonical_url: r.url || '',
+                            category: 'Saved',
+                            time: r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently',
+                            like_count: 0,
+                            dislike_count: 0,
+                            upvotes: 0,
+                        };
+                    }
+                })
+            );
+            setNewsData(detailed.filter(Boolean));
         } catch (error) {
             console.error('Error loading bookmarks:', error);
         } finally {
@@ -116,17 +156,47 @@ const BookmarksScreen = () => {
 
     const bookmarkedNews = newsData.filter((item) => bookmarkedItems.has(String(item.id)));
 
-    const pageBg = colors.background;
-    const headingColor = colors.textPrimary;
-    const subColor = colors.textSecondary;
+    const pageBg = isDark ? colors.background || '#0F172A' : '#ffffff';
+    const headingColor = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+    const subColor = isDark ? colors.textSecondary || '#94a3b8' : '#64748b';
 
     return (
-        <div className="trak-app-page" style={{ backgroundColor: pageBg }}>
-            <div className="trak-app-page-inner">
-                <header className="trak-page-header">
-                    <h1 className="trak-pg-title" style={{ color: headingColor }}>Bookmarks</h1>
-                    <p className="trak-pg-sub" style={{ color: subColor }}>Your saved articles and stories</p>
-                </header>
+        <div style={{
+            minHeight: '100vh',
+            backgroundColor: pageBg,
+            paddingTop: '0',
+            marginTop: '0',
+        }}>
+            <div style={{
+                maxWidth: '1200px',
+                margin: '0 auto',
+                width: '100%',
+                padding: '0 24px 24px 24px',
+            }}>
+                <div style={{
+                    marginTop: '0',
+                    marginBottom: '24px',
+                    paddingTop: '0',
+                }}>
+                    <h1 style={{
+                        fontSize: '28px',
+                        fontWeight: '700',
+                        color: headingColor,
+                        margin: '0 0 8px 0',
+                        paddingTop: '0',
+                        letterSpacing: '-0.5px',
+                    }}>
+                        Bookmarks
+                    </h1>
+                    <p style={{
+                        fontSize: '15px',
+                        color: subColor,
+                        margin: '0',
+                        lineHeight: '1.5',
+                    }}>
+                        Your saved articles and stories
+                    </p>
+                </div>
 
                 {loading ? (
                     <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(isDark, colors)} />

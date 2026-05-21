@@ -27,6 +27,7 @@ import {
     confirmProfileVerification,
     getCurrentUser,
     getProfile,
+    getUserArticleDetail,
     listBookmarks,
     removeBookmark,
     requestProfileVerification,
@@ -37,7 +38,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
 import { getBookmarkIds, setBookmarkIds } from "../../utils/bookmarksStorage";
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from "../../utils/reactionsStorage";
-import { bookmarkRowToCard } from "../../utils/bookmarkCardMapper";
+import { mapApiItem } from "../../utils/loadFeed";
 
 function profileCacheKey() {
     const u = getCurrentUser();
@@ -114,9 +115,6 @@ const UserProfileScreen = () => {
             }
             setVotedItems(getReactionMap());
         } catch {}
-        if (window.localStorage.getItem(profileCacheKey())) {
-            setPageReady(true);
-        }
         loadBookmarks();
     }, [authUser?.id, authUser?.pk]);
 
@@ -128,7 +126,50 @@ const UserProfileScreen = () => {
             window.localStorage.setItem(profileCacheKey(), JSON.stringify(profileData));
             const bookmarkPayload = await listBookmarks().catch(() => ({ results: [] }));
             const rows = bookmarkPayload.results || [];
-            const bookmarkedArticles = rows.map(bookmarkRowToCard);
+            const detailed = await Promise.all(
+                rows.map(async (row) => {
+                    const aid = String(row.article_id ?? "").trim();
+                    try {
+                        const full = await getUserArticleDetail(aid);
+                        const mapped = mapApiItem({ ...full, id: aid });
+                        return {
+                            ...mapped,
+                            id: aid,
+                            description: mapped.excerpt || mapped.summary || '',
+                            excerpt: mapped.excerpt || mapped.summary || '',
+                            summary: mapped.summary || mapped.excerpt || '',
+                            content: mapped.content || mapped.fullContent || '',
+                            fullContent: mapped.fullContent || mapped.content || '',
+                            category: full.topic_keywords?.[0] || mapped.category || 'Saved',
+                            time: full.published_at
+                                ? new Date(full.published_at).toLocaleString()
+                                : (row.created_at ? new Date(row.created_at).toLocaleString() : mapped.time || 'Recently'),
+                            verified: full.credibility?.label === 'real',
+                            trending: Boolean(full.topic_keywords?.length),
+                            image: full.image || full.image_url || mapped.image,
+                        };
+                    } catch {
+                        return {
+                            id: aid,
+                            title: row.title || "Saved article",
+                            source: "TRAK",
+                            excerpt: "",
+                            description: "",
+                            summary: "",
+                            content: "",
+                            canonical_url: row.url || "",
+                            fullContent: "",
+                            category: "Saved",
+                            time: row.created_at ? new Date(row.created_at).toLocaleString() : "Recently",
+                            like_count: 0,
+                            dislike_count: 0,
+                            upvotes: 0,
+                            votes: 0,
+                        };
+                    }
+                })
+            );
+            const bookmarkedArticles = detailed.filter(Boolean);
             setBookmarkedItems(new Set(bookmarkedArticles.map((b) => String(b.id))));
             setBookmarkIds(bookmarkedArticles.map((b) => String(b.id)));
             setBookmarks(bookmarkedArticles);
@@ -211,13 +252,13 @@ const UserProfileScreen = () => {
         { label: 'Saved', value: userStats.saved, icon: BookOpen, onClick: () => navigate('/bookmarks') },
     ];
 
-    const backgroundColor = colors.background;
-    const cardBackground = colors.surface;
-    const textPrimary = colors.textPrimary;
-    const textSecondary = colors.textSecondary;
-    const borderColor = colors.border;
-    const accent = colors.primary;
-    const accentSoft = 'var(--trak-accent-pale)';
+    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
+    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
+    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
+    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const accent = isDark ? colors.primary || '#818CF8' : '#0f172a';
+    const accentSoft = isDark ? 'rgba(129, 140, 248, 0.14)' : '#eff6ff';
     const joinedLabel = formatJoined(profile?.date_joined);
     const isAdmin = profile?.role === 'admin';
     const emailVerified = isAdmin ? true : Boolean(profile?.email_verified);
@@ -280,9 +321,9 @@ const UserProfileScreen = () => {
     };
 
     if (!pageReady && !profile) {
-        const sk = colors.border;
+        const sk = isDark ? colors.surfaceElevated || '#334155' : '#e5e7eb';
         return (
-            <div className="trak-app-page" style={{ backgroundColor }}>
+            <div style={{ minHeight: '100vh', backgroundColor: backgroundColor, paddingTop: 0 }}>
                 <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%', padding: `0 ${horizontalPad}px 24px` }}>
                     <div className="trak-sk-pulse" style={{ height: 28, width: 120, backgroundColor: sk, borderRadius: 6, marginBottom: 20, marginTop: 8 }} />
                     <div style={{ height: 220, background: cardBackground, border: `1px solid ${borderColor}`, borderRadius: 12, padding: 24, marginBottom: 24 }}>
@@ -311,7 +352,7 @@ const UserProfileScreen = () => {
     const profileVars = {
         '--profile-border': borderColor,
         '--profile-surface': cardBackground,
-        '--profile-bg-secondary': colors.backgroundSecondary || colors.backgroundTertiary,
+        '--profile-bg-secondary': isDark ? colors.surfaceElevated || '#334155' : '#f8fafc',
         '--profile-accent': accent,
         '--profile-accent-soft': accentSoft,
     };
@@ -336,7 +377,7 @@ const UserProfileScreen = () => {
     );
 
     return (
-        <div className="trak-app-page trak-profile" style={{ ...profileVars, backgroundColor }}>
+        <div className="trak-profile" style={{ ...profileVars, backgroundColor }}>
             <div
                 className="trak-profile-inner"
                 style={{ padding: `0 ${horizontalPad}px 48px` }}
@@ -439,7 +480,7 @@ const UserProfileScreen = () => {
                                     className={item.onClick ? 'trak-profile-stat trak-profile-stat-clickable' : 'trak-profile-stat'}
                                     style={{
                                         padding: '16px',
-                                        backgroundColor: colors.backgroundSecondary,
+                                        backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f8fafc',
                                         borderRadius: '14px',
                                         border: `1px solid ${borderColor}`,
                                         textAlign: 'center',

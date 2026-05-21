@@ -5,7 +5,6 @@ import { mockApi } from '../../utils/Service/mockApi';
 import { useTheme } from '../../theme/ThemeContext';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
 import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
-import AppPage, { PageHeader } from '../../components/layout/AppPage';
 
 const RecentScreen = () => {
     const navigate = useNavigate();
@@ -87,11 +86,43 @@ const RecentScreen = () => {
     };
 
     return (
-        <AppPage>
-            <PageHeader
-                title="Recent Articles"
-                subtitle="Latest articles sorted by publication time"
-            />
+        <div style={{
+            minHeight: '100vh',
+            backgroundColor: '#ffffff',
+            paddingTop: '0',
+            marginTop: '0',
+        }}>
+            <div style={{
+                maxWidth: '1200px',
+                margin: '0 auto',
+                width: '100%',
+                padding: '0 24px 24px 24px',
+            }}>
+                {/* Header Section */}
+                <div style={{
+                    marginTop: '0',
+                    marginBottom: '24px',
+                    paddingTop: '0',
+                }}>
+                    <h1 style={{
+                        fontSize: '28px',
+                        fontWeight: '700',
+                        color: '#0f172a',
+                        margin: '0 0 8px 0',
+                        paddingTop: '0',
+                        letterSpacing: '-0.5px',
+                    }}>
+                        Recent Articles
+                    </h1>
+                    <p style={{
+                        fontSize: '15px',
+                        color: '#64748b',
+                        margin: '0',
+                        lineHeight: '1.5',
+                    }}>
+                        Latest articles sorted by publication time
+                    </p>
+                </div>
 
                 {/* News Cards Grid */}
                 {loading ? (
@@ -112,7 +143,18 @@ const RecentScreen = () => {
                         ))}
                     </MasonryFeed>
                 )}
-        </AppPage>
+            </div>
+            <style>{`
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                h1 {
+                    margin-top: 0 !important;
+                    padding-top: 0 !important;
+                }
+            `}</style>
+        </div>
     );
 };
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, Navigate, useNavigate } from 'react-router-dom';
-import { Shield, LogOut, User } from 'lucide-react';
+import { Shield, LogOut } from 'lucide-react';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
 import AdminTabNav from './AdminTabNav';
@@ -8,7 +8,7 @@ import AdminTabNav from './AdminTabNav';
 export default function AdminShell() {
   const { theme } = useTheme();
   const { colors } = theme;
-  const { user, isAdmin, isSuperAdmin, loading, logout } = useAuth();
+  const { user, isAdmin, loading, logout } = useAuth();
   const navigate = useNavigate();
   const isDark = theme.mode === 'dark';
 
@@ -92,73 +92,26 @@ export default function AdminShell() {
               Admin Panel
             </h1>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <button
-              type="button"
-              onClick={() => navigate('/admin/profile')}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                padding: '8px 12px',
-                borderRadius: 10,
-                border: `1px solid ${colors.border}`,
-                background: isDark ? colors.backgroundSecondary || '#1e293b' : '#fff',
-                color: colors.textPrimary,
-                cursor: 'pointer',
-                maxWidth: 280,
-              }}
-            >
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 18,
-                  backgroundColor: colors.primary || '#3b82f6',
-                  color: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontWeight: 700,
-                  fontSize: 14,
-                  flexShrink: 0,
-                }}
-              >
-                {(user?.email || 'A').charAt(0).toUpperCase()}
-              </div>
-              <div style={{ textAlign: 'left', minWidth: 0 }}>
-                <div style={{ fontSize: 13, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {user?.email || 'Admin'}
-                </div>
-                {isSuperAdmin ? (
-                  <div style={{ fontSize: 11, color: colors.primary || '#3b82f6', fontWeight: 600 }}>Super Admin</div>
-                ) : (
-                  <div style={{ fontSize: 11, color: colors.textSecondary }}>Administrator</div>
-                )}
-              </div>
-              <User size={16} color={colors.textSecondary} style={{ flexShrink: 0 }} />
-            </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 16px',
-                borderRadius: 10,
-                border: `1px solid ${colors.border}`,
-                background: 'transparent',
-                color: colors.textPrimary,
-                cursor: 'pointer',
-                fontSize: 14,
-                fontWeight: 600,
-              }}
-            >
-              <LogOut size={18} />
-              Logout
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleLogout}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 16px',
+              borderRadius: 10,
+              border: `1px solid ${colors.border}`,
+              background: 'transparent',
+              color: colors.textPrimary,
+              cursor: 'pointer',
+              fontSize: 14,
+              fontWeight: 600,
+            }}
+          >
+            <LogOut size={18} />
+            Logout
+          </button>
         </div>
         <AdminTabNav />
       </header>

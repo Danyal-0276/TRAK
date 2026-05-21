@@ -8,7 +8,7 @@ import { NewsCard } from "../../components/NewsCard";
 import { MasonryFeed, MasonryFeedSkeleton } from "../../components/MasonryFeed";
 import { getSkeletonFeedProps } from "../../components/skeletons/SkeletonLayouts";
 import { ArticleBodyParagraphs } from "../../components/ArticleBodyParagraphs";
-import { loadExplorePage, mergeUniqueById } from "../../utils/loadFeed";
+import { loadFeedItems } from "../../utils/loadFeed";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction, submitArticleReport } from "../../utils/Service/api";
 import { getBookmarkIds, setBookmarkIds } from "../../utils/bookmarksStorage";
@@ -70,11 +70,6 @@ const SearchScreen = () => {
     const [discoverMenuOpen, setDiscoverMenuOpen] = useState(false);
     const lastScrollY = useRef(0);
     const [headerHidden, setHeaderHidden] = useState(false);
-    const [nextCursor, setNextCursor] = useState('');
-    const [hasMore, setHasMore] = useState(false);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const loadingMoreRef = useRef(false);
-    const DISCOVER_PAGE_SIZE = 30;
 
     const [categories, setCategories] = useState(["All"]);
 
@@ -88,23 +83,6 @@ const SearchScreen = () => {
         return () => clearTimeout(t);
     }, [searchQuery]);
 
-    const loadMoreDiscover = useCallback(async () => {
-        if (loadingMoreRef.current || !hasMore || !nextCursor) return;
-        loadingMoreRef.current = true;
-        setLoadingMore(true);
-        try {
-            const page = await loadExplorePage({ q: debouncedQuery.trim(), limit: DISCOVER_PAGE_SIZE, cursor: nextCursor });
-            setAllNews((prev) => mergeUniqueById(prev, page.items));
-            setNextCursor(page.nextCursor || '');
-            setHasMore(Boolean(page.hasMore));
-        } catch (e) {
-            console.error(e);
-        } finally {
-            loadingMoreRef.current = false;
-            setLoadingMore(false);
-        }
-    }, [debouncedQuery, hasMore, nextCursor]);
-
     useEffect(() => {
         const q = debouncedQuery.trim();
         (async () => {
@@ -114,10 +92,7 @@ const SearchScreen = () => {
                 if (cachedBookmarks.size) setBookmarkedItems(cachedBookmarks);
                 const cachedReactions = getReactionMap();
                 if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
-                const page = await loadExplorePage({ q, limit: DISCOVER_PAGE_SIZE });
-                const newsData = page.items;
-                setNextCursor(page.nextCursor || '');
-                setHasMore(Boolean(page.hasMore));
+                const newsData = await loadFeedItems({ q });
                 const [bookmarks, reactions] = await Promise.all([
                     listBookmarks().catch(() => ({ results: [] })),
                     listReactions().catch(() => ({ results: [] })),
@@ -140,7 +115,6 @@ const SearchScreen = () => {
                 console.error("Error fetching data:", error);
                 setAllNews([]);
                 setFilteredNews([]);
-                setCategories(['All']);
             } finally {
                 setLoading(false);
             }
@@ -239,12 +213,10 @@ const SearchScreen = () => {
             }
             if (y < 24) setHeaderHidden(false);
             lastScrollY.current = y;
-            const nearBottom = window.innerHeight + y >= document.documentElement.scrollHeight - 900;
-            if (nearBottom) loadMoreDiscover();
         };
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
-    }, [loadMoreDiscover]);
+    }, []);
 
     useEffect(() => {
         // Don't filter if news haven't loaded yet
@@ -409,15 +381,18 @@ const SearchScreen = () => {
         }
     };
 
-    const backgroundColor = colors.background;
-    const cardBackground = colors.surface;
-    const textPrimary = colors.textPrimary;
-    const textSecondary = colors.textSecondary;
-    const borderColor = colors.border;
+    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
+    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
+    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
+    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
 
     return (
-        <div className="trak-app-page" style={{
-            backgroundColor,
+        <div style={{
+            minHeight: '100vh',
+            backgroundColor: backgroundColor,
+            paddingTop: '0',
+            marginTop: '0',
         }}>
             <div style={{
                 maxWidth: '1200px',
@@ -481,7 +456,7 @@ const SearchScreen = () => {
                                     height: 44,
                                     borderRadius: 10,
                                     border: `1px solid ${borderColor}`,
-                                    background: colors.surface,
+                                    background: isDark ? colors.surface || '#1E293B' : '#ffffff',
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -636,7 +611,7 @@ const SearchScreen = () => {
                 {selectedArticle ? (
                     <div data-article-detail style={{
                         marginBottom: '32px',
-                        background: 'var(--trak-bg)',
+                        backgroundColor: '#ffffff',
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
                     padding: '24px',
@@ -702,7 +677,7 @@ const SearchScreen = () => {
                                     <span style={{
                                         fontSize: '14px',
                                         fontWeight: '600',
-                                        color: 'var(--trak-ink)',
+                                        color: '#0f172a',
                                     }}>
                                         {selectedArticle.source || 'Source'}
                                     </span>
@@ -764,7 +739,7 @@ const SearchScreen = () => {
                             fontSize: '28px',
                             fontWeight: '700',
                             lineHeight: '1.3',
-                            color: 'var(--trak-ink)',
+                            color: '#0f172a',
                             margin: '0 0 16px 0',
                             letterSpacing: '-0.5px',
                         }}>
@@ -798,7 +773,7 @@ const SearchScreen = () => {
                                 alignItems: 'center',
                                 gap: '8px',
                                 padding: '4px',
-                                background: 'var(--trak-bg2)',
+                                backgroundColor: '#f9fafb',
                                 borderRadius: '10px',
                             }}>
                                 <button
@@ -960,14 +935,14 @@ const SearchScreen = () => {
                         <h3 style={{
                             fontSize: '18px',
                             fontWeight: '600',
-                            color: 'var(--trak-ink)',
+                            color: '#0f172a',
                             margin: '0 0 8px 0',
                         }}>
                             No articles found
                         </h3>
                         <p style={{
                             fontSize: '14px',
-                            color: 'var(--trak-ink3)',
+                            color: '#64748b',
                             margin: '0 0 24px 0',
                             textAlign: 'center',
                         }}>
@@ -1004,16 +979,16 @@ const SearchScreen = () => {
                                             <span style={{
                                                 fontSize: '12px',
                                                 fontWeight: '600',
-                                                color: 'var(--trak-ink)',
+                                                color: '#0f172a',
                                             }}>
                                                 Search:
                                             </span>
                                             <span style={{
                                                 fontSize: '13px',
                                                 fontWeight: '700',
-                                                color: 'var(--trak-ink)',
+                                                color: '#0f172a',
                                                 padding: '4px 10px',
-                                                background: 'var(--trak-bg)',
+                                                backgroundColor: '#ffffff',
                                                 borderRadius: '6px',
                                                 border: '1px solid #d1d5db',
                                             }}>
@@ -1034,16 +1009,16 @@ const SearchScreen = () => {
                                             <span style={{
                                                 fontSize: '12px',
                                                 fontWeight: '600',
-                                                color: 'var(--trak-ink)',
+                                                color: '#0f172a',
                                             }}>
                                                 Category:
                                             </span>
                                             <span style={{
                                                 fontSize: '13px',
                                                 fontWeight: '700',
-                                                color: 'var(--trak-ink)',
+                                                color: '#0f172a',
                                                 padding: '4px 10px',
-                                                background: 'var(--trak-bg)',
+                                                backgroundColor: '#ffffff',
                                                 borderRadius: '6px',
                                                 border: '1px solid #d1d5db',
                                             }}>
@@ -1058,12 +1033,12 @@ const SearchScreen = () => {
                                 style={{
                                     padding: '10px 20px',
                                     border: '1px solid #e5e7eb',
-                                    background: 'var(--trak-surface)',
+                                    background: '#ffffff',
                                     borderRadius: '8px',
                                     cursor: 'pointer',
                                     fontSize: '14px',
                                     fontWeight: '600',
-                                    color: 'var(--trak-ink)',
+                                    color: '#0f172a',
                                     transition: 'all 0.2s ease',
                                 }}
                                 onMouseEnter={(e) => {

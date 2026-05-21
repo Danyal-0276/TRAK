@@ -136,7 +136,10 @@ const SignUpScreen = ({ navigation }) => {
             if (u?.email_verified) {
                 navigation.navigate('TagSelection', { fromSignup: true });
             } else {
-                navigation.navigate('VerifyEmail', { email: email.trim().toLowerCase(), fromSignup: true });
+                navigation.navigate('VerifyEmail', {
+                    email: email.trim().toLowerCase(),
+                    fromSignup: true,
+                });
             }
         } catch (error) {
             showError(error.message);

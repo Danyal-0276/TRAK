@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { BarChart3, Users, Shield, FileText, Bell, Settings, User } from 'lucide-react';
+import { BarChart3, Users, Shield, FileText, Bell, Settings } from 'lucide-react';
 import { useTheme } from '../../../theme/ThemeContext';
 
 const TABS = [
@@ -9,7 +9,6 @@ const TABS = [
   { id: 'admins', path: '/admin/admins', icon: Shield, label: 'Admins' },
   { id: 'articles', path: '/admin/articles', icon: FileText, label: 'Articles' },
   { id: 'notifications', path: '/admin/notifications', icon: Bell, label: 'Notifications' },
-  { id: 'profile', path: '/admin/profile', icon: User, label: 'Profile' },
   { id: 'settings', path: '/admin/settings', icon: Settings, label: 'Settings' },
 ];
 

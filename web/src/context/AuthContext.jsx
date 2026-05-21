@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
     const loginWithGoogle = async () => {
         if (!isFirebaseConfigured()) {
             throw new Error(
-                'Google sign-in is not configured. Copy TRAK/web/.env.example to .env and set VITE_FIREBASE_* keys, then restart npm run dev.'
+                'Google sign-in is not configured. Add Firebase keys to TRAK/web/.env (see .env.example), then restart npm run dev.'
             );
         }
         const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
@@ -87,11 +87,9 @@ export const AuthProvider = ({ children }) => {
     const verifyEmail = async (code) => {
         const data = await verifyEmailCode(code);
         if (data?.user) {
-            const access = getAccessToken();
-            const refresh = getRefreshToken();
             saveAuthSession({
-                access,
-                refresh,
+                access: getAccessToken(),
+                refresh: getRefreshToken(),
                 user: data.user,
             });
             setUser(data.user);

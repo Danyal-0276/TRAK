@@ -168,7 +168,7 @@ const ArticleDetailScreen = () => {
     return (
         <div style={{
             minHeight: '100vh',
-            background: 'var(--trak-bg)',
+            backgroundColor: '#ffffff',
             paddingTop: '64px',
         }}>
             {/* Header */}
@@ -177,8 +177,8 @@ const ArticleDetailScreen = () => {
                 top: 0,
                 left: 0,
                 right: 0,
-                background: 'var(--trak-bg)',
-                borderBottom: '1px solid var(--trak-border)',
+                backgroundColor: '#ffffff',
+                borderBottom: '1px solid #e5e7eb',
                 zIndex: 1000,
                 padding: '12px 24px',
                 boxShadow: scrollY > 10 ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
@@ -216,7 +216,7 @@ const ArticleDetailScreen = () => {
                         <span style={{
                             fontSize: '14px',
                             fontWeight: '500',
-                            color: 'var(--trak-ink)',
+                            color: '#0f172a',
                         }}>
                             Back
                         </span>
@@ -282,7 +282,7 @@ const ArticleDetailScreen = () => {
                             <span style={{
                                 fontSize: '14px',
                                 fontWeight: '600',
-                                color: 'var(--trak-ink)',
+                                color: '#0f172a',
                             }}>
                                 {article.source || 'Source'}
                             </span>
@@ -344,7 +344,7 @@ const ArticleDetailScreen = () => {
                     fontSize: '32px',
                     fontWeight: '700',
                     lineHeight: '1.3',
-                    color: 'var(--trak-ink)',
+                    color: '#0f172a',
                     margin: '0 0 20px 0',
                     letterSpacing: '-0.5px',
                 }}>
@@ -382,7 +382,7 @@ const ArticleDetailScreen = () => {
                 bottom: 0,
                 left: 0,
                 right: 0,
-                background: 'var(--trak-bg)',
+                backgroundColor: '#ffffff',
                 borderTop: '1px solid #e5e7eb',
                 padding: '16px 24px',
                 zIndex: 1000,
@@ -400,7 +400,7 @@ const ArticleDetailScreen = () => {
                         alignItems: 'center',
                         gap: '8px',
                         padding: '4px',
-                        background: 'var(--trak-bg2)',
+                        backgroundColor: '#f9fafb',
                         borderRadius: '10px',
                     }}>
                         <button

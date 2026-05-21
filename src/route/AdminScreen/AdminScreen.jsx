@@ -187,7 +187,14 @@ const AdminScreen = ({ navigation }) => {
       role: u.role,
       isAdmin: false,
     }));
-    const adminsData = adminsRes.results || [];
+    const adminsData = (adminsRes.results || []).map((u) => ({
+      id: u.id,
+      name: u.email?.split('@')[0] || 'admin',
+      email: u.email,
+      status: u.is_active ? 'active' : 'inactive',
+      role: u.role,
+      is_super_admin: u.is_super_admin,
+    }));
     const notificationsData = (notificationsRes.results || []).map((n) => ({
       id: n.id,
       title: n.type,

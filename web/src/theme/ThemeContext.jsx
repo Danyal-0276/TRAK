@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useMemo, useState, useEffect } from 'react';
 import { lightColors } from './colors/lightColors';
 import { darkColors } from './colors/darkColors';
-import { lightCssVars, darkCssVars } from './cssVariables';
 
 const spacing = {
   xs: 6,
@@ -46,13 +45,15 @@ export const ThemeProvider = ({ initialMode = 'light', children }) => {
   // Save theme to localStorage whenever it changes
   useEffect(() => {
     localStorage.setItem('theme', mode);
+    // Apply theme class to document body for global styling
     document.documentElement.setAttribute('data-theme', mode);
-    const vars = mode === 'dark' ? darkCssVars : lightCssVars;
-    Object.entries(vars).forEach(([key, value]) => {
-      document.documentElement.style.setProperty(key, value);
-    });
-    document.body.style.backgroundColor = vars['--trak-bg'];
-    document.body.style.color = vars['--trak-ink'];
+    if (mode === 'dark') {
+      document.body.style.backgroundColor = '#0F172A';
+      document.body.style.color = '#F1F5F9';
+    } else {
+      document.body.style.backgroundColor = '#FFFFFF';
+      document.body.style.color = '#0F172A';
+    }
   }, [mode]);
 
   const palette = mode === 'dark' ? darkColors : lightColors;
