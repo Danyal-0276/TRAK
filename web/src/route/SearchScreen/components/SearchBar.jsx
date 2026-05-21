@@ -55,7 +55,7 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                background: 'var(--trak-bg2)',
+                backgroundColor: '#f9fafb',
                 borderRadius: '10px',
                 padding: '12px 16px',
                 border: focused ? '1px solid #0f172a' : '1px solid #e5e7eb',
@@ -81,7 +81,7 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
                         flex: 1,
                         fontSize: '15px',
                         fontWeight: '500',
-                        color: 'var(--trak-ink)',
+                        color: '#0f172a',
                         border: 'none',
                         outline: 'none',
                         backgroundColor: 'transparent',

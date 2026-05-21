@@ -1,5 +1,3 @@
-import { fetchWithTimeout } from '../../api/fetchWithTimeout';
-
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 const ACCESS_KEY = 'trak_access_token';
@@ -28,7 +26,7 @@ const parseError = async (res) => {
 };
 
 async function request(path, options = {}) {
-  const res = await fetchWithTimeout(`${API_BASE_URL}${path}`, options);
+  const res = await fetch(`${API_BASE_URL}${path}`, options);
   if (!res.ok) {
     await parseError(res);
   }
@@ -154,7 +152,7 @@ export const loginWithFirebase = (idToken) =>
 
 export const authRequest = async (path, options = {}) => {
   const doReq = (token) =>
-    fetchWithTimeout(`${API_BASE_URL}${path}`, {
+    fetch(`${API_BASE_URL}${path}`, {
       ...options,
       headers: {
         ...(options.headers || {}),
@@ -164,7 +162,7 @@ export const authRequest = async (path, options = {}) => {
     });
   let res = await doReq(getAccessToken());
   if (res.status === 401 && getRefreshToken()) {
-    const refreshRes = await fetchWithTimeout(`${API_BASE_URL}/api/auth/token/refresh/`, {
+    const refreshRes = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
       method: 'POST',
       headers: jsonHeaders,
       body: JSON.stringify({ refresh: getRefreshToken() }),
@@ -181,12 +179,7 @@ export const authRequest = async (path, options = {}) => {
   return res.json();
 };
 
-export const getUserFeed = ({ limit = 30, cursor = '', q = '' } = {}) => {
-  const params = new URLSearchParams({ limit: String(limit) });
-  if (cursor) params.set('cursor', String(cursor));
-  if (q) params.set('q', String(q));
-  return authRequest(`/api/user/feed/?${params}`);
-};
+export const getUserFeed = () => authRequest('/api/user/feed/?limit=50');
 export const getExploreFeed = () => authRequest('/api/user/explore/?limit=200');
 export const chatWithBot = (message) =>
   authRequest('/api/user/chatbot/', {

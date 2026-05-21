@@ -24,7 +24,6 @@ import TrendingScreen from '../../route/TrendingScreen/TrendingScreen.jsx';
 import BookmarksScreen from '../../route/BookmarksScreen/BookmarksScreen.jsx';
 import RecentScreen from '../../route/RecentScreen/RecentScreen.jsx';
 import TermsScreen from '../../route/TermsScreen/TermsScreen.jsx';
-import VerifyEmailScreen from '../../route/VerifyEmailScreen/VerifyEmailScreen.jsx';
 
 // OPTIONAL SCREENS - With fallback
 const FallbackScreen = ({ title }) => (
@@ -81,5 +80,4 @@ export {
     BookmarksScreen,
     RecentScreen,
     TermsScreen,
-    VerifyEmailScreen,
 };

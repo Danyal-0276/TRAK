@@ -180,7 +180,7 @@ const EditProfileScreen = () => {
                 gap: '8px',
                 fontSize: '14px',
                 fontWeight: '600',
-                color: 'var(--trak-ink)',
+                color: '#0f172a',
                 marginBottom: '8px',
             }}>
                 {Icon && <Icon size={16} color="#64748b" />}
@@ -198,10 +198,10 @@ const EditProfileScreen = () => {
                     padding: '12px 16px',
                     fontSize: '15px',
                     fontWeight: '500',
-                    color: 'var(--trak-ink)',
+                    color: '#0f172a',
                     border: errors[field] ? '2px solid #ef4444' : '1px solid #e5e7eb',
                     borderRadius: '8px',
-                    background: 'var(--trak-bg)',
+                    backgroundColor: '#ffffff',
                     outline: 'none',
                     transition: 'all 0.2s ease',
                 }}
@@ -241,8 +241,19 @@ const EditProfileScreen = () => {
     );
 
     return (
-        <div className="trak-app-page" style={{ position: 'relative' }}>
-            <div className="trak-app-page-inner" style={{ maxWidth: 700 }}>
+        <div style={{
+            minHeight: '100vh',
+            backgroundColor: '#ffffff',
+            paddingTop: '0',
+            marginTop: '0',
+            position: 'relative',
+        }}>
+            <div style={{
+                maxWidth: '700px',
+                margin: '0 auto',
+                width: '100%',
+                padding: '0 24px 24px 24px',
+            }}>
                 {/* Header */}
                 <div style={{
                     display: 'flex',
@@ -275,7 +286,7 @@ const EditProfileScreen = () => {
                         <h1 style={{
                             fontSize: '28px',
                             fontWeight: '700',
-                            color: 'var(--trak-ink)',
+                            color: '#0f172a',
                             margin: '0 0 4px 0',
                             letterSpacing: '-0.5px',
                         }}>
@@ -283,7 +294,7 @@ const EditProfileScreen = () => {
                         </h1>
                         <p style={{
                             fontSize: '15px',
-                            color: 'var(--trak-ink3)',
+                            color: '#64748b',
                             margin: '0',
                         }}>
                             Update your profile information
@@ -345,7 +356,7 @@ const EditProfileScreen = () => {
 
                 {/* Profile Card */}
                 <div style={{
-                    background: 'var(--trak-bg)',
+                    backgroundColor: '#ffffff',
                     borderRadius: '12px',
                     border: '1px solid #e5e7eb',
                     padding: '32px',
@@ -433,12 +444,12 @@ const EditProfileScreen = () => {
                             style={{
                                 padding: '8px 16px',
                                 border: '1px solid #e5e7eb',
-                                background: 'var(--trak-surface)',
+                                background: '#ffffff',
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 fontSize: '14px',
                                 fontWeight: '600',
-                                color: 'var(--trak-ink)',
+                                color: '#0f172a',
                                 transition: 'all 0.2s ease',
                             }}
                             onMouseEnter={(e) => {
@@ -511,7 +522,7 @@ const EditProfileScreen = () => {
                             gap: '8px',
                             fontSize: '14px',
                             fontWeight: '600',
-                            color: 'var(--trak-ink)',
+                            color: '#0f172a',
                             marginBottom: '8px',
                         }}>
                             <FileText size={16} color="#64748b" />
@@ -528,10 +539,10 @@ const EditProfileScreen = () => {
                                 padding: '12px 16px',
                                 fontSize: '15px',
                                 fontWeight: '500',
-                                color: 'var(--trak-ink)',
+                                color: '#0f172a',
                                 border: errors.bio ? '2px solid #ef4444' : '1px solid #e5e7eb',
                                 borderRadius: '8px',
-                                background: 'var(--trak-bg)',
+                                backgroundColor: '#ffffff',
                                 outline: 'none',
                                 resize: 'vertical',
                                 fontFamily: 'inherit',
@@ -581,12 +592,12 @@ const EditProfileScreen = () => {
                             flex: 1,
                             padding: '14px 24px',
                             border: '1px solid #e5e7eb',
-                            background: 'var(--trak-surface)',
+                            background: '#ffffff',
                             borderRadius: '8px',
                             cursor: 'pointer',
                             fontSize: '15px',
                             fontWeight: '600',
-                            color: 'var(--trak-ink)',
+                            color: '#0f172a',
                             transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {

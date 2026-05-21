@@ -25,7 +25,7 @@ const TrendingTopics = ({ topics, onTopicPress, searchQuery }) => {
                     background: '#fffbeb',
                 }}>
                     <Flame size={14} color="#d97706" />
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--trak-ink)' }}>Trend Radar</span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>Trend Radar</span>
                 </div>
                 <div style={{
                     display: 'inline-flex',
@@ -48,7 +48,7 @@ const TrendingTopics = ({ topics, onTopicPress, searchQuery }) => {
                         width: '100%',
                         borderRadius: '12px',
                         border: '1px solid #e5e7eb',
-                        background: 'var(--trak-surface)',
+                        background: '#ffffff',
                         padding: '12px 14px',
                         marginBottom: '12px',
                         cursor: 'pointer',
@@ -56,14 +56,14 @@ const TrendingTopics = ({ topics, onTopicPress, searchQuery }) => {
                     }}
                 >
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                        <span style={{ fontSize: 11, color: 'var(--trak-ink3)', fontWeight: 700, textTransform: 'uppercase' }}>Top Signal</span>
+                        <span style={{ fontSize: 11, color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Top Signal</span>
                         <span style={{ fontSize: 11, color: '#d97706', fontWeight: 700 }}>#1</span>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontSize: 24 }}>{featured.icon || '📰'}</span>
                         <div>
-                            <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--trak-ink)' }}>{featured.name}</div>
-                            <div style={{ fontSize: 12, color: 'var(--trak-ink3)' }}>{featured.count}</div>
+                            <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a' }}>{featured.name}</div>
+                            <div style={{ fontSize: 12, color: '#64748b' }}>{featured.count}</div>
                         </div>
                     </div>
                 </button>
@@ -83,7 +83,7 @@ const TrendingTopics = ({ topics, onTopicPress, searchQuery }) => {
                             borderRadius: '10px',
                             padding: '10px 12px',
                             border: '1px solid #e5e7eb',
-                            background: 'var(--trak-bg)',
+                            backgroundColor: '#ffffff',
                             cursor: 'pointer',
                             textAlign: 'left',
                             minWidth: '132px',
@@ -106,13 +106,13 @@ const TrendingTopics = ({ topics, onTopicPress, searchQuery }) => {
                             fontSize: '13px',
                             fontWeight: '600',
                             marginBottom: '4px',
-                            color: 'var(--trak-ink)',
+                            color: '#0f172a',
                         }}>
                             {topic.name}
                         </div>
                         <div style={{
                             fontSize: '11px',
-                            color: 'var(--trak-ink3)',
+                            color: '#64748b',
                         }}>
                             {topic.count}
                         </div>

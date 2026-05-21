@@ -4,7 +4,6 @@ import { AUTH_PREFIX, API_BASE } from '../config/api';
 import { apiFetch, getAccessToken, setTokens } from '../api/client';
 import { clearAuthSession as clearStoredAuthSession, saveAuthSession } from '../utils/Service/api';
 import { registerDeviceToken } from '../api/notificationsApi';
-import { verifyEmailCode } from '../api/authEmailApi';
 import { getOrCreatePushToken } from '../api/pushToken';
 import { formatNetworkError } from '../utils/networkError';
 
@@ -153,30 +152,16 @@ export function AuthProvider({ children }) {
         setUser(null);
     };
 
-    const verifyEmail = async (code) => {
-        const data = await verifyEmailCode(code);
-        if (data?.user) {
-            const access = await getAccessToken();
-            const refresh = await AsyncStorage.getItem('trak_refresh_token');
-            await saveAuthSession({ access, refresh, user: data.user });
-            setUser(data.user);
-            await AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user || {})).catch(() => {});
-        }
-        return data;
-    };
-
     const value = {
         user,
         loading,
         bootstrapped,
         isAdmin: user?.role === 'admin',
-        isSuperAdmin: Boolean(user?.is_super_admin),
         login,
         register,
         logout,
         bootstrap,
         refreshUser: fetchMe,
-        verifyEmail,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

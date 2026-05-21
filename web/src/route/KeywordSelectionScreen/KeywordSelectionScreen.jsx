@@ -79,27 +79,73 @@ const KeywordSelectionScreen = () => {
         });
     };
 
-    const backgroundColor = colors.background;
-    const textPrimary = colors.textPrimary;
-    const textSecondary = colors.textSecondary;
-    const borderColor = colors.border;
-    const cardBackground = colors.surface;
+    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
+    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
+    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
 
     return (
-        <div className="trak-auth-flow-page">
-            <div className="trak-auth-flow-inner">
-                <button type="button" className="trak-auth-back" onClick={() => navigate(-1)}>
-                    <ArrowLeft size={16} />
-                    Back
-                </button>
-                <h1 className="trak-pg-title">
-                    {fromSettings ? 'Manage Custom Keywords' : 'Add Custom Keywords'}
-                </h1>
-                <p className="trak-pg-sub" style={{ marginBottom: 24 }}>
+        <div style={{
+            minHeight: '100vh',
+            backgroundColor: backgroundColor,
+            paddingTop: '0',
+            marginTop: '0',
+        }}>
+            <div style={{
+                maxWidth: '1200px',
+                margin: '0 auto',
+                width: '100%',
+                padding: isMobile ? '0 16px 24px 16px' : isTablet ? '0 20px 24px 20px' : '0 24px 24px 24px',
+            }}>
+                {/* Header Section */}
+                <div style={{
+                    marginTop: '0',
+                    marginBottom: isMobile ? '16px' : '24px',
+                    paddingTop: '0',
+                }}>
+                    <button
+                        onClick={() => navigate(-1)}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '8px',
+                            padding: '8px 0',
+                            border: 'none',
+                            background: 'transparent',
+                            color: textSecondary,
+                            fontSize: '15px',
+                            fontWeight: '500',
+                            cursor: 'pointer',
+                            marginBottom: '24px',
+                            alignSelf: 'flex-start',
+                        }}
+                    >
+                        <ArrowLeft size={18} />
+                        Back
+                    </button>
+
+                    <h1 style={{
+                        fontSize: isMobile ? '22px' : isTablet ? '24px' : '28px',
+                        fontWeight: '700',
+                        color: textPrimary,
+                        margin: '0 0 8px 0',
+                        paddingTop: '0',
+                        letterSpacing: '-0.5px',
+                    }}>
+                        {fromSettings ? 'Manage Custom Keywords' : 'Add Custom Keywords'}
+                    </h1>
+                    <p style={{
+                        fontSize: '15px',
+                        color: textSecondary,
+                        margin: '0',
+                        lineHeight: '1.5',
+                    }}>
                         {fromSettings
                             ? 'Edit your extra keywords. Category tags are managed on previous step.'
                             : 'Add specific keywords to get more personalized content (optional)'}
-                </p>
+                    </p>
+                </div>
 
                 {/* Keyword Input */}
                 <form onSubmit={handleKeywordSubmit} style={{ marginBottom: '20px' }}>

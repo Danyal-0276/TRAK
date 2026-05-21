@@ -42,7 +42,7 @@ const UsersTab = ({ users, searchQuery, onSearchChange, onEdit, onDelete }) => {
             key={user.id}
             user={user}
             onEdit={onEdit}
-            onDelete={onDelete}
+            onDelete={user.isAdmin ? null : onDelete}
           />
         ))
       )}

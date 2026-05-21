@@ -131,13 +131,9 @@ const SignUpScreen = ({ navigation }) => {
         setErrors({});
 
         try {
-            const u = await register(email, password, confirmPassword);
-            success('Account created — check your email for a verification code');
-            if (u?.email_verified) {
-                navigation.navigate('TagSelection', { fromSignup: true });
-            } else {
-                navigation.navigate('VerifyEmail', { email: email.trim().toLowerCase(), fromSignup: true });
-            }
+            await register(email, password, confirmPassword);
+            success('Account created successfully');
+            navigation.navigate('TagSelection', { fromSignup: true });
         } catch (error) {
             showError(error.message);
         } finally {

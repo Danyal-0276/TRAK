@@ -14,7 +14,6 @@ import {
   getAdminUsers,
   patchAdminSettings,
   patchAdminUser,
-  postAdminCreate,
   postAdminPipelineRun,
 } from '../../api/adminApi';
 import MockAPI from './Service/MockAPI';
@@ -23,7 +22,6 @@ import TabNavigation from './components/TabNavigation';
 import DashboardTab from './screens/DashboardTab';
 import AnalyticsTab from './screens/AnalyticsTab';
 import UsersTab from './screens/UsersTab';
-import AdminsTab from './screens/AdminsTab';
 import ArticlesTab from './screens/ArticlesTab';
 import NotificationsTab from './screens/NotificationsTab';
 import SettingsTab from './screens/SettingsTab';
@@ -56,13 +54,12 @@ function mapAdminArticleRow(doc) {
 
 const AdminScreen = ({ navigation }) => {
   const { theme } = useTheme();
-  const { user, isAdmin, isSuperAdmin, bootstrapped, logout } = useAuth();
+  const { user, isAdmin, bootstrapped, logout } = useAuth();
   const { colors } = theme;
   const insets = useSafeAreaInsets();
   const { confirm, error: showError } = useFeedback();
   const [activeTab, setActiveTab] = useState('overview');
   const [users, setUsers] = useState([]);
-  const [admins, setAdmins] = useState([]);
   const [apiArticles, setApiArticles] = useState([]);
   const [serverAnalytics, setServerAnalytics] = useState(null);
   const [modelMetrics, setModelMetrics] = useState(null);
@@ -140,7 +137,7 @@ const AdminScreen = ({ navigation }) => {
   }, [bootstrapped, isAdmin]);
 
   useEffect(() => {
-    if (!bootstrapped || !isAdmin || (activeTab !== 'users' && activeTab !== 'admins')) return;
+    if (!bootstrapped || !isAdmin || activeTab !== 'users') return;
     const id = setTimeout(() => {
       loadData();
     }, 350);
@@ -170,10 +167,8 @@ const AdminScreen = ({ navigation }) => {
     setServerAnalytics(svr);
     setApiArticles(arts);
 
-    const listQ = activeTab === 'users' || activeTab === 'admins' ? searchQuery.trim() : '';
-    const [usersRes, adminsRes, keywordsData, notificationsRes, settingsRes, analyticsData] = await Promise.all([
-      getAdminUsers({ q: activeTab === 'users' ? listQ : '', role: 'user' }),
-      getAdminUsers({ q: activeTab === 'admins' ? listQ : '', role: 'admin' }),
+    const [usersRes, keywordsData, notificationsRes, settingsRes, analyticsData] = await Promise.all([
+      getAdminUsers(activeTab === 'users' ? searchQuery.trim() : ''),
       MockAPI.getKeywords(),
       getAdminNotifications(),
       getAdminSettings(),
@@ -185,9 +180,8 @@ const AdminScreen = ({ navigation }) => {
       email: u.email,
       status: u.is_active ? 'active' : 'inactive',
       role: u.role,
-      isAdmin: false,
+      isAdmin: u.role === 'admin',
     }));
-    const adminsData = adminsRes.results || [];
     const notificationsData = (notificationsRes.results || []).map((n) => ({
       id: n.id,
       title: n.type,
@@ -207,18 +201,12 @@ const AdminScreen = ({ navigation }) => {
     const categoriesData = normAdminList(settingsRes.categories || []);
     const connectionsData = normAdminList(settingsRes.connections || []);
     setUsers(usersData);
-    setAdmins(adminsData);
     setKeywords(keywordsData);
     setNotifications(notificationsData);
     setSettings(settingsData);
     setCategories(categoriesData);
     setConnections(connectionsData);
     setAnalytics(analyticsData);
-  };
-
-  const handleCreateAdmin = async (email, password) => {
-    await postAdminCreate(email, password);
-    await loadData();
   };
 
   const runPipeline = async () => {
@@ -291,7 +279,7 @@ const AdminScreen = ({ navigation }) => {
       danger: true,
     });
     if (!accepted) return;
-    if (type === 'user' || type === 'admin') await deleteAdminUser(id);
+    if (type === 'user') await deleteAdminUser(id);
     else if (type === 'article') await MockAPI.deleteArticle(id);
     loadData();
   };
@@ -519,15 +507,6 @@ const AdminScreen = ({ navigation }) => {
             onSearchChange={setSearchQuery}
             onEdit={handleEdit}
             onDelete={(id) => handleDelete(id, 'user')}
-          />
-        )}
-        {activeTab === 'admins' && (
-          <AdminsTab
-            admins={admins}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onDelete={(id) => handleDelete(id, 'admin')}
-            onCreate={isSuperAdmin ? handleCreateAdmin : null}
           />
         )}
         {activeTab === 'articles' && (

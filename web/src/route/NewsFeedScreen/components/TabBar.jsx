@@ -15,7 +15,7 @@ export const TabBar = ({ activeTab, setActiveTab }) => {
 
     return (
         <div style={{
-            background: 'var(--trak-bg)',
+            backgroundColor: '#ffffff',
             padding: '0',
             borderBottom: '1px solid #e2e8f0',
             overflowX: 'auto',

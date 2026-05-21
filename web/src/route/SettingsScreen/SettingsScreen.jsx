@@ -221,7 +221,7 @@ export default function SettingsScreen() {
                         width: '20px',
                         height: '20px',
                         borderRadius: '50%',
-                        background: 'var(--trak-bg)',
+                        backgroundColor: '#ffffff',
                         transition: 'all 0.2s ease',
                         boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
                     }} />
@@ -299,21 +299,50 @@ export default function SettingsScreen() {
         </div>
     );
 
-    const backgroundColor = colors.background;
-    const cardBackground = colors.surface;
-    const textPrimary = colors.textPrimary;
-    const textSecondary = colors.textSecondary;
-    const borderColor = colors.border;
+    const backgroundColor = darkTheme ? colors.background || '#0F172A' : '#ffffff';
+    const cardBackground = darkTheme ? colors.surface || '#1E293B' : '#ffffff';
+    const textPrimary = darkTheme ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+    const textSecondary = darkTheme ? colors.textSecondary || '#CBD5E1' : '#64748b';
+    const borderColor = darkTheme ? colors.border || '#334155' : '#e5e7eb';
 
     return (
-        <div className="trak-app-page" style={{ backgroundColor }}>
-            <div className="trak-app-page-inner" style={{ maxWidth: 800 }}>
-                <header className="trak-page-header">
-                    <h1 className="trak-pg-title" style={{ color: textPrimary }}>Settings</h1>
-                    <p className="trak-pg-sub" style={{ color: textSecondary }}>
+        <div style={{
+            minHeight: '100vh',
+            backgroundColor: backgroundColor,
+            paddingTop: '0',
+            marginTop: '0',
+        }}>
+            <div style={{
+                maxWidth: '800px',
+                margin: '0 auto',
+                width: '100%',
+                padding: '0 24px 24px 24px',
+            }}>
+                {/* Header */}
+                <div style={{
+                    marginTop: '0',
+                    marginBottom: '24px',
+                    paddingTop: '0',
+                }}>
+                    <h1 style={{
+                        fontSize: '28px',
+                        fontWeight: '700',
+                        color: textPrimary,
+                        margin: '0 0 8px 0',
+                        paddingTop: '0',
+                        letterSpacing: '-0.5px',
+                    }}>
+                        Settings
+                    </h1>
+                    <p style={{
+                        fontSize: '15px',
+                        color: textSecondary,
+                        margin: '0',
+                        lineHeight: '1.5',
+                    }}>
                         Manage your account settings and preferences
                     </p>
-                </header>
+                </div>
 
                 {prefsLoading ? (
                     <SkeletonPageBlocks isDark={darkTheme} colors={colors} minHeight="560px" />
@@ -323,7 +352,7 @@ export default function SettingsScreen() {
                 {isSaving && (
                     <div style={{
                         padding: '12px 16px',
-                        backgroundColor: 'var(--trak-bg2)',
+                        backgroundColor: darkTheme ? '#1e293b' : '#f8fafc',
                         border: `1px solid ${borderColor}`,
                         borderRadius: '8px',
                         marginBottom: '24px',

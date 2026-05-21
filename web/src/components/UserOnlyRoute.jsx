@@ -12,7 +12,7 @@ const UserOnlyRoute = ({ children }) => {
 
   if (loading) {
     return (
-            <div className="trak-app-page" style={{ background: 'var(--trak-bg)' }}>
+      <div style={{ minHeight: '100vh', backgroundColor: isDark ? theme.colors?.background || '#0F172A' : '#ffffff' }}>
         <SkeletonPageBlocks isDark={isDark} colors={theme.colors} minHeight="100vh" />
       </div>
     );

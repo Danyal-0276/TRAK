@@ -31,11 +31,11 @@ const AdminArticlesScreen = () => {
     const [scope, setScope] = useState((searchParams.get('scope') || 'all').toLowerCase());
     const [statusById, setStatusById] = useState({});
 
-    const backgroundColor = colors.background;
-    const cardBackground = colors.surface;
-    const textPrimary = colors.textPrimary;
-    const textSecondary = colors.textSecondary;
-    const borderColor = colors.border;
+    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
+    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
+    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
+    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
 
     useEffect(() => {
         loadArticles();
@@ -493,7 +493,7 @@ const AdminArticlesScreen = () => {
                                                     fontWeight: '600',
                                                     color: textPrimary,
                                                     textDecoration: 'none',
-                                                    background: colors.surfaceElevated,
+                                                    background: isDark ? colors.surfaceElevated || '#334155' : '#ffffff',
                                                 }}
                                             >
                                                 Source URL
