@@ -132,7 +132,9 @@ const ForgotPasswordCodeScreen = () => {
               ? 'We sent a 6-digit code to '
               : 'If your account exists, a code was sent to '}
             <span style={{ fontWeight: '600', color: '#0f172a' }}>{email || 'your email'}</span>.
-            {emailSent ? ' Check your inbox and spam folder.' : ''}
+            {emailSent
+              ? ' Your email may take up to a minute to arrive — check inbox and spam.'
+              : ''}
           </p>
           {devCode ? (
             <p
