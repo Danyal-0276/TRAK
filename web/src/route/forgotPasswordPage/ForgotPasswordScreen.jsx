@@ -30,11 +30,15 @@ const ForgotPasswordScreen = () => {
             navigate('/forgot-password-code', {
                 state: {
                     email: email.trim().toLowerCase(),
-                    debugResetPreview: res?.debug_reset_preview || null,
+                    devCode: res?.dev_code || null,
+                    emailSent: res?.email_sent !== false,
                 },
             });
-        } catch {
-            setErrors((prev) => ({ ...prev, email: 'Could not start reset. Try again.' }));
+        } catch (err) {
+            setErrors((prev) => ({
+                ...prev,
+                email: err?.message || 'Could not start reset. Try again.',
+            }));
         } finally {
             setLoading(false);
         }

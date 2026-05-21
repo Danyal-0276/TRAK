@@ -8,6 +8,8 @@ const ForgotPasswordCodeScreen = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const email = (location.state?.email || '').trim().toLowerCase();
+  const devCode = location.state?.devCode || null;
+  const emailSent = location.state?.emailSent !== false;
   const [code, setCode] = useState('');
   const [password, setPassword] = useState('');
   const [passwordConfirm, setPasswordConfirm] = useState('');
@@ -135,10 +137,27 @@ const ForgotPasswordCodeScreen = () => {
               lineHeight: '1.5',
             }}
           >
-            We sent a 6-digit code to{' '}
-            <span style={{ fontWeight: '600', color: '#0f172a' }}>{email || 'your email'}</span>. Check your inbox
-            (and spam), then choose a new password below.
+            {emailSent
+              ? 'We sent a 6-digit code to '
+              : 'If your account exists, we tried to send a code to '}
+            <span style={{ fontWeight: '600', color: '#0f172a' }}>{email || 'your email'}</span>.
+            {emailSent ? ' Check your inbox (and spam), then choose a new password below.' : ' Email delivery may be misconfigured on the server — use the dev code below if shown.'}
           </p>
+          {devCode ? (
+            <p
+              style={{
+                marginTop: '12px',
+                padding: '10px 12px',
+                background: '#f0fdf4',
+                border: '1px solid #86efac',
+                borderRadius: '6px',
+                fontSize: '14px',
+                color: '#166534',
+              }}
+            >
+              Dev reset code: <strong>{devCode}</strong>
+            </p>
+          ) : null}
         </div>
 
         <form onSubmit={handleSubmit}>
