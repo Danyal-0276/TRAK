@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
-import { loadExplorePage } from '../../utils/loadFeed';
+import { loadExplorePage, mergeUniqueById } from '../../utils/loadFeed';
 import { fetchPlatformCategories } from '../../utils/Service/api';
 import { NewsCard } from '../../components/NewsCard';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
@@ -43,15 +43,24 @@ const CategoriesScreen = () => {
     const [articleLikeCount, setArticleLikeCount] = useState(0);
     const [articleDislikeCount, setArticleDislikeCount] = useState(0);
     const [categorySearch, setCategorySearch] = useState('');
+    const [nextCursor, setNextCursor] = useState('');
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [loadError, setLoadError] = useState('');
+    const loadingMoreRef = useRef(false);
+    const PAGE_SIZE = 30;
 
     const loadNews = async () => {
         try {
             setLoading(true);
+            setLoadError('');
             const [plat, page] = await Promise.all([
                 fetchPlatformCategories().catch(() => ({ categories: [], connections: [] })),
-                loadExplorePage({ limit: 200 }),
+                loadExplorePage({ limit: PAGE_SIZE }),
             ]);
             const newsData = page.items || [];
+            setNextCursor(page.nextCursor || '');
+            setHasMore(Boolean(page.hasMore));
             setAllNews(newsData);
 
             const adminNames = (plat.categories || []).map((c) =>
@@ -62,6 +71,7 @@ const CategoriesScreen = () => {
             setFilteredNews(newsData);
         } catch (error) {
             console.error("Error loading categories:", error);
+            setLoadError(error?.message || 'Could not load categories. Is the backend running?');
             setAllNews([]);
             setCategories([]);
             setFilteredNews([]);
@@ -70,9 +80,33 @@ const CategoriesScreen = () => {
         }
     };
 
+    const loadMore = useCallback(async () => {
+        if (loadingMoreRef.current || !hasMore || !nextCursor) return;
+        loadingMoreRef.current = true;
+        setLoadingMore(true);
+        try {
+            const page = await loadExplorePage({ limit: PAGE_SIZE, cursor: nextCursor });
+            setAllNews((prev) => mergeUniqueById(prev, page.items));
+            setNextCursor(page.nextCursor || '');
+            setHasMore(Boolean(page.hasMore));
+        } finally {
+            loadingMoreRef.current = false;
+            setLoadingMore(false);
+        }
+    }, [hasMore, nextCursor]);
+
     useEffect(() => {
         loadNews();
     }, []);
+
+    useEffect(() => {
+        const onScroll = () => {
+            const nearBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 900;
+            if (nearBottom) loadMore();
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        return () => window.removeEventListener('scroll', onScroll);
+    }, [loadMore]);
 
     useEffect(() => {
         if (selectedCategory) {
@@ -190,25 +224,15 @@ const CategoriesScreen = () => {
         }
     };
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            backgroundColor: backgroundColor,
-            paddingTop: '0',
-            marginTop: '0',
-        }}>
-            <div style={{
-                maxWidth: '1200px',
-                margin: '0 auto',
-                width: '100%',
-                padding: '0 24px 24px 24px',
-            }}>
+        <div className="trak-app-page" style={{ backgroundColor }}>
+            <div className="trak-app-page-inner" style={{ maxWidth: 1200 }}>
                 {/* Header Section */}
                 <div style={{
                     marginTop: '0',
@@ -234,6 +258,15 @@ const CategoriesScreen = () => {
                         Browse articles by category
                     </p>
                 </div>
+
+                {loadError && !loading && (
+                    <div
+                        className="trak-surface-card"
+                        style={{ padding: 16, marginBottom: 20, color: 'var(--trak-rose)', fontSize: 14 }}
+                    >
+                        {loadError}
+                    </div>
+                )}
 
                 {/* Categories Grid */}
                 {loading ? (
@@ -547,7 +580,7 @@ const CategoriesScreen = () => {
                                         gap: '6px',
                                         padding: '6px 12px',
                                         border: 'none',
-                                        background: articleLiked ? (isDark ? colors.surface || '#1E293B' : '#ffffff') : 'transparent',
+                                        background: articleLiked ? (colors.surface) : 'transparent',
                                         borderRadius: '8px',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease',
@@ -555,7 +588,7 @@ const CategoriesScreen = () => {
                                     }}
                                     onMouseEnter={(e) => {
                                         if (!articleLiked) {
-                                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#ffffff';
+                                            e.currentTarget.style.backgroundColor = colors.surface;
                                         }
                                     }}
                                     onMouseLeave={(e) => {
@@ -592,7 +625,7 @@ const CategoriesScreen = () => {
                                         gap: '6px',
                                         padding: '6px 12px',
                                         border: 'none',
-                                        background: articleDisliked ? (isDark ? colors.surface || '#1E293B' : '#ffffff') : 'transparent',
+                                        background: articleDisliked ? (colors.surface) : 'transparent',
                                         borderRadius: '8px',
                                         cursor: 'pointer',
                                         transition: 'all 0.2s ease',
@@ -600,7 +633,7 @@ const CategoriesScreen = () => {
                                     }}
                                     onMouseEnter={(e) => {
                                         if (!articleDisliked) {
-                                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#ffffff';
+                                            e.currentTarget.style.backgroundColor = colors.surface;
                                         }
                                     }}
                                     onMouseLeave={(e) => {

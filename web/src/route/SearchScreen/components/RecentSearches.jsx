@@ -8,7 +8,7 @@ const RecentSearches = ({ searches, onSearchSelect, onDeleteSearch, searchQuery 
     return (
         <div style={{
             marginBottom: '32px',
-            backgroundColor: '#ffffff',
+            background: 'var(--trak-bg)',
             border: '1px solid #e5e7eb',
             borderRadius: '8px',
             padding: '20px',
@@ -23,7 +23,7 @@ const RecentSearches = ({ searches, onSearchSelect, onDeleteSearch, searchQuery 
                 <h3 style={{
                     fontSize: '13px',
                     fontWeight: '600',
-                    color: '#0f172a',
+                    color: 'var(--trak-ink)',
                     margin: 0,
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
@@ -70,7 +70,7 @@ const RecentSearches = ({ searches, onSearchSelect, onDeleteSearch, searchQuery 
                                 <div style={{
                                     fontSize: '14px',
                                     fontWeight: '500',
-                                    color: '#0f172a',
+                                    color: 'var(--trak-ink)',
                                     marginBottom: '2px',
                                 }}>
                                     {item.query}

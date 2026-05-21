@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLocation } from 'react-router-dom';
 import Header from '../components/Header';
+import MainNavSidebar from '../components/MainNavSidebar';
 import AppSidebar from '../components/AppSidebar';
 import Navigation from '../components/Navigation';
 
@@ -14,6 +15,7 @@ const AUTH_PATHS = new Set([
   '/password-changed',
   '/tag-selection',
   '/keyword-selection',
+  '/verify-email',
   '/terms',
   '/privacy',
 ]);
@@ -29,6 +31,7 @@ export default function AppChrome() {
 
   return (
     <>
+      <MainNavSidebar />
       <Header />
       <AppSidebar />
       <Navigation />

@@ -1,0 +1,493 @@
+================================================================================
+TRAK WEB APPLICATION — DETAILED DESCRIPTION
+(Excludes theme / styling system — covers features, architecture, APIs, routes)
+================================================================================
+Document version: May 2026
+Project path: TRAK/web
+Backend: Django REST API (TRAK-BACKEND) — same API as mobile app
+================================================================================
+
+1. PURPOSE AND SCOPE
+--------------------------------------------------------------------------------
+TRAK Web is the browser client for the TRAK (news intelligence / credibility) platform.
+It lets end users discover news, personalize feeds by keywords, interact with articles
+(like, dislike, bookmark, report), manage profiles, and receive notifications. It also
+provides a full administrator panel for platform operators: analytics, user/admin
+management, article oversight, pipeline control, and global settings.
+
+The web app is built with React 19 and Vite 6, uses React Router for navigation, and
+talks to the same Django backend as the React Native mobile app. Admin and user
+experiences are separated: admins never see the consumer newsfeed chrome; they land in
+a dedicated Admin Panel shell after login.
+
+
+2. TECHNOLOGY STACK (NON-VISUAL)
+--------------------------------------------------------------------------------
+- Framework: React 19.1.0
+- Build tool: Vite 6.x
+- Routing: react-router-dom 6.x
+- Charts (admin): Recharts (line charts for dashboard/analytics)
+- Icons: lucide-react
+- Auth helper (optional): Firebase Web SDK — lazy-loaded only for Google sign-in
+- HTTP: fetch API with JWT Bearer tokens (api/client.js)
+- State: React Context (AuthContext), local component state, localStorage for tokens
+- Real-time (optional): notifications realtime helper (notificationsRealtime.js)
+- Push (optional): push token registration via notificationsApi.js
+
+
+3. PROJECT STRUCTURE (HIGH LEVEL)
+--------------------------------------------------------------------------------
+TRAK/web/
+  index.html              — Vite entry HTML
+  vite.config.js          — Vite configuration
+  package.json            — dependencies and scripts (dev, build, preview, lint)
+  .env / .env.example     — VITE_API_URL, optional Firebase keys, mock feed flag
+  src/
+    main.jsx              — React root, error boundary
+    App.jsx               — Providers: Auth, UI feedback, global skeleton styles, ChatBot
+    App.css               — global app styles (layout; not theme tokens)
+    firebase.js           — lazy Firebase init (Google login only)
+    config/api.js         — API_BASE, AUTH_PREFIX, USER_PREFIX, ADMIN_PREFIX
+    context/AuthContext.jsx
+    navigation/           — AppRouter, RouterContent, AppChrome
+    api/                  — adminApi, client, authPasswordApi, notifications*
+    utils/                — loadFeed, bookmarks, reactions, keywords, responsive helpers
+    utils/Service/api.js  — main authenticated API functions
+    route/                — all page screens (auth, user app, admin)
+    components/           — Header, Sidebar, Navigation, NewsCard, ChatBot, skeletons, UI
+
+
+4. CONFIGURATION AND ENVIRONMENT
+--------------------------------------------------------------------------------
+Environment variables (Vite — must be prefixed with VITE_):
+
+  VITE_API_URL
+    Base URL of Django backend. Default if unset: http://127.0.0.1:8000
+    Used to build:
+      /api/auth/*   — authentication and profile
+      /api/user/*   — feeds, bookmarks, reactions, chatbot, keywords
+      /api/admin/*  — admin panel
+      /api/notifications/* — user notification preferences
+
+  VITE_FIREBASE_API_KEY, VITE_FIREBASE_AUTH_DOMAIN, VITE_FIREBASE_PROJECT_ID,
+  VITE_FIREBASE_STORAGE_BUCKET, VITE_FIREBASE_MESSAGING_SENDER_ID, VITE_FIREBASE_APP_ID
+    Optional. Required only for “Sign in with Google” on login/signup.
+    If missing, app still runs; email/password login works. Firebase is NOT initialized
+    at startup (prevents blank screen from invalid-api-key).
+
+  VITE_ALLOW_MOCK_FEED
+    Optional dev flag. When true (or in dev mode), some feed loaders may fall back to
+    mock data if API fails. Production builds should not rely on mock feed.
+
+Local storage keys:
+  trak_access_token, trak_refresh_token — JWT tokens
+  trak_user — cached user object from login/me
+  User content caches cleared on user switch (bookmarks, reactions caches in api.js)
+
+
+5. AUTHENTICATION AND SESSION MANAGEMENT
+--------------------------------------------------------------------------------
+Provider: AuthContext (src/context/AuthContext.jsx)
+
+Session storage:
+  - access + refresh JWT in localStorage
+  - User profile cached in localStorage on login/register
+
+Available auth methods:
+  - Email + password login → POST /api/auth/login/
+  - Email registration → POST /api/auth/register/
+  - OTP: requestOtp, loginWithOtp (identity + code)
+  - Google: signInWithPopup via Firebase (only if VITE_FIREBASE_* configured), then
+    POST /api/auth/firebase/ with id token
+  - Social OAuth redirect flow: startSocialOAuth, completeSocialOAuth (Apple/Facebook
+    buttons may start backend OAuth; Google uses Firebase path on web)
+  - Logout: clears tokens and user from storage
+
+Context values exposed:
+  - user, loading, isAuthenticated
+  - isAdmin (user.role === 'admin')
+  - isSuperAdmin (user.is_super_admin from backend)
+  - isFirebaseConfigured
+  - login, register, sendOtp, verifyOtp, socialLogin, completeSocialLogin,
+    loginWithGoogle, logout
+
+Token refresh:
+  - api/client.js apiFetch: on 401, attempts POST /api/auth/token/refresh/ with refresh
+    token, retries request once with new access token
+
+Route guards:
+  - ProtectedRoute: requires logged-in user; optional requireAdmin for admin routes
+  - UserOnlyRoute: requires logged-in non-admin user; admins redirected to /admin/dashboard
+
+Post-login routing:
+  - Admin role → /admin/dashboard
+  - Regular user → /newsfeed (or onboarding flows if applicable)
+
+
+6. APPLICATION SHELL AND NAVIGATION (USER APP)
+--------------------------------------------------------------------------------
+AppChrome (hidden on auth pages and /admin/*):
+  - Header — top bar (search shortcut, user menu, notifications link)
+  - AppSidebar — desktop sidebar navigation (width ~280px; main content padded on desktop)
+  - Navigation — bottom tab bar on mobile/tablet
+
+RouterContent layout:
+  - Auth pages: full width, no sidebar
+  - Main app: padding-right on desktop for sidebar
+  - Admin: separate AdminShell (no Header/Sidebar/Navigation from consumer app)
+
+Global widgets (all logged-in areas except admin-only shell):
+  - ChatBotWidget — floating assistant, uses /api/user/chatbot/
+  - UIFeedbackProvider — toasts, confirm dialogs for destructive actions
+
+
+7. COMPLETE ROUTE MAP
+--------------------------------------------------------------------------------
+
+7.1 PUBLIC / AUTH ROUTES (no login required)
+  /                          OpeningScreen — splash/landing, routes to login or app if session exists
+  /login                     LoginScreen — email/password, social buttons, link to signup/forgot
+  /signup                    SignUpScreen — registration form + social
+  /forgot-password           ForgotPasswordScreen — request reset
+  /forgot-password-code      ForgotPasswordCodeScreen — enter OTP/code
+  /reset-password            ResetPasswordScreen — set new password
+  /password-changed          PasswordChangedScreen — confirmation after reset
+  /tag-selection             TagSelectionScreen — onboarding category/tag picker
+  /keyword-selection         KeywordSelectionScreen — onboarding keyword chips (feeds API)
+  /terms                     TermsScreen — terms of service
+  /privacy                   PrivacyScreen — privacy policy
+
+7.2 USER ROUTES (UserOnlyRoute — regular users only; admins redirected)
+  /newsfeed                  NewsFeedScreen — personalized home feed
+  /search                    SearchScreen — Discover / explore all articles
+  /notifications             NotificationsScreen — user notifications list
+  /profile                   ProfileScreen — user profile, stats, bookmarks entry
+  /settings                  SettingsScreen — app preferences, notifications toggles
+  /edit-profile              EditProfileScreen — edit name, bio, avatar, username, phone
+  /data                      DataScreen — data/privacy related info
+  /categories                CategoriesScreen — browse by category
+  /about                     AboutScreen — about TRAK (static content)
+  /help                      HelpScreen — help/FAQ style content
+  /trending                  TrendingScreen — trending articles view
+  /bookmarks                 BookmarksScreen — saved articles
+  /recent                    RecentScreen — recently viewed (implementation may use mock/API)
+  /article/:id               ArticleDetailScreen — full article view by ID
+
+7.3 ADMIN ROUTES (ProtectedRoute requireAdmin — AdminShell layout)
+  /admin                     Redirects to /admin/dashboard
+  /admin/dashboard           AdminDashboardScreen — overview, stats, charts, pipeline
+  /admin/users               AdminUsersScreen — manage regular users (role=user)
+  /admin/admins              AdminAdminsScreen — manage administrators (role=admin)
+  /admin/profile             AdminProfileScreen — logged-in admin identity, logout link
+  /admin/articles            AdminArticlesScreen — raw/processed articles list, scope filter
+  /admin/notifications       AdminNotificationsScreen — system notification log
+  /admin/settings            AdminSettingsScreen — platform settings, categories, connections
+  /admin/analytics           Redirects to /admin/dashboard (analytics merged into overview)
+
+  *                         Catch-all → redirect to /
+
+
+8. USER FEATURES (DETAILED)
+--------------------------------------------------------------------------------
+
+8.1 OPENING AND ONBOARDING
+  OpeningScreen checks existing session and navigates to appropriate destination.
+  TagSelectionScreen: visual category selection (constants in newsCategories.js).
+  KeywordSelectionScreen: user enters interest keywords; submits to backend via
+  trackKeywords / keywords API so personalized feed can be built.
+
+8.2 NEWS FEED (/newsfeed)
+  - Loads user keywords from server; if none, shows empty state prompting setup
+  - Fetches personalized feed: GET /api/user/feed/?limit=30&cursor=...
+  - Cursor-based infinite scroll (30 items per page, ~900px prefetch from bottom)
+  - Client-side filter: filterFeedByUserKeywords for “For you” tab alignment
+  - Tabs: For you, Bookmarks (local filter), Trending (sort/heuristic on loaded data)
+  - Syncs bookmarks and reactions from API on load
+  - NewsCard / MasonryFeed layout for article cards
+  - Interactions: like/dislike (POST /api/user/reactions/), bookmark add/remove,
+    navigate to /article/:id
+  - Skeleton loading states while fetching
+
+8.3 DISCOVER / SEARCH (/search)
+  - Explore feed: GET /api/user/explore/?limit=30&cursor=...&q=search
+  - Infinite scroll same pattern as feed
+  - Category tabs (All, Sports, Technology, etc.) filter client-side on loaded pages
+  - Trending topics derived from loaded article topic_keywords
+  - Search debounced (~300ms), updates URL query param
+  - Optional export of discover results as JSON (in-app action)
+  - Article report via submitArticleReport
+  - In-article overlay/modal for reading without leaving discover (selected article state)
+  - Header hide/show on scroll for more reading space
+
+8.4 ARTICLE DETAIL (/article/:id)
+  - GET /api/user/articles/{id}/ for full article body and metadata
+  - Credibility label from backend processing
+  - Like/dislike, bookmark, share actions
+  - ArticleBodyParagraphs for readable body rendering
+
+8.5 PROFILE AND SOCIAL
+  - Profile: GET/PATCH profile via /api/auth/profile/
+  - Follow/unfollow other users (API exists in api.js)
+  - Edit profile: avatar (data URL or URL), username validation, bio, full name, phone
+  - Email/phone verification flows (request + confirm endpoints)
+
+8.6 BOOKMARKS (/bookmarks)
+  - Lists GET /api/user/bookmarks/
+  - Remove bookmark per article
+
+8.7 NOTIFICATIONS (/notifications)
+  - User notification list (backend-driven)
+  - Preferences: GET/PATCH /api/notifications/preferences/
+  - Device token registration for push (notificationsApi.js)
+
+8.8 SETTINGS (/settings)
+  - User preferences: notifications, dark mode toggle (stored server-side in user prefs)
+  - Links to profile, privacy, data, help, about
+  - Logout
+
+8.9 CATEGORIES (/categories)
+  - Platform categories from GET /api/user/platform-categories/ (admin-configured)
+  - Explore articles via loadExplorePage with infinite scroll (not single 200-item dump)
+  - Filter articles by selected category (articleMatchesCategory helper)
+  - Category grid with icons (categoryMatch utils)
+
+8.10 CHATBOT (global widget)
+  - POST /api/user/chatbot/ with user message; returns reply + related articles
+  - GET/DELETE /api/user/chatbot/history/ for conversation history
+
+8.11 TRENDING / RECENT
+  - TrendingScreen and RecentScreen: supplementary list views (may use feed/explore or mock
+    depending on implementation; trending/recent paths exist in navigation)
+
+
+9. ADMIN PANEL (DETAILED)
+--------------------------------------------------------------------------------
+
+9.1 ADMIN SHELL (AdminShell.jsx)
+  - Header: “Admin Panel”, logged-in email avatar, Super Admin badge if applicable,
+    link to /admin/profile, Logout
+  - Tab navigation (icon bar): Overview, Users, Admins, Articles, Notifications,
+    Profile, Settings
+  - No consumer Header/Sidebar/Navigation
+  - Outlet renders active admin screen
+
+9.2 OVERVIEW / DASHBOARD (/admin/dashboard)
+  Data loader: loadAdminOverview.js — parallel API calls:
+    - getAdminAnalytics() — Mongo aggregates
+    - getAdminArticles(page 1, 50, scope all) — for “in feed list” count
+    - getAdminModelMetrics() — ML metrics file from backend
+    - getAdminUsers() when analytics fails (fallback stat cards)
+    - MOCK_KEYWORDS for keyword table (no backend keywords endpoint yet)
+
+  Stat cards (when live analytics available):
+    - Raw articles, Processed, In feed list, Pipeline states
+  Fallback stat cards (no analytics): user counts from API
+
+  Pipeline section:
+    - “Run AI pipeline” → POST /api/admin/pipeline/run/ with limit (e.g. 15)
+    - Shows result alert, reloads stats
+
+  Charts and tables:
+    - User trend line chart (mock data — MOCK_USER_TREND) until backend series exists
+    - Top keywords table (mock)
+    - AdminAnalyticsSection:
+        * If serverAnalytics present: live Mongo breakdown (pipeline status,
+          credibility labels), model accuracy/F1, confusion matrix heatmap
+        * If analytics API fails: mock weekly/monthly line charts (Recharts),
+          percentage cards (real/fake/under review), detailed stat rows
+    - Behavior mirrors mobile admin AnalyticsTab
+
+9.3 USERS (/admin/users)
+  - GET /api/admin/users/?role=user&q=search
+  - Debounced search
+  - List/table/cards: email, active/inactive toggle
+  - PATCH is_active via patchAdminUser
+  - DELETE user via deleteAdminUser (not available for admin accounts)
+  - No role promotion on this screen (admins managed separately)
+
+9.4 ADMINS (/admin/admins)
+  - GET /api/admin/users/?role=admin&q=search
+  - Lists all administrator accounts with Super Admin badge
+  - Super admin only (is_super_admin):
+      * Create admin modal: POST /api/admin/admins/ { email, password }
+      * Delete admin (not super admin accounts, not self)
+  - Regular admins can view list but cannot create/delete
+
+9.5 ADMIN PROFILE (/admin/profile)
+  - Shows email, role, member since (created_at)
+  - Link to admin settings
+  - Logout
+
+9.6 ARTICLES (/admin/articles)
+  - GET /api/admin/articles/?page=&page_size=&scope=
+  - scope query: all | raw | processed (URL param ?scope=)
+  - Search filter client-side or via listing
+  - mapApiDoc: title, source, dates, credibility_label, pipeline_status
+  - PATCH moderation fields via patchAdminArticle(scope, id, payload)
+  - DELETE via deleteAdminArticle(scope, id)
+  - Pagination/page size up to 80 per load in UI
+
+9.7 ADMIN NOTIFICATIONS (/admin/notifications)
+  - GET /api/admin/notifications/ — system notices (type, text, read, created_at)
+  - Read-only list in UI (POST create exists on backend for admins)
+
+9.8 ADMIN SETTINGS (/admin/settings)
+  - GET/PATCH /api/admin/settings/
+  - Notification toggles (push/email/in-app mapped to notifications_enabled_default)
+  - Language and timezone selects
+  - Manage categories list (modal) — stored in admin settings document in Mongo
+  - Manage connections list (modal)
+  - Logout with confirmation
+  - Uses normAdminList / toAdminPayloadList helpers (shared with mobile)
+
+
+10. API REFERENCE (WEB CLIENT)
+--------------------------------------------------------------------------------
+
+10.1 HTTP CLIENT (src/api/client.js)
+  - apiFetch(url, options): attaches Authorization Bearer, handles 401 refresh
+
+10.2 AUTH & PROFILE (utils/Service/api.js + authPasswordApi.js)
+  POST   /api/auth/login/
+  POST   /api/auth/register/
+  POST   /api/auth/token/refresh/
+  GET    /api/auth/me/
+  GET    /api/auth/profile/
+  PATCH  /api/auth/profile/
+  POST   /api/auth/profile/verify/request/
+  POST   /api/auth/profile/verify/confirm/
+  POST   /api/auth/firebase/
+  POST   /api/auth/otp/request/
+  POST   /api/auth/otp/verify/
+  Password reset flows via authPasswordApi.js (forgot/reset endpoints)
+
+10.3 USER CONTENT
+  GET    /api/user/feed/?limit=&cursor=&q=          — personalized feed (paginated)
+  GET    /api/user/explore/?limit=&cursor=&q=      — discover feed (paginated)
+  GET    /api/user/articles/{id}/                   — article detail
+  GET    /api/user/keywords/
+  POST   /api/user/track-keywords/                  — save keyword list
+  GET    /api/user/platform-categories/
+  GET/POST /api/user/bookmarks/
+  DELETE /api/user/bookmarks/{articleId}/
+  GET/POST /api/user/reactions/
+  POST   /api/user/reports/
+  GET/POST/DELETE /api/user/chatbot/ and .../history/
+  POST   /api/user/follow/{id}/, DELETE .../unfollow/
+
+10.4 ADMIN (src/api/adminApi.js)
+  GET    /api/admin/analytics/
+  GET    /api/admin/model-metrics/
+  POST   /api/admin/pipeline/run/
+  GET    /api/admin/articles/?page=&page_size=&scope=
+  PATCH  /api/admin/articles/{scope}/{id}/
+  DELETE /api/admin/articles/{scope}/{id}/
+  GET    /api/admin/users/?role=&q=
+  POST   /api/admin/admins/                         — super admin only
+  PATCH  /api/admin/users/{id}/
+  DELETE /api/admin/users/{id}/
+  GET/PATCH /api/admin/settings/
+  GET    /api/admin/notifications/
+
+10.5 NOTIFICATIONS MODULE
+  src/api/notificationsApi.js — preferences, device token register
+  src/api/notificationsRealtime.js — optional realtime channel
+  src/api/pushToken.js — browser push token helper
+
+
+11. DATA FLOW AND PAGINATION
+--------------------------------------------------------------------------------
+
+11.1 FEED PAGINATION
+  Backend returns: { results: [...], next_cursor: "ISOdatetime|ObjectId", has_more: bool }
+  Web loaders: loadFeedPage, loadExplorePage (utils/loadFeed.js)
+  mergeUniqueById prevents duplicate cards when appending pages
+  Page size: 30 items; scroll threshold ~900px from bottom
+
+11.2 PERSONALIZED FEED LOGIC (backend)
+  User must have keywords saved; feed matches articles whose text/topics contain keywords
+  Empty keywords → empty feed with UI prompt to add interests
+
+11.3 CREDIBILITY AND ARTICLES
+  Processed articles include credibility_label (real/fake/suspicious) from ML pipeline
+  Raw articles have pipeline_status until processed
+  Admin pipeline run processes batch of pending raw articles on server
+
+
+12. ROLES AND PERMISSIONS (WEB BEHAVIOR)
+--------------------------------------------------------------------------------
+  role=user     — consumer app routes only; redirected away from /admin if trying admin URLs
+  role=admin    — admin panel only on web (UserOnlyRoute blocks /newsfeed)
+  is_super_admin — shahroz@admin.com when seeded; can create/delete admins on web and API
+
+Built-in seeded admins (backend): danyal@admin.com, shahroz@admin.com, abdullah@admin.com
+Seed command: python manage.py seed_default_admins --password <pwd>
+
+
+13. SHARED COMPONENTS (FUNCTIONAL)
+--------------------------------------------------------------------------------
+  NewsCard — article card with credibility badge, actions
+  MasonryFeed / MasonryFeedSkeleton — responsive grid layout
+  ArticleBodyParagraphs — article HTML/text body
+  ChatBotWidget — floating chat UI
+  Header, AppSidebar, Navigation — app chrome navigation
+  ProtectedRoute, UserOnlyRoute — access control
+  SkeletonLayouts — loading placeholders (stat cards, tables, lists, pages)
+  UIFeedback — toast notifications and confirmation modals
+  Admin: AdminChartSection (Recharts), AdminAnalyticsSection, AdminStatRow,
+         AdminPercentageCard, AdminListModal, AdminToggle, AdminSettingRow, etc.
+
+
+14. RESPONSIVE BEHAVIOR
+--------------------------------------------------------------------------------
+  useResponsive hook: isMobile, isTablet, isDesktop breakpoints
+  responsiveStyles.js: padding, grid columns, font sizes per breakpoint
+  Desktop: sidebar visible, extra padding on main content
+  Mobile: bottom navigation, compact layouts, horizontal scroll on admin tabs
+
+
+15. BUILD AND RUN
+--------------------------------------------------------------------------------
+  npm install       — install dependencies
+  npm run dev       — Vite dev server (default http://localhost:5173)
+  npm run build     — production bundle to dist/
+  npm run preview   — preview production build locally
+  npm run lint      — ESLint
+
+Production deploy: serve dist/ as static site; set VITE_API_URL to production backend URL
+at build time.
+
+
+16. ERROR HANDLING AND EDGE CASES
+--------------------------------------------------------------------------------
+  - main.jsx ErrorBoundary: catches React render errors, offers reload
+  - API errors surfaced via UIFeedback toasts or inline messages
+  - Firebase missing: app loads; Google login shows clear error message
+  - Admin analytics failure: falls back to mock charts and user-count stats
+  - Token expiry: automatic refresh; logout if refresh fails
+  - Admin cannot access consumer routes on web (by design)
+  - Non-admin cannot access /admin (redirect to newsfeed)
+
+
+17. PARITY WITH MOBILE APP
+--------------------------------------------------------------------------------
+  - Same Django API contracts for auth, feed, explore, admin
+  - Same admin features: overview, users, admins, articles, notifications, settings
+  - Same super-admin rules and seed accounts
+  - Same mock analytics fallback when /api/admin/analytics/ unavailable
+  - Web adds desktop sidebar layout and some web-only UX (masonry grid, discover export)
+  - Mobile uses native navigation; web uses React Router paths listed above
+
+
+18. KNOWN LIMITATIONS (FUNCTIONAL)
+--------------------------------------------------------------------------------
+  - User trend chart and top keywords on admin dashboard use mock data (no API series yet)
+  - Google sign-in requires Firebase env configuration on web
+  - Trending/Recent screens may not use full live pagination in all code paths
+  - Apple/Facebook social on web may redirect to backend OAuth rather than in-app SDK
+  - Chatbot uses keyword-matched articles from feed logic, not a separate LLM host on client
+
+
+================================================================================
+END OF DOCUMENT
+================================================================================

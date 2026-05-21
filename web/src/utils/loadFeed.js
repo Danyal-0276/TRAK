@@ -32,15 +32,28 @@ export function mapApiItem(a) {
   };
 }
 
-async function fetchFeed(limit = 50, q = '') {
+async function fetchFeed(limit = 30, q = '', cursor = '') {
   const params = new URLSearchParams({ limit: String(limit) });
   if (q && String(q).trim()) params.set('q', String(q).trim());
+  if (cursor && String(cursor).trim()) params.set('cursor', String(cursor).trim());
   const res = await apiFetch(`${USER_PREFIX}/feed/?${params}`);
   if (!res.ok) {
     const t = await res.text();
     throw new Error(t || `Feed ${res.status}`);
   }
   return res.json();
+}
+
+export function mergeUniqueById(existing, incoming) {
+  const seen = new Set((existing || []).map((x) => String(x.id)));
+  const out = [...(existing || [])];
+  for (const item of incoming || []) {
+    const id = String(item.id);
+    if (seen.has(id)) continue;
+    seen.add(id);
+    out.push(item);
+  }
+  return out;
 }
 
 async function fetchExplore(limit = 200, q = '', cursor = '') {
@@ -56,7 +69,31 @@ async function fetchExplore(limit = 200, q = '', cursor = '') {
 }
 
 export async function loadExplorePage({ q = '', limit = 30, cursor = '' } = {}) {
-  const json = await fetchExplore(limit, q, cursor);
+  try {
+    const json = await fetchExplore(limit, q, cursor);
+    const results = (json.results || []).map(mapApiItem);
+    return {
+      items: results,
+      nextCursor: json.next_cursor || '',
+      hasMore: Boolean(json.has_more),
+    };
+  } catch (e) {
+    if (allowMockFallback) {
+      console.warn('Explore API failed, using mock:', e?.message);
+      const response = await mockApi.getNewsFeed();
+      const items = (response.data || []).map((item) => ({
+        ...item,
+        id: item.id,
+        category: item.category || 'News',
+      }));
+      return { items, nextCursor: '', hasMore: false };
+    }
+    throw e;
+  }
+}
+
+export async function loadFeedPage({ q = '', limit = 30, cursor = '' } = {}) {
+  const json = await fetchFeed(limit, q, cursor);
   const results = (json.results || []).map(mapApiItem);
   return {
     items: results,

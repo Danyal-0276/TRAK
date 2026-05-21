@@ -6,7 +6,7 @@ export function SearchBar({ value, onChange }) {
         <div style={{
             display: 'flex',
             alignItems: 'center',
-            backgroundColor: '#ffffff',
+            background: 'var(--trak-bg)',
             borderRadius: 12,
             padding: '12px 16px',
             marginBottom: 20,
@@ -22,7 +22,7 @@ export function SearchBar({ value, onChange }) {
                 style={{
                     flex: 1,
                     fontSize: 'clamp(14px, 3.5vw, 16px)',
-                    color: '#0f172a',
+                    color: 'var(--trak-ink)',
                     border: 'none',
                     outline: 'none',
                     backgroundColor: 'transparent',

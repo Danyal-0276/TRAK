@@ -1,4 +1,5 @@
 import { API_BASE, AUTH_PREFIX } from '../config/api';
+import { fetchWithTimeout } from './fetchWithTimeout';
 
 const ACCESS_KEY = 'trak_access_token';
 const REFRESH_KEY = 'trak_refresh_token';
@@ -14,7 +15,7 @@ function getRefresh() {
 async function refreshAccess() {
   const refresh = getRefresh();
   if (!refresh) return null;
-  const res = await fetch(`${AUTH_PREFIX}/token/refresh/`, {
+  const res = await fetchWithTimeout(`${AUTH_PREFIX}/token/refresh/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ refresh }),
@@ -37,13 +38,13 @@ export async function apiFetch(url, options = {}) {
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  let res = await fetch(url, { ...options, headers });
+  let res = await fetchWithTimeout(url, { ...options, headers });
 
   if (res.status === 401) {
     const next = await refreshAccess();
     if (next) {
       headers.Authorization = `Bearer ${next}`;
-      res = await fetch(url, { ...options, headers });
+      res = await fetchWithTimeout(url, { ...options, headers });
     }
   }
 

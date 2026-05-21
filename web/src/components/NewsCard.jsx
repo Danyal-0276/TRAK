@@ -28,6 +28,64 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
     const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
 
+    const credLabel = item.credibility?.label || item.credibility_label || '';
+    const credClass =
+        credLabel === 'high' || credLabel === 'real'
+            ? 'trak-cred-high'
+            : credLabel === 'medium' || credLabel === 'mixed'
+              ? 'trak-cred-mid'
+              : 'trak-cred-low';
+    const credText =
+        credLabel === 'real' || credLabel === 'high'
+            ? 'HIGH'
+            : credLabel === 'mixed' || credLabel === 'medium'
+              ? 'MED'
+              : 'LOW';
+
+    if (isMasonry) {
+        const stagger = Math.min(8, (Number(item.id) || 0) % 8);
+        return (
+            <article
+                className={`trak-card trak-anim-card trak-s${stagger || 1}`}
+                onClick={onPress}
+            >
+                {item.image && (
+                    <div className="trak-card-img trak-ci-16">
+                        <img src={item.image} alt="" className="trak-card-img-inner" />
+                    </div>
+                )}
+                <div className="trak-card-body">
+                    <div className="trak-card-meta">
+                        <span className="trak-src-badge">
+                            <span className="trak-src-dot" style={{ background: 'var(--trak-accent)' }} />
+                            {item.source || 'Source'}
+                        </span>
+                        <span className={`trak-cred-badge ${credClass}`}>{credText}</span>
+                    </div>
+                    <h3 className="trak-card-title">{item.title || 'News Title'}</h3>
+                    {(item.description || item.excerpt || item.summary) && (
+                        <p className="trak-card-sum">
+                            {item.description || item.excerpt || item.summary}
+                        </p>
+                    )}
+                    {item.category && (
+                        <div style={{ marginBottom: 10 }}>
+                            <span className="trak-tag">{item.category}</span>
+                        </div>
+                    )}
+                    <div className="trak-card-foot">
+                        <span>{likeCount} likes</span>
+                        {item.trending && (
+                            <span style={{ marginLeft: 'auto', color: 'var(--trak-accent2)', fontWeight: 700 }}>
+                                Trending
+                            </span>
+                        )}
+                    </div>
+                </div>
+            </article>
+        );
+    }
+
     return (
         <article
             onClick={onPress}
