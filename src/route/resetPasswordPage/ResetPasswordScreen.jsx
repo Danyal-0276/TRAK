@@ -18,7 +18,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { Eye, EyeOff, Lock } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
-import { confirmPasswordReset } from '../../api/authPasswordApi';
+import { confirmPasswordReset, confirmPasswordResetWithOtp } from '../../api/authPasswordApi';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 
 const { width, height } = Dimensions.get('window');
@@ -27,6 +27,9 @@ const ResetPasswordScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
     const { error: showError } = useFeedback();
     const { colors } = theme;
+    const otpEmail = (route.params?.email || '').trim().toLowerCase();
+    const resetToken = route.params?.resetToken || '';
+    const fromOtp = Boolean(route.params?.fromOtp && otpEmail && resetToken);
     const [uid, setUid] = useState(route.params?.uid || '');
     const [token, setToken] = useState(route.params?.token || '');
     const [newPassword, setNewPassword] = useState('');
@@ -37,12 +40,20 @@ const ResetPasswordScreen = ({ navigation, route }) => {
     const [errors, setErrors] = useState({});
 
     useEffect(() => {
+        if (fromOtp) return;
         const p = route.params;
         if (p?.uid) setUid(p.uid);
         if (p?.token) setToken(p.token);
-    }, [route.params?.uid, route.params?.token]);
+    }, [route.params?.uid, route.params?.token, fromOtp]);
 
     useEffect(() => {
+        if (route.params?.fromOtp && (!otpEmail || !resetToken)) {
+            navigation.replace('ForgotPasswordCode', { email: otpEmail });
+        }
+    }, [fromOtp, otpEmail, resetToken, navigation, route.params?.fromOtp]);
+
+    useEffect(() => {
+        if (fromOtp) return;
         const tryParse = (url) => {
             if (!url) return;
             const qIndex = url.indexOf('?');
@@ -61,11 +72,13 @@ const ResetPasswordScreen = ({ navigation, route }) => {
     const validateForm = () => {
         const newErrors = {};
 
-        if (!uid.trim()) {
-            newErrors.uid = 'Copy the uid value from the reset link';
-        }
-        if (!token.trim()) {
-            newErrors.token = 'Copy the token value from the reset link';
+        if (!fromOtp) {
+            if (!uid.trim()) {
+                newErrors.uid = 'Copy the uid value from the reset link';
+            }
+            if (!token.trim()) {
+                newErrors.token = 'Copy the token value from the reset link';
+            }
         }
 
         if (!newPassword) {
@@ -96,12 +109,21 @@ const ResetPasswordScreen = ({ navigation, route }) => {
         setLoading(true);
 
         try {
-            await confirmPasswordReset({
-                uid: uid.trim(),
-                token: token.trim(),
-                password: newPassword,
-                password_confirm: confirmPassword,
-            });
+            if (fromOtp) {
+                await confirmPasswordResetWithOtp({
+                    email: otpEmail,
+                    reset_token: resetToken,
+                    password: newPassword,
+                    password_confirm: confirmPassword,
+                });
+            } else {
+                await confirmPasswordReset({
+                    uid: uid.trim(),
+                    token: token.trim(),
+                    password: newPassword,
+                    password_confirm: confirmPassword,
+                });
+            }
             navigation.navigate('PasswordChanged');
         } catch (error) {
             showError(error?.message || 'Failed to reset password.');
@@ -176,7 +198,9 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                                     Reset password
                                 </TextComponent>
                                 <TextComponent variant="body" color={colors.textSecondary} style={styles.subtitle}>
-                                    Please type something you'll remember
+                                    {fromOtp
+                                        ? `Code verified for ${otpEmail}. Choose a new password.`
+                                        : "Please type something you'll remember"}
                                 </TextComponent>
                             </View>
 
@@ -190,6 +214,7 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                                     }
                                 ]}
                             >
+                                {!fromOtp ? (
                                 <View style={styles.inputGroup}>
                                     <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>
                                         Reset uid (from email link)
@@ -251,6 +276,7 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                                         <Text style={[styles.errorText, { color: colors.error }]}>{errors.token}</Text>
                                     ) : null}
                                 </View>
+                                ) : null}
 
                                 <View style={styles.inputGroup}>
                                     <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>
@@ -344,15 +370,27 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                                     style={[
                                         styles.primaryButton, 
                                         { 
-                                            backgroundColor: (!uid.trim() || !token.trim() || !newPassword || !confirmPassword || loading) 
+                                            backgroundColor: (
+                                                (fromOtp
+                                                    ? !newPassword || !confirmPassword
+                                                    : !uid.trim() || !token.trim() || !newPassword || !confirmPassword) || loading
+                                            )
                                                 ? colors.textTertiary 
                                                 : colors.primary,
                                             shadowColor: colors.shadowDark,
-                                            opacity: (!uid.trim() || !token.trim() || !newPassword || !confirmPassword || loading) ? 0.6 : 1,
+                                            opacity: (
+                                                (fromOtp
+                                                    ? !newPassword || !confirmPassword
+                                                    : !uid.trim() || !token.trim() || !newPassword || !confirmPassword) || loading
+                                            ) ? 0.6 : 1,
                                         }
                                     ]}
                                     onPress={handleResetPassword}
-                                    disabled={!uid.trim() || !token.trim() || !newPassword || !confirmPassword || loading}
+                                    disabled={
+                                        (fromOtp
+                                            ? !newPassword || !confirmPassword
+                                            : !uid.trim() || !token.trim() || !newPassword || !confirmPassword) || loading
+                                    }
                                     activeOpacity={0.8}
                                 >
                                     {loading ? (

@@ -1,514 +1,175 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
-    View,
-    Text,
-    TouchableOpacity,
-    StyleSheet,
-    StatusBar,
-    KeyboardAvoidingView,
-    Platform,
-    Animated,
-    Dimensions,
-    Alert,
+  View,
+  TextInput,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
-import { Mail, Shield } from 'lucide-react-native';
+import { Shield } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
-import { requestPasswordReset } from '../../api/authPasswordApi';
+import { requestPasswordReset, verifyPasswordResetOtp } from '../../api/authPasswordApi';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
-
-const { width, height } = Dimensions.get('window');
+import Text from '../../components/ui/Text';
 
 const ForgotPasswordCodeScreen = ({ navigation, route }) => {
-    const { theme } = useTheme();
-    const { error: showError } = useFeedback();
-    const { colors } = theme;
-    const [timer, setTimer] = useState(60);
-    const [resendLoading, setResendLoading] = useState(false);
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const { error: showError } = useFeedback();
+  const email = (route.params?.email || '').trim().toLowerCase();
+  const devCode = route.params?.devCode || null;
+  const emailSent = route.params?.emailSent !== false;
+  const [code, setCode] = useState(devCode ? String(devCode) : '');
+  const [timer, setTimer] = useState(60);
+  const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
 
-    const { email, debugResetPreview } = route.params || {};
+  useEffect(() => {
+    if (!email) {
+      navigation.replace('ForgotPassword');
+    }
+  }, [email, navigation]);
 
-    const fadeAnim = useRef(new Animated.Value(0)).current;
-    const slideAnim = useRef(new Animated.Value(50)).current;
-    const scaleAnim = useRef(new Animated.Value(0.95)).current;
-    const iconScale = useRef(new Animated.Value(0)).current;
-    const iconRotate = useRef(new Animated.Value(0)).current;
-    const circle1Anim = useRef(new Animated.Value(0)).current;
-    const circle2Anim = useRef(new Animated.Value(0)).current;
-    const glowAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimer((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setTimer((prev) => (prev > 0 ? prev - 1 : 0));
-        }, 1000);
-        return () => clearInterval(interval);
-    }, []);
+  const onVerify = async () => {
+    const trimmed = code.replace(/\D/g, '');
+    if (trimmed.length !== 6) {
+      showError('Enter the 6-digit code from your email.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await verifyPasswordResetOtp({ email, code: trimmed });
+      navigation.navigate('ResetPassword', {
+        email,
+        resetToken: res.reset_token,
+        fromOtp: true,
+      });
+    } catch (e) {
+      showError(e.message || 'Invalid or expired code.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 800,
-                useNativeDriver: true,
-            }),
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                friction: 8,
-                tension: 50,
-                useNativeDriver: true,
-            }),
-            Animated.spring(scaleAnim, {
-                toValue: 1,
-                friction: 7,
-                tension: 40,
-                useNativeDriver: true,
-            }),
-            Animated.spring(iconScale, {
-                toValue: 1,
-                friction: 6,
-                tension: 40,
-                delay: 300,
-                useNativeDriver: true,
-            }),
-            Animated.timing(iconRotate, {
-                toValue: 1,
-                duration: 1000,
-                delay: 400,
-                useNativeDriver: true,
-            }),
-            Animated.parallel([
-                Animated.timing(circle1Anim, {
-                    toValue: 1,
-                    duration: 1000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(circle2Anim, {
-                    toValue: 1,
-                    duration: 1200,
-                    delay: 100,
-                    useNativeDriver: true,
-                }),
-            ]),
-            Animated.loop(
-                Animated.sequence([
-                    Animated.timing(glowAnim, {
-                        toValue: 1,
-                        duration: 2000,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(glowAnim, {
-                        toValue: 0,
-                        duration: 2000,
-                        useNativeDriver: true,
-                    }),
-                ])
-            ),
-        ]).start();
-    }, []);
+  const onResend = async () => {
+    if (timer > 0 || !email) return;
+    setResendLoading(true);
+    try {
+      await requestPasswordReset(email);
+      setTimer(60);
+    } catch (e) {
+      showError(e.message || 'Could not resend code.');
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
-    return (
-        <View style={[styles.fullContainer, { backgroundColor: colors.background }]}>
-            <StatusBar 
-                barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} 
-                backgroundColor={colors.background} 
-            />
-            
-            {/* Enhanced gradient background */}
-            <LinearGradient
-                colors={theme.mode === 'dark' 
-                    ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
-                    : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gradientBackground}
-            />
-            
-            {/* Animated decorative circles */}
-            <Animated.View 
-                style={[
-                    styles.accentCircle1, 
-                    { 
-                        backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.12' : '0.05'})`,
-                        opacity: circle1Anim,
-                        transform: [
-                            {
-                                scale: circle1Anim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [0.8, 1],
-                                }),
-                            },
-                        ],
-                    }
-                ]} 
-            />
-            <Animated.View 
-                style={[
-                    styles.accentCircle2, 
-                    { 
-                        backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.10' : '0.04'})`,
-                        opacity: circle2Anim,
-                        transform: [
-                            {
-                                scale: circle2Anim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [0.8, 1],
-                                }),
-                            },
-                        ],
-                    }
-                ]} 
-            />
-            
-            {/* Animated glow effect */}
-            <Animated.View
-                style={[
-                    styles.glowEffect,
-                    {
-                        backgroundColor: theme.mode === 'dark' ? 'rgba(129, 140, 248, 0.15)' : 'rgba(0, 0, 0, 0.05)',
-                        opacity: glowAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0.3, 0.6],
-                        }),
-                        transform: [
-                            {
-                                scale: glowAnim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [1, 1.1],
-                                }),
-                            },
-                        ],
-                    },
-                ]}
-            />
+  return (
+    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.inner}
+      >
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text variant="body" color={colors.textSecondary}>
+            Back
+          </Text>
+        </TouchableOpacity>
 
-            <SafeAreaView style={styles.safeContainer}>
-                <KeyboardAvoidingView 
-                    style={styles.contentContainer}
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-                >
-                    <Animated.View 
-                        style={[
-                            styles.contentWrapper,
-                            {
-                                opacity: fadeAnim,
-                                transform: [
-                                    { translateY: slideAnim },
-                                    { scale: scaleAnim },
-                                ],
-                            },
-                        ]}
-                    >
-                        <Animated.View 
-                            style={[
-                                styles.headerContent,
-                                {
-                                    opacity: fadeAnim,
-                                    transform: [
-                                        {
-                                            translateY: slideAnim.interpolate({
-                                                inputRange: [0, 50],
-                                                outputRange: [0, 20],
-                                            }),
-                                        },
-                                    ],
-                                },
-                            ]}
-                        >
-                            <View style={styles.iconContainer}>
-                                <Animated.View
-                                    style={{
-                                        transform: [
-                                            {
-                                                scale: iconScale,
-                                            },
-                                            {
-                                                rotate: iconRotate.interpolate({
-                                                    inputRange: [0, 1],
-                                                    outputRange: ['-10deg', '0deg'],
-                                                }),
-                                            },
-                                        ],
-                                    }}
-                                >
-                                    <Shield size={48} color={colors.primary} strokeWidth={2} />
-                                </Animated.View>
-                            </View>
-                            <Text style={[styles.title, { color: colors.textPrimary }]}>Please check your email</Text>
-                            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-                                We sent a reset link to {email || 'your email'}. Open it to finish on the web, or continue here to enter the link details.
-                            </Text>
-                        </Animated.View>
+        <Shield size={40} color={colors.primary} style={{ alignSelf: 'center', marginBottom: 16 }} />
+        <Text variant="h2" style={{ textAlign: 'center', marginBottom: 8 }}>
+          Enter verification code
+        </Text>
+        <Text variant="body" color={colors.textSecondary} style={{ textAlign: 'center', marginBottom: 24 }}>
+          {emailSent
+            ? `We sent a 6-digit code to ${email || 'your email'}. Check your inbox and spam.`
+            : `If your account exists, a code was sent to ${email || 'your email'}.`}
+        </Text>
 
-                        <Animated.View 
-                            style={[
-                                styles.formCard,
-                                {
-                                    backgroundColor: colors.surface,
-                                    borderColor: colors.borderLight,
-                                    shadowColor: colors.shadow,
-                                    opacity: fadeAnim,
-                                    transform: [
-                                        {
-                                            translateY: slideAnim.interpolate({
-                                                inputRange: [0, 50],
-                                                outputRange: [0, 30],
-                                            }),
-                                        },
-                                    ],
-                                }
-                            ]}
-                        >
-                            <Text style={[styles.instructions, { color: colors.textSecondary }]}>
-                                The email contains a link with a secure token. On this device you can open that link in a browser, or tap below and paste the token values from the URL (uid=…&token=…) on the next screen.
-                            </Text>
+        {devCode ? (
+          <Text variant="caption" color={colors.primary} style={{ textAlign: 'center', marginBottom: 12 }}>
+            Dev code: {devCode}
+          </Text>
+        ) : null}
 
-                            <TouchableOpacity
-                                style={[
-                                    styles.primaryButton,
-                                    {
-                                        backgroundColor: colors.primary,
-                                        shadowColor: colors.shadowDark,
-                                    },
-                                ]}
-                                onPress={() =>
-                                    navigation.navigate('ResetPassword', {
-                                        email,
-                                        uid: debugResetPreview?.uid || '',
-                                        token: debugResetPreview?.token || '',
-                                    })
-                                }
-                                activeOpacity={0.8}
-                            >
-                                <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
-                                    Choose new password
-                                </Text>
-                            </TouchableOpacity>
+        <TextInput
+          value={code}
+          onChangeText={(t) => setCode(t.replace(/\D/g, '').slice(0, 6))}
+          keyboardType="number-pad"
+          maxLength={6}
+          placeholder="000000"
+          placeholderTextColor={colors.textSecondary}
+          style={[
+            styles.codeInput,
+            {
+              borderColor: colors.border,
+              color: colors.text,
+              backgroundColor: colors.surface,
+            },
+          ]}
+        />
 
-                            <TouchableOpacity
-                                disabled={timer > 0 || resendLoading || !email}
-                                onPress={async () => {
-                                    if (timer > 0 || !email) return;
-                                    setResendLoading(true);
-                                    try {
-                                        await requestPasswordReset(email);
-                                        setTimer(60);
-                                        Alert.alert('Sent', 'If an account exists, another email was sent.');
-                                    } catch (e) {
-                                        Alert.alert('Error', e?.message || 'Could not resend');
-                                    } finally {
-                                        setResendLoading(false);
-                                    }
-                                }}
-                                activeOpacity={0.7}
-                            >
-                                <Text
-                                    style={[
-                                        styles.resendText,
-                                        {
-                                            color:
-                                                timer > 0 || resendLoading ? colors.textTertiary : colors.primary,
-                                        },
-                                    ]}
-                                >
-                                    {resendLoading
-                                        ? 'Sending…'
-                                        : timer > 0
-                                          ? `Resend email 00:${timer.toString().padStart(2, '0')}`
-                                          : 'Resend reset email'}
-                                </Text>
-                            </TouchableOpacity>
-                        </Animated.View>
+        <TouchableOpacity
+          style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
+          onPress={onVerify}
+          disabled={loading || code.replace(/\D/g, '').length !== 6}
+        >
+          <Text variant="button" color={colors.textInverse}>
+            {loading ? 'Verifying…' : 'Continue'}
+          </Text>
+        </TouchableOpacity>
 
-                        <Animated.View 
-                            style={[
-                                styles.footer,
-                                {
-                                    opacity: fadeAnim,
-                                    transform: [
-                                        {
-                                            translateY: slideAnim.interpolate({
-                                                inputRange: [0, 50],
-                                                outputRange: [0, 40],
-                                            }),
-                                        },
-                                    ],
-                                },
-                            ]}
-                        >
-                            <Text style={[styles.footerText, { color: colors.textSecondary }]}>Remember password? </Text>
-                            <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-                                <Text style={[styles.linkText, { color: colors.primary }]}>Log in</Text>
-                            </TouchableOpacity>
-                        </Animated.View>
-                    </Animated.View>
-                </KeyboardAvoidingView>
-            </SafeAreaView>
-        </View>
-    );
+        <TouchableOpacity onPress={onResend} disabled={timer > 0 || resendLoading} style={styles.linkBtn}>
+          <Text variant="body" color={colors.primary}>
+            {timer > 0
+              ? `Resend in ${timer}s`
+              : resendLoading
+                ? 'Sending…'
+                : 'Resend code'}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.linkBtn}>
+          <Text variant="caption" color={colors.textSecondary}>
+            Back to sign in
+          </Text>
+        </TouchableOpacity>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
 };
 
 const styles = StyleSheet.create({
-    fullContainer: {
-        flex: 1,
-    },
-    gradientBackground: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-    },
-    accentCircle1: {
-        position: 'absolute',
-        width: 400,
-        height: 400,
-        borderRadius: 200,
-        top: -150,
-        right: -120,
-    },
-    accentCircle2: {
-        position: 'absolute',
-        width: 320,
-        height: 320,
-        borderRadius: 160,
-        bottom: 100,
-        left: -100,
-    },
-    glowEffect: {
-        position: 'absolute',
-        width: 300,
-        height: 300,
-        borderRadius: 150,
-        top: height * 0.25,
-        left: width * 0.5 - 150,
-    },
-    iconContainer: {
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    safeContainer: {
-        flex: 1,
-        backgroundColor: 'transparent',
-    },
-    contentContainer: {
-        flex: 1,
-    },
-    contentWrapper: {
-        flex: 1,
-        paddingHorizontal: 24,
-        paddingTop: 16,
-        paddingBottom: 24,
-    },
-    header: {
-        paddingTop: 4,
-        paddingBottom: 4,
-        marginBottom: 24,
-    },
-    backButton: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderWidth: 1,
-    },
-    headerContent: {
-        marginBottom: 32,
-    },
-    title: {
-        fontSize: 40,
-        fontWeight: '800',
-        marginBottom: 12,
-        letterSpacing: -1.2,
-        textAlign: 'center',
-    },
-    subtitle: {
-        fontSize: 16,
-        lineHeight: 24,
-        textAlign: 'center',
-    },
-    instructions: {
-        fontSize: 14,
-        lineHeight: 22,
-        marginBottom: 20,
-    },
-    formCard: {
-        borderRadius: 24,
-        padding: 28,
-        marginBottom: 20,
-        shadowOffset: {
-            width: 0,
-            height: 8,
-        },
-        shadowOpacity: 0.12,
-        shadowRadius: 20,
-        elevation: 8,
-        borderWidth: 1,
-    },
-    codeInputContainer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        marginBottom: 32,
-        gap: 12,
-    },
-    codeInput: {
-        width: 70,
-        height: 70,
-        borderWidth: 2,
-        borderRadius: 16,
-        fontSize: 28,
-        fontWeight: '700',
-        marginHorizontal: 4,
-    },
-    primaryButton: {
-        paddingVertical: 18,
-        borderRadius: 16,
-        alignItems: 'center',
-        marginBottom: 16,
-        shadowOffset: {
-            width: 0,
-            height: 6,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 12,
-        elevation: 8,
-    },
-    primaryButtonText: {
-        fontSize: 17,
-        fontWeight: '700',
-        letterSpacing: 0.2,
-    },
-    loadingContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    spinner: {
-        marginRight: 10,
-    },
-    resendText: {
-        textAlign: 'center',
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    footer: {
-        flexDirection: 'row',
-        justifyContent: 'center',
-        alignItems: 'center',
-        paddingTop: 16,
-    },
-    footerText: {
-        fontSize: 14,
-        fontWeight: '400',
-    },
-    linkText: {
-        fontSize: 14,
-        fontWeight: '700',
-        letterSpacing: -0.2,
-    },
+  container: { flex: 1 },
+  inner: { flex: 1, padding: 24, justifyContent: 'center' },
+  backBtn: { alignSelf: 'flex-start', marginBottom: 24 },
+  codeInput: {
+    fontSize: 28,
+    letterSpacing: 8,
+    textAlign: 'center',
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 14,
+    marginBottom: 20,
+  },
+  primaryBtn: {
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  linkBtn: { alignItems: 'center', paddingVertical: 10 },
 });
 
 export default ForgotPasswordCodeScreen;

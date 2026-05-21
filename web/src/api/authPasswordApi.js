@@ -57,13 +57,35 @@ export async function confirmPasswordReset(body) {
   return data;
 }
 
-export async function confirmPasswordResetWithOtp({ email, code, password, password_confirm }) {
-  const res = await fetchWithTimeout(`${AUTH_PREFIX}/password-reset/otp-confirm/`, {
+export async function verifyPasswordResetOtp({ email, code }) {
+  const res = await fetchWithTimeout(`${AUTH_PREFIX}/password-reset/otp-verify/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
       email: email.trim().toLowerCase(),
       code: String(code || '').trim(),
+    }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || data.code?.[0] || 'Invalid or expired code.');
+  }
+  return data;
+}
+
+export async function confirmPasswordResetWithOtp({
+  email,
+  reset_token,
+  code,
+  password,
+  password_confirm,
+}) {
+  const res = await fetchWithTimeout(`${AUTH_PREFIX}/password-reset/otp-confirm/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({
+      email: email.trim().toLowerCase(),
+      ...(reset_token ? { reset_token } : { code: String(code || '').trim() }),
       password,
       password_confirm,
     }),
