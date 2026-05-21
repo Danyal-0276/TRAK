@@ -30,7 +30,6 @@ const ForgotPasswordScreen = () => {
             navigate('/forgot-password-code', {
                 state: {
                     email: email.trim().toLowerCase(),
-                    devCode: res?.dev_code || null,
                     emailSent: res?.email_sent !== false,
                 },
             });

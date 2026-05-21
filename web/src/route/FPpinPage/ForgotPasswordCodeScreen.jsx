@@ -8,9 +8,8 @@ const ForgotPasswordCodeScreen = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const email = (location.state?.email || '').trim().toLowerCase();
-  const devCode = location.state?.devCode || null;
   const emailSent = location.state?.emailSent !== false;
-  const [code, setCode] = useState(devCode ? String(devCode) : '');
+  const [code, setCode] = useState('');
   const [timer, setTimer] = useState(60);
   const [resendLoading, setResendLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -136,21 +135,6 @@ const ForgotPasswordCodeScreen = () => {
               ? ' Your email may take up to a minute to arrive — check inbox and spam.'
               : ''}
           </p>
-          {devCode ? (
-            <p
-              style={{
-                marginTop: '12px',
-                padding: '10px 12px',
-                background: '#f0fdf4',
-                border: '1px solid #86efac',
-                borderRadius: '6px',
-                fontSize: '14px',
-                color: '#166534',
-              }}
-            >
-              Dev reset code: <strong>{devCode}</strong>
-            </p>
-          ) : null}
         </div>
 
         <form onSubmit={handleSubmit}>

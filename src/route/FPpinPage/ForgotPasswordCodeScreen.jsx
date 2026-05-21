@@ -20,9 +20,8 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
   const { colors } = theme;
   const { error: showError } = useFeedback();
   const email = (route.params?.email || '').trim().toLowerCase();
-  const devCode = route.params?.devCode || null;
   const emailSent = route.params?.emailSent !== false;
-  const [code, setCode] = useState(devCode ? String(devCode) : '');
+  const [code, setCode] = useState('');
   const [timer, setTimer] = useState(60);
   const [loading, setLoading] = useState(false);
   const [resendLoading, setResendLoading] = useState(false);
@@ -96,12 +95,6 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
             ? `We sent a 6-digit code to ${email || 'your email'}. Check your inbox and spam.`
             : `If your account exists, a code was sent to ${email || 'your email'}.`}
         </Text>
-
-        {devCode ? (
-          <Text variant="caption" color={colors.primary} style={{ textAlign: 'center', marginBottom: 12 }}>
-            Dev code: {devCode}
-          </Text>
-        ) : null}
 
         <TextInput
           value={code}
