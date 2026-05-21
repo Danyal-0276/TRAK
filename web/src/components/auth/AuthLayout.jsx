@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import TrakLogo from '../TrakLogo';
 
 /**
  * Shared shell for login, signup, OTP, password reset, and legal pages.
@@ -38,7 +39,7 @@ export default function AuthLayout({
       >
         {BackControl}
         <div className="trak-auth-brand">
-          <div className="trak-logo-mark">T</div>
+          <TrakLogo size={32} variant="auto" />
           <span className="trak-logo-word">
             TR<em>A</em>K
           </span>

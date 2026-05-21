@@ -3,6 +3,7 @@ import { Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../theme/ThemeContext';
 import Text from '../../../components/ui/Text';
+import TrakLogo from '../../../components/TrakLogo';
 
 export const FeedHeader = () => {
     const { theme } = useTheme();
@@ -27,25 +28,7 @@ export const FeedHeader = () => {
                     alignItems: 'center',
                     gap: '12px',
                 }}>
-                    <div style={{
-                        width: 36,
-                        height: 36,
-                        display: 'flex',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                    }}>
-                        <div style={{
-                            width: 36,
-                            height: 36,
-                            backgroundColor: '#000000',
-                            borderRadius: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}>
-                            <img src="/images/whiteLogo.svg" alt="TRAK" style={{ width: 24, height: 24 }} />
-                        </div>
-                    </div>
+                    <TrakLogo size={36} variant="auto" />
                     <Text variant="body" style={{
                         fontSize: '18px',
                         fontWeight: '400',

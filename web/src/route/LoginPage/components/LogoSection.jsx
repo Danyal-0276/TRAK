@@ -1,5 +1,6 @@
 import React from 'react';
 import Text from '../../../components/ui/Text';
+import TrakLogo from '../../../components/TrakLogo';
 
 export const LogoSection = () => (
     <div style={{
@@ -11,7 +12,7 @@ export const LogoSection = () => (
     }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             <div style={{ marginBottom: 4 }}>
-                <img src="/images/whiteLogo.svg" alt="TRAK Logo" style={{ width: 90, height: 90 }} />
+                <TrakLogo size={90} variant="white" />
             </div>
             <Text variant="title" color="#fff" style={{ fontSize: 24, fontWeight: '700', letterSpacing: 4, marginTop: 12 }}>
                 TRAK
