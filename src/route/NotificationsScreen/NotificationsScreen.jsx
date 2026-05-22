@@ -9,7 +9,8 @@ import * as notificationsApi from "../../api/notificationsApi";
 import { openNotificationsSocket } from "../../api/notificationsRealtime";
 import { useTheme } from "../../theme/ThemeContext";
 import Text from "../../components/ui/Text";
-import PageScreenHeader from "../../components/ui/PageScreenHeader";
+import AccentTabHeader from "../../components/ui/AccentTabHeader";
+import { Bell } from "lucide-react-native";
 import { resetTabBarVisibility } from "../../navigation/tabBarVisibility";
 import { useCollapsibleHeader } from "../../hooks/useCollapsibleHeader";
 
@@ -266,9 +267,9 @@ const NotificationsScreen = () => {
           if (h > 0 && h !== headerSectionHeight) setHeaderSectionHeight(h);
         }}
       >
-        <PageScreenHeader
+        <AccentTabHeader
           title="Notifications"
-          paddingTop={0}
+          icon={Bell}
           subtitle={
             unreadCount > 0
               ? `${unreadCount} unread ${unreadCount === 1 ? 'notification' : 'notifications'}`
@@ -298,7 +299,7 @@ const NotificationsScreen = () => {
           {
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }],
-            paddingTop: headerSectionHeight + insets.top,
+            paddingTop: headerSectionHeight,
           },
         ]}
       >

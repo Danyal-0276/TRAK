@@ -382,11 +382,6 @@ const UserProfileScreen = () => {
                 className="trak-profile-inner"
                 style={{ padding: `0 ${horizontalPad}px 48px` }}
             >
-                <h1 className="trak-profile-page-title" style={{ color: textPrimary }}>Profile</h1>
-                <p className="trak-profile-page-sub" style={{ color: textSecondary }}>
-                    Your account, saved reads, and preferences
-                </p>
-
                 <div className="trak-profile-hero" style={{ marginBottom: 20 }}>
                     <div className="trak-profile-hero-band">
                         <div className="trak-profile-hero-glow" />

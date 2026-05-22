@@ -177,6 +177,7 @@ export default function SettingsScreen({ navigation }) {
           {
             paddingTop: insets.top,
             backgroundColor: colors.surface,
+            borderBottomColor: colors.borderLight,
             transform: [{ translateY: headerTranslateY }],
           },
         ]}
@@ -192,7 +193,7 @@ export default function SettingsScreen({ navigation }) {
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingTop: headerSectionHeight + insets.top + theme.spacing.md,
+            paddingTop: headerSectionHeight + theme.spacing.sm,
             paddingHorizontal: theme.spacing.md,
             paddingBottom: theme.spacing.lg,
           },
@@ -369,6 +370,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 100,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     ...Platform.select({
       ios: {
         shadowColor: '#000',

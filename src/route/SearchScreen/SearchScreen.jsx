@@ -19,7 +19,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
 import SearchBar from "./components/SearchBar";
-import PageScreenHeader from "../../components/ui/PageScreenHeader";
+import DiscoverScreenHeader from "./components/DiscoverScreenHeader";
 import { useCollapsibleHeader } from "../../hooks/useCollapsibleHeader";
 import Tabs from "./components/tabs";
 import { buildArticleDetailParams } from "../../utils/articleNavigation";
@@ -584,6 +584,7 @@ const SearchScreen = ({ navigation }) => {
           style={[
             styles.topSection,
             {
+              paddingTop: insets.top,
               opacity: fadeAnim,
               transform: [{ translateY: topSectionTranslateY }],
               backgroundColor: colors.surface,
@@ -595,12 +596,7 @@ const SearchScreen = ({ navigation }) => {
             if (h > 0 && h !== topSectionHeight) setTopSectionHeight(h);
           }}
         >
-          <PageScreenHeader
-            title="Discover"
-            subtitle="Explore topics & sources"
-            paddingTop={0}
-            style={{ borderBottomWidth: 0, paddingBottom: 4 }}
-          />
+          <DiscoverScreenHeader />
 
           <View style={styles.searchRow}>
             <SearchBar
@@ -630,7 +626,7 @@ const SearchScreen = ({ navigation }) => {
         }}
         contentContainerStyle={[
           styles.scrollContainer,
-          { paddingTop: Math.max(0, (topSectionHeight || 0) + 14) },
+          { paddingTop: Math.max(0, topSectionHeight || 0) },
           !loading && filteredNews.length === 0 ? styles.noResultsContainer : null,
         ]}
         refreshControl={

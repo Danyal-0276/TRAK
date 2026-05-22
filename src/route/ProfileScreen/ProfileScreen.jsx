@@ -311,11 +311,6 @@ const UserProfileScreen = ({ navigation }) => {
         onScroll={handleScroll}
         scrollEventThrottle={16}
       >
-        <Text style={[styles.pageTitle, { color: colors.textPrimary }]}>Profile</Text>
-        <Text style={[styles.pageSub, { color: colors.textSecondary }]}>
-          Your account, saved reads, and preferences
-        </Text>
-
         <ProfileHeader
           name={profile?.full_name || profile?.email?.split('@')[0] || 'User'}
           username={`@${profile?.username || (profile?.email || 'user').split('@')[0]}`}
@@ -404,18 +399,7 @@ const UserProfileScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 120 },
-  pageTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    marginBottom: 4,
-  },
-  pageSub: {
-    fontSize: 15,
-    lineHeight: 22,
-    marginBottom: 20,
-  },
+  scrollContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 120 },
   modalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
