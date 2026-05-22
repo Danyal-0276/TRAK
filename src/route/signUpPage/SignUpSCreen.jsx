@@ -11,6 +11,9 @@ import Text from '../../components/ui/Text';
 import { UserPlus } from 'lucide-react-native';
 import { formatGoogleAuthError, getFirebaseIdTokenFromGoogle } from '../../auth/googleSignIn';
 import { applyAuthSession } from '../../auth/applyAuthSession';
+import { getPostAuthRouteName, getPostAuthRouteParams } from '../../utils/authNavigation';
+import { setUserKeywords } from '../../utils/userKeywordsStorage';
+import { getUserKeywordsFromServer } from '../../utils/Service/api';
 import { loginWithFirebase } from '../../utils/Service/api';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 
@@ -162,11 +165,21 @@ const SignUpScreen = ({ navigation }) => {
                 throw new Error('Server did not return a sign-up session');
             }
             await applyAuthSession(session);
+            if (session.onboarding_complete) {
+                try {
+                    const res = await getUserKeywordsFromServer();
+                    setUserKeywords(Array.isArray(res?.keywords) ? res.keywords : []);
+                } catch {
+                    /* keep local cache */
+                }
+            }
             await bootstrap();
-            success('Signed up with Google');
+            const routeName = getPostAuthRouteName(session, { fromSignup: true });
+            const params = getPostAuthRouteParams(routeName, { fromSignup: true });
+            success(session.is_new_user === false ? 'Welcome back' : 'Signed up with Google');
             navigation.reset({
                 index: 0,
-                routes: [{ name: 'TagSelection', params: { fromSignup: true } }],
+                routes: [{ name: routeName, ...(params ? { params } : {}) }],
             });
         } catch (error) {
             const message = formatGoogleAuthError(error);

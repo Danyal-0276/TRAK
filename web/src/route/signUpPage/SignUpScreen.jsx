@@ -4,6 +4,7 @@ import { ArrowRight, Eye, EyeOff, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
 import { startSocialOAuth } from '../../utils/Service/api';
+import { getPostAuthPath, getPostAuthState } from '../../utils/authNavigation';
 
 const SignUpScreen = () => {
     const navigate = useNavigate();
@@ -635,12 +636,15 @@ const SignUpScreen = () => {
                                     setSocialLoading(provider.key);
                                     try {
                                         if (provider.key === 'google') {
-                                            const userData = await loginWithGoogle();
-                                            if (userData.role === 'admin') {
-                                                navigate('/admin/dashboard', { replace: true });
-                                                return;
-                                            }
-                                            navigate('/tag-selection', { state: { fromSignup: true }, replace: true });
+                                            const session = await loginWithGoogle();
+                                            const path = getPostAuthPath(session, { fromSignup: true });
+                                            navigate(path, {
+                                                replace: true,
+                                                state: getPostAuthState(path, {
+                                                    fromSignup: true,
+                                                    email: session?.user?.email || '',
+                                                }),
+                                            });
                                             return;
                                         }
                                         if (['apple', 'facebook'].includes(provider.key)) {

@@ -19,7 +19,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
 import SearchBar from "./components/SearchBar";
-import DiscoverHeader from "./components/DiscoverHeader";
+import DiscoverScreenHeader from "./components/DiscoverScreenHeader";
+import { useCollapsibleHeader } from "../../hooks/useCollapsibleHeader";
 import Tabs from "./components/tabs";
 import { buildArticleDetailParams } from "../../utils/articleNavigation";
 import TrendingTopics from "./components/TrendingTopics";
@@ -32,7 +33,7 @@ import { loadExplorePage } from "../../utils/loadFeed";
 import Text from "../../components/ui/Text";
 import { Search } from "lucide-react-native";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
-import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
+import { resetTabBarVisibility } from "../../navigation/tabBarVisibility";
 
 const { width, height } = Dimensions.get('window');
 const DISCOVER_PAGE_SIZE = 30;
@@ -187,12 +188,19 @@ const SearchScreen = ({ navigation }) => {
   const [loadingMore, setLoadingMore] = useState(false);
 
   const searchRef = useRef(null);
+  const prefetchAttemptsRef = useRef(0);
   const scrollOffset = useRef(0);
   const lastDirectionRef = useRef("down");
-  const headerHiddenRef = useRef(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(10)).current;
-  const topSectionTranslateY = useRef(new Animated.Value(0)).current;
+  const {
+    translateY: topSectionTranslateY,
+    handleScroll: handleHeaderCollapse,
+    showHeader: showDiscoverHeader,
+  } = useCollapsibleHeader({
+    hideOffset: topSectionHeight,
+    hideThreshold: 60,
+  });
   const circle1Anim = useRef(new Animated.Value(0)).current;
   const circle2Anim = useRef(new Animated.Value(0)).current;
   const circle3Anim = useRef(new Animated.Value(0)).current;
@@ -222,9 +230,11 @@ const SearchScreen = ({ navigation }) => {
         if (!q && refreshAux) {
           setTrendingTopics(cached.trendingTopics || deriveTrendingFromArticles(cached.items || []));
         }
+        setLoading(false);
         return;
       }
     }
+    prefetchAttemptsRef.current = 0;
     setLoading(true);
     try {
       const page = await loadExplorePage({ q, limit: DISCOVER_PAGE_SIZE, cursor: '' });
@@ -257,8 +267,10 @@ const SearchScreen = ({ navigation }) => {
     try {
       const q = searchQuery.trim();
       const page = await loadExplorePage({ q, limit: DISCOVER_PAGE_SIZE, cursor: nextCursor });
+      let added = 0;
       setAllNews((prev) => {
         const merged = mergeUniqueById(prev, page.items);
+        added = merged.length - prev.length;
         discoverFeedCache.set(discoverCacheKey(q), {
           ts: Date.now(),
           items: merged,
@@ -268,8 +280,12 @@ const SearchScreen = ({ navigation }) => {
         });
         return merged;
       });
-      setNextCursor(page.nextCursor);
-      setHasMore(page.hasMore);
+      if (added === 0) {
+        setHasMore(false);
+      } else {
+        setNextCursor(page.nextCursor);
+        setHasMore(page.hasMore);
+      }
     } catch (error) {
       console.error("Error loading more discover items:", error);
     } finally {
@@ -291,7 +307,9 @@ const SearchScreen = ({ navigation }) => {
     if (loading || loadingMore || !hasMore) return;
     if (activeTab !== "All") return;
     if (searchQuery.trim()) return;
+    if (prefetchAttemptsRef.current >= 2) return;
     if (allNews.length > 0 && allNews.length < DISCOVER_PAGE_SIZE * 2) {
+      prefetchAttemptsRef.current += 1;
       loadMorePage();
     }
   }, [activeTab, allNews.length, hasMore, loadMorePage, loading, loadingMore, searchQuery]);
@@ -446,14 +464,7 @@ const SearchScreen = ({ navigation }) => {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      headerHiddenRef.current = false;
-      setTabBarHidden(false);
-      Animated.spring(topSectionTranslateY, {
-        toValue: 0,
-        useNativeDriver: true,
-        friction: 8,
-        tension: 40,
-      }).start();
+      showDiscoverHeader();
       const q = searchQuery.trim();
       await loadFirstPage(q, { refreshAux: true, preferCache: false });
     } catch (e) {
@@ -470,44 +481,14 @@ const SearchScreen = ({ navigation }) => {
     const direction = currentOffset > scrollOffset.current ? "down" : "up";
     scrollOffset.current = currentOffset;
 
+    handleHeaderCollapse(event);
+
     if (direction !== lastDirectionRef.current) {
       lastDirectionRef.current = direction;
       if (direction === "down") searchRef.current?.collapse();
       else searchRef.current?.expandVisual();
     }
 
-    if (currentOffset <= 10 && headerHiddenRef.current) {
-      headerHiddenRef.current = false;
-      setTabBarHidden(false);
-      Animated.spring(topSectionTranslateY, {
-        toValue: 0,
-        useNativeDriver: true,
-        friction: 8,
-        tension: 40,
-      }).start();
-    }
-
-    if (Math.abs(diff) > 6) {
-      if (direction === "down" && currentOffset > 60 && !headerHiddenRef.current) {
-        headerHiddenRef.current = true;
-        setTabBarHidden(true);
-        Animated.spring(topSectionTranslateY, {
-          toValue: -Math.max(1, topSectionHeight),
-          useNativeDriver: true,
-          friction: 8,
-          tension: 40,
-        }).start();
-      } else if (direction === "up" && headerHiddenRef.current) {
-        headerHiddenRef.current = false;
-        setTabBarHidden(false);
-        Animated.spring(topSectionTranslateY, {
-          toValue: 0,
-          useNativeDriver: true,
-          friction: 8,
-          tension: 40,
-        }).start();
-      }
-    }
     const nearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - DISCOVER_PREFETCH_PX;
     if (nearBottom) {
       loadMorePage();
@@ -603,6 +584,7 @@ const SearchScreen = ({ navigation }) => {
           style={[
             styles.topSection,
             {
+              paddingTop: insets.top,
               opacity: fadeAnim,
               transform: [{ translateY: topSectionTranslateY }],
               backgroundColor: colors.surface,
@@ -614,7 +596,7 @@ const SearchScreen = ({ navigation }) => {
             if (h > 0 && h !== topSectionHeight) setTopSectionHeight(h);
           }}
         >
-          <DiscoverHeader />
+          <DiscoverScreenHeader />
 
           <View style={styles.searchRow}>
             <SearchBar
@@ -644,7 +626,7 @@ const SearchScreen = ({ navigation }) => {
         }}
         contentContainerStyle={[
           styles.scrollContainer,
-          { paddingTop: Math.max(0, (topSectionHeight || 0) + 14) },
+          { paddingTop: Math.max(0, topSectionHeight || 0) },
           !loading && filteredNews.length === 0 ? styles.noResultsContainer : null,
         ]}
         refreshControl={

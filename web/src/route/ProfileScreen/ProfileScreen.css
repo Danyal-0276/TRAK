@@ -8,19 +8,7 @@
   margin: 0 auto;
   width: 100%;
   box-sizing: border-box;
-}
-
-.trak-profile-page-title {
-  font-size: 28px;
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  margin: 0 0 6px;
-}
-
-.trak-profile-page-sub {
-  font-size: 15px;
-  line-height: 1.5;
-  margin: 0 0 24px;
+  padding-top: 8px;
 }
 
 .trak-profile-hero {

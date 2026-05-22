@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTheme } from '../theme/ThemeContext';
+import { getCardSummaryText } from '../utils/articleNavigation';
 import {
     ChevronUp,
     ChevronDown,
@@ -22,6 +23,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const voteType = votedItems?.[itemId] ?? votedItems?.[item.id];
     const likeCount = Number(item.like_count ?? item.upvotes ?? 0);
     const dislikeCount = Number(item.dislike_count ?? 0);
+    const cardSummary = getCardSummaryText(item);
 
     const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
     const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
@@ -35,8 +37,11 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
                 height: isMasonry ? 'auto' : '100%',
-                display: 'flex',
-                flexDirection: 'column',
+                display: isMasonry ? 'block' : 'flex',
+                flexDirection: isMasonry ? undefined : 'column',
+                breakInside: isMasonry ? 'avoid' : undefined,
+                WebkitColumnBreakInside: isMasonry ? 'avoid' : undefined,
+                width: '100%',
             }}
         >
             <div style={{
@@ -237,8 +242,8 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                         {item.title || 'News Title'}
                     </h3>
 
-                    {/* Summary (full text, card height grows with content) */}
-                    {(item.description || item.excerpt || item.summary) && (
+                    {/* Summary (full pipeline summary; body snippet if summary missing) */}
+                    {cardSummary ? (
                         <p style={{
                             fontSize: '13px',
                             lineHeight: '1.5',
@@ -246,9 +251,9 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             color: textSecondary,
                             whiteSpace: 'pre-wrap',
                         }}>
-                            {item.description || item.excerpt || item.summary}
+                            {cardSummary}
                         </p>
-                    )}
+                    ) : null}
 
                     {/* Actions */}
                     <div style={{

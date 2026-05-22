@@ -23,7 +23,7 @@ export async function fetchWithTimeout(url, options = {}, ms = API_TIMEOUT_MS) {
           ? 'Reset request timed out. Redeploy the latest backend (email is sent in the background) or try again in a moment.'
           : isRender
             ? 'The server is waking up (Render can take up to a minute). Wait a moment and try again.'
-            : 'Request timed out. Start Django: cd Backend/TRAK_Backend && py manage.py runserver 0.0.0.0:8000'
+            : 'Request timed out. Django may be busy (large explore query). Restart with: py manage.py runserver 0.0.0.0:8000 — or use VITE_API_URL=https://trak-backend-upip.onrender.com in web/.env'
       );
     }
     throw err;

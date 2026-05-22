@@ -1,28 +1,19 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
 import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
-import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
-import { addBookmark, getUserFeed, getUserKeywordsFromServer, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
-import { loadUserKeywords } from '../../utils/userKeywordsStorage';
+import { addBookmark, removeBookmark, setReaction } from '../../utils/Service/api';
+import { useUserKeywords } from '../../context/UserKeywordsContext';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { loadExplorePage, loadFeedPage, mergeUniqueById } from '../../utils/loadFeed';
+import { loadHomeBootstrap } from '../../utils/loadHomeBootstrap';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
-import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
-import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
-import { loadExplorePage } from '../../utils/loadFeed';
-import { 
-    ArrowLeft, 
-    ChevronUp, 
-    ChevronDown, 
-    Bookmark, 
-    Share2, 
-    Clock, 
-    CheckCircle,
-    MoreHorizontal,
-    X
-} from 'lucide-react';
+import { getReactionMap, setReactionForArticle } from '../../utils/reactionsStorage';
+import { getCardSummaryText } from '../../utils/articleNavigation';
+import { openArticleDetail } from '../../utils/openArticleDetail';
 
 const NewsFeedScreen = () => {
     const { theme } = useTheme();
@@ -41,88 +32,147 @@ const NewsFeedScreen = () => {
     const [votedItems, setVotedItems] = useState({});
     const [newsData, setNewsData] = useState([]);
     const [loading, setLoading] = useState(true);
-    const [selectedArticle, setSelectedArticle] = useState(null);
-    const [feedKeywords, setFeedKeywords] = useState([]);
-    const { success } = useUIFeedback();
+    const [feedError, setFeedError] = useState('');
+    const { keywords: feedKeywords } = useUserKeywords();
+    const hasFeedPersonalization = useMemo(
+        () => (feedKeywords || []).length > 0,
+        [(feedKeywords || []).join('\x1f')]
+    );
+    const [nextCursor, setNextCursor] = useState('');
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
 
-    const refreshKeywords = useCallback(async () => {
-        const kws = await loadUserKeywords(getUserKeywordsFromServer);
-        setFeedKeywords(Array.isArray(kws) ? kws : []);
-        return kws;
-    }, []);
+    const feedModeRef = useRef('explore');
+    const loadAbortRef = useRef(null);
 
     const mapFeedResults = (rawItems, reactionMap) =>
         (rawItems || []).map((item, idx) => {
-                const aid = item.id || item.canonical_url || String(idx);
-                const likes = Number(item.like_count ?? item.upvotes ?? 0);
-                const dislikes = Number(item.dislike_count ?? 0);
-                return {
-                    ...item,
-                    id: aid,
-                    description: item.excerpt || item.summary || '',
-                    excerpt: item.excerpt || item.summary || '',
-                    summary: item.summary || item.excerpt || '',
-                    content: item.content || item.full_content || '',
-                    fullContent: item.full_content || item.content || '',
-                    category: item.topic_keywords?.[0] || 'General',
-                    time: item.published_at ? new Date(item.published_at).toLocaleString() : 'Recently',
-                    like_count: likes,
-                    dislike_count: dislikes,
-                    upvotes: likes,
-                    verified: item.credibility?.label === 'real',
-                    trending: Boolean(item.topic_keywords?.length),
-                    userReaction: reactionMap[String(aid)] || null,
-                };
+            const aid = item.id || item.canonical_url || String(idx);
+            const likes = Number(item.like_count ?? item.upvotes ?? 0);
+            const dislikes = Number(item.dislike_count ?? 0);
+            const summaryText = getCardSummaryText(item);
+            return {
+                ...item,
+                id: aid,
+                description: summaryText,
+                excerpt: item.excerpt || item.summary || summaryText,
+                summary: item.summary || item.excerpt || summaryText,
+                content: item.content || item.full_content || '',
+                fullContent: item.full_content || item.content || '',
+                category: (item.topic_keywords?.[0] || item.category || 'General').toString().toUpperCase(),
+                source: item.source || item.source_key || '',
+                time: item.published_at ? new Date(item.published_at).toLocaleString() : 'Recently',
+                like_count: likes,
+                dislike_count: dislikes,
+                upvotes: likes,
+                verified: item.credibility?.label === 'real' || Boolean(item.verified),
+                trending: Boolean(item.topic_keywords?.length),
+                userReaction: reactionMap[String(aid)] || null,
+            };
         });
 
-    const loadNews = async () => {
+    const fetchFeedPage = useCallback(async (cursor = '') => {
+        if (feedModeRef.current === 'feed') {
+            return loadFeedPage({ limit: 50, cursor });
+        }
+        return loadExplorePage({ limit: 50, cursor });
+    }, []);
+
+    const loadNews = useCallback(async () => {
+        if (loadAbortRef.current) {
+            loadAbortRef.current.abort();
+        }
+        const ac = new AbortController();
+        loadAbortRef.current = ac;
+
         try {
             setLoading(true);
-            const keywords = await refreshKeywords();
+            setFeedError('');
+            setNextCursor('');
+            setHasMore(false);
 
             const cachedBookmarks = new Set(getBookmarkIds());
             if (cachedBookmarks.size) setBookmarkedItems(cachedBookmarks);
             const cachedReactions = getReactionMap();
             if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
 
-            const [bookmarks, reactions] = await Promise.all([
-                listBookmarks().catch(() => ({ results: [] })),
-                listReactions().catch(() => ({ results: [] })),
-            ]);
-            const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
-            const reactionMap = mergeReactionRows(reactions.results || [], { replace: false });
+            let loadErr = '';
+            let page = { items: [], nextCursor: '', hasMore: false };
+            let reactionMap = cachedReactions;
+            let bookmarked = cachedBookmarks;
 
-            let rawItems = [];
+            try {
+                const boot = await loadHomeBootstrap({ limit: 50 });
+                if (ac.signal.aborted) return;
 
-            if (keywords?.length) {
-                try {
-                    const response = await getUserFeed({ limit: 50 });
-                    rawItems = response.results || [];
-                } catch (e) {
-                    console.warn('Personalized feed failed, trying explore:', e?.message);
-                }
+                feedModeRef.current = boot.feedMode;
+                page = {
+                    items: boot.items,
+                    nextCursor: boot.nextCursor,
+                    hasMore: boot.hasMore,
+                };
+                reactionMap = boot.reactionMap;
+                bookmarked = boot.bookmarked;
+            } catch (e) {
+                loadErr = e?.message || 'Could not load articles from the API.';
+                console.warn('Feed failed:', loadErr);
             }
 
-            if (!rawItems.length) {
-                const page = await loadExplorePage({ limit: 50 });
-                rawItems = page.items || [];
-            }
+            if (ac.signal.aborted) return;
 
-            setNewsData(mapFeedResults(rawItems, reactionMap));
+            if (!page.items.length && !loadErr) {
+                loadErr =
+                    'No articles in the database yet. Run the news pipeline on your local backend, or set VITE_API_URL to the deployed API in .env.';
+            }
+            if (loadErr) setFeedError(loadErr);
+
+            setNewsData(mapFeedResults(page.items, reactionMap));
+            setNextCursor(page.nextCursor || '');
+            setHasMore(Boolean(page.hasMore));
             setBookmarkedItems(bookmarked);
             setBookmarkIds(Array.from(bookmarked));
             setVotedItems(reactionMap);
         } catch (error) {
-            console.error('Error loading news:', error);
-            setNewsData([]);
+            if (!ac.signal.aborted) {
+                console.error('Error loading news:', error);
+                setFeedError(error?.message || 'Failed to load the feed.');
+                setNewsData([]);
+            }
         } finally {
-            setLoading(false);
+            if (!ac.signal.aborted) {
+                setLoading(false);
+            }
         }
-    };
+    }, []);
+
+    const loadMore = useCallback(async () => {
+        if (!hasMore || loadingMore || !nextCursor) return;
+        setLoadingMore(true);
+        try {
+            const page = await fetchFeedPage(nextCursor);
+            const reactionMap = getReactionMap();
+            setNewsData((prev) => mapFeedResults(mergeUniqueById(prev, page.items), reactionMap));
+            setNextCursor(page.nextCursor || '');
+            setHasMore(Boolean(page.hasMore));
+        } catch (e) {
+            console.warn('Load more failed:', e?.message);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [hasMore, loadingMore, nextCursor, fetchFeedPage]);
+
+    const scrollSentinelRef = useInfiniteScroll({
+        onLoadMore: loadMore,
+        hasMore,
+        loading: loading || loadingMore,
+    });
 
     useEffect(() => {
         loadNews();
-    }, []);
+        return () => {
+            loadAbortRef.current?.abort();
+        };
+    }, [loadNews]);
 
     useEffect(() => {
         if (rawTab) {
@@ -133,45 +183,7 @@ const NewsFeedScreen = () => {
     }, [rawTab]);
 
     const handleArticlePress = (article) => {
-        setSelectedArticle(article);
-        setTimeout(() => {
-            const element = document.querySelector('[data-article-detail]');
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }, 100);
-    };
-
-    const handleCloseArticle = () => {
-        setSelectedArticle(null);
-    };
-
-    const articleDetailReaction = selectedArticle
-        ? votedItems[String(selectedArticle.id)] ?? null
-        : null;
-    const articleBookmarked = selectedArticle
-        ? bookmarkedItems.has(String(selectedArticle.id)) || bookmarkedItems.has(selectedArticle.id)
-        : false;
-
-    const handleArticleBookmark = () => {
-        if (selectedArticle) {
-            handleBookmark(selectedArticle.id);
-        }
-    };
-
-    const handleArticleShare = () => {
-        if (!selectedArticle) return;
-        const url = selectedArticle.canonical_url || selectedArticle.url || window.location.href;
-        if (navigator.share) {
-            navigator.share({
-                title: selectedArticle.title,
-                text: selectedArticle.excerpt || selectedArticle.description,
-                url,
-            });
-        } else {
-            navigator.clipboard.writeText(url);
-            success('Link copied to clipboard!');
-        }
+        openArticleDetail(navigate, article);
     };
 
     const handleVote = async (itemId, type) => {
@@ -198,11 +210,6 @@ const NewsFeedScreen = () => {
                         ? n
                         : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes }
                 )
-            );
-            setSelectedArticle((prev) =>
-                prev && String(prev.id) === id
-                    ? { ...prev, like_count: likes, dislike_count: dislikes, upvotes: likes }
-                    : prev
             );
         } catch (error) {
             setVotedItems((prev) => ({
@@ -247,7 +254,6 @@ const NewsFeedScreen = () => {
     };
 
     const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
     const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
     const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
     const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
@@ -262,9 +268,6 @@ const NewsFeedScreen = () => {
                 const bk = (b.topic_keywords?.length || 0) + (b.trending ? 2 : 0);
                 return bk - ak;
             });
-        }
-        if (activeTab === 'For you') {
-            return newsData;
         }
         return newsData;
     }, [newsData, activeTab, bookmarkedItems]);
@@ -282,7 +285,6 @@ const NewsFeedScreen = () => {
                 width: '100%',
                 padding: isMobile ? '0 16px 16px 16px' : isTablet ? '0 20px 20px 20px' : '0 24px 24px 24px',
             }}>
-                {/* Header Section */}
                 <div style={{
                     marginTop: '0',
                     marginBottom: isMobile ? '16px' : '24px',
@@ -308,7 +310,6 @@ const NewsFeedScreen = () => {
                     </p>
                 </div>
 
-                {/* Tab Bar */}
                 <div style={{
                     display: 'flex',
                     gap: isMobile ? '4px' : '8px',
@@ -321,39 +322,26 @@ const NewsFeedScreen = () => {
                     {['For you', 'Bookmarks', 'Trending'].map((tab) => (
                         <button
                             key={tab}
-                            onClick={() => {
-                                setActiveTab(tab);
-                                setSelectedArticle(null);
-                            }}
+                            onClick={() => setActiveTab(tab)}
                             style={{
                                 padding: isMobile ? '8px 12px' : '10px 16px',
                                 border: 'none',
                                 background: 'transparent',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
-                                borderBottom: activeTab === tab 
-                                    ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}` 
+                                borderBottom: activeTab === tab
+                                    ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`
                                     : '2px solid transparent',
                                 marginBottom: '-1px',
                                 borderRadius: '0',
                                 whiteSpace: 'nowrap',
                                 flexShrink: 0,
                             }}
-                            onMouseEnter={(e) => {
-                                if (activeTab !== tab) {
-                                    e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (activeTab !== tab) {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                }
-                            }}
                         >
                             <span style={{
                                 fontSize: '14px',
                                 fontWeight: activeTab === tab ? '600' : '500',
-                                color: activeTab === tab 
+                                color: activeTab === tab
                                     ? (isDark ? colors.primary || '#818CF8' : '#0f172a')
                                     : textSecondary,
                             }}>
@@ -363,329 +351,9 @@ const NewsFeedScreen = () => {
                     ))}
                 </div>
 
-                {/* Article Detail View */}
-                {selectedArticle ? (
-                    <div data-article-detail style={{
-                        marginBottom: '32px',
-                        backgroundColor: cardBackground,
-                        border: `1px solid ${borderColor}`,
-                        borderRadius: '8px',
-                        padding: '24px',
-                    }}>
-                        {/* Close Button */}
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'flex-end',
-                            marginBottom: '20px',
-                        }}>
-                            <button
-                                onClick={handleCloseArticle}
-                                style={{
-                                    padding: '6px',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    cursor: 'pointer',
-                                    borderRadius: '6px',
-                                    transition: 'all 0.2s ease',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                }}
-                            >
-                                <X size={18} color={textSecondary} />
-                            </button>
-                        </div>
-
-                        {/* Source Info */}
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            marginBottom: '20px',
-                        }}>
-                            <div style={{
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '8px',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',
-                            }}>
-                                <span style={{
-                                    fontSize: '14px',
-                                    fontWeight: '700',
-                                    color: '#ffffff',
-                                    letterSpacing: '0.5px',
-                                }}>
-                                    {selectedArticle.source?.substring(0, 2).toUpperCase() || 'N'}
-                                </span>
-                            </div>
-                            <div>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                }}>
-                                    <span style={{
-                                        fontSize: '14px',
-                                        fontWeight: '600',
-                                        color: textPrimary,
-                                    }}>
-                                        {selectedArticle.source || 'Source'}
-                                    </span>
-                                    {selectedArticle.verified && (
-                                        <CheckCircle size={14} color="#10b981" fill="#10b981" />
-                                    )}
-                                </div>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    marginTop: '2px',
-                                }}>
-                                    <Clock size={12} color={textSecondary} />
-                                    <span style={{
-                                        fontSize: '12px',
-                                        color: textSecondary,
-                                    }}>
-                                        {selectedArticle.time || '2h ago'}
-                                    </span>
-                                    {selectedArticle.readTime && (
-                                        <>
-                                            <span style={{ color: textSecondary, margin: '0 4px' }}>•</span>
-                                            <span style={{
-                                                fontSize: '12px',
-                                                color: textSecondary,
-                                            }}>
-                                                {selectedArticle.readTime} min read
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Category Tag */}
-                        {selectedArticle.category && (
-                            <div style={{
-                                marginBottom: '16px',
-                            }}>
-                                <span style={{
-                                    fontSize: '10px',
-                                    fontWeight: '600',
-                                    color: textSecondary,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px',
-                                    padding: '4px 10px',
-                                    backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6',
-                                    borderRadius: '4px',
-                                    display: 'inline-block',
-                                }}>
-                                    {selectedArticle.category}
-                                </span>
-                            </div>
-                        )}
-
-                        {/* Title */}
-                        <h2 style={{
-                            fontSize: '28px',
-                            fontWeight: '700',
-                            lineHeight: '1.3',
-                            color: textPrimary,
-                            margin: '0 0 16px 0',
-                            letterSpacing: '-0.5px',
-                        }}>
-                            {selectedArticle.title || 'Article Title'}
-                        </h2>
-
-                        {/* Article Content */}
-                        <div style={{
-                            fontSize: '16px',
-                            lineHeight: '1.7',
-                            color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
-                            marginBottom: '24px',
-                        }}>
-                            <ArticleBodyParagraphs
-                                content={selectedArticle.fullContent || selectedArticle.content || selectedArticle.full_content || ''}
-                                paragraphStyle={{
-                                    fontSize: '16px',
-                                    lineHeight: '1.7',
-                                    color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
-                                }}
-                            />
-                        </div>
-
-                        {/* Actions */}
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            paddingTop: '16px',
-                            borderTop: `1px solid ${borderColor}`,
-                        }}>
-                            {/* Vote Buttons */}
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '4px',
-                                backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f9fafb',
-                                borderRadius: '10px',
-                            }}>
-                                <button
-                                    type="button"
-                                    onClick={() => selectedArticle && handleVote(selectedArticle.id, 'up')}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '6px 12px',
-                                        border: 'none',
-                                        background: articleDetailReaction === 'up' ? (isDark ? colors.surface || '#1E293B' : '#ffffff') : 'transparent',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        boxShadow: articleDetailReaction === 'up' ? (isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)') : 'none',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (articleDetailReaction !== 'up') {
-                                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#ffffff';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (articleDetailReaction !== 'up') {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                        }
-                                    }}
-                                >
-                                    <ChevronUp 
-                                        size={16} 
-                                        color={articleDetailReaction === 'up' ? '#3b82f6' : textSecondary} 
-                                        strokeWidth={articleDetailReaction === 'up' ? 2.5 : 2}
-                                    />
-                                    <span style={{
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        color: articleDetailReaction === 'up' ? '#3b82f6' : textSecondary,
-                                    }}>
-                                        Like ({Number(selectedArticle?.like_count ?? selectedArticle?.upvotes ?? 0)})
-                                    </span>
-                                </button>
-
-                                <div style={{
-                                    width: '1px',
-                                    height: '20px',
-                                    backgroundColor: borderColor,
-                                }} />
-
-                                <button
-                                    type="button"
-                                    onClick={() => selectedArticle && handleVote(selectedArticle.id, 'down')}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '6px 12px',
-                                        border: 'none',
-                                        background: articleDetailReaction === 'down' ? (isDark ? colors.surface || '#1E293B' : '#ffffff') : 'transparent',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        boxShadow: articleDetailReaction === 'down' ? (isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)') : 'none',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (articleDetailReaction !== 'down') {
-                                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#ffffff';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (articleDetailReaction !== 'down') {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                        }
-                                    }}
-                                >
-                                    <ChevronDown 
-                                        size={16} 
-                                        color={articleDetailReaction === 'down' ? '#ef4444' : textSecondary} 
-                                        strokeWidth={articleDetailReaction === 'down' ? 2.5 : 2}
-                                    />
-                                    <span style={{
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        color: articleDetailReaction === 'down' ? '#ef4444' : textSecondary,
-                                    }}>
-                                        Dislike ({Number(selectedArticle?.dislike_count ?? 0)})
-                                    </span>
-                                </button>
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                            }}>
-                                <button
-                                    onClick={handleArticleBookmark}
-                                    style={{
-                                        padding: '8px',
-                                        border: 'none',
-                                        background: articleBookmarked ? (isDark ? '#78350F' : '#fef3c7') : 'transparent',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!articleBookmarked) {
-                                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!articleBookmarked) {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                        }
-                                    }}
-                                >
-                                    <Bookmark 
-                                        size={18} 
-                                        color={articleBookmarked ? '#f59e0b' : textSecondary} 
-                                        fill={articleBookmarked ? '#f59e0b' : 'none'}
-                                        strokeWidth={2}
-                                    />
-                                </button>
-
-                                <button
-                                    onClick={handleArticleShare}
-                                    style={{
-                                        padding: '8px',
-                                        border: 'none',
-                                        background: 'transparent',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = 'transparent';
-                                    }}
-                                >
-                                    <Share2 size={18} color={textSecondary} strokeWidth={2} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ) : null}
-
-                {/* News Cards Grid */}
                 {loading ? (
                     <MasonryFeedSkeleton
-                        count={isMobile ? 4 : 6}
+                        count={isMobile ? 6 : 12}
                         gap={isMobile ? 16 : isTablet ? 20 : 24}
                         {...getSkeletonFeedProps(isDark, colors)}
                     />
@@ -693,10 +361,38 @@ const NewsFeedScreen = () => {
                     <div style={{
                         textAlign: 'center',
                         padding: isMobile ? '32px 16px' : '48px 24px',
-                        maxWidth: '420px',
+                        maxWidth: '520px',
                         margin: '0 auto',
                     }}>
-                        {activeTab === 'For you' && !hasFeedPersonalization ? (
+                        {feedError ? (
+                            <>
+                                <h2 style={{ fontSize: '20px', fontWeight: '700', color: textPrimary, marginBottom: '8px' }}>
+                                    Could not load the feed
+                                </h2>
+                                <p style={{ fontSize: '15px', color: textSecondary, lineHeight: 1.5, marginBottom: '16px' }}>
+                                    {feedError}
+                                </p>
+                                <p style={{ fontSize: '13px', color: textSecondary, lineHeight: 1.5, marginBottom: '20px' }}>
+                                    Log in, ensure Django is running at {import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}, and that processed articles exist in MongoDB. To match Netlify data locally, use the Render URL in <code style={{ fontSize: '12px' }}>TRAK/web/.env</code>.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => loadNews()}
+                                    style={{
+                                        padding: '12px 20px',
+                                        backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',
+                                        color: '#ffffff',
+                                        border: 'none',
+                                        borderRadius: '8px',
+                                        fontWeight: '600',
+                                        cursor: 'pointer',
+                                        fontSize: '15px',
+                                    }}
+                                >
+                                    Retry
+                                </button>
+                            </>
+                        ) : activeTab === 'For you' && !hasFeedPersonalization ? (
                             <>
                                 <h2 style={{ fontSize: '20px', fontWeight: '700', color: textPrimary, marginBottom: '8px' }}>
                                     Choose your interests
@@ -732,23 +428,30 @@ const NewsFeedScreen = () => {
                         )}
                     </div>
                 ) : (
-                    <MasonryFeed gap={isMobile ? 16 : isTablet ? 20 : 24}>
-                        {visibleNews.map((item) => (
-                            <NewsCard
-                                key={item.id}
-                                item={item}
-                                layout="masonry"
-                                onPress={() => handleArticlePress(item)}
-                                votedItems={votedItems}
-                                bookmarkedItems={bookmarkedItems}
-                                onVote={handleVote}
-                                onBookmark={handleBookmark}
-                            />
-                        ))}
-                    </MasonryFeed>
+                    <>
+                        <MasonryFeed gap={isMobile ? 16 : isTablet ? 20 : 24}>
+                            {visibleNews.map((item) => (
+                                <NewsCard
+                                    key={item.id}
+                                    item={item}
+                                    layout="masonry"
+                                    onPress={() => handleArticlePress(item)}
+                                    votedItems={votedItems}
+                                    bookmarkedItems={bookmarkedItems}
+                                    onVote={handleVote}
+                                    onBookmark={handleBookmark}
+                                />
+                            ))}
+                        </MasonryFeed>
+                        <div ref={scrollSentinelRef} style={{ height: 1, width: '100%' }} aria-hidden />
+                        {loadingMore ? (
+                            <p style={{ textAlign: 'center', color: textSecondary, padding: '16px 0', fontSize: 14 }}>
+                                Loading more…
+                            </p>
+                        ) : null}
+                    </>
                 )}
             </div>
-
 
             <style>{`
                 h1 {

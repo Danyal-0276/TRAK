@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import { MoreHorizontal } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTheme } from "../../theme/ThemeContext";
 import SearchBar from "./components/SearchBar";
@@ -7,8 +8,9 @@ import TrendingTopics from "./components/TrendingTopics";
 import { NewsCard } from "../../components/NewsCard";
 import { MasonryFeed, MasonryFeedSkeleton } from "../../components/MasonryFeed";
 import { getSkeletonFeedProps } from "../../components/skeletons/SkeletonLayouts";
-import { ArticleBodyParagraphs } from "../../components/ArticleBodyParagraphs";
-import { loadFeedItems } from "../../utils/loadFeed";
+import { loadExplorePage, mergeUniqueById } from "../../utils/loadFeed";
+import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
+import { openArticleDetail } from "../../utils/openArticleDetail";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction, submitArticleReport } from "../../utils/Service/api";
 import { getBookmarkIds, setBookmarkIds } from "../../utils/bookmarksStorage";
@@ -33,17 +35,6 @@ function deriveTrendingFromArticles(articles) {
       trending: count >= 2,
     }));
 }
-import { 
-    ChevronUp, 
-    ChevronDown, 
-    Bookmark, 
-    Share2, 
-    Clock, 
-    CheckCircle,
-    X,
-    MoreHorizontal,
-} from 'lucide-react';
-
 const SearchScreen = () => {
     const { theme } = useTheme();
     const { colors } = theme;
@@ -53,17 +44,17 @@ const SearchScreen = () => {
     const [allNews, setAllNews] = useState([]);
     const [filteredNews, setFilteredNews] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [retryTick, setRetryTick] = useState(0);
+    const [nextCursor, setNextCursor] = useState('');
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const loadSeqRef = useRef(0);
     const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || "");
     const [debouncedQuery, setDebouncedQuery] = useState(searchParams.get('q') || "");
     const [activeTab, setActiveTab] = useState("All");
     const [votedItems, setVotedItems] = useState({});
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
-    const [selectedArticle, setSelectedArticle] = useState(null);
-    const [articleLiked, setArticleLiked] = useState(false);
-    const [articleDisliked, setArticleDisliked] = useState(false);
-    const [articleBookmarked, setArticleBookmarked] = useState(false);
-    const [articleLikeCount, setArticleLikeCount] = useState(0);
-    const [articleDislikeCount, setArticleDislikeCount] = useState(0);
     const { success, error: showError } = useUIFeedback();
     const searchRef = useRef(null);
     const discoverMenuRef = useRef(null);
@@ -85,23 +76,22 @@ const SearchScreen = () => {
 
     useEffect(() => {
         const q = debouncedQuery.trim();
+        const seq = ++loadSeqRef.current;
         (async () => {
+            setLoading(true);
+            setLoadError('');
+            const cachedBookmarks = new Set(getBookmarkIds());
+            if (cachedBookmarks.size) setBookmarkedItems(cachedBookmarks);
+            const cachedReactions = getReactionMap();
+            if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
+
             try {
-                setLoading(true);
-                const cachedBookmarks = new Set(getBookmarkIds());
-                if (cachedBookmarks.size) setBookmarkedItems(cachedBookmarks);
-                const cachedReactions = getReactionMap();
-                if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
-                const newsData = await loadFeedItems({ q });
-                const [bookmarks, reactions] = await Promise.all([
-                    listBookmarks().catch(() => ({ results: [] })),
-                    listReactions().catch(() => ({ results: [] })),
-                ]);
-                const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
-                setBookmarkedItems(bookmarked);
-                setBookmarkIds(Array.from(bookmarked));
-                const serverReactions = mergeReactionRows(reactions.results || [], { replace: false });
-                setVotedItems({ ...cachedReactions, ...serverReactions });
+                const page = await loadExplorePage({ q, limit: 50, cursor: '' });
+                if (seq !== loadSeqRef.current) return;
+
+                const newsData = page.items || [];
+                setNextCursor(page.nextCursor || '');
+                setHasMore(Boolean(page.hasMore));
                 setAllNews(newsData);
                 const categorySet = new Set();
                 newsData.forEach((article) => {
@@ -111,15 +101,54 @@ const SearchScreen = () => {
                 });
                 setCategories(["All", ...Array.from(categorySet).sort()]);
                 setFilteredNews([...newsData]);
+
+                const [bookmarks, reactions] = await Promise.all([
+                    listBookmarks().catch(() => ({ results: [] })),
+                    listReactions().catch(() => ({ results: [] })),
+                ]);
+                if (seq !== loadSeqRef.current) return;
+
+                const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
+                setBookmarkedItems(bookmarked);
+                setBookmarkIds(Array.from(bookmarked));
+                const serverReactions = mergeReactionRows(reactions.results || [], { replace: false });
+                setVotedItems({ ...cachedReactions, ...serverReactions });
             } catch (error) {
+                if (seq !== loadSeqRef.current) return;
                 console.error("Error fetching data:", error);
                 setAllNews([]);
                 setFilteredNews([]);
+                setLoadError(error?.message || 'Could not load articles. Is Django running?');
             } finally {
-                setLoading(false);
+                if (seq === loadSeqRef.current) setLoading(false);
             }
         })();
-    }, [debouncedQuery]);
+    }, [debouncedQuery, retryTick]);
+
+    const loadMore = useCallback(async () => {
+        if (!hasMore || loadingMore || !nextCursor) return;
+        setLoadingMore(true);
+        try {
+            const page = await loadExplorePage({
+                q: debouncedQuery.trim(),
+                limit: 50,
+                cursor: nextCursor,
+            });
+            setAllNews((prev) => mergeUniqueById(prev, page.items || []));
+            setNextCursor(page.nextCursor || '');
+            setHasMore(Boolean(page.hasMore));
+        } catch (e) {
+            console.warn('Load more failed:', e?.message);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [hasMore, loadingMore, nextCursor, debouncedQuery]);
+
+    const scrollSentinelRef = useInfiniteScroll({
+        onLoadMore: loadMore,
+        hasMore,
+        loading: loading || loadingMore,
+    });
 
     useEffect(() => {
         if (!discoverMenuOpen) return;
@@ -178,7 +207,6 @@ const SearchScreen = () => {
 
     const handleSearch = (query) => {
         setSearchQuery(query);
-        setSelectedArticle(null); // Clear selected article when searching
         // Update URL with search query
         if (query.trim()) {
             setSearchParams({ q: query.trim() });
@@ -265,60 +293,7 @@ const SearchScreen = () => {
     }, [debouncedQuery, activeTab, allNews]);
 
     const handleArticlePress = (article) => {
-        setSelectedArticle(article);
-        setArticleLikeCount(Number(article.like_count ?? article.upvotes ?? article.votes ?? 0));
-        setArticleDislikeCount(Number(article.dislike_count ?? 0));
-        setArticleLiked(false);
-        setArticleDisliked(false);
-        setArticleBookmarked(bookmarkedItems.has(article.id));
-        setTimeout(() => {
-            const element = document.querySelector('[data-article-detail]');
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }, 100);
-    };
-
-    const handleCloseArticle = () => {
-        setSelectedArticle(null);
-    };
-
-    const handleArticleLike = () => {
-        if (articleDisliked) {
-            setArticleDisliked(false);
-            setArticleDislikeCount(articleDislikeCount - 1);
-        }
-        setArticleLiked(!articleLiked);
-        setArticleLikeCount(articleLiked ? articleLikeCount - 1 : articleLikeCount + 1);
-    };
-
-    const handleArticleDislike = () => {
-        if (articleLiked) {
-            setArticleLiked(false);
-            setArticleLikeCount(articleLikeCount - 1);
-        }
-        setArticleDisliked(!articleDisliked);
-        setArticleDislikeCount(articleDisliked ? articleDislikeCount - 1 : articleDislikeCount + 1);
-    };
-
-    const handleArticleBookmark = () => {
-        if (selectedArticle) {
-            handleBookmark(selectedArticle.id);
-            setArticleBookmarked(!articleBookmarked);
-        }
-    };
-
-    const handleArticleShare = () => {
-        if (navigator.share && selectedArticle) {
-            navigator.share({
-                title: selectedArticle.title,
-                text: selectedArticle.excerpt || selectedArticle.description,
-                url: window.location.href,
-            });
-        } else if (selectedArticle) {
-            navigator.clipboard.writeText(window.location.href);
-            success('Link copied to clipboard!');
-        }
+        openArticleDetail(navigate, article);
     };
 
     const handleVote = async (itemId, type) => {
@@ -342,9 +317,6 @@ const SearchScreen = () => {
             const patch = { like_count: likes, dislike_count: dislikes, upvotes: likes, votes: likes };
             setAllNews((prev) =>
                 prev.map((n) => (String(n.id) !== id ? n : { ...n, ...patch }))
-            );
-            setSelectedArticle((prev) =>
-                prev && String(prev.id) === id ? { ...prev, ...patch } : prev
             );
         } catch (error) {
             setVotedItems(prev => ({
@@ -543,7 +515,6 @@ const SearchScreen = () => {
                                 key={tab}
                                 onClick={() => {
                                     setActiveTab(tab);
-                                    setSelectedArticle(null);
                                     // Don't clear search when clicking tabs - allow filtering by both category and search
                                 }}
                                 style={{
@@ -607,322 +578,41 @@ const SearchScreen = () => {
                     }
                 `}</style>
 
-                {/* Article Detail View */}
-                {selectedArticle ? (
-                    <div data-article-detail style={{
-                        marginBottom: '32px',
-                        backgroundColor: '#ffffff',
-                        border: '1px solid #e5e7eb',
-                        borderRadius: '8px',
-                    padding: '24px',
-                    }}>
-                        {/* Close Button */}
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'flex-end',
-                            marginBottom: '20px',
-                        }}>
-                            <button
-                                onClick={handleCloseArticle}
-                                style={{
-                                    padding: '6px',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    cursor: 'pointer',
-                                    borderRadius: '6px',
-                                    transition: 'all 0.2s ease',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#f9fafb';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                }}
-                            >
-                                <X size={18} color="#64748b" />
-                            </button>
-                        </div>
-
-                        {/* Source Info */}
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            marginBottom: '20px',
-                        }}>
-                            <div style={{
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '8px',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                backgroundColor: '#0f172a',
-                            }}>
-                                <span style={{
-                                    fontSize: '14px',
-                                    fontWeight: '700',
-                                    color: '#ffffff',
-                                    letterSpacing: '0.5px',
-                                }}>
-                                    {selectedArticle.source?.substring(0, 2).toUpperCase() || 'N'}
-                                </span>
-                            </div>
-                            <div>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                }}>
-                                    <span style={{
-                                        fontSize: '14px',
-                                        fontWeight: '600',
-                                        color: '#0f172a',
-                                    }}>
-                                        {selectedArticle.source || 'Source'}
-                                    </span>
-                                    {selectedArticle.verified && (
-                                        <CheckCircle size={14} color="#10b981" fill="#10b981" />
-                                    )}
-                                </div>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    marginTop: '2px',
-                                }}>
-                                    <Clock size={12} color="#9ca3af" />
-                                    <span style={{
-                                        fontSize: '12px',
-                                        color: '#9ca3af',
-                                    }}>
-                                        {selectedArticle.time || '2h ago'}
-                                    </span>
-                                    {selectedArticle.readTime && (
-                                        <>
-                                            <span style={{ color: '#9ca3af', margin: '0 4px' }}>•</span>
-                                            <span style={{
-                                                fontSize: '12px',
-                                                color: '#9ca3af',
-                                            }}>
-                                                {selectedArticle.readTime} min read
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Category Tag */}
-                        {selectedArticle.category && (
-                            <div style={{
-                                marginBottom: '16px',
-                            }}>
-                                <span style={{
-                                    fontSize: '10px',
-                                    fontWeight: '600',
-                                    color: '#6b7280',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px',
-                                    padding: '4px 10px',
-                                    backgroundColor: '#f3f4f6',
-                                    borderRadius: '4px',
-                                    display: 'inline-block',
-                                }}>
-                                    {selectedArticle.category}
-                                </span>
-                            </div>
-                        )}
-
-                        {/* Title */}
-                        <h2 style={{
-                            fontSize: '28px',
-                            fontWeight: '700',
-                            lineHeight: '1.3',
-                            color: '#0f172a',
-                            margin: '0 0 16px 0',
-                            letterSpacing: '-0.5px',
-                        }}>
-                            {selectedArticle.title || 'Article Title'}
-                        </h2>
-
-                        {/* Article Content */}
-                        <div style={{
-                            fontSize: '16px',
-                            lineHeight: '1.7',
-                            color: '#374151',
-                            marginBottom: '24px',
-                        }}>
-                            <ArticleBodyParagraphs
-                                content={selectedArticle.fullContent || selectedArticle.content || selectedArticle.full_content || ''}
-                                paragraphStyle={{ fontSize: '16px', lineHeight: '1.7', color: '#374151' }}
-                            />
-                        </div>
-
-                        {/* Actions */}
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            paddingTop: '16px',
-                            borderTop: '1px solid #e5e7eb',
-                        }}>
-                            {/* Vote Buttons */}
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '4px',
-                                backgroundColor: '#f9fafb',
-                                borderRadius: '10px',
-                            }}>
-                                <button
-                                    onClick={handleArticleLike}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '6px 12px',
-                                        border: 'none',
-                                        background: articleLiked ? '#ffffff' : 'transparent',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        boxShadow: articleLiked ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!articleLiked) {
-                                            e.currentTarget.style.backgroundColor = '#ffffff';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!articleLiked) {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                        }
-                                    }}
-                                >
-                                    <ChevronUp 
-                                        size={16} 
-                                        color={articleLiked ? '#3b82f6' : '#64748b'} 
-                                        strokeWidth={articleLiked ? 2.5 : 2}
-                                    />
-                                    <span style={{
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        color: articleLiked ? '#3b82f6' : '#64748b',
-                                    }}>
-                                        {articleLikeCount}
-                                    </span>
-                                </button>
-
-                                <div style={{
-                                    width: '1px',
-                                    height: '20px',
-                                    backgroundColor: '#e5e7eb',
-                                }} />
-
-                                <button
-                                    onClick={handleArticleDislike}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '6px 12px',
-                                        border: 'none',
-                                        background: articleDisliked ? '#ffffff' : 'transparent',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        boxShadow: articleDisliked ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!articleDisliked) {
-                                            e.currentTarget.style.backgroundColor = '#ffffff';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!articleDisliked) {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                        }
-                                    }}
-                                >
-                                    <ChevronDown 
-                                        size={16} 
-                                        color={articleDisliked ? '#ef4444' : '#64748b'} 
-                                        strokeWidth={articleDisliked ? 2.5 : 2}
-                                    />
-                                    <span style={{
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        color: articleDisliked ? '#ef4444' : '#64748b',
-                                    }}>
-                                        {articleDislikeCount}
-                                    </span>
-                                </button>
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                            }}>
-                                <button
-                                    onClick={handleArticleBookmark}
-                                    style={{
-                                        padding: '8px',
-                                        border: 'none',
-                                        background: articleBookmarked ? '#fef3c7' : 'transparent',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!articleBookmarked) {
-                                            e.currentTarget.style.backgroundColor = '#f9fafb';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!articleBookmarked) {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                        }
-                                    }}
-                                >
-                                    <Bookmark 
-                                        size={18} 
-                                        color={articleBookmarked ? '#f59e0b' : '#9ca3af'} 
-                                        fill={articleBookmarked ? '#f59e0b' : 'none'}
-                                        strokeWidth={2}
-                                    />
-                                </button>
-
-                                <button
-                                    onClick={handleArticleShare}
-                                    style={{
-                                        padding: '8px',
-                                        border: 'none',
-                                        background: 'transparent',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = '#f9fafb';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = 'transparent';
-                                    }}
-                                >
-                                    <Share2 size={18} color="#9ca3af" strokeWidth={2} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ) : null}
-
                 {/* Content Area */}
                 {loading ? (
-                    <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(isDark, colors)} />
+                    <MasonryFeedSkeleton count={8} gap={24} {...getSkeletonFeedProps(isDark, colors)} />
+                ) : loadError ? (
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '80px 20px',
+                        textAlign: 'center',
+                    }}>
+                        <h3 style={{ fontSize: 18, fontWeight: 600, color: textPrimary, margin: '0 0 8px 0' }}>
+                            Could not load articles
+                        </h3>
+                        <p style={{ fontSize: 14, color: textSecondary, margin: '0 0 20px 0', maxWidth: 420 }}>
+                            {loadError}
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setRetryTick((t) => t + 1)}
+                            style={{
+                                padding: '10px 20px',
+                                border: 'none',
+                                borderRadius: 8,
+                                background: '#0f172a',
+                                color: '#fff',
+                                fontSize: 14,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                            }}
+                        >
+                            Retry
+                        </button>
+                    </div>
                 ) : filteredNews.length === 0 ? (
                     <div style={{
                         display: 'flex',
@@ -1080,6 +770,12 @@ const SearchScreen = () => {
                                 />
                             ))}
                         </MasonryFeed>
+                        <div ref={scrollSentinelRef} style={{ height: 1 }} aria-hidden />
+                        {loadingMore ? (
+                            <p style={{ textAlign: 'center', color: textSecondary, padding: 16, fontSize: 14 }}>
+                                Loading more…
+                            </p>
+                        ) : null}
                     </div>
                 )}
             </div>

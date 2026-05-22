@@ -49,6 +49,20 @@ const TagSelectionScreen = ({ navigation, route }) => {
     const keywordsFetchStarted = useRef(false);
 
     useEffect(() => {
+        if (!fromSignup) return;
+        let mounted = true;
+        (async () => {
+            const kws = await loadUserKeywords({ force: true });
+            if (mounted && kws?.length) {
+                navigation.reset({ index: 0, routes: [{ name: 'NewsFeed' }] });
+            }
+        })();
+        return () => {
+            mounted = false;
+        };
+    }, [fromSignup, navigation]);
+
+    useEffect(() => {
         let mounted = true;
         (async () => {
             try {

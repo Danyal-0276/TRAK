@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
-import { mockApi } from '../../utils/Service/mockApi';
 import { useTheme } from '../../theme/ThemeContext';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
 import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
+import { loadExplorePage, mergeUniqueById } from '../../utils/loadFeed';
+import { openArticleDetail } from '../../utils/openArticleDetail';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 
 const TrendingScreen = () => {
     const navigate = useNavigate();
@@ -13,117 +15,90 @@ const TrendingScreen = () => {
     const [votedItems, setVotedItems] = useState({});
     const [newsData, setNewsData] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState('');
+    const [nextCursor, setNextCursor] = useState('');
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
 
-    const loadNews = async () => {
+    const loadNews = useCallback(async () => {
         try {
             setLoading(true);
-            const response = await mockApi.getNewsFeed();
-            // Filter for trending items
-            const trendingNews = response.data.filter(item => item.trending);
-            setNewsData(trendingNews);
+            setLoadError('');
+            const page = await loadExplorePage({ limit: 50, cursor: '' });
+            const trending = (page.items || []).filter((item) => item.trending);
+            setNewsData(trending);
+            setNextCursor(page.nextCursor || '');
+            setHasMore(Boolean(page.hasMore));
         } catch (error) {
             console.error('Error loading trending news:', error);
+            setLoadError(error?.message || 'Could not load trending articles.');
+            setNewsData([]);
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         loadNews();
-    }, []);
+    }, [loadNews]);
+
+    const loadMore = useCallback(async () => {
+        if (!hasMore || loadingMore || !nextCursor) return;
+        setLoadingMore(true);
+        try {
+            const page = await loadExplorePage({ limit: 50, cursor: nextCursor });
+            const trending = (page.items || []).filter((item) => item.trending);
+            setNewsData((prev) => mergeUniqueById(prev, trending));
+            setNextCursor(page.nextCursor || '');
+            setHasMore(Boolean(page.hasMore));
+        } catch (e) {
+            console.warn('Load more failed:', e?.message);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [hasMore, loadingMore, nextCursor]);
+
+    const scrollSentinelRef = useInfiniteScroll({
+        onLoadMore: loadMore,
+        hasMore,
+        loading: loading || loadingMore,
+    });
 
     const handleArticlePress = (article) => {
-        navigate(`/article/${article.id}`, { state: { article } });
+        openArticleDetail(navigate, article);
     };
 
     const handleVote = async (itemId, type) => {
         const previousVote = votedItems[itemId];
         const newVote = previousVote === type ? null : type;
-
-        setVotedItems(prev => ({
-            ...prev,
-            [itemId]: newVote
-        }));
-
-        try {
-            await mockApi.voteArticle(itemId, newVote);
-        } catch (error) {
-            setVotedItems(prev => ({
-                ...prev,
-                [itemId]: previousVote
-            }));
-        }
+        setVotedItems((prev) => ({ ...prev, [itemId]: newVote }));
     };
 
     const handleBookmark = async (itemId) => {
-        setBookmarkedItems(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(itemId)) {
-                newSet.delete(itemId);
-            } else {
-                newSet.add(itemId);
-            }
-            return newSet;
-        });
-
-        try {
-            await mockApi.bookmarkArticle(itemId);
-        } catch (error) {
-            console.error('Error bookmarking:', error);
-        }
+        const newSet = new Set(bookmarkedItems);
+        if (newSet.has(itemId)) newSet.delete(itemId);
+        else newSet.add(itemId);
+        setBookmarkedItems(newSet);
     };
 
     return (
-        <div style={{
-            minHeight: '100vh',
-            backgroundColor: '#ffffff',
-            paddingTop: '0',
-            marginTop: '0',
-        }}>
-            <div style={{
-                maxWidth: '1200px',
-                margin: '0 auto',
-                width: '100%',
-                padding: '0 24px 24px 24px',
-            }}>
-                {/* Header Section */}
-                <div style={{
-                    marginTop: '0',
-                    marginBottom: '24px',
-                    paddingTop: '0',
-                }}>
-                    <h1 style={{
-                        fontSize: '28px',
-                        fontWeight: '700',
-                        color: '#0f172a',
-                        margin: '0 0 8px 0',
-                        paddingTop: '0',
-                        letterSpacing: '-0.5px',
-                    }}>
-                        Trending News
-                    </h1>
-                    <p style={{
-                        fontSize: '15px',
-                        color: '#64748b',
-                        margin: '0',
-                        lineHeight: '1.5',
-                    }}>
-                        Discover the most popular and trending stories right now
-                    </p>
-                </div>
+        <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
+            <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px' }}>Trending</h1>
+            <p style={{ color: '#64748b', marginBottom: '24px' }}>Articles flagged as trending or high-interest</p>
 
-                {/* News Cards Grid */}
-                {loading ? (
-                    <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(theme.mode === 'dark', theme.colors)} />
-                ) : newsData.length === 0 ? (
-                    <div style={{
-                        textAlign: 'center',
-                        padding: '60px 20px',
-                        color: '#64748b',
-                    }}>
-                        <p style={{ fontSize: '16px', margin: 0 }}>No trending articles at the moment.</p>
-                    </div>
-                ) : (
+            {loading ? (
+                <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(theme.mode === 'dark', theme.colors)} />
+            ) : loadError ? (
+                <div style={{ textAlign: 'center', padding: 48 }}>
+                    <p style={{ color: '#64748b', marginBottom: 16 }}>{loadError}</p>
+                    <button type="button" onClick={loadNews} style={{ padding: '10px 20px', cursor: 'pointer' }}>
+                        Retry
+                    </button>
+                </div>
+            ) : newsData.length === 0 ? (
+                <p style={{ textAlign: 'center', color: '#64748b', padding: 48 }}>No trending articles right now.</p>
+            ) : (
+                <>
                     <MasonryFeed gap={24}>
                         {newsData.map((item) => (
                             <NewsCard
@@ -138,17 +113,14 @@ const TrendingScreen = () => {
                             />
                         ))}
                     </MasonryFeed>
-                )}
-            </div>
-            <style>{`
-                h1 {
-                    margin-top: 0 !important;
-                    padding-top: 0 !important;
-                }
-            `}</style>
+                    <div ref={scrollSentinelRef} style={{ height: 1 }} aria-hidden />
+                    {loadingMore ? (
+                        <p style={{ textAlign: 'center', color: '#64748b', padding: 16 }}>Loading more…</p>
+                    ) : null}
+                </>
+            )}
         </div>
     );
 };
 
 export default TrendingScreen;
-

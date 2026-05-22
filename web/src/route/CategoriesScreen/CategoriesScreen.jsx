@@ -1,20 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
-import { loadExplorePage } from '../../utils/loadFeed';
-import { fetchPlatformCategories } from '../../utils/Service/api';
+import { loadExplorePage, mergeUniqueById } from '../../utils/loadFeed';
+import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { addBookmark, fetchPlatformCategories, removeBookmark, setReaction } from '../../utils/Service/api';
+import { setReactionForArticle } from '../../utils/reactionsStorage';
 import { NewsCard } from '../../components/NewsCard';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
-import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
-import { useUIFeedback } from '../../components/ui/UIFeedback';
-import { 
-    TrendingUp,
-    Bookmark,
-    Share2,
-    Clock,
-    CheckCircle,
-    X
-} from 'lucide-react';
+import { openArticleDetail } from '../../utils/openArticleDetail';
+import { TrendingUp } from 'lucide-react';
 import { SkeletonCategoryGrid, getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
 import {
     buildCategoryList,
@@ -35,23 +29,23 @@ const CategoriesScreen = () => {
     const [loading, setLoading] = useState(true);
     const [votedItems, setVotedItems] = useState({});
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
-    const [selectedArticle, setSelectedArticle] = useState(null);
-    const [articleLiked, setArticleLiked] = useState(false);
-    const { success } = useUIFeedback();
-    const [articleDisliked, setArticleDisliked] = useState(false);
-    const [articleBookmarked, setArticleBookmarked] = useState(false);
-    const [articleLikeCount, setArticleLikeCount] = useState(0);
-    const [articleDislikeCount, setArticleDislikeCount] = useState(0);
     const [categorySearch, setCategorySearch] = useState('');
+    const [nextCursor, setNextCursor] = useState('');
+    const [hasMore, setHasMore] = useState(false);
+    const [loadingMore, setLoadingMore] = useState(false);
 
     const loadNews = async () => {
         try {
             setLoading(true);
+            setNextCursor('');
+            setHasMore(false);
             const [plat, page] = await Promise.all([
                 fetchPlatformCategories().catch(() => ({ categories: [], connections: [] })),
-                loadExplorePage({ limit: 200 }),
+                loadExplorePage({ limit: 50, cursor: '' }),
             ]);
             const newsData = page.items || [];
+            setNextCursor(page.nextCursor || '');
+            setHasMore(Boolean(page.hasMore));
             setAllNews(newsData);
 
             const adminNames = (plat.categories || []).map((c) =>
@@ -74,6 +68,27 @@ const CategoriesScreen = () => {
         loadNews();
     }, []);
 
+    const loadMore = useCallback(async () => {
+        if (!hasMore || loadingMore || !nextCursor) return;
+        setLoadingMore(true);
+        try {
+            const page = await loadExplorePage({ limit: 50, cursor: nextCursor });
+            setAllNews((prev) => mergeUniqueById(prev, page.items || []));
+            setNextCursor(page.nextCursor || '');
+            setHasMore(Boolean(page.hasMore));
+        } catch (e) {
+            console.warn('Load more failed:', e?.message);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [hasMore, loadingMore, nextCursor]);
+
+    const scrollSentinelRef = useInfiniteScroll({
+        onLoadMore: loadMore,
+        hasMore,
+        loading: loading || loadingMore,
+    });
+
     useEffect(() => {
         if (selectedCategory) {
             setFilteredNews(allNews.filter((item) => articleMatchesCategory(item, selectedCategory)));
@@ -92,101 +107,54 @@ const CategoriesScreen = () => {
             setSelectedCategory(null);
         } else {
             setSelectedCategory(categoryName);
-            setSelectedArticle(null);
         }
     };
 
     const handleArticlePress = (article) => {
-        setSelectedArticle(article);
-        setArticleLikeCount(article.upvotes || article.votes || 0);
-        setArticleDislikeCount(3);
-        setArticleLiked(false);
-        setArticleDisliked(false);
-        setArticleBookmarked(bookmarkedItems.has(article.id));
-        setTimeout(() => {
-            const element = document.querySelector('[data-article-detail]');
-            if (element) {
-                element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }, 100);
-    };
-
-    const handleCloseArticle = () => {
-        setSelectedArticle(null);
-    };
-
-    const handleArticleLike = () => {
-        if (articleDisliked) {
-            setArticleDisliked(false);
-            setArticleDislikeCount(articleDislikeCount - 1);
-        }
-        setArticleLiked(!articleLiked);
-        setArticleLikeCount(articleLiked ? articleLikeCount - 1 : articleLikeCount + 1);
-    };
-
-    const handleArticleDislike = () => {
-        if (articleLiked) {
-            setArticleLiked(false);
-            setArticleLikeCount(articleLikeCount - 1);
-        }
-        setArticleDisliked(!articleDisliked);
-        setArticleDislikeCount(articleDisliked ? articleDislikeCount - 1 : articleDislikeCount + 1);
-    };
-
-    const handleArticleBookmark = () => {
-        if (selectedArticle) {
-            handleBookmark(selectedArticle.id);
-            setArticleBookmarked(!articleBookmarked);
-        }
-    };
-
-    const handleArticleShare = () => {
-        if (navigator.share && selectedArticle) {
-            navigator.share({
-                title: selectedArticle.title,
-                text: selectedArticle.excerpt || selectedArticle.description,
-                url: window.location.href,
-            });
-        } else if (selectedArticle) {
-            navigator.clipboard.writeText(window.location.href);
-            success('Link copied to clipboard!');
-        }
+        openArticleDetail(navigate, article);
     };
 
     const handleVote = async (itemId, type) => {
-        const previousVote = votedItems[itemId];
+        const id = String(itemId);
+        const previousVote = votedItems[id];
         const newVote = previousVote === type ? null : type;
 
-        setVotedItems(prev => ({
-            ...prev,
-            [itemId]: newVote
-        }));
+        setVotedItems((prev) => ({ ...prev, [id]: newVote }));
+        setReactionForArticle(id, newVote);
 
         try {
-            await mockApi.voteArticle(itemId, newVote);
+            await setReaction(
+                id,
+                newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none'
+            );
         } catch (error) {
-            setVotedItems(prev => ({
-                ...prev,
-                [itemId]: previousVote
-            }));
+            setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
+            setReactionForArticle(id, previousVote || null);
         }
     };
 
     const handleBookmark = async (itemId) => {
-        setBookmarkedItems(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(itemId)) {
-                newSet.delete(itemId);
-            } else {
-                newSet.add(itemId);
-            }
-            return newSet;
+        const id = String(itemId);
+        const wasBookmarked = bookmarkedItems.has(id);
+        setBookmarkedItems((prev) => {
+            const next = new Set([...prev].map(String));
+            if (wasBookmarked) next.delete(id);
+            else next.add(id);
+            return next;
         });
 
         try {
-            await mockApi.bookmarkArticle(itemId);
+            const article = allNews.find((n) => String(n.id) === id);
+            if (wasBookmarked) await removeBookmark(id);
+            else await addBookmark(id, article?.title || '', article?.canonical_url || article?.url || '');
         } catch (error) {
             console.error('Error bookmarking:', error);
+            setBookmarkedItems((prev) => {
+                const next = new Set([...prev].map(String));
+                if (wasBookmarked) next.add(id);
+                else next.delete(id);
+                return next;
+            });
         }
     };
 
@@ -366,324 +334,6 @@ const CategoriesScreen = () => {
                     </div>
                 )}
 
-                {/* Article Detail View */}
-                {selectedArticle ? (
-                    <div data-article-detail style={{
-                        marginBottom: '32px',
-                        backgroundColor: cardBackground,
-                        border: `1px solid ${borderColor}`,
-                        borderRadius: '8px',
-                        padding: '24px',
-                    }}>
-                        {/* Close Button */}
-                        <div style={{
-                            display: 'flex',
-                            justifyContent: 'flex-end',
-                            marginBottom: '20px',
-                        }}>
-                            <button
-                                onClick={handleCloseArticle}
-                                style={{
-                                    padding: '6px',
-                                    border: 'none',
-                                    background: 'transparent',
-                                    cursor: 'pointer',
-                                    borderRadius: '6px',
-                                    transition: 'all 0.2s ease',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                }}
-                            >
-                                <X size={18} color={textSecondary} />
-                            </button>
-                        </div>
-
-                        {/* Source Info */}
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '12px',
-                            marginBottom: '20px',
-                        }}>
-                            <div style={{
-                                width: '40px',
-                                height: '40px',
-                                borderRadius: '8px',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                                backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',
-                            }}>
-                                <span style={{
-                                    fontSize: '14px',
-                                    fontWeight: '700',
-                                    color: '#ffffff',
-                                    letterSpacing: '0.5px',
-                                }}>
-                                    {selectedArticle.source?.substring(0, 2).toUpperCase() || 'N'}
-                                </span>
-                            </div>
-                            <div>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                }}>
-                                    <span style={{
-                                        fontSize: '14px',
-                                        fontWeight: '600',
-                                        color: textPrimary,
-                                    }}>
-                                        {selectedArticle.source || 'Source'}
-                                    </span>
-                                    {selectedArticle.verified && (
-                                        <CheckCircle size={14} color="#10b981" fill="#10b981" />
-                                    )}
-                                </div>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    marginTop: '2px',
-                                }}>
-                                    <Clock size={12} color={textSecondary} />
-                                    <span style={{
-                                        fontSize: '12px',
-                                        color: textSecondary,
-                                    }}>
-                                        {selectedArticle.time || '2h ago'}
-                                    </span>
-                                    {selectedArticle.readTime && (
-                                        <>
-                                            <span style={{ color: textSecondary, margin: '0 4px' }}>•</span>
-                                            <span style={{
-                                                fontSize: '12px',
-                                                color: textSecondary,
-                                            }}>
-                                                {selectedArticle.readTime} min read
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Category Tag */}
-                        {selectedArticle.category && (
-                            <div style={{
-                                marginBottom: '16px',
-                            }}>
-                                <span style={{
-                                    fontSize: '10px',
-                                    fontWeight: '600',
-                                    color: textSecondary,
-                                    textTransform: 'uppercase',
-                                    letterSpacing: '0.5px',
-                                    padding: '4px 10px',
-                                    backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6',
-                                    borderRadius: '4px',
-                                    display: 'inline-block',
-                                }}>
-                                    {selectedArticle.category}
-                                </span>
-                            </div>
-                        )}
-
-                        {/* Title */}
-                        <h2 style={{
-                            fontSize: '28px',
-                            fontWeight: '700',
-                            lineHeight: '1.3',
-                            color: textPrimary,
-                            margin: '0 0 16px 0',
-                            letterSpacing: '-0.5px',
-                        }}>
-                            {selectedArticle.title || 'Article Title'}
-                        </h2>
-
-                        {/* Article Content */}
-                        <div style={{
-                            fontSize: '16px',
-                            lineHeight: '1.7',
-                            color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
-                            marginBottom: '24px',
-                        }}>
-                            <ArticleBodyParagraphs
-                                content={selectedArticle.fullContent || selectedArticle.content || selectedArticle.full_content || ''}
-                                paragraphStyle={{
-                                    fontSize: '16px',
-                                    lineHeight: '1.7',
-                                    color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
-                                }}
-                            />
-                        </div>
-
-                        {/* Actions */}
-                        <div style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            paddingTop: '16px',
-                            borderTop: `1px solid ${borderColor}`,
-                        }}>
-                            {/* Vote Buttons */}
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                padding: '4px',
-                                backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f9fafb',
-                                borderRadius: '10px',
-                            }}>
-                                <button
-                                    onClick={handleArticleLike}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '6px 12px',
-                                        border: 'none',
-                                        background: articleLiked ? (isDark ? colors.surface || '#1E293B' : '#ffffff') : 'transparent',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        boxShadow: articleLiked ? (isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)') : 'none',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!articleLiked) {
-                                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#ffffff';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!articleLiked) {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                        }
-                                    }}
-                                >
-                                    <TrendingUp 
-                                        size={16} 
-                                        color={articleLiked ? '#3b82f6' : textSecondary} 
-                                        strokeWidth={articleLiked ? 2.5 : 2}
-                                    />
-                                    <span style={{
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        color: articleLiked ? '#3b82f6' : textSecondary,
-                                    }}>
-                                        {articleLikeCount}
-                                    </span>
-                                </button>
-
-                                <div style={{
-                                    width: '1px',
-                                    height: '20px',
-                                    backgroundColor: borderColor,
-                                }} />
-
-                                <button
-                                    onClick={handleArticleDislike}
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '6px 12px',
-                                        border: 'none',
-                                        background: articleDisliked ? (isDark ? colors.surface || '#1E293B' : '#ffffff') : 'transparent',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                        boxShadow: articleDisliked ? (isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)') : 'none',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!articleDisliked) {
-                                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#ffffff';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!articleDisliked) {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                        }
-                                    }}
-                                >
-                                    <TrendingUp 
-                                        size={16} 
-                                        style={{ transform: 'rotate(180deg)' }}
-                                        color={articleDisliked ? '#ef4444' : textSecondary} 
-                                        strokeWidth={articleDisliked ? 2.5 : 2}
-                                    />
-                                    <span style={{
-                                        fontSize: '13px',
-                                        fontWeight: '600',
-                                        color: articleDisliked ? '#ef4444' : textSecondary,
-                                    }}>
-                                        {articleDislikeCount}
-                                    </span>
-                                </button>
-                            </div>
-
-                            {/* Action Buttons */}
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                            }}>
-                                <button
-                                    onClick={handleArticleBookmark}
-                                    style={{
-                                        padding: '8px',
-                                        border: 'none',
-                                        background: articleBookmarked ? (isDark ? '#78350F' : '#fef3c7') : 'transparent',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!articleBookmarked) {
-                                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!articleBookmarked) {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                        }
-                                    }}
-                                >
-                                    <Bookmark 
-                                        size={18} 
-                                        color={articleBookmarked ? '#f59e0b' : textSecondary} 
-                                        fill={articleBookmarked ? '#f59e0b' : 'none'}
-                                        strokeWidth={2}
-                                    />
-                                </button>
-
-                                <button
-                                    onClick={handleArticleShare}
-                                    style={{
-                                        padding: '8px',
-                                        border: 'none',
-                                        background: 'transparent',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        transition: 'all 0.2s ease',
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        e.currentTarget.style.backgroundColor = 'transparent';
-                                    }}
-                                >
-                                    <Share2 size={18} color={textSecondary} strokeWidth={2} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                ) : null}
-
                 {/* Selected Category Articles */}
                 {selectedCategory && (
                     <div>
@@ -781,7 +431,7 @@ const CategoriesScreen = () => {
                 )}
 
                 {/* Show all articles when no category selected */}
-                {!selectedCategory && !selectedArticle && (
+                {!selectedCategory && (
                     <div>
                         <h2 style={{
                             fontSize: '22px',
@@ -805,6 +455,12 @@ const CategoriesScreen = () => {
                                 />
                             ))}
                         </MasonryFeed>
+                        <div ref={scrollSentinelRef} style={{ height: 1 }} aria-hidden />
+                        {loadingMore ? (
+                            <p style={{ textAlign: 'center', color: textSecondary, padding: 16, fontSize: 14 }}>
+                                Loading more…
+                            </p>
+                        ) : null}
                     </div>
                 )}
             </div>

@@ -1,6 +1,6 @@
 // src/route/NotificationsScreen/NotificationsScreen.jsx
 import React, { useState, useEffect, useRef } from "react";
-import { View, TouchableOpacity, StyleSheet, Animated, ActivityIndicator, StatusBar, Dimensions } from "react-native";
+import { View, TouchableOpacity, StyleSheet, Animated, ActivityIndicator, StatusBar, Dimensions, Platform } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import LinearGradient from "react-native-linear-gradient";
@@ -9,8 +9,10 @@ import * as notificationsApi from "../../api/notificationsApi";
 import { openNotificationsSocket } from "../../api/notificationsRealtime";
 import { useTheme } from "../../theme/ThemeContext";
 import Text from "../../components/ui/Text";
-import PageScreenHeader from "../../components/ui/PageScreenHeader";
-import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
+import AccentTabHeader from "../../components/ui/AccentTabHeader";
+import { Bell } from "lucide-react-native";
+import { resetTabBarVisibility } from "../../navigation/tabBarVisibility";
+import { useCollapsibleHeader } from "../../hooks/useCollapsibleHeader";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -21,7 +23,11 @@ const NotificationsScreen = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const buttonScale = useRef(new Animated.Value(1)).current;
-  const lastScrollY = useRef(0);
+  const [headerSectionHeight, setHeaderSectionHeight] = useState(120);
+  const { translateY: headerTranslateY, handleScroll: handleCollapsibleScroll } = useCollapsibleHeader({
+    hideOffset: headerSectionHeight,
+    hideThreshold: 40,
+  });
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const circle1Anim = useRef(new Animated.Value(0)).current;
@@ -97,15 +103,7 @@ const NotificationsScreen = () => {
     return () => resetTabBarVisibility();
   }, []);
 
-  const handleListScroll = (event) => {
-    const currentY = event.nativeEvent.contentOffset.y;
-    const diff = currentY - lastScrollY.current;
-    if (Math.abs(diff) > 6) {
-      if (diff > 0 && currentY > 40) setTabBarHidden(true);
-      if (diff < 0) setTabBarHidden(false);
-    }
-    lastScrollY.current = currentY;
-  };
+  const handleListScroll = handleCollapsibleScroll;
 
   const loadNotifications = async () => {
     try {
@@ -256,13 +254,22 @@ const NotificationsScreen = () => {
       />
 
       <Animated.View
-        style={{
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
+        style={[
+          styles.fixedHeader,
+          {
+            paddingTop: insets.top,
+            backgroundColor: colors.surface,
+            transform: [{ translateY: headerTranslateY }],
+          },
+        ]}
+        onLayout={(e) => {
+          const h = Math.max(0, Math.round(e?.nativeEvent?.layout?.height || 0));
+          if (h > 0 && h !== headerSectionHeight) setHeaderSectionHeight(h);
         }}
       >
-        <PageScreenHeader
+        <AccentTabHeader
           title="Notifications"
+          icon={Bell}
           subtitle={
             unreadCount > 0
               ? `${unreadCount} unread ${unreadCount === 1 ? 'notification' : 'notifications'}`
@@ -286,17 +293,17 @@ const NotificationsScreen = () => {
         />
       </Animated.View>
 
-      {/* Tabs */}
-      <Animated.View 
+      <Animated.View
         style={[
-          { flex: 1 },
+          styles.tabsArea,
           {
             opacity: fadeAnim,
             transform: [{ translateY: slideAnim }],
-          }
+            paddingTop: headerSectionHeight,
+          },
         ]}
       >
-        <NotificationTabs 
+        <NotificationTabs
           notifications={notifications}
           onMarkAsRead={markAsRead}
           onNotificationPress={handleNotificationPress}
@@ -356,6 +363,25 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 70,
+  },
+  fixedHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: { elevation: 4 },
+    }),
+  },
+  tabsArea: {
+    flex: 1,
   },
   markAllButton: {
     paddingHorizontal: 16,

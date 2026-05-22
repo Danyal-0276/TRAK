@@ -177,19 +177,12 @@ const OpeningScreen = () => {
                             lineHeight: '1.7',
                             fontWeight: '400',
                             letterSpacing: '0.2px',
+                            display: 'block',
                         }}>
-                            Welcome
-                        </Text>
-                        <Text variant="body" style={{
-                            fontSize: '18px',
-                            color: '#6b7280',
-                            lineHeight: '1.7',
-                            fontWeight: '400',
-                            marginTop: '8px',
-                            letterSpacing: '0.2px',
-                        }}>
-                            A world of exceptional news{'\n'}
-                            with TRAK news core...
+                            Welcome to a world of exceptional news{'\n'}
+                            <span style={{ color: '#6b7280' }}>
+                                curated by TRAK at its core.
+                            </span>
                         </Text>
                     </div>
 

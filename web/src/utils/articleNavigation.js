@@ -1,3 +1,21 @@
+const CARD_SUMMARY_FALLBACK_MAX = 500;
+
+/** Text shown on feed cards: pipeline summary, or a short body snippet. */
+export function getCardSummaryText(item, maxLen = CARD_SUMMARY_FALLBACK_MAX) {
+  if (!item || typeof item !== 'object') return '';
+  const summary = String(item.summary || item.excerpt || item.description || '').trim();
+  if (summary) return summary;
+  const body = String(
+    item.full_content || item.fullContent || item.content || ''
+  ).trim();
+  if (!body) return '';
+  if (body.length <= maxLen) return body;
+  const cut = body.slice(0, maxLen);
+  const lastSpace = cut.lastIndexOf(' ');
+  const trimmed = lastSpace > maxLen * 0.6 ? cut.slice(0, lastSpace) : cut;
+  return `${trimmed.trim()}…`;
+}
+
 /** Normalize article payload for detail views (cards vs full body). */
 export function normalizeArticleForDetail(item) {
   if (!item || typeof item !== 'object') {

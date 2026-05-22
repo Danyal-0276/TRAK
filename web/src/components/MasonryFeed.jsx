@@ -23,9 +23,8 @@ const itemWrapStyle = (gap) => ({
   WebkitColumnBreakInside: 'avoid',
   pageBreakInside: 'avoid',
   marginBottom: gap,
-  display: 'inline-block',
+  display: 'block',
   width: '100%',
-  verticalAlign: 'top',
   boxSizing: 'border-box',
 });
 
@@ -44,11 +43,19 @@ export function MasonryFeed({ children, columnCount, gap = 16, style, className 
     return () => ro.disconnect();
   }, []);
 
-  const cols = columnCount != null
-    ? columnCount
-    : (containerWidth > 0
-      ? columnCountForWidth(containerWidth)
-      : columnCountForViewport(isMobile, isTablet, isLargeDesktop, null));
+  const measuredWidth =
+    containerWidth > 0
+      ? containerWidth
+      : typeof window !== 'undefined'
+        ? Math.min(window.innerWidth, containerRef.current?.parentElement?.getBoundingClientRect().width || window.innerWidth)
+        : 0;
+
+  const cols =
+    columnCount != null
+      ? columnCount
+      : measuredWidth > 0
+        ? columnCountForWidth(measuredWidth)
+        : columnCountForViewport(isMobile, isTablet, isLargeDesktop, null);
   const items = React.Children.toArray(children).filter(Boolean);
 
   return (

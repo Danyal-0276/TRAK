@@ -29,8 +29,9 @@ const ArticleDetailScreen = () => {
     );
     const [article, setArticle] = useState(initialArticle);
     const [detailLoading, setDetailLoading] = useState(
-        !initialArticle.fullContent && !initialArticle.content
+        !initialArticle.fullContent && !initialArticle.content && !location.state?.fetchError
     );
+    const [fetchError, setFetchError] = useState(location.state?.fetchError || '');
 
     const articleKey = String(article.id || routeArticleId || '').trim();
     const { success } = useUIFeedback();
@@ -113,6 +114,7 @@ const ArticleDetailScreen = () => {
         let cancelled = false;
         const needsLoader = !fromNav.fullContent && !fromNav.content;
         if (needsLoader) setDetailLoading(true);
+        setFetchError(location.state?.fetchError || '');
         (async () => {
             try {
                 const doc = await getUserArticleDetail(id);
@@ -121,8 +123,13 @@ const ArticleDetailScreen = () => {
                 setArticle((prev) => ({ ...prev, ...mapped, id }));
                 setLikeCount(Number(doc.like_count ?? mapped.like_count ?? 0));
                 setDislikeCount(Number(doc.dislike_count ?? mapped.dislike_count ?? 0));
+                setFetchError('');
             } catch (e) {
-                console.warn('Article fetch:', e?.message);
+                if (!cancelled) {
+                    const msg = e?.message || 'Could not load this article.';
+                    console.warn('Article fetch:', msg);
+                    setFetchError(msg);
+                }
             } finally {
                 if (!cancelled) setDetailLoading(false);
             }
@@ -163,7 +170,8 @@ const ArticleDetailScreen = () => {
         };
     }, [articleKey, article.like_count, article.dislike_count]);
 
-    const content = article.fullContent || article.content || article.full_content || 'Article content goes here...';
+    const content = article.fullContent || article.content || article.full_content || '';
+    const showPlaceholder = !content.trim() && !detailLoading;
 
     return (
         <div style={{
@@ -360,6 +368,25 @@ const ArticleDetailScreen = () => {
                 }}>
                     {detailLoading ? (
                         <p style={{ color: '#6b7280' }}>Loading article…</p>
+                    ) : fetchError ? (
+                        <div style={{
+                            padding: '16px',
+                            borderRadius: '8px',
+                            backgroundColor: '#fef2f2',
+                            border: '1px solid #fecaca',
+                            color: '#991b1b',
+                            fontSize: '15px',
+                            lineHeight: 1.5,
+                        }}>
+                            {fetchError}
+                            <p style={{ marginTop: '12px', color: '#7f1d1d', fontSize: '14px' }}>
+                                Mock feed articles cannot load from the API. Use real articles from explore, or set{' '}
+                                <code style={{ fontSize: '13px' }}>VITE_API_URL</code> to the deployed backend in{' '}
+                                <code style={{ fontSize: '13px' }}>TRAK/web/.env</code>.
+                            </p>
+                        </div>
+                    ) : showPlaceholder ? (
+                        <p style={{ color: '#6b7280' }}>No article body available.</p>
                     ) : (
                         <ArticleBodyParagraphs
                             content={content}

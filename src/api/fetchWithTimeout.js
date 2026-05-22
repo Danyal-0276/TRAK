@@ -1,13 +1,7 @@
-import { API_BASE } from '../config/api';
-import { formatNetworkError } from '../utils/networkError';
-
-/** Render free tier can take time to wake; password-reset should return in ~1–2s after backend fix. */
-export const API_TIMEOUT_MS = 90000;
-
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const API_TIMEOUT_MS = 30000;
 
 /**
- * fetch() with AbortController timeout (React Native).
+ * fetch() with AbortController timeout.
  * @param {string} url
  * @param {RequestInit} [options]
  * @param {number} [ms]
@@ -19,22 +13,12 @@ export async function fetchWithTimeout(url, options = {}, ms = API_TIMEOUT_MS) {
     return await fetch(url, { ...options, signal: controller.signal });
   } catch (err) {
     if (err?.name === 'AbortError') {
-      const isRender =
-        typeof url === 'string' && url.includes('onrender.com');
-      const isPasswordReset =
-        typeof url === 'string' && url.includes('password-reset');
       throw new Error(
-        isPasswordReset
-          ? 'Reset request timed out. Try again in a moment, or use a local backend.'
-          : isRender
-            ? 'The server is waking up (Render can take up to a minute). Wait and try again.'
-            : 'Request timed out. Start Django: python manage.py runserver 0.0.0.0:8000'
+        'Request timed out. Ensure Django is running and reachable from this device.'
       );
     }
-    throw new Error(formatNetworkError(err));
+    throw err;
   } finally {
     clearTimeout(timer);
   }
 }
-
-export { sleep, API_BASE };
