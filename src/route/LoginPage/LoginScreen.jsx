@@ -10,6 +10,9 @@ import Text from '../../components/ui/Text';
 import { useAuth } from '../../context/AuthContext';
 import { formatGoogleAuthError, getFirebaseIdTokenFromGoogle } from '../../auth/googleSignIn';
 import { applyAuthSession } from '../../auth/applyAuthSession';
+import { getPostAuthRouteName } from '../../utils/authNavigation';
+import { getUserKeywordsFromServer } from '../../utils/Service/api';
+import { setUserKeywords } from '../../utils/userKeywordsStorage';
 import { loginWithFirebase } from '../../utils/Service/api';
 
 const { width, height } = Dimensions.get('window');
@@ -103,8 +106,16 @@ const LoginScreen = ({ navigation }) => {
                 throw new Error('Server did not return a login session');
             }
             await applyAuthSession(session);
+            if (session.onboarding_complete) {
+                try {
+                    const res = await getUserKeywordsFromServer();
+                    setUserKeywords(Array.isArray(res?.keywords) ? res.keywords : []);
+                } catch {
+                    /* ignore */
+                }
+            }
             await bootstrap();
-            const dest = session.user?.role === 'admin' ? 'AdminScreen' : 'NewsFeed';
+            const dest = getPostAuthRouteName(session, { fromSignup: false });
             navigation.reset({ index: 0, routes: [{ name: dest }] });
         } catch (error) {
             const message = formatGoogleAuthError(error);

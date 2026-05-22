@@ -214,69 +214,71 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                                     }
                                 ]}
                             >
-                                {!fromOtp ? (
-                                <View style={styles.inputGroup}>
-                                    <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>
-                                        Reset uid (from email link)
-                                    </TextComponent>
-                                    <View
-                                        style={[
-                                            styles.inputContainer,
-                                            {
-                                                borderColor: errors.uid ? colors.error : colors.border,
-                                                backgroundColor: colors.backgroundSecondary,
-                                            },
-                                        ]}
-                                    >
-                                        <TextInput
-                                            style={[styles.input, { color: colors.textPrimary }]}
-                                            placeholder="uid query param"
-                                            placeholderTextColor={colors.textTertiary}
-                                            value={uid}
-                                            onChangeText={(t) => {
-                                                setUid(t);
-                                                if (errors.uid) setErrors({ ...errors, uid: '' });
-                                            }}
-                                            autoCapitalize="none"
-                                            editable={!loading}
-                                        />
+                                {!fromOtp && (
+                                    <View style={styles.inputGroup}>
+                                        <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>
+                                            Reset uid (from email link)
+                                        </TextComponent>
+                                        <View
+                                            style={[
+                                                styles.inputContainer,
+                                                {
+                                                    borderColor: errors.uid ? colors.error : colors.border,
+                                                    backgroundColor: colors.backgroundSecondary,
+                                                },
+                                            ]}
+                                        >
+                                            <TextInput
+                                                style={[styles.input, { color: colors.textPrimary }]}
+                                                placeholder="uid query param"
+                                                placeholderTextColor={colors.textTertiary}
+                                                value={uid}
+                                                onChangeText={(t) => {
+                                                    setUid(t);
+                                                    if (errors.uid) setErrors({ ...errors, uid: '' });
+                                                }}
+                                                autoCapitalize="none"
+                                                editable={!loading}
+                                            />
+                                        </View>
+                                        {errors.uid ? (
+                                            <Text style={[styles.errorText, { color: colors.error }]}>{errors.uid}</Text>
+                                        ) : null}
                                     </View>
-                                    {errors.uid ? (
-                                        <Text style={[styles.errorText, { color: colors.error }]}>{errors.uid}</Text>
-                                    ) : null}
-                                </View>
+                                )}
 
-                                <View style={styles.inputGroup}>
-                                    <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>
-                                        Reset token (from email link)
-                                    </TextComponent>
-                                    <View
-                                        style={[
-                                            styles.inputContainer,
-                                            {
-                                                borderColor: errors.token ? colors.error : colors.border,
-                                                backgroundColor: colors.backgroundSecondary,
-                                            },
-                                        ]}
-                                    >
-                                        <TextInput
-                                            style={[styles.input, { color: colors.textPrimary }]}
-                                            placeholder="token query param"
-                                            placeholderTextColor={colors.textTertiary}
-                                            value={token}
-                                            onChangeText={(t) => {
-                                                setToken(t);
-                                                if (errors.token) setErrors({ ...errors, token: '' });
-                                            }}
-                                            autoCapitalize="none"
-                                            editable={!loading}
-                                        />
+                                {!fromOtp && (
+                                    <View style={styles.inputGroup}>
+                                        <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>
+                                            Reset token (from email link)
+                                        </TextComponent>
+                                        <View
+                                            style={[
+                                                styles.inputContainer,
+                                                {
+                                                    borderColor: errors.token ? colors.error : colors.border,
+                                                    backgroundColor: colors.backgroundSecondary,
+                                                },
+                                            ]}
+                                        >
+                                            <TextInput
+                                                style={[styles.input, { color: colors.textPrimary }]}
+                                                placeholder="token query param"
+                                                placeholderTextColor={colors.textTertiary}
+                                                value={token}
+                                                onChangeText={(t) => {
+                                                    setToken(t);
+                                                    if (errors.token) setErrors({ ...errors, token: '' });
+                                                }}
+                                                autoCapitalize="none"
+                                                editable={!loading}
+                                            />
+                                        </View>
+                                        {errors.token ? (
+                                            <Text style={[styles.errorText, { color: colors.error }]}>{errors.token}</Text>
+                                        ) : null}
                                     </View>
-                                    {errors.token ? (
-                                        <Text style={[styles.errorText, { color: colors.error }]}>{errors.token}</Text>
-                                    ) : null}
-                                </View>
-                                ) : null}
+                                )}
 
                                 <View style={styles.inputGroup}>
                                     <TextComponent variant="body" color={colors.textPrimary} style={styles.label}>

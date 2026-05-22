@@ -6,7 +6,8 @@ import Text from '../../components/ui/Text';
 import { ArrowLeft, Search, Check, X } from 'lucide-react';
 import { newsTagsWithSubcategories } from './constants/newsCategories';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
-import { getUserKeywords } from '../../utils/userKeywordsStorage';
+import { getUserKeywords, loadUserKeywords } from '../../utils/userKeywordsStorage';
+import { getUserKeywordsFromServer } from '../../utils/Service/api';
 
 const TagSelectionScreen = () => {
     const { theme } = useTheme();
@@ -27,6 +28,20 @@ const TagSelectionScreen = () => {
     const filteredTags = mainTags.filter(tag => 
         tag.toLowerCase().includes(searchText.toLowerCase())
     );
+
+    useEffect(() => {
+        if (!fromSignup) return;
+        let cancelled = false;
+        (async () => {
+            const kws = await loadUserKeywords(getUserKeywordsFromServer);
+            if (!cancelled && kws?.length) {
+                navigate('/newsfeed', { replace: true });
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [fromSignup, navigate]);
 
     useEffect(() => {
         if (fromSignup) return;

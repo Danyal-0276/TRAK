@@ -6,7 +6,11 @@ function wsBase() {
   return API_BASE.replace('http://', 'ws://');
 }
 
+/** Live push needs ASGI (e.g. daphne). Off in dev unless VITE_ENABLE_NOTIFICATIONS_WS=true. */
 export function openNotificationsSocket(onMessage) {
+  if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_NOTIFICATIONS_WS !== 'true') {
+    return null;
+  }
   const token = getAccessToken();
   if (!token) return null;
   const socket = new WebSocket(`${wsBase()}/ws/notifications/?token=${encodeURIComponent(token)}`);

@@ -4,8 +4,8 @@ import { getAccessToken } from '../api/client';
 import { loadUserKeywords } from './userKeywordsStorage';
 import { filterFeedByUserKeywords } from './feedKeywordMatch';
 
-/** Production builds: no mock feed fallback (aligns with TRAKL production readiness). */
-const allowMockFallback = typeof __DEV__ !== 'undefined' ? __DEV__ : true;
+/** Mock feed only when explicitly enabled (never auto-on in dev). */
+const allowMockFallback = false;
 
 function computeMatchedKeywords(topicKeywords = [], userKeywords = []) {
     const topics = topicKeywords.map((k) => String(k || '').toLowerCase());
@@ -72,8 +72,8 @@ export async function loadFeedItems(options = {}) {
             const userKeywords = await loadUserKeywords();
             const json =
                 mode === 'explore'
-                    ? await fetchExplore(1000, q)
-                    : await fetchFeed(80, q);
+                    ? await fetchExplorePage(50, q, '')
+                    : await fetchFeed(50, q);
             const items = (json.results || []).map((a) => mapApiItem(a, userKeywords));
             if (mode === 'user') {
                 return filterFeedByUserKeywords(items, userKeywords);

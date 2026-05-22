@@ -1,11 +1,10 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { TrendingUp, Clock, Bookmark, Tag } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { useAuth } from '../context/AuthContext';
-import { getUserKeywordsFromServer } from '../utils/Service/api';
-import { getUserKeywords } from '../utils/userKeywordsStorage';
+import { useUserKeywords } from '../context/UserKeywordsContext';
 
 const AppSidebar = () => {
     const { theme } = useTheme();
@@ -15,39 +14,11 @@ const AppSidebar = () => {
     const { user } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
-    const [topicRows, setTopicRows] = useState([]);
-
-    const loadTopics = useCallback(async () => {
-        if (!user) {
-            setTopicRows([]);
-            return;
-        }
-        try {
-            const res = await getUserKeywordsFromServer();
-            const kws = Array.isArray(res?.keywords) ? res.keywords : [];
-            if (kws.length) {
-                setTopicRows(kws.map((t, i) => ({ id: `${i}-${t}`, topic: String(t) })));
-                return;
-            }
-        } catch {
-            /* fall back to local */
-        }
-        const local = getUserKeywords();
-        setTopicRows(local.map((t, i) => ({ id: `${i}-${t}`, topic: String(t) })));
-    }, [user]);
-
-    useEffect(() => {
-        loadTopics();
-        const onKw = () => {
-            loadTopics();
-        };
-        window.addEventListener('trak-keywords-changed', onKw);
-        window.addEventListener('focus', onKw);
-        return () => {
-            window.removeEventListener('trak-keywords-changed', onKw);
-            window.removeEventListener('focus', onKw);
-        };
-    }, [loadTopics]);
+    const { keywords, loading: keywordsLoading } = useUserKeywords();
+    const topicRows = useMemo(
+        () => (keywords || []).map((t, i) => ({ id: `${i}-${t}`, topic: String(t) })),
+        [keywords]
+    );
 
     // Don't show sidebar on auth pages
     const hideNavPaths = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection'];
@@ -176,6 +147,10 @@ const AppSidebar = () => {
                 {!user ? (
                     <p style={{ fontSize: '12px', color: textSecondary, margin: 0, lineHeight: 1.5 }}>
                         Sign in to see the topics you follow.
+                    </p>
+                ) : keywordsLoading && topicRows.length === 0 ? (
+                    <p style={{ fontSize: '12px', color: textSecondary, margin: 0, lineHeight: 1.5 }}>
+                        Loading your topics…
                     </p>
                 ) : topicRows.length === 0 ? (
                     <p style={{ fontSize: '12px', color: textSecondary, margin: 0, lineHeight: 1.5 }}>

@@ -76,7 +76,8 @@ export const AuthProvider = ({ children }) => {
         const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
         const idToken = await result.user.getIdToken();
         const session = await loginWithFirebase(idToken);
-        return applySession(session);
+        const user = applySession(session);
+        return { user, ...session };
     };
 
     const logout = () => {

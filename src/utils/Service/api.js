@@ -183,7 +183,8 @@ export const getUserFeed = ({ limit = 30, cursor = '', q = '' } = {}) => {
   if (q) params.set('q', String(q));
   return authRequest(`/api/user/feed/?${params}`);
 };
-export const getExploreFeed = () => authRequest('/api/user/explore/?limit=200');
+export const getExploreFeed = ({ limit = 50 } = {}) =>
+  authRequest(`/api/user/explore/?limit=${Math.min(Math.max(Number(limit) || 50, 1), 200)}`);
 
 export const chatWithBot = (message) =>
   authRequest('/api/user/chatbot/', {

@@ -40,7 +40,7 @@ const RecentScreen = ({ navigation }) => {
 
     const loadNews = useCallback(async () => {
         try {
-            const items = await loadFeedItems();
+            const items = await loadFeedItems({ mode: 'explore' });
             const sorted = [...items].sort(
                 (a, b) => recencySortKey(b.time) - recencySortKey(a.time)
             );

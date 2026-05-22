@@ -4,6 +4,7 @@ import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
 import { startSocialOAuth } from '../../utils/Service/api';
+import { getPostAuthPath } from '../../utils/authNavigation';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 
 const LoginScreen = () => {
@@ -367,8 +368,8 @@ const LoginScreen = () => {
                                     setSocialLoading(provider.key);
                                     try {
                                         if (provider.key === 'google') {
-                                            const userData = await loginWithGoogle();
-                                            navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed', { replace: true });
+                                            const session = await loginWithGoogle();
+                                            navigate(getPostAuthPath(session), { replace: true });
                                             return;
                                         }
                                         if (['apple', 'facebook'].includes(provider.key)) {

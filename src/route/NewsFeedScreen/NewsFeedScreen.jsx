@@ -138,7 +138,7 @@ const NewsFeedScreen = ({ navigation }) => {
     const lastScrollY = useRef(0);
     const headerTranslateY = useRef(new Animated.Value(0)).current;
 
-    const loadNews = async () => {
+    const loadNews = useCallback(async () => {
         try {
             setLoading(true);
             const kws = await loadUserKeywords();
@@ -151,7 +151,7 @@ const NewsFeedScreen = ({ navigation }) => {
 
             const cachedReactions = await getReactionMap().catch(() => ({}));
             const [response, reactionsRes] = await Promise.all([
-                getUserFeed(),
+                getUserFeed({ limit: 50 }),
                 listReactions().catch(() => ({ results: [] })),
             ]);
             const reactionMap = await mergeReactionRows(reactionsRes.results || [], { replace: false }).catch(() => cachedReactions);
@@ -189,11 +189,11 @@ const NewsFeedScreen = ({ navigation }) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         loadNews();
-    }, []);
+    }, [loadNews]);
 
     const lastSyncRef = useRef(0);
     const voteTimerRef = useRef({});
@@ -221,11 +221,18 @@ const NewsFeedScreen = ({ navigation }) => {
         );
     }, []);
 
+    const lastFeedLoadRef = useRef(0);
+    const FEED_STALE_MS = 60000;
+
     useFocusEffect(
         useCallback(() => {
             syncInteractionsFromServer(false);
-            loadNews();
-        }, [syncInteractionsFromServer])
+            const now = Date.now();
+            if (now - lastFeedLoadRef.current > FEED_STALE_MS) {
+                lastFeedLoadRef.current = now;
+                loadNews();
+            }
+        }, [syncInteractionsFromServer, loadNews])
     );
 
     useEffect(() => {

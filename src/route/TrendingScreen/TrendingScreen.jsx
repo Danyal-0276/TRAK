@@ -26,7 +26,7 @@ const TrendingScreen = ({ navigation }) => {
 
     const loadNews = useCallback(async () => {
         try {
-            const items = await loadFeedItems();
+            const items = await loadFeedItems({ mode: 'explore' });
             setNewsData(items.filter((item) => item.trending));
         } catch (e) {
             console.warn(e);
