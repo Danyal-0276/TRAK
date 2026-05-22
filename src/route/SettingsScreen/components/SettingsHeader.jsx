@@ -6,6 +6,7 @@ export default function SettingsHeader() {
     <PageScreenHeader
       title="Settings"
       subtitle="Personalize your TRAK experience"
+      paddingTop={0}
     />
   );
 }

@@ -25,7 +25,8 @@ import ChatBotWidget from '../../components/ChatBotWidget';
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { loadHomeBootstrap } from '../../utils/loadHomeBootstrap';
 import { useTheme } from '../../theme/ThemeContext';
-import { resetTabBarVisibility, setTabBarHidden } from '../../navigation/tabBarVisibility';
+import { resetTabBarVisibility } from '../../navigation/tabBarVisibility';
+import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { resolveArticleSource } from '../../utils/articleSource';
@@ -132,10 +133,10 @@ const NewsFeedScreen = ({ navigation }) => {
         setSkipEntryAnim(true);
     }, [activeTab]);
 
-    // Animation refs
-    const scrollY = useRef(new Animated.Value(0)).current;
-    const lastScrollY = useRef(0);
-    const headerTranslateY = useRef(new Animated.Value(0)).current;
+    const { translateY: headerTranslateY, handleScroll, showHeader } = useCollapsibleHeader({
+        hideOffset: TOTAL_HEADER_HEIGHT,
+        hideThreshold: 50,
+    });
 
     const feedModeRef = useRef('explore');
     const initialLoadRef = useRef(false);
@@ -264,53 +265,12 @@ const NewsFeedScreen = ({ navigation }) => {
 
     const handleRefresh = async () => {
         setRefreshing(true);
-        setTabBarHidden(false);
-        Animated.spring(headerTranslateY, {
-            toValue: 0,
-            useNativeDriver: true,
-            friction: 8,
-        }).start();
+        showHeader();
         lastFeedLoadRef.current = Date.now();
         await loadNews({ silent: true });
         await syncInteractionsFromServer(true);
         setRefreshing(false);
     };
-
-    const handleScroll = Animated.event(
-        [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-        {
-            useNativeDriver: false,
-            listener: (event) => {
-                const currentScrollY = event.nativeEvent.contentOffset.y;
-                const diff = currentScrollY - lastScrollY.current;
-
-                // Only trigger animation if scroll change is significant
-                if (Math.abs(diff) > 5) {
-                    if (diff > 0 && currentScrollY > 50) {
-                        setTabBarHidden(true);
-                        // Scrolling down - hide header behind status bar
-                        Animated.spring(headerTranslateY, {
-                            toValue: -TOTAL_HEADER_HEIGHT,
-                            useNativeDriver: true,
-                            friction: 8,
-                            tension: 40,
-                        }).start();
-                    } else if (diff < 0) {
-                        setTabBarHidden(false);
-                        // Scrolling up - show header
-                        Animated.spring(headerTranslateY, {
-                            toValue: 0,
-                            useNativeDriver: true,
-                            friction: 8,
-                            tension: 40,
-                        }).start();
-                    }
-                }
-
-                lastScrollY.current = currentScrollY;
-            },
-        }
-    );
 
     const handleArticlePress = (article) => {
         navigation.navigate('ArticleDetail', buildArticleDetailParams(article));

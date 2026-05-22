@@ -1,6 +1,6 @@
 // SettingsScreen.jsx
 import React, { useState, useRef, useEffect } from "react";
-import { ScrollView, StyleSheet, StatusBar, Animated, Dimensions, View } from "react-native";
+import { ScrollView, StyleSheet, StatusBar, Animated, Dimensions, View, Platform } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
 import { User, Bell, Lock, Tag, Database, Info, LogOut, Moon, FileText, Mail } from "lucide-react-native";
@@ -15,7 +15,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
 import Card from "../../components/ui/Card";
 import Text from "../../components/ui/Text";
-import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
+import { resetTabBarVisibility } from "../../navigation/tabBarVisibility";
+import { useCollapsibleHeader } from "../../hooks/useCollapsibleHeader";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -33,7 +34,11 @@ export default function SettingsScreen({ navigation }) {
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-  const lastScrollY = useRef(0);
+  const [headerSectionHeight, setHeaderSectionHeight] = useState(100);
+  const { translateY: headerTranslateY, handleScroll } = useCollapsibleHeader({
+    hideOffset: headerSectionHeight,
+    hideThreshold: 40,
+  });
   const circle1Anim = useRef(new Animated.Value(0)).current;
   const circle2Anim = useRef(new Animated.Value(0)).current;
   const circle3Anim = useRef(new Animated.Value(0)).current;
@@ -89,16 +94,6 @@ export default function SettingsScreen({ navigation }) {
       }
     })();
   }, []);
-
-  const handleScroll = (event) => {
-    const currentY = event.nativeEvent.contentOffset.y;
-    const diff = currentY - lastScrollY.current;
-    if (Math.abs(diff) > 6) {
-      if (diff > 0 && currentY > 40) setTabBarHidden(true);
-      if (diff < 0) setTabBarHidden(false);
-    }
-    lastScrollY.current = currentY;
-  };
 
   return (
     <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
@@ -177,9 +172,17 @@ export default function SettingsScreen({ navigation }) {
       />
       
       <Animated.View
-        style={{
-          opacity: fadeAnim,
-          transform: [{ translateY: slideAnim }],
+        style={[
+          styles.fixedHeader,
+          {
+            paddingTop: insets.top,
+            backgroundColor: colors.surface,
+            transform: [{ translateY: headerTranslateY }],
+          },
+        ]}
+        onLayout={(e) => {
+          const h = Math.max(0, Math.round(e?.nativeEvent?.layout?.height || 0));
+          if (h > 0 && h !== headerSectionHeight) setHeaderSectionHeight(h);
         }}
       >
         <SettingsHeader />
@@ -189,7 +192,7 @@ export default function SettingsScreen({ navigation }) {
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingTop: theme.spacing.md,
+            paddingTop: headerSectionHeight + insets.top + theme.spacing.md,
             paddingHorizontal: theme.spacing.md,
             paddingBottom: theme.spacing.lg,
           },
@@ -359,6 +362,22 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 70,
+  },
+  fixedHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.08,
+        shadowRadius: 4,
+      },
+      android: { elevation: 4 },
+    }),
   },
   gradientBackground: {
     position: 'absolute',

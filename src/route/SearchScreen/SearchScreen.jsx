@@ -19,7 +19,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
 import SearchBar from "./components/SearchBar";
-import DiscoverHeader from "./components/DiscoverHeader";
+import PageScreenHeader from "../../components/ui/PageScreenHeader";
+import { useCollapsibleHeader } from "../../hooks/useCollapsibleHeader";
 import Tabs from "./components/tabs";
 import { buildArticleDetailParams } from "../../utils/articleNavigation";
 import TrendingTopics from "./components/TrendingTopics";
@@ -32,7 +33,7 @@ import { loadExplorePage } from "../../utils/loadFeed";
 import Text from "../../components/ui/Text";
 import { Search } from "lucide-react-native";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
-import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
+import { resetTabBarVisibility } from "../../navigation/tabBarVisibility";
 
 const { width, height } = Dimensions.get('window');
 const DISCOVER_PAGE_SIZE = 30;
@@ -190,10 +191,16 @@ const SearchScreen = ({ navigation }) => {
   const prefetchAttemptsRef = useRef(0);
   const scrollOffset = useRef(0);
   const lastDirectionRef = useRef("down");
-  const headerHiddenRef = useRef(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(10)).current;
-  const topSectionTranslateY = useRef(new Animated.Value(0)).current;
+  const {
+    translateY: topSectionTranslateY,
+    handleScroll: handleHeaderCollapse,
+    showHeader: showDiscoverHeader,
+  } = useCollapsibleHeader({
+    hideOffset: topSectionHeight,
+    hideThreshold: 60,
+  });
   const circle1Anim = useRef(new Animated.Value(0)).current;
   const circle2Anim = useRef(new Animated.Value(0)).current;
   const circle3Anim = useRef(new Animated.Value(0)).current;
@@ -457,14 +464,7 @@ const SearchScreen = ({ navigation }) => {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      headerHiddenRef.current = false;
-      setTabBarHidden(false);
-      Animated.spring(topSectionTranslateY, {
-        toValue: 0,
-        useNativeDriver: true,
-        friction: 8,
-        tension: 40,
-      }).start();
+      showDiscoverHeader();
       const q = searchQuery.trim();
       await loadFirstPage(q, { refreshAux: true, preferCache: false });
     } catch (e) {
@@ -481,44 +481,14 @@ const SearchScreen = ({ navigation }) => {
     const direction = currentOffset > scrollOffset.current ? "down" : "up";
     scrollOffset.current = currentOffset;
 
+    handleHeaderCollapse(event);
+
     if (direction !== lastDirectionRef.current) {
       lastDirectionRef.current = direction;
       if (direction === "down") searchRef.current?.collapse();
       else searchRef.current?.expandVisual();
     }
 
-    if (currentOffset <= 10 && headerHiddenRef.current) {
-      headerHiddenRef.current = false;
-      setTabBarHidden(false);
-      Animated.spring(topSectionTranslateY, {
-        toValue: 0,
-        useNativeDriver: true,
-        friction: 8,
-        tension: 40,
-      }).start();
-    }
-
-    if (Math.abs(diff) > 6) {
-      if (direction === "down" && currentOffset > 60 && !headerHiddenRef.current) {
-        headerHiddenRef.current = true;
-        setTabBarHidden(true);
-        Animated.spring(topSectionTranslateY, {
-          toValue: -Math.max(1, topSectionHeight),
-          useNativeDriver: true,
-          friction: 8,
-          tension: 40,
-        }).start();
-      } else if (direction === "up" && headerHiddenRef.current) {
-        headerHiddenRef.current = false;
-        setTabBarHidden(false);
-        Animated.spring(topSectionTranslateY, {
-          toValue: 0,
-          useNativeDriver: true,
-          friction: 8,
-          tension: 40,
-        }).start();
-      }
-    }
     const nearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - DISCOVER_PREFETCH_PX;
     if (nearBottom) {
       loadMorePage();
@@ -625,7 +595,12 @@ const SearchScreen = ({ navigation }) => {
             if (h > 0 && h !== topSectionHeight) setTopSectionHeight(h);
           }}
         >
-          <DiscoverHeader />
+          <PageScreenHeader
+            title="Discover"
+            subtitle="Explore topics & sources"
+            paddingTop={0}
+            style={{ borderBottomWidth: 0, paddingBottom: 4 }}
+          />
 
           <View style={styles.searchRow}>
             <SearchBar
