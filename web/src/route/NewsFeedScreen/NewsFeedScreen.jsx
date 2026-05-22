@@ -1,17 +1,17 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
 import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
-import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { addBookmark, removeBookmark, setReaction } from '../../utils/Service/api';
 import { useUserKeywords } from '../../context/UserKeywordsContext';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { loadExplorePage, loadFeedPage, mergeUniqueById } from '../../utils/loadFeed';
+import { loadHomeBootstrap } from '../../utils/loadHomeBootstrap';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
-import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
-import { mapApiItem } from '../../utils/loadFeed';
+import { getReactionMap, setReactionForArticle } from '../../utils/reactionsStorage';
 import { getCardSummaryText } from '../../utils/articleNavigation';
 import { openArticleDetail } from '../../utils/openArticleDetail';
 
@@ -34,7 +34,7 @@ const NewsFeedScreen = () => {
     const [loading, setLoading] = useState(true);
     const [feedError, setFeedError] = useState('');
     const { keywords: feedKeywords } = useUserKeywords();
-    const personalizedFeed = useMemo(
+    const hasFeedPersonalization = useMemo(
         () => (feedKeywords || []).length > 0,
         [(feedKeywords || []).join('\x1f')]
     );
@@ -42,43 +42,49 @@ const NewsFeedScreen = () => {
     const [hasMore, setHasMore] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
 
+    const feedModeRef = useRef('explore');
+    const loadAbortRef = useRef(null);
+
     const mapFeedResults = (rawItems, reactionMap) =>
         (rawItems || []).map((item, idx) => {
-                const aid = item.id || item.canonical_url || String(idx);
-                const likes = Number(item.like_count ?? item.upvotes ?? 0);
-                const dislikes = Number(item.dislike_count ?? 0);
-                const summaryText = getCardSummaryText(item);
-                return {
-                    ...item,
-                    id: aid,
-                    description: summaryText,
-                    excerpt: item.excerpt || item.summary || summaryText,
-                    summary: item.summary || item.excerpt || summaryText,
-                    content: item.content || item.full_content || '',
-                    fullContent: item.full_content || item.content || '',
-                    category: (item.topic_keywords?.[0] || item.category || 'General').toString().toUpperCase(),
-                    source: item.source || item.source_key || '',
-                    time: item.published_at ? new Date(item.published_at).toLocaleString() : 'Recently',
-                    like_count: likes,
-                    dislike_count: dislikes,
-                    upvotes: likes,
-                    verified: item.credibility?.label === 'real' || Boolean(item.verified),
-                    trending: Boolean(item.topic_keywords?.length),
-                    userReaction: reactionMap[String(aid)] || null,
-                };
+            const aid = item.id || item.canonical_url || String(idx);
+            const likes = Number(item.like_count ?? item.upvotes ?? 0);
+            const dislikes = Number(item.dislike_count ?? 0);
+            const summaryText = getCardSummaryText(item);
+            return {
+                ...item,
+                id: aid,
+                description: summaryText,
+                excerpt: item.excerpt || item.summary || summaryText,
+                summary: item.summary || item.excerpt || summaryText,
+                content: item.content || item.full_content || '',
+                fullContent: item.full_content || item.content || '',
+                category: (item.topic_keywords?.[0] || item.category || 'General').toString().toUpperCase(),
+                source: item.source || item.source_key || '',
+                time: item.published_at ? new Date(item.published_at).toLocaleString() : 'Recently',
+                like_count: likes,
+                dislike_count: dislikes,
+                upvotes: likes,
+                verified: item.credibility?.label === 'real' || Boolean(item.verified),
+                trending: Boolean(item.topic_keywords?.length),
+                userReaction: reactionMap[String(aid)] || null,
+            };
         });
 
-    const fetchFeedPage = useCallback(
-        async (cursor = '') => {
-            if (personalizedFeed) {
-                return loadFeedPage({ limit: 50, cursor });
-            }
-            return loadExplorePage({ limit: 50, cursor });
-        },
-        [personalizedFeed]
-    );
+    const fetchFeedPage = useCallback(async (cursor = '') => {
+        if (feedModeRef.current === 'feed') {
+            return loadFeedPage({ limit: 50, cursor });
+        }
+        return loadExplorePage({ limit: 50, cursor });
+    }, []);
 
     const loadNews = useCallback(async () => {
+        if (loadAbortRef.current) {
+            loadAbortRef.current.abort();
+        }
+        const ac = new AbortController();
+        loadAbortRef.current = ac;
+
         try {
             setLoading(true);
             setFeedError('');
@@ -92,19 +98,27 @@ const NewsFeedScreen = () => {
 
             let loadErr = '';
             let page = { items: [], nextCursor: '', hasMore: false };
+            let reactionMap = cachedReactions;
+            let bookmarked = cachedBookmarks;
+
             try {
-                page = await fetchFeedPage('');
+                const boot = await loadHomeBootstrap({ limit: 50 });
+                if (ac.signal.aborted) return;
+
+                feedModeRef.current = boot.feedMode;
+                page = {
+                    items: boot.items,
+                    nextCursor: boot.nextCursor,
+                    hasMore: boot.hasMore,
+                };
+                reactionMap = boot.reactionMap;
+                bookmarked = boot.bookmarked;
             } catch (e) {
                 loadErr = e?.message || 'Could not load articles from the API.';
                 console.warn('Feed failed:', loadErr);
             }
 
-            const [bookmarks, reactions] = await Promise.all([
-                listBookmarks().catch(() => ({ results: [] })),
-                listReactions().catch(() => ({ results: [] })),
-            ]);
-            const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
-            const reactionMap = mergeReactionRows(reactions.results || [], { replace: false });
+            if (ac.signal.aborted) return;
 
             if (!page.items.length && !loadErr) {
                 loadErr =
@@ -119,20 +133,24 @@ const NewsFeedScreen = () => {
             setBookmarkIds(Array.from(bookmarked));
             setVotedItems(reactionMap);
         } catch (error) {
-            console.error('Error loading news:', error);
-            setFeedError(error?.message || 'Failed to load the feed.');
-            setNewsData([]);
+            if (!ac.signal.aborted) {
+                console.error('Error loading news:', error);
+                setFeedError(error?.message || 'Failed to load the feed.');
+                setNewsData([]);
+            }
         } finally {
-            setLoading(false);
+            if (!ac.signal.aborted) {
+                setLoading(false);
+            }
         }
-    }, [fetchFeedPage]);
+    }, []);
 
     const loadMore = useCallback(async () => {
         if (!hasMore || loadingMore || !nextCursor) return;
         setLoadingMore(true);
         try {
             const page = await fetchFeedPage(nextCursor);
-            const reactionMap = { ...votedItems, ...getReactionMap() };
+            const reactionMap = getReactionMap();
             setNewsData((prev) => mapFeedResults(mergeUniqueById(prev, page.items), reactionMap));
             setNextCursor(page.nextCursor || '');
             setHasMore(Boolean(page.hasMore));
@@ -141,7 +159,7 @@ const NewsFeedScreen = () => {
         } finally {
             setLoadingMore(false);
         }
-    }, [hasMore, loadingMore, nextCursor, fetchFeedPage, votedItems]);
+    }, [hasMore, loadingMore, nextCursor, fetchFeedPage]);
 
     const scrollSentinelRef = useInfiniteScroll({
         onLoadMore: loadMore,
@@ -151,6 +169,9 @@ const NewsFeedScreen = () => {
 
     useEffect(() => {
         loadNews();
+        return () => {
+            loadAbortRef.current?.abort();
+        };
     }, [loadNews]);
 
     useEffect(() => {
@@ -189,11 +210,6 @@ const NewsFeedScreen = () => {
                         ? n
                         : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes }
                 )
-            );
-            setSelectedArticle((prev) =>
-                prev && String(prev.id) === id
-                    ? { ...prev, like_count: likes, dislike_count: dislikes, upvotes: likes }
-                    : prev
             );
         } catch (error) {
             setVotedItems((prev) => ({
@@ -238,7 +254,6 @@ const NewsFeedScreen = () => {
     };
 
     const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
     const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
     const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
     const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
@@ -253,9 +268,6 @@ const NewsFeedScreen = () => {
                 const bk = (b.topic_keywords?.length || 0) + (b.trending ? 2 : 0);
                 return bk - ak;
             });
-        }
-        if (activeTab === 'For you') {
-            return newsData;
         }
         return newsData;
     }, [newsData, activeTab, bookmarkedItems]);
@@ -273,7 +285,6 @@ const NewsFeedScreen = () => {
                 width: '100%',
                 padding: isMobile ? '0 16px 16px 16px' : isTablet ? '0 20px 20px 20px' : '0 24px 24px 24px',
             }}>
-                {/* Header Section */}
                 <div style={{
                     marginTop: '0',
                     marginBottom: isMobile ? '16px' : '24px',
@@ -299,7 +310,6 @@ const NewsFeedScreen = () => {
                     </p>
                 </div>
 
-                {/* Tab Bar */}
                 <div style={{
                     display: 'flex',
                     gap: isMobile ? '4px' : '8px',
@@ -319,29 +329,19 @@ const NewsFeedScreen = () => {
                                 background: 'transparent',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
-                                borderBottom: activeTab === tab 
-                                    ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}` 
+                                borderBottom: activeTab === tab
+                                    ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`
                                     : '2px solid transparent',
                                 marginBottom: '-1px',
                                 borderRadius: '0',
                                 whiteSpace: 'nowrap',
                                 flexShrink: 0,
                             }}
-                            onMouseEnter={(e) => {
-                                if (activeTab !== tab) {
-                                    e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (activeTab !== tab) {
-                                    e.currentTarget.style.backgroundColor = 'transparent';
-                                }
-                            }}
                         >
                             <span style={{
                                 fontSize: '14px',
                                 fontWeight: activeTab === tab ? '600' : '500',
-                                color: activeTab === tab 
+                                color: activeTab === tab
                                     ? (isDark ? colors.primary || '#818CF8' : '#0f172a')
                                     : textSecondary,
                             }}>
@@ -351,7 +351,6 @@ const NewsFeedScreen = () => {
                     ))}
                 </div>
 
-                {/* News Cards Grid */}
                 {loading ? (
                     <MasonryFeedSkeleton
                         count={isMobile ? 6 : 12}
@@ -453,7 +452,6 @@ const NewsFeedScreen = () => {
                     </>
                 )}
             </div>
-
 
             <style>{`
                 h1 {

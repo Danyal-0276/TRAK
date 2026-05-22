@@ -186,6 +186,13 @@ export const getUserFeed = ({ limit = 30, cursor = '', q = '' } = {}) => {
 export const getExploreFeed = ({ limit = 50 } = {}) =>
   authRequest(`/api/user/explore/?limit=${Math.min(Math.max(Number(limit) || 50, 1), 200)}`);
 
+export const getUserBootstrap = ({ limit = 50 } = {}) => {
+  const params = new URLSearchParams({
+    limit: String(Math.min(Math.max(Number(limit) || 50, 1), 50)),
+  });
+  return authRequest(`/api/user/bootstrap/?${params}`);
+};
+
 export const chatWithBot = (message) =>
   authRequest('/api/user/chatbot/', {
     method: 'POST',

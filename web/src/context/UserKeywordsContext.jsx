@@ -20,6 +20,7 @@ const UserKeywordsContext = createContext({
     loading: false,
     syncing: false,
     refresh: async () => [],
+    hydrateKeywords: () => {},
 });
 
 export function UserKeywordsProvider({ children }) {
@@ -35,8 +36,16 @@ export function UserKeywordsProvider({ children }) {
         const list = Array.isArray(kws) ? kws : [];
         setKeywords((prev) => (keywordsEqual(prev, list) ? prev : list));
         setUserKeywords(list);
+        cacheRef.current = { at: Date.now(), userId };
         return list;
-    }, []);
+    }, [userId]);
+
+    const hydrateKeywords = useCallback(
+        (kws) => {
+            applyKeywords(kws);
+        },
+        [applyKeywords]
+    );
 
     const refresh = useCallback(async ({ force = false } = {}) => {
         if (!isAuthenticated || !userId) {
@@ -49,7 +58,7 @@ export function UserKeywordsProvider({ children }) {
         const freshEnough = !force && cachedUserId === userId && Date.now() - at < CACHE_TTL_MS;
         if (freshEnough) {
             const cached = getUserKeywords();
-            if (cached.length) setKeywords(cached);
+            if (cached.length) setKeywords((prev) => (keywordsEqual(prev, cached) ? prev : cached));
             return cached;
         }
 
@@ -61,7 +70,6 @@ export function UserKeywordsProvider({ children }) {
                 const res = await getUserKeywordsFromServer();
                 const kws = Array.isArray(res?.keywords) ? res.keywords : [];
                 applyKeywords(kws);
-                cacheRef.current = { at: Date.now(), userId };
                 return kws;
             } catch {
                 const local = getUserKeywords();
@@ -87,14 +95,10 @@ export function UserKeywordsProvider({ children }) {
 
         const cached = getUserKeywords();
         setKeywords((prev) => (keywordsEqual(prev, cached) ? prev : cached));
-        const userChanged = cacheRef.current.userId !== userId;
-        const force = userChanged || !cacheRef.current.at;
-        // Defer server sync so feed/explore requests start first (helps single-threaded Django dev server).
-        const timer = window.setTimeout(() => {
-            refresh({ force });
-        }, 0);
-        return () => window.clearTimeout(timer);
-    }, [authLoading, isAuthenticated, userId, refresh]);
+        if (cacheRef.current.userId !== userId) {
+            cacheRef.current = { at: 0, userId };
+        }
+    }, [authLoading, isAuthenticated, userId]);
 
     useEffect(() => {
         const onChanged = (e) => {
@@ -110,9 +114,10 @@ export function UserKeywordsProvider({ children }) {
         <UserKeywordsContext.Provider
             value={{
                 keywords,
-                loading: authLoading || syncing,
+                loading: authLoading,
                 syncing,
                 refresh,
+                hydrateKeywords,
             }}
         >
             {children}

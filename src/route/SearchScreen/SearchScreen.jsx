@@ -187,6 +187,7 @@ const SearchScreen = ({ navigation }) => {
   const [loadingMore, setLoadingMore] = useState(false);
 
   const searchRef = useRef(null);
+  const prefetchAttemptsRef = useRef(0);
   const scrollOffset = useRef(0);
   const lastDirectionRef = useRef("down");
   const headerHiddenRef = useRef(false);
@@ -222,9 +223,11 @@ const SearchScreen = ({ navigation }) => {
         if (!q && refreshAux) {
           setTrendingTopics(cached.trendingTopics || deriveTrendingFromArticles(cached.items || []));
         }
+        setLoading(false);
         return;
       }
     }
+    prefetchAttemptsRef.current = 0;
     setLoading(true);
     try {
       const page = await loadExplorePage({ q, limit: DISCOVER_PAGE_SIZE, cursor: '' });
@@ -257,8 +260,10 @@ const SearchScreen = ({ navigation }) => {
     try {
       const q = searchQuery.trim();
       const page = await loadExplorePage({ q, limit: DISCOVER_PAGE_SIZE, cursor: nextCursor });
+      let added = 0;
       setAllNews((prev) => {
         const merged = mergeUniqueById(prev, page.items);
+        added = merged.length - prev.length;
         discoverFeedCache.set(discoverCacheKey(q), {
           ts: Date.now(),
           items: merged,
@@ -268,8 +273,12 @@ const SearchScreen = ({ navigation }) => {
         });
         return merged;
       });
-      setNextCursor(page.nextCursor);
-      setHasMore(page.hasMore);
+      if (added === 0) {
+        setHasMore(false);
+      } else {
+        setNextCursor(page.nextCursor);
+        setHasMore(page.hasMore);
+      }
     } catch (error) {
       console.error("Error loading more discover items:", error);
     } finally {
@@ -291,7 +300,9 @@ const SearchScreen = ({ navigation }) => {
     if (loading || loadingMore || !hasMore) return;
     if (activeTab !== "All") return;
     if (searchQuery.trim()) return;
+    if (prefetchAttemptsRef.current >= 2) return;
     if (allNews.length > 0 && allNews.length < DISCOVER_PAGE_SIZE * 2) {
+      prefetchAttemptsRef.current += 1;
       loadMorePage();
     }
   }, [activeTab, allNews.length, hasMore, loadMorePage, loading, loadingMore, searchQuery]);

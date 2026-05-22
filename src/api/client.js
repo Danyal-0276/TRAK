@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { fetchWithTimeout } from './fetchWithTimeout';
 
 const ACCESS_KEY = 'trak_access_token';
 const REFRESH_KEY = 'trak_refresh_token';
@@ -19,7 +20,7 @@ export async function clearTokens() {
 async function refreshAccess(baseUrl) {
     const refresh = await AsyncStorage.getItem(REFRESH_KEY);
     if (!refresh) return null;
-    const res = await fetch(`${baseUrl}/api/auth/token/refresh/`, {
+    const res = await fetchWithTimeout(`${baseUrl}/api/auth/token/refresh/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ refresh }),
@@ -47,13 +48,13 @@ export async function apiFetch(url, options = {}, baseUrlForRefresh = '') {
     };
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    let res = await fetch(url, { ...options, headers });
+    let res = await fetchWithTimeout(url, { ...options, headers });
 
     if (res.status === 401 && baseUrlForRefresh) {
         const newAccess = await refreshAccess(baseUrlForRefresh);
         if (newAccess) {
             headers.Authorization = `Bearer ${newAccess}`;
-            res = await fetch(url, { ...options, headers });
+            res = await fetchWithTimeout(url, { ...options, headers });
         }
     }
 

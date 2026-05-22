@@ -22,9 +22,8 @@ import { TabBar } from './components/TabBar';
 import { NewsCard } from '../../components/NewsCard';
 import { FeedSkeleton } from '../../components/FeedSkeleton';
 import ChatBotWidget from '../../components/ChatBotWidget';
-import { addBookmark, getUserFeed, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
-import { loadUserKeywords } from '../../utils/userKeywordsStorage';
-import { filterFeedByUserKeywords } from '../../utils/feedKeywordMatch';
+import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { loadHomeBootstrap } from '../../utils/loadHomeBootstrap';
 import { useTheme } from '../../theme/ThemeContext';
 import { resetTabBarVisibility, setTabBarHidden } from '../../navigation/tabBarVisibility';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
@@ -138,62 +137,65 @@ const NewsFeedScreen = ({ navigation }) => {
     const lastScrollY = useRef(0);
     const headerTranslateY = useRef(new Animated.Value(0)).current;
 
-    const loadNews = useCallback(async () => {
+    const feedModeRef = useRef('explore');
+    const initialLoadRef = useRef(false);
+
+    const mapBootstrapItems = (items, reactionMap) =>
+        (items || []).map((item, idx) => {
+            const aid = item.id || item.canonical_url || String(idx);
+            const likes = Number(item.like_count ?? item.upvotes ?? 0);
+            const dislikes = Number(item.dislike_count ?? 0);
+            return {
+                ...item,
+                id: aid,
+                source: resolveArticleSource(item),
+                time: item.published_at
+                    ? new Date(item.published_at).toLocaleString()
+                    : item.time || 'Recently',
+                title: item.title || 'Untitled',
+                excerpt: item.excerpt || item.summary || '',
+                summary: item.summary || item.excerpt || '',
+                content: item.content || item.full_content || '',
+                fullContent: item.full_content || item.content || '',
+                category: item.topic_keywords?.[0] || item.category || 'General',
+                verified: item.credibility?.label === 'real',
+                trending: Boolean(item.topic_keywords?.length),
+                like_count: likes,
+                dislike_count: dislikes,
+                upvotes: likes,
+                readTime: 4,
+                userReaction: reactionMap[String(aid)] || null,
+            };
+        });
+
+    const loadNews = useCallback(async ({ silent = false } = {}) => {
         try {
-            setLoading(true);
-            const kws = await loadUserKeywords();
-            const keywords = Array.isArray(kws) ? kws : [];
+            if (!silent) setLoading(true);
+            const boot = await loadHomeBootstrap({ limit: 50 });
+            feedModeRef.current = boot.feedMode;
+            const keywords = boot.keywords || [];
             setFeedKeywords(keywords);
-            if (!keywords.length) {
+
+            if (!keywords.length && !boot.items.length) {
                 setNewsData([]);
+                setVotedItems(boot.reactionMap || {});
+                setBookmarkedItems(boot.bookmarked || new Set());
+                await setBookmarkIds(Array.from(boot.bookmarked || [])).catch(() => {});
                 return;
             }
 
-            const cachedReactions = await getReactionMap().catch(() => ({}));
-            const [response, reactionsRes] = await Promise.all([
-                getUserFeed({ limit: 50 }),
-                listReactions().catch(() => ({ results: [] })),
-            ]);
-            const reactionMap = await mergeReactionRows(reactionsRes.results || [], { replace: false }).catch(() => cachedReactions);
-            const mapped = (response.results || []).map((item, idx) => {
-                const aid = item.id || item.canonical_url || String(idx);
-                const likes = Number(item.like_count ?? item.upvotes ?? 0);
-                const dislikes = Number(item.dislike_count ?? 0);
-                return {
-                    ...item,
-                    id: aid,
-                    source: resolveArticleSource(item),
-                    time: item.published_at
-                        ? new Date(item.published_at).toLocaleString()
-                        : 'Recently',
-                    title: item.title || 'Untitled',
-                    excerpt: item.excerpt || item.summary || '',
-                    summary: item.summary || item.excerpt || '',
-                    content: item.content || item.full_content || '',
-                    fullContent: item.full_content || item.content || '',
-                    category: item.topic_keywords?.[0] || 'General',
-                    verified: item.credibility?.label === 'real',
-                    trending: Boolean(item.topic_keywords?.length),
-                    like_count: likes,
-                    dislike_count: dislikes,
-                    upvotes: likes,
-                    readTime: 4,
-                    userReaction: reactionMap[String(aid)] || null,
-                };
-            });
+            const mapped = mapBootstrapItems(boot.items, boot.reactionMap || {});
             setNewsData(mapped);
-            setVotedItems(reactionMap);
+            setVotedItems(boot.reactionMap || {});
+            setBookmarkedItems(boot.bookmarked || new Set());
+            await setBookmarkIds(Array.from(boot.bookmarked || [])).catch(() => {});
         } catch (error) {
             console.error('Error loading news:', error);
             setNewsData([]);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     }, []);
-
-    useEffect(() => {
-        loadNews();
-    }, [loadNews]);
 
     const lastSyncRef = useRef(0);
     const voteTimerRef = useRef({});
@@ -228,18 +230,18 @@ const NewsFeedScreen = ({ navigation }) => {
         useCallback(() => {
             syncInteractionsFromServer(false);
             const now = Date.now();
-            if (now - lastFeedLoadRef.current > FEED_STALE_MS) {
+            if (!initialLoadRef.current) {
+                initialLoadRef.current = true;
                 lastFeedLoadRef.current = now;
                 loadNews();
+                return;
+            }
+            if (now - lastFeedLoadRef.current > FEED_STALE_MS) {
+                lastFeedLoadRef.current = now;
+                loadNews({ silent: true });
             }
         }, [syncInteractionsFromServer, loadNews])
     );
-
-    useEffect(() => {
-        if (!feedKeywords.length) {
-            setNewsData([]);
-        }
-    }, [feedKeywords]);
 
     useEffect(() => {
         resetTabBarVisibility();
@@ -263,13 +265,13 @@ const NewsFeedScreen = ({ navigation }) => {
     const handleRefresh = async () => {
         setRefreshing(true);
         setTabBarHidden(false);
-        // Show header on refresh
         Animated.spring(headerTranslateY, {
             toValue: 0,
             useNativeDriver: true,
             friction: 8,
         }).start();
-        await loadNews();
+        lastFeedLoadRef.current = Date.now();
+        await loadNews({ silent: true });
         await syncInteractionsFromServer(true);
         setRefreshing(false);
     };
@@ -408,9 +410,6 @@ const NewsFeedScreen = ({ navigation }) => {
     const hasFeedPersonalization = feedKeywords.length > 0;
 
     const filteredNews = useMemo(() => {
-        if (activeTab === 'For you' && !hasFeedPersonalization) {
-            return [];
-        }
         if (activeTab === 'Bookmarks') {
             return newsData.filter((n) => bookmarkedItems.has(String(n.id)) || bookmarkedItems.has(n.id));
         }
@@ -421,11 +420,8 @@ const NewsFeedScreen = ({ navigation }) => {
                 return bk - ak;
             });
         }
-        if (activeTab === 'For you') {
-            return filterFeedByUserKeywords(newsData, feedKeywords);
-        }
         return newsData;
-    }, [newsData, activeTab, hasFeedPersonalization, bookmarkedItems, feedKeywords]);
+    }, [newsData, activeTab, hasFeedPersonalization, bookmarkedItems]);
 
     return (
         <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
