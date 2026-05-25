@@ -5,8 +5,18 @@ import {
   requestArticleTtsPlan,
   playArticleTtsStreaming,
 } from '../utils/articleTts';
+import {
+  lineIndicesForSegment,
+  scheduleLineHighlights,
+} from '../utils/ttsHighlight';
 
-export default function ArticleTtsPlayer({ text, disabled = false, isDark = false }) {
+export default function ArticleTtsPlayer({
+  text,
+  disabled = false,
+  isDark = false,
+  highlightLines = [],
+  onActiveLineIndex,
+}) {
   const [language, setLanguage] = useState('english');
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
@@ -14,17 +24,25 @@ export default function ArticleTtsPlayer({ text, disabled = false, isDark = fals
   const playbackRef = useRef(null);
   const cancelledRef = useRef(false);
   const audioStartedRef = useRef(false);
+  const cancelLineHighlightRef = useRef(null);
 
   const listenText = String(text || '').trim();
+
+  const clearLineHighlights = useCallback(() => {
+    cancelLineHighlightRef.current?.();
+    cancelLineHighlightRef.current = null;
+    onActiveLineIndex?.(-1);
+  }, [onActiveLineIndex]);
 
   const stopPlayback = useCallback(() => {
     cancelledRef.current = true;
     playbackRef.current?.stop?.();
     playbackRef.current = null;
+    clearLineHighlights();
     setProgress({ current: 0, total: 0 });
     setStatus('idle');
     setError('');
-  }, []);
+  }, [clearLineHighlights]);
 
   useEffect(() => () => stopPlayback(), [stopPlayback]);
 
@@ -39,6 +57,7 @@ export default function ArticleTtsPlayer({ text, disabled = false, isDark = fals
     audioStartedRef.current = false;
     setError('');
     setProgress({ current: 0, total: 0 });
+    clearLineHighlights();
     setStatus('loading');
 
     try {
@@ -55,6 +74,19 @@ export default function ArticleTtsPlayer({ text, disabled = false, isDark = fals
             setStatus('playing');
           }
         },
+        onSegmentStart: (segmentIndex, { durationMs }) => {
+          if (cancelledRef.current) return;
+          cancelLineHighlightRef.current?.();
+          const indices = lineIndicesForSegment(highlightLines, segmentIndex);
+          if (!indices.length) return;
+          cancelLineHighlightRef.current = scheduleLineHighlights(
+            indices,
+            highlightLines,
+            durationMs,
+            (lineIdx) => onActiveLineIndex?.(lineIdx),
+            () => cancelledRef.current
+          );
+        },
         onProgress: (current, total) => {
           if (!cancelledRef.current) setProgress({ current, total });
         },
@@ -67,6 +99,7 @@ export default function ArticleTtsPlayer({ text, disabled = false, isDark = fals
       if (cancelledRef.current) return;
 
       playbackRef.current = null;
+      clearLineHighlights();
       if (!audioStartedRef.current) {
         setStatus('error');
         setError(

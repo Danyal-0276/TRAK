@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { 
     ChevronLeft, 
@@ -19,6 +19,7 @@ import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../
 import { mapApiItem } from '../../utils/loadFeed';
 import { getFeedItemCredibilityMeta } from '../../utils/credibilityIndicator';
 import { normalizeArticleForDetail, getArticleListenText } from '../../utils/articleNavigation';
+import { buildHighlightLinesFromContent } from '../../utils/ttsHighlight';
 import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
 import ArticleTtsPlayer from '../../components/ArticleTtsPlayer';
 
@@ -176,6 +177,12 @@ const ArticleDetailScreen = () => {
 
     const content = article.fullContent || article.content || article.full_content || '';
     const showPlaceholder = !content.trim() && !detailLoading;
+    const [activeTtsLineIndex, setActiveTtsLineIndex] = useState(-1);
+    const listenText = getArticleListenText(article);
+    const { lines: ttsHighlightLines } = useMemo(
+        () => buildHighlightLinesFromContent(content, listenText),
+        [content, listenText]
+    );
 
     return (
         <div style={{
@@ -368,8 +375,10 @@ const ArticleDetailScreen = () => {
                 </h1>
 
                 <ArticleTtsPlayer
-                    text={getArticleListenText(article)}
+                    text={listenText}
                     disabled={!!fetchError}
+                    highlightLines={ttsHighlightLines}
+                    onActiveLineIndex={setActiveTtsLineIndex}
                 />
 
                 {/* Article Content */}
@@ -404,6 +413,8 @@ const ArticleDetailScreen = () => {
                         <ArticleBodyParagraphs
                             content={content}
                             paragraphStyle={{ fontSize: '17px', lineHeight: '1.8', color: '#374151' }}
+                            highlightLines={ttsHighlightLines}
+                            activeLineIndex={activeTtsLineIndex}
                         />
                     )}
                 </div>

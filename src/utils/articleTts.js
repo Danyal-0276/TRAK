@@ -121,10 +121,17 @@ export async function playBase64Wav(base64Audio, format = 'mp3') {
   await playBase64AudioAndWait(base64Audio, format);
 }
 
+function estimateSegmentDurationMs(base64Audio) {
+  const len = String(base64Audio || '').length;
+  const bytes = (len * 3) / 4;
+  const sec = Math.max(2, Math.min(180, bytes / 12000));
+  return Math.round((sec + 0.5) * 1000);
+}
+
 export function playArticleTtsStreaming(
   segments,
   language,
-  { onProgress, onUrduPart, onFirstReady, isCancelled } = {}
+  { onProgress, onUrduPart, onFirstReady, onSegmentStart, isCancelled } = {}
 ) {
   let halted = false;
 
@@ -200,6 +207,9 @@ export function playArticleTtsStreaming(
 
       if (i === 0) onFirstReady?.();
       if (payload?.urdu_text && onUrduPart) onUrduPart(payload.urdu_text, i);
+
+      const durationMs = estimateSegmentDurationMs(payload.audio);
+      onSegmentStart?.(i, { durationMs, segmentText: segments[i] });
 
       if (!halted && !isCancelled?.()) {
         await playBase64AudioAndWait(payload.audio, payload.format || 'mp3');

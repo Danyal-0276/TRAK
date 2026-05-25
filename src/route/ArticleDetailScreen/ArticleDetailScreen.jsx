@@ -2,7 +2,7 @@
 // ============================================
 // FILE: screens/ArticleDetailScreen.jsx
 // ============================================
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import {
     View,
     StyleSheet,
@@ -24,6 +24,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { fetchArticle } from '../../api/newsApi';
 import { mapApiItem } from '../../utils/loadFeed';
 import { normalizeArticleForDetail, getArticleListenText } from '../../utils/articleNavigation';
+import { buildHighlightLinesFromContent } from '../../utils/ttsHighlight';
 import ArticleTtsPlayer from '../../components/ArticleTtsPlayer';
 import { getAccessToken } from '../../api/client';
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
@@ -47,6 +48,15 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         !initialArticle.title && !initialArticle.fullContent && !initialArticle.excerpt
     );
     const articleId = String(route.params?.articleId || initialArticle.id || '');
+    const [activeTtsLineIndex, setActiveTtsLineIndex] = useState(-1);
+
+    const articleBody =
+        article.fullContent || article.content || article.full_content || '';
+    const listenText = getArticleListenText(article);
+    const { lines: ttsHighlightLines } = useMemo(
+        () => buildHighlightLinesFromContent(articleBody, listenText),
+        [articleBody, listenText]
+    );
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -54,6 +64,8 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     const scaleAnim = useRef(new Animated.Value(0.95)).current;
     const circle1Anim = useRef(new Animated.Value(0)).current;
     const circle2Anim = useRef(new Animated.Value(0)).current;
+    const scrollRef = useRef(null);
+    const scrollContentRef = useRef(null);
 
     useEffect(() => {
         const fromNav = normalizeArticleForDetail(route.params?.article || {});
@@ -283,12 +295,14 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                         <FeedSkeleton colors={colors} count={2} />
                     </View>
                 ) : (
-                <ScrollView 
-                    style={[styles.scrollContainer, { backgroundColor: 'transparent' }]} 
+                <ScrollView
+                    ref={scrollRef}
+                    style={[styles.scrollContainer, { backgroundColor: 'transparent' }]}
                     showsVerticalScrollIndicator={false}
                     contentContainerStyle={styles.scrollContent}
                 >
-                    <Animated.View 
+                    <View ref={scrollContentRef} collapsable={false}>
+                    <Animated.View
                         style={[
                             styles.articleContainer,
                             {
@@ -324,8 +338,10 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                         </Animated.View>
 
                         <ArticleTtsPlayer
-                            text={getArticleListenText(article)}
+                            text={listenText}
                             colors={colors}
+                            highlightLines={ttsHighlightLines}
+                            onActiveLineIndex={setActiveTtsLineIndex}
                         />
 
                         {/* Article Content */}
@@ -342,16 +358,21 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                                 ],
                             }}
                         >
-                            <ArticleContent 
+                            <ArticleContent
                                 category={article.category}
                                 title={article.title}
-                                content={article.fullContent || article.content || article.full_content || 'Full article content goes here...'}
+                                content={articleBody || 'Full article content goes here...'}
+                                highlightLines={ttsHighlightLines}
+                                activeLineIndex={activeTtsLineIndex}
+                                scrollRef={scrollRef}
+                                scrollContentRef={scrollContentRef}
                             />
                         </Animated.View>
 
                         {/* Bottom Spacer for Actions */}
                         <View style={styles.bottomSpacer} />
                     </Animated.View>
+                    </View>
                 </ScrollView>
                 )}
 
