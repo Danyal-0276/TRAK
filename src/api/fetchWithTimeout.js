@@ -1,4 +1,6 @@
-const API_TIMEOUT_MS = 30000;
+const API_TIMEOUT_MS = 90000;
+export const TTS_PLAN_TIMEOUT_MS = 120000;
+export const TTS_CHUNK_TIMEOUT_MS = 360000;
 
 /**
  * fetch() with AbortController timeout.
@@ -13,8 +15,11 @@ export async function fetchWithTimeout(url, options = {}, ms = API_TIMEOUT_MS) {
     return await fetch(url, { ...options, signal: controller.signal });
   } catch (err) {
     if (err?.name === 'AbortError') {
+      const isTts = typeof url === 'string' && url.includes('article-tts');
       throw new Error(
-        'Request timed out. Ensure Django is running and reachable from this device.'
+        isTts
+          ? 'Speech generation timed out. First listen can take several minutes while models load on the server — try again.'
+          : 'Request timed out. Ensure Django is running and reachable from this device.'
       );
     }
     throw err;

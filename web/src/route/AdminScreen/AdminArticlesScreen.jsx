@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
@@ -8,14 +8,23 @@ import {
     FileText,
     Search,
     Eye,
-    CheckCircle,
     Clock,
     Tag,
     ChevronRight,
     Trash2,
 } from 'lucide-react';
 import { deleteAdminArticle, getAdminArticles, patchAdminArticle } from '../../api/adminApi';
+import {
+    getArticlesApiScope,
+    parseArticleRouteParams,
+    filterArticlesForDisplay,
+} from '../../utils/adminArticleFilters';
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
+import ArticleInsightBadges, {
+    ArticleCredibilityIndicator,
+    ArticleCredibilitySourceDot,
+    ArticleTopicKeywords,
+} from './components/ArticleInsightBadges';
 
 const AdminArticlesScreen = () => {
     const { theme } = useTheme();
@@ -28,7 +37,8 @@ const AdminArticlesScreen = () => {
     const { confirm, success, error: notifyError } = useUIFeedback();
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
-    const [scope, setScope] = useState((searchParams.get('scope') || 'all').toLowerCase());
+    const initialRoute = parseArticleRouteParams(searchParams);
+    const [pipelineFilter, setPipelineFilter] = useState(initialRoute.pipelineFilter);
     const [statusById, setStatusById] = useState({});
 
     const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
@@ -37,14 +47,12 @@ const AdminArticlesScreen = () => {
     const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
     const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
 
-    useEffect(() => {
-        loadArticles();
-    }, [scope]);
+    const apiScope = useMemo(() => getArticlesApiScope(pipelineFilter), [pipelineFilter]);
 
     useEffect(() => {
-        const paramScope = (searchParams.get('scope') || 'all').toLowerCase();
-        if (paramScope !== scope) setScope(paramScope);
-    }, [searchParams, scope]);
+        const route = parseArticleRouteParams(searchParams);
+        setPipelineFilter(route.pipelineFilter);
+    }, [searchParams]);
 
     const mapApiDoc = (doc) => {
         const dateStr = doc.fetched_at || doc.processed_at || '';
@@ -62,24 +70,45 @@ const AdminArticlesScreen = () => {
             verified: doc.scope === 'processed' && doc.credibility_label != null && doc.credibility_label !== '',
             upvotes: 0,
             credibility_label: doc.credibility_label,
+            credibility_label_name: doc.credibility_label_name,
+            credibility_max_prob: doc.credibility_max_prob,
+            credibility_label_prob: doc.credibility_label_prob,
+            credibility_score: doc.credibility_score,
+            credibility_probs: doc.credibility_probs,
+            credibility_prob_breakdown: doc.credibility_prob_breakdown,
+            credibility_confidence_pct: doc.credibility_confidence_pct,
+            fake_detection_label: doc.fake_detection_label,
+            fake_detection_max_prob: doc.fake_detection_max_prob,
+            fact_check_verdict: doc.fact_check_verdict,
+            fact_check_hits: doc.fact_check_hits,
+            topic_keywords: doc.topic_keywords || [],
+            ai_summary: doc.summary || '',
             pipeline_status: doc.pipeline_status,
             moderation_status: doc.moderation_status || 'review',
             canonical_url: doc.canonical_url,
         };
     };
 
-    const loadArticles = async () => {
-        try {
-            setLoading(true);
-            const response = await getAdminArticles({ page: 1, pageSize: 80, scope });
-            setArticles((response.results || []).map(mapApiDoc));
-        } catch (error) {
-            console.error('Error loading articles:', error);
-            setArticles([]);
-        } finally {
-            setLoading(false);
-        }
-    };
+    const loadArticles = useCallback(
+        async (fetchScope) => {
+            try {
+                setLoading(true);
+                const response = await getAdminArticles({ page: 1, pageSize: 200, scope: fetchScope });
+                setArticles((response.results || []).map(mapApiDoc));
+            } catch (error) {
+                console.error('Error loading articles:', error);
+                notifyError(error?.message || 'Could not load articles.');
+                setArticles([]);
+            } finally {
+                setLoading(false);
+            }
+        },
+        [notifyError]
+    );
+
+    useEffect(() => {
+        loadArticles(apiScope);
+    }, [apiScope, loadArticles]);
 
     const handleDelete = async (articleId) => {
         const accepted = await confirm({
@@ -116,13 +145,7 @@ const AdminArticlesScreen = () => {
         }
     };
 
-    const filteredArticles = articles.filter(article =>
-        article.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        article.source?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        article.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        String(article.credibility_label ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        String(article.pipeline_status ?? '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    const filteredArticles = filterArticlesForDisplay(articles, pipelineFilter, searchQuery);
 
     return (
         <>
@@ -171,44 +194,55 @@ const AdminArticlesScreen = () => {
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
-                        Live list from MongoDB with admin controls for status updates and deletion.
+                        Live list from MongoDB — filter by pipeline status.
                     </p>
                     <div style={{
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: '8px',
-                        marginTop: '16px',
-                    }}>
-                        {['all', 'raw', 'processed'].map((s) => (
-                            <button
-                                key={s}
-                                type="button"
-                                onClick={() => {
-                                    setScope(s);
-                                    setSearchParams((prev) => {
-                                        const next = new URLSearchParams(prev);
-                                        next.set('scope', s);
-                                        return next;
-                                    });
-                                }}
-                                style={{
-                                    padding: '8px 14px',
-                                    borderRadius: '8px',
-                                    border: `1px solid ${scope === s ? (isDark ? colors.primary || '#818CF8' : '#0f172a') : borderColor}`,
-                                    background: scope === s
-                                        ? (isDark ? 'rgba(129, 140, 248, 0.15)' : '#f1f5f9')
-                                        : 'transparent',
-                                    color: textPrimary,
-                                    cursor: 'pointer',
-                                    fontWeight: scope === s ? 600 : 500,
-                                    textTransform: 'capitalize',
-                                    fontSize: '14px',
-                                }}
-                            >
-                                {s}
-                            </button>
-                        ))}
-                    </div>
+                            display: 'flex',
+                            flexWrap: 'wrap',
+                            gap: '8px',
+                            marginTop: '12px',
+                        }}>
+                            {[
+                                { id: '', label: 'Any status' },
+                                { id: 'queue', label: 'Queue' },
+                                { id: 'pending', label: 'Pending' },
+                                { id: 'processing', label: 'Processing' },
+                                { id: 'done', label: 'Done (processed feed)' },
+                                { id: 'failed', label: 'Failed' },
+                            ].map((p) => {
+                                const active = pipelineFilter === p.id;
+                                return (
+                                    <button
+                                        key={p.id || 'any'}
+                                        type="button"
+                                        onClick={() => {
+                                            setPipelineFilter(p.id);
+                                            setSearchParams((prev) => {
+                                                const next = new URLSearchParams(prev);
+                                                next.delete('scope');
+                                                if (p.id) next.set('pipeline', p.id);
+                                                else next.delete('pipeline');
+                                                return next;
+                                            });
+                                        }}
+                                        style={{
+                                            padding: '6px 12px',
+                                            borderRadius: '8px',
+                                            border: `1px solid ${active ? (isDark ? colors.primary || '#818CF8' : '#64748b') : borderColor}`,
+                                            background: active
+                                                ? (isDark ? 'rgba(129, 140, 248, 0.12)' : '#f1f5f9')
+                                                : (isDark ? colors.backgroundSecondary || '#1e293b' : '#f8fafc'),
+                                            color: active ? textPrimary : textSecondary,
+                                            cursor: 'pointer',
+                                            fontWeight: active ? 600 : 500,
+                                            fontSize: '12px',
+                                        }}
+                                    >
+                                        {p.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
                 </div>
 
                 {/* Search Bar */}
@@ -344,11 +378,15 @@ const AdminArticlesScreen = () => {
                                             </div>
                                             <div>
                                                 <div style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
                                                     fontSize: '13px',
                                                     fontWeight: '600',
                                                     color: textPrimary,
                                                 }}>
-                                                    {article.source || 'Source'}
+                                                    <span>{article.source || 'Source'}</span>
+                                                    <ArticleCredibilitySourceDot article={article} size={12} />
                                                 </div>
                                                 <div style={{
                                                     fontSize: '11px',
@@ -363,9 +401,7 @@ const AdminArticlesScreen = () => {
                                             </div>
                                         </div>
                                     </div>
-                                    {article.verified && (
-                                        <CheckCircle size={16} color="#10b981" fill="#10b981" />
-                                    )}
+                                    <ArticleCredibilityIndicator article={article} />
                                 </div>
 
                                 {article.category && (
@@ -389,6 +425,19 @@ const AdminArticlesScreen = () => {
                                     </div>
                                 )}
 
+                                <ArticleInsightBadges
+                                    article={article}
+                                    textSecondary={textSecondary}
+                                    borderColor={borderColor}
+                                />
+
+                                <ArticleTopicKeywords
+                                    keywords={article.topic_keywords}
+                                    textSecondary={textSecondary}
+                                    isDark={isDark}
+                                    borderColor={borderColor}
+                                />
+
                                 <h3 style={{
                                     fontSize: '16px',
                                     fontWeight: '600',
@@ -399,7 +448,7 @@ const AdminArticlesScreen = () => {
                                     {article.title || 'Article Title'}
                                 </h3>
 
-                                {article.excerpt && (
+                                {(article.ai_summary || article.excerpt) && (
                                     <p style={{
                                         fontSize: '13px',
                                         color: textSecondary,
@@ -410,7 +459,7 @@ const AdminArticlesScreen = () => {
                                         WebkitBoxOrient: 'vertical',
                                         overflow: 'hidden',
                                     }}>
-                                        {article.excerpt}
+                                        {article.ai_summary || article.excerpt}
                                     </p>
                                 )}
 

@@ -1,11 +1,10 @@
 // ============================================
 // SearchScreen.jsx - Enhanced Explore Page
 // ============================================
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import {
   View,
   StyleSheet,
-  ScrollView,
   Animated,
   ActivityIndicator,
   Pressable,
@@ -16,6 +15,7 @@ import {
   TouchableOpacity,
   Share,
 } from "react-native";
+import { TabView } from "react-native-tab-view";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
 import SearchBar from "./components/SearchBar";
@@ -36,9 +36,10 @@ import { useFeedback } from "../../components/ui/FeedbackProvider";
 import { resetTabBarVisibility } from "../../navigation/tabBarVisibility";
 
 const { width, height } = Dimensions.get('window');
+const PAGER_LAYOUT = { width };
 const DISCOVER_PAGE_SIZE = 30;
 const DISCOVER_PREFETCH_PX = 900;
-const DISCOVER_CACHE_TTL_MS = 2 * 60 * 1000;
+const DISCOVER_CACHE_TTL_MS = 10 * 60 * 1000;
 const discoverFeedCache = new Map();
 
 function discoverCacheKey(q) {
@@ -73,6 +74,37 @@ const DISCOVER_TAB_SYNONYMS = {
   business: ['business', 'economy', 'market', 'stock', 'finance', 'trade', 'company', 'tariff'],
   wildlife: ['wildlife', 'animal', 'species', 'zoo', 'nature', 'forest', 'marine', 'bird'],
 };
+
+const DISCOVER_CATEGORIES = ["All", "Sports", "Technology", "Environment", "Business", "Wildlife"];
+const DISCOVER_TAB_ROUTES = DISCOVER_CATEGORIES.map((c) => ({ key: c, title: c }));
+
+function filterDiscoverNews(allNews, searchQuery, tabKey) {
+  let results = [...allNews];
+  if (tabKey !== "All") {
+    results = results.filter((item) => itemMatchesDiscoverTab(item, tabKey));
+  }
+  if (searchQuery && searchQuery.trim()) {
+    const lower = searchQuery.toLowerCase().trim();
+    const searchTerms = lower.split(" ").filter((term) => term.length > 0);
+    results = results.filter((item) => {
+      const matchesTerm = (text) => {
+        if (!text) return false;
+        const textLower = text.toLowerCase();
+        return searchTerms.some((term) => textLower.includes(term));
+      };
+      if (item.title && matchesTerm(item.title)) return true;
+      if (item.excerpt && matchesTerm(item.excerpt)) return true;
+      if (item.source && matchesTerm(item.source)) return true;
+      if (item.category && matchesTerm(item.category)) return true;
+      if (item.categories && item.categories.some((cat) => matchesTerm(cat))) return true;
+      if (item.content && matchesTerm(item.content)) return true;
+      if (item.fullContent && matchesTerm(item.fullContent)) return true;
+      if (item.topic_keywords && item.topic_keywords.some((k) => matchesTerm(k))) return true;
+      return false;
+    });
+  }
+  return results;
+}
 
 function itemMatchesDiscoverTab(item, activeTab) {
   if (!activeTab || activeTab === 'All') return true;
@@ -166,12 +198,16 @@ const SearchScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const feedback = useFeedback();
   const [allNews, setAllNews] = useState([]);
-  const [filteredNews, setFilteredNews] = useState([]);
   const [trendingTopics, setTrendingTopics] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState("All");
+  const [tabIndex, setTabIndex] = useState(0);
+  const activeTab = DISCOVER_TAB_ROUTES[tabIndex]?.key ?? "All";
+  const setActiveTab = useCallback((tab) => {
+    const i = DISCOVER_TAB_ROUTES.findIndex((r) => r.key === tab);
+    if (i >= 0) setTabIndex(i);
+  }, []);
   const {
     votedItems,
     bookmarkedItems,
@@ -204,8 +240,6 @@ const SearchScreen = ({ navigation }) => {
   const circle1Anim = useRef(new Animated.Value(0)).current;
   const circle2Anim = useRef(new Animated.Value(0)).current;
   const circle3Anim = useRef(new Animated.Value(0)).current;
-
-  const categories = ["All", "Sports", "Technology", "Environment", "Business", "Wildlife"];
 
   const mergeUniqueById = (prev, incoming) => {
     const seen = new Set(prev.map((x) => x.id));
@@ -292,6 +326,11 @@ const SearchScreen = ({ navigation }) => {
       setLoadingMore(false);
     }
   }, [hasMore, loading, loadingMore, nextCursor, searchQuery]);
+
+  const filteredNews = useMemo(
+    () => filterDiscoverNews(allNews, searchQuery, activeTab),
+    [allNews, searchQuery, activeTab]
+  );
 
   useEffect(() => {
     const q = searchQuery.trim();
@@ -382,7 +421,7 @@ const SearchScreen = ({ navigation }) => {
     const keywords = topicName.toLowerCase().split(' ').filter(k => k.length > 2);
     
     // Try to find matching category first
-    const matchingCategory = categories.find(cat => {
+    const matchingCategory = DISCOVER_CATEGORIES.find(cat => {
       const catLower = cat.toLowerCase();
       if (catLower === 'all') return false;
       return keywords.some(keyword => catLower.includes(keyword)) ||
@@ -410,57 +449,6 @@ const SearchScreen = ({ navigation }) => {
     searchRef.current?.collapseKeepText();
   };
 
-  useEffect(() => {
-    const delay = setTimeout(() => {
-      let results = [...allNews];
-
-      // Category chips: match topic/title text, not legacy `item.category` (often credibility label).
-      if (activeTab !== "All") {
-        results = results.filter((item) => itemMatchesDiscoverTab(item, activeTab));
-      }
-
-      // Then filter by search query if provided
-      if (searchQuery && searchQuery.trim()) {
-        const lower = searchQuery.toLowerCase().trim();
-        const searchTerms = lower.split(' ').filter(term => term.length > 0);
-        
-        results = results.filter(
-          (item) => {
-            // Check if any search term matches
-            const matchesTerm = (text) => {
-              if (!text) return false;
-              const textLower = text.toLowerCase();
-              return searchTerms.some(term => textLower.includes(term));
-            };
-            
-            // Check title
-            if (item.title && matchesTerm(item.title)) return true;
-            // Check excerpt
-            if (item.excerpt && matchesTerm(item.excerpt)) return true;
-            // Check source
-            if (item.source && matchesTerm(item.source)) return true;
-            // Check category
-            if (item.category && matchesTerm(item.category)) return true;
-            // Check categories array
-            if (item.categories && item.categories.some(cat => 
-              matchesTerm(cat)
-            )) return true;
-            // Check content
-            if (item.content && matchesTerm(item.content)) return true;
-            // Check full content
-            if (item.fullContent && matchesTerm(item.fullContent)) return true;
-            if (item.topic_keywords && item.topic_keywords.some((k) => matchesTerm(k)))
-              return true;
-            return false;
-          }
-        );
-      }
-
-      setFilteredNews(results);
-    }, 300);
-    return () => clearTimeout(delay);
-  }, [searchQuery, activeTab, allNews]);
-
   const onRefresh = async () => {
     setRefreshing(true);
     try {
@@ -474,26 +462,31 @@ const SearchScreen = ({ navigation }) => {
     }
   };
 
-  const handleScroll = (event) => {
-    const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
-    const currentOffset = contentOffset.y;
-    const diff = currentOffset - scrollOffset.current;
-    const direction = currentOffset > scrollOffset.current ? "down" : "up";
-    scrollOffset.current = currentOffset;
+  const handleScrollForTab = useCallback(
+    (tabKey) => (event) => {
+      const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
+      const currentOffset = contentOffset.y;
+      const direction = currentOffset > scrollOffset.current ? "down" : "up";
 
-    handleHeaderCollapse(event);
+      if (tabKey === activeTab) {
+        scrollOffset.current = currentOffset;
+        handleHeaderCollapse(event);
 
-    if (direction !== lastDirectionRef.current) {
-      lastDirectionRef.current = direction;
-      if (direction === "down") searchRef.current?.collapse();
-      else searchRef.current?.expandVisual();
-    }
+        if (direction !== lastDirectionRef.current) {
+          lastDirectionRef.current = direction;
+          if (direction === "down") searchRef.current?.collapse();
+          else searchRef.current?.expandVisual();
+        }
 
-    const nearBottom = layoutMeasurement.height + contentOffset.y >= contentSize.height - DISCOVER_PREFETCH_PX;
-    if (nearBottom) {
-      loadMorePage();
-    }
-  };
+        const nearBottom =
+          layoutMeasurement.height + contentOffset.y >= contentSize.height - DISCOVER_PREFETCH_PX;
+        if (nearBottom) {
+          loadMorePage();
+        }
+      }
+    },
+    [activeTab, handleHeaderCollapse, loadMorePage]
+  );
 
   const handleArticlePress = (article) => {
     navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
@@ -502,6 +495,120 @@ const SearchScreen = ({ navigation }) => {
   const handleTabPress = (category) => {
     setActiveTab(category);
   };
+
+  const renderDiscoverScene = useCallback(
+    ({ route }) => {
+      const tabKey = route.key;
+      const tabNews = filterDiscoverNews(allNews, searchQuery, tabKey);
+      const showTrending = tabKey === "All" && !searchQuery.trim();
+
+      return (
+        <View style={styles.discoverScene}>
+        <Animated.ScrollView
+          style={styles.contentArea}
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScrollForTab(tabKey)}
+          scrollEventThrottle={16}
+          onScrollBeginDrag={() => {
+            Keyboard.dismiss();
+            searchRef.current?.hideHistory();
+            searchRef.current?.collapseKeepText();
+          }}
+          contentContainerStyle={[
+            styles.scrollContainer,
+            { paddingTop: Math.max(0, topSectionHeight || 0) },
+            !loading && tabNews.length === 0 ? styles.noResultsContainer : null,
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+        >
+          {loading ? (
+            <FeedSkeleton colors={colors} count={5} />
+          ) : tabNews.length === 0 ? (
+            <>
+              <View style={[styles.iconContainer, { backgroundColor: colors.primary + "15" }]}>
+                <Search size={48} color={colors.primary} strokeWidth={2} />
+              </View>
+              <Text variant="title" color={colors.textPrimary} style={styles.noResultsText}>
+                No news found
+              </Text>
+              <Text variant="body" color={colors.textSecondary} style={styles.noResultsSub}>
+                {searchQuery.trim()
+                  ? "Try searching with different keywords"
+                  : "No articles in this category"}
+              </Text>
+              {(searchQuery.trim() || tabKey !== "All") && (
+                <TouchableOpacity
+                  style={[styles.clearButton, { backgroundColor: colors.primary }]}
+                  onPress={handleClearSearch}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.clearButtonText, { color: colors.textInverse || "#FFFFFF" }]}>
+                    Clear & Show All
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </>
+          ) : (
+            <>
+              {showTrending ? (
+                <TrendingTopics
+                  topics={trendingTopics}
+                  onTopicPress={handleTopicPress}
+                  searchQuery={searchQuery}
+                />
+              ) : null}
+              {tabNews.map((item, index) => (
+                <NewsCard
+                  key={`${tabKey}-${item.id}`}
+                  item={item}
+                  onPress={() => handleArticlePress(item)}
+                  votedItems={votedItems}
+                  bookmarkedItems={bookmarkedItems}
+                  onVote={handleVote}
+                  onBookmark={handleBookmark}
+                  index={index}
+                />
+              ))}
+              {loadingMore && tabKey === activeTab ? (
+                <View style={{ paddingVertical: 16, alignItems: "center" }}>
+                  <ActivityIndicator size="small" color={colors.primary} />
+                </View>
+              ) : null}
+              <View style={styles.endPadding} />
+            </>
+          )}
+        </Animated.ScrollView>
+        </View>
+      );
+    },
+    [
+      activeTab,
+      allNews,
+      bookmarkedItems,
+      colors,
+      handleArticlePress,
+      handleBookmark,
+      handleClearSearch,
+      handleScrollForTab,
+      handleTopicPress,
+      handleVote,
+      loading,
+      loadingMore,
+      onRefresh,
+      refreshing,
+      searchQuery,
+      topSectionHeight,
+      trendingTopics,
+      votedItems,
+    ]
+  );
 
   return (
     <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
@@ -608,89 +715,23 @@ const SearchScreen = ({ navigation }) => {
           </View>
 
           <Tabs
-            categories={categories}
+            categories={DISCOVER_CATEGORIES}
             activeTab={activeTab}
             onTabPress={handleTabPress}
           />
         </Animated.View>
 
-      <Animated.ScrollView
-        style={styles.contentArea}
-        showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        onScrollBeginDrag={() => {
-          Keyboard.dismiss();
-          searchRef.current?.hideHistory();
-          searchRef.current?.collapseKeepText();
-        }}
-        contentContainerStyle={[
-          styles.scrollContainer,
-          { paddingTop: Math.max(0, topSectionHeight || 0) },
-          !loading && filteredNews.length === 0 ? styles.noResultsContainer : null,
-        ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
-          />
-        }
-      >
-        {loading ? (
-          <FeedSkeleton colors={colors} count={5} />
-        ) : filteredNews.length === 0 ? (
-          <>
-            <View style={[styles.iconContainer, { backgroundColor: colors.primary + '15' }]}>
-              <Search size={48} color={colors.primary} strokeWidth={2} />
-            </View>
-            <Text variant="title" color={colors.textPrimary} style={styles.noResultsText}>No news found</Text>
-            <Text variant="body" color={colors.textSecondary} style={styles.noResultsSub}>
-              {searchQuery.trim()
-                ? "Try searching with different keywords"
-                : "No articles in this category"}
-            </Text>
-            {(searchQuery.trim() || activeTab !== 'All') && (
-              <TouchableOpacity
-                style={[styles.clearButton, { backgroundColor: colors.primary }]}
-                onPress={handleClearSearch}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.clearButtonText, { color: colors.textInverse || '#FFFFFF' }]}>
-                  Clear & Show All
-                </Text>
-              </TouchableOpacity>
-            )}
-          </>
-        ) : (
-          <>
-            <TrendingTopics
-              topics={trendingTopics}
-              onTopicPress={handleTopicPress}
-              searchQuery={searchQuery}
-            />
-            {filteredNews.map((item, index) => (
-              <NewsCard
-                key={item.id}
-                item={item}
-                onPress={() => handleArticlePress(item)}
-                votedItems={votedItems}
-                bookmarkedItems={bookmarkedItems}
-                onVote={handleVote}
-                onBookmark={handleBookmark}
-                index={index}
-              />
-            ))}
-            {loadingMore ? (
-              <View style={{ paddingVertical: 16, alignItems: "center" }}>
-                <ActivityIndicator size="small" color={colors.primary} />
-              </View>
-            ) : null}
-            <View style={styles.endPadding} />
-          </>
-        )}
-      </Animated.ScrollView>
+        <TabView
+          navigationState={{ index: tabIndex, routes: DISCOVER_TAB_ROUTES }}
+          renderScene={renderDiscoverScene}
+          onIndexChange={setTabIndex}
+          initialLayout={PAGER_LAYOUT}
+          renderTabBar={() => null}
+          swipeEnabled
+          animationEnabled
+          sceneContainerStyle={styles.discoverSceneContainer}
+          style={styles.discoverPager}
+        />
       </SafeAreaView>
       <ChatBotWidget />
     </View>
@@ -781,6 +822,15 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   contentArea: {
+    flex: 1,
+  },
+  discoverPager: {
+    flex: 1,
+  },
+  discoverSceneContainer: {
+    flex: 1,
+  },
+  discoverScene: {
     flex: 1,
   },
   animatedList: {

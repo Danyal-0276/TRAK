@@ -4,10 +4,10 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import Text from '../../components/ui/Text';
 import { ArrowLeft, Search, Check, X } from 'lucide-react';
-import { newsTagsWithSubcategories } from './constants/newsCategories';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { getUserKeywords, loadUserKeywords } from '../../utils/userKeywordsStorage';
 import { getUserKeywordsFromServer } from '../../utils/Service/api';
+import { loadTagsWithSubcategories } from '../../utils/platformTaxonomy';
 
 const TagSelectionScreen = () => {
     const { theme } = useTheme();
@@ -20,10 +20,22 @@ const TagSelectionScreen = () => {
     const { error } = useUIFeedback();
     const [selectedTags, setSelectedTags] = useState([]);
     const [searchText, setSearchText] = useState('');
+    const [tagsMap, setTagsMap] = useState({});
     const fromSettings = Boolean(location.state?.fromSettings) || searchParams.get('fromSettings') === '1';
     const fromSignup = Boolean(location.state?.fromSignup);
 
-    const mainTags = Object.keys(newsTagsWithSubcategories);
+    const mainTags = Object.keys(tagsMap);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            const map = await loadTagsWithSubcategories();
+            if (!cancelled) setTagsMap(map);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const filteredTags = mainTags.filter(tag => 
         tag.toLowerCase().includes(searchText.toLowerCase())
@@ -49,7 +61,7 @@ const TagSelectionScreen = () => {
         if (!saved.length) return;
         const next = new Set();
         for (const main of mainTags) {
-            const subs = newsTagsWithSubcategories[main] || [];
+            const subs = tagsMap[main] || [];
             if (saved.includes(main)) next.add(main);
             for (const sub of subs) {
                 if (saved.includes(sub)) {
@@ -66,7 +78,7 @@ const TagSelectionScreen = () => {
     const toggleMainTag = (tag) => {
         setSelectedTags(prev => {
             if (prev.includes(tag)) {
-                const subcategories = newsTagsWithSubcategories[tag];
+                const subcategories = tagsMap[tag] || [];
                 return prev.filter(t => t !== tag && !subcategories.includes(t));
             } else {
                 return [...prev, tag];
@@ -234,7 +246,7 @@ const TagSelectionScreen = () => {
                 }}>
                     {filteredTags.map((tag, index) => {
                         const isSelected = selectedTags.includes(tag);
-                        const subcategories = newsTagsWithSubcategories[tag] || [];
+                        const subcategories = tagsMap[tag] || [];
 
                         return (
                             <div key={index} style={{ position: 'relative' }}>

@@ -1,20 +1,24 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings as SettingsIcon, Plus, Trash2 } from 'lucide-react';
+import { Settings as SettingsIcon, Plus, Trash2, X } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import { getResponsivePadding, getResponsiveMaxWidth } from '../../utils/responsiveStyles';
-import { getAdminSettings, patchAdminSettings } from '../../api/adminApi';
-import { normAdminList, toAdminPayloadList } from '../../utils/adminLists';
+import { getAdminSettings, patchAdminSettings, createAdminCategory, deleteAdminCategory, addAdminSubcategory, deleteAdminSubcategory, createAdminConnection, deleteAdminConnection } from '../../api/adminApi';
+import { normAdminCategories, normAdminConnections } from '../../utils/adminLists';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { SkeletonPageBlocks } from '../../components/skeletons/SkeletonLayouts';
 import AdminSettingRow from './components/AdminSettingRow';
 import AdminToggle from './components/AdminToggle';
-import AdminListModal from './components/AdminListModal';
+import AdminListPanel from './components/AdminListPanel';
+import AdminCategorySelect from './components/AdminCategorySelect';
+import AdminAnimatedSelect from './components/AdminAnimatedSelect';
 
 const LANGUAGE_OPTIONS = ['English', 'Urdu', 'Arabic', 'French', 'Spanish'];
 const TIMEZONE_OPTIONS = ['UTC', 'Asia/Karachi', 'Asia/Dubai', 'Europe/London', 'America/New_York'];
+const REGION_SELECT_WIDTH = 240;
+const regionSelectWrapStyle = { width: REGION_SELECT_WIDTH, maxWidth: '100%', flexShrink: 0 };
 
 const AdminSettingsScreen = () => {
   const { theme } = useTheme();
@@ -36,8 +40,11 @@ const AdminSettingsScreen = () => {
   const [connections, setConnections] = useState([]);
   const [categoryInput, setCategoryInput] = useState('');
   const [connectionInput, setConnectionInput] = useState('');
+  const [connectionUrlInput, setConnectionUrlInput] = useState('');
+  const [subInputs, setSubInputs] = useState({});
+  const [selectedCategorySlug, setSelectedCategorySlug] = useState('');
   const [loading, setLoading] = useState(true);
-  const [listModal, setListModal] = useState(null);
+  const [listPanel, setListPanel] = useState(null);
 
   const backgroundColor = isDark ? colors.background || '#0F172A' : '#f9fafb';
   const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
@@ -63,10 +70,14 @@ const AdminSettingsScreen = () => {
       setLoading(true);
       const s = await getAdminSettings();
       applySettingsFromApi(s);
-      setCategories(normAdminList(s.categories || []));
-      setConnections(normAdminList(s.connections || []));
+      const cats = normAdminCategories(s.categories || []);
+      setCategories(cats);
+      setConnections(normAdminConnections(s.connections || []));
+      setSelectedCategorySlug((prev) => (prev && cats.some((c) => c.slug === prev) ? prev : ''));
+      return cats;
     } catch {
       showError('Could not load admin settings.');
+      return [];
     } finally {
       setLoading(false);
     }
@@ -89,8 +100,6 @@ const AdminSettingsScreen = () => {
     try {
       const payload = {
         notifications_enabled_default: pushOn !== undefined ? !!pushOn : !!settings.pushNotification,
-        categories: toAdminPayloadList(categories),
-        connections: toAdminPayloadList(connections),
         language: updates.language || settings.language || 'English',
         timezone: updates.timezone || settings.timezone || 'UTC',
       };
@@ -107,20 +116,45 @@ const AdminSettingsScreen = () => {
     const name = categoryInput.trim();
     if (!name) return;
     try {
-      const next = [...toAdminPayloadList(categories), name];
-      await patchAdminSettings({ categories: next });
+      await createAdminCategory(name, []);
       setCategoryInput('');
-      await load();
+      const cats = await load();
+      const added = cats.find((c) => c.name.toLowerCase() === name.toLowerCase());
+      if (added) setSelectedCategorySlug(added.slug);
       success('Category added.');
     } catch (e) {
       showError(e?.message || 'Failed.');
     }
   };
 
-  const handleRemoveCategory = async (id) => {
+  const handleRemoveCategory = async (slug) => {
     try {
-      const next = toAdminPayloadList(categories).filter((c) => c !== id);
-      await patchAdminSettings({ categories: next });
+      await deleteAdminCategory(slug);
+      await load();
+      setSelectedCategorySlug((prev) => (prev === slug ? '' : prev));
+    } catch (e) {
+      showError(e?.message || 'Failed.');
+    }
+  };
+
+  const selectedCategory = categories.find((c) => c.slug === selectedCategorySlug) || null;
+
+  const handleAddSubcategory = async (categorySlug) => {
+    const name = String(subInputs[categorySlug] || '').trim();
+    if (!name) return;
+    try {
+      await addAdminSubcategory(categorySlug, name);
+      setSubInputs((prev) => ({ ...prev, [categorySlug]: '' }));
+      await load();
+      success('Subcategory added.');
+    } catch (e) {
+      showError(e?.message || 'Failed.');
+    }
+  };
+
+  const handleRemoveSubcategory = async (categorySlug, subSlug) => {
+    try {
+      await deleteAdminSubcategory(categorySlug, subSlug);
       await load();
     } catch (e) {
       showError(e?.message || 'Failed.');
@@ -129,11 +163,16 @@ const AdminSettingsScreen = () => {
 
   const handleAddConnection = async () => {
     const name = connectionInput.trim();
+    const url = connectionUrlInput.trim();
     if (!name) return;
+    if (!url) {
+      showError('URL is required (RSS feed or site feed URL).');
+      return;
+    }
     try {
-      const next = [...toAdminPayloadList(connections), name];
-      await patchAdminSettings({ connections: next });
+      await createAdminConnection(name, url);
       setConnectionInput('');
+      setConnectionUrlInput('');
       await load();
       success('Connection added.');
     } catch (e) {
@@ -141,10 +180,9 @@ const AdminSettingsScreen = () => {
     }
   };
 
-  const handleRemoveConnection = async (id) => {
+  const handleRemoveConnection = async (slug) => {
     try {
-      const next = toAdminPayloadList(connections).filter((c) => c !== id);
-      await patchAdminSettings({ connections: next });
+      await deleteAdminConnection(slug);
       await load();
     } catch (e) {
       showError(e?.message || 'Failed.');
@@ -155,7 +193,7 @@ const AdminSettingsScreen = () => {
     try {
       await patchAdminSettings({ categories: [] });
       await load();
-      setListModal(null);
+      setListPanel(null);
     } catch (e) {
       showError(e?.message || 'Failed.');
     }
@@ -165,10 +203,14 @@ const AdminSettingsScreen = () => {
     try {
       await patchAdminSettings({ connections: [] });
       await load();
-      setListModal(null);
+      setListPanel(null);
     } catch (e) {
       showError(e?.message || 'Failed.');
     }
+  };
+
+  const toggleListPanel = (key) => {
+    setListPanel((prev) => (prev === key ? null : key));
   };
 
   const handleLogout = async () => {
@@ -212,6 +254,15 @@ const AdminSettingsScreen = () => {
     backgroundColor: inputBg,
     color: textPrimary,
     outline: 'none',
+  };
+
+  const selectColors = {
+    inputBg,
+    cardBackground,
+    borderColor,
+    textPrimary,
+    textSecondary,
+    primary,
   };
 
   const iconBtnStyle = (bg) => ({
@@ -286,40 +337,68 @@ const AdminSettingsScreen = () => {
                 Language &amp; Region
               </h2>
               <AdminSettingRow label="Language" borderColor={borderColor} textPrimary={textPrimary}>
-                <select
-                  value={settings.language}
-                  onChange={(e) => handleSettingsChange({ language: e.target.value })}
-                  style={pillButtonStyle}
-                >
-                  {LANGUAGE_OPTIONS.map((lang) => (
-                    <option key={lang} value={lang}>
-                      {lang}
-                    </option>
-                  ))}
-                </select>
+                <div style={regionSelectWrapStyle}>
+                  <AdminAnimatedSelect
+                    inputId="admin-language-select"
+                    ariaLabel="Select language"
+                    placeholder="Choose a language"
+                    value={settings.language}
+                    onChange={(language) => handleSettingsChange({ language })}
+                    options={LANGUAGE_OPTIONS}
+                    colors={selectColors}
+                    isDark={isDark}
+                    selectWidth={REGION_SELECT_WIDTH}
+                  />
+                </div>
               </AdminSettingRow>
               <AdminSettingRow label="Timezone" borderColor={borderColor} textPrimary={textPrimary}>
-                <select
-                  value={settings.timezone}
-                  onChange={(e) => handleSettingsChange({ timezone: e.target.value })}
-                  style={{ ...pillButtonStyle, maxWidth: 200 }}
-                >
-                  {TIMEZONE_OPTIONS.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz}
-                    </option>
-                  ))}
-                </select>
+                <div style={regionSelectWrapStyle}>
+                  <AdminAnimatedSelect
+                    inputId="admin-timezone-select"
+                    ariaLabel="Select timezone"
+                    placeholder="Choose a timezone"
+                    value={settings.timezone}
+                    onChange={(timezone) => handleSettingsChange({ timezone })}
+                    options={TIMEZONE_OPTIONS}
+                    colors={selectColors}
+                    isDark={isDark}
+                    isSearchable
+                    selectWidth={REGION_SELECT_WIDTH}
+                  />
+                </div>
               </AdminSettingRow>
             </section>
 
             <section style={sectionStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: textPrimary, margin: 0 }}>Manage Category</h2>
-                <button type="button" style={pillButtonStyle} onClick={() => setListModal('category')}>
-                  List
+                <button
+                  type="button"
+                  style={{
+                    ...pillButtonStyle,
+                    background: listPanel === 'category' ? (isDark ? '#334155' : '#64748b') : primary,
+                  }}
+                  onClick={() => toggleListPanel('category')}
+                >
+                  {listPanel === 'category' ? 'Hide list' : 'List'}
                 </button>
               </div>
+              <AdminListPanel
+                open={listPanel === 'category'}
+                onClose={() => setListPanel(null)}
+                title="All categories"
+                items={categories}
+                itemType="category"
+                onDeleteItem={handleRemoveCategory}
+                onDeleteAll={handleDeleteAllCategories}
+                colors={{
+                  textPrimary,
+                  textSecondary,
+                  border: borderColor,
+                  panelBg: inputBg,
+                  error: errorColor,
+                }}
+              />
               <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
                 <input
                   style={inputStyle}
@@ -332,64 +411,162 @@ const AdminSettingsScreen = () => {
                   <Plus size={18} color="#fff" />
                 </button>
               </div>
-              {categories.map((category) => (
-                <div key={category.id} style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                  <div
-                    style={{
-                      ...inputStyle,
-                      display: 'flex',
-                      alignItems: 'center',
-                      cursor: 'default',
-                    }}
-                  >
-                    {category.name}
+              {categories.length > 0 ? (
+                <>
+                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: textSecondary, marginBottom: 8 }}>
+                    Select category
+                  </label>
+                  <div style={{ marginBottom: 16 }}>
+                    <AdminCategorySelect
+                      categories={categories}
+                      value={selectedCategorySlug}
+                      onChange={setSelectedCategorySlug}
+                      isDark={isDark}
+                      colors={selectColors}
+                    />
                   </div>
-                  <button
-                    type="button"
-                    style={iconBtnStyle(`${errorColor}15`)}
-                    onClick={() => handleRemoveCategory(category.id)}
-                    aria-label="Remove category"
-                  >
-                    <Trash2 size={18} color={errorColor} />
-                  </button>
-                </div>
-              ))}
+
+                  {selectedCategory ? (
+                    <div
+                      style={{
+                        padding: 16,
+                        borderRadius: 12,
+                        border: `1px solid ${borderColor}`,
+                        backgroundColor: inputBg,
+                      }}
+                    >
+                      <div style={{ display: 'flex', gap: 12, marginBottom: 12, alignItems: 'center' }}>
+                        <div style={{ flex: 1, fontSize: 15, fontWeight: 700, color: textPrimary }}>
+                          {selectedCategory.name}
+                        </div>
+                        <button
+                          type="button"
+                          style={iconBtnStyle(`${errorColor}15`)}
+                          onClick={() => handleRemoveCategory(selectedCategory.slug)}
+                          aria-label="Remove category"
+                        >
+                          <Trash2 size={18} color={errorColor} />
+                        </button>
+                      </div>
+                      <p style={{ margin: '0 0 10px 0', fontSize: 13, color: textSecondary }}>Subcategories</p>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12, minHeight: 32 }}>
+                        {(selectedCategory.subcategories || []).length ? (
+                          selectedCategory.subcategories.map((sub) => (
+                            <span
+                              key={sub.id}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '6px 10px',
+                                borderRadius: 8,
+                                backgroundColor: cardBackground,
+                                border: `1px solid ${borderColor}`,
+                                fontSize: 13,
+                                color: textPrimary,
+                              }}
+                            >
+                              {sub.name}
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveSubcategory(selectedCategory.slug, sub.slug)}
+                                style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                                aria-label={`Remove ${sub.name}`}
+                              >
+                                <X size={14} color={textSecondary} />
+                              </button>
+                            </span>
+                          ))
+                        ) : (
+                          <span style={{ fontSize: 13, color: textSecondary }}>No subcategories yet.</span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <input
+                          style={{ ...inputStyle, fontSize: 14, backgroundColor: cardBackground }}
+                          placeholder="Add subcategory"
+                          value={subInputs[selectedCategory.slug] || ''}
+                          onChange={(e) =>
+                            setSubInputs((prev) => ({ ...prev, [selectedCategory.slug]: e.target.value }))
+                          }
+                          onKeyDown={(e) => e.key === 'Enter' && handleAddSubcategory(selectedCategory.slug)}
+                        />
+                        <button
+                          type="button"
+                          style={iconBtnStyle(primary)}
+                          onClick={() => handleAddSubcategory(selectedCategory.slug)}
+                          aria-label="Add subcategory"
+                        >
+                          <Plus size={16} color="#fff" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <p style={{ margin: 0, fontSize: 14, color: textSecondary }}>No categories yet. Add one above.</p>
+              )}
             </section>
 
             <section style={sectionStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, color: textPrimary, margin: 0 }}>Manage Connection</h2>
-                <button type="button" style={pillButtonStyle} onClick={() => setListModal('connection')}>
-                  List
+                <div>
+                  <h2 style={{ fontSize: 16, fontWeight: 700, color: textPrimary, margin: 0 }}>Manage Connection</h2>
+                  <p style={{ margin: '6px 0 0 0', fontSize: 13, color: textSecondary }}>
+                    News scrape sources (RSS feeds and built-in sites). Used when running the RSS scraper.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  style={{
+                    ...pillButtonStyle,
+                    background: listPanel === 'connection' ? (isDark ? '#334155' : '#64748b') : primary,
+                  }}
+                  onClick={() => toggleListPanel('connection')}
+                >
+                  {listPanel === 'connection' ? 'Hide list' : 'List'}
                 </button>
               </div>
+              <AdminListPanel
+                open={listPanel === 'connection'}
+                onClose={() => setListPanel(null)}
+                title="All connections"
+                items={connections}
+                itemType="connection"
+                onDeleteItem={handleRemoveConnection}
+                onDeleteAll={handleDeleteAllConnections}
+                colors={{
+                  textPrimary,
+                  textSecondary,
+                  border: borderColor,
+                  panelBg: inputBg,
+                  error: errorColor,
+                }}
+              />
               <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
                 <input
                   style={inputStyle}
-                  placeholder="Enter Connection"
+                  placeholder="Connection name"
                   value={connectionInput}
                   onChange={(e) => setConnectionInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddConnection()}
+                />
+                <input
+                  style={{ ...inputStyle, maxWidth: 280 }}
+                  placeholder="RSS / feed URL (required)"
+                  value={connectionUrlInput}
+                  onChange={(e) => setConnectionUrlInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddConnection()}
                 />
                 <button type="button" style={iconBtnStyle(primary)} onClick={handleAddConnection} aria-label="Add connection">
                   <Plus size={18} color="#fff" />
                 </button>
               </div>
-              {connections.map((connection) => (
-                <div key={connection.id} style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-                  <div style={{ ...inputStyle, display: 'flex', alignItems: 'center', cursor: 'default' }}>
-                    {connection.name}
-                  </div>
-                  <button
-                    type="button"
-                    style={iconBtnStyle(`${errorColor}15`)}
-                    onClick={() => handleRemoveConnection(connection.id)}
-                    aria-label="Remove connection"
-                  >
-                    <Trash2 size={18} color={errorColor} />
-                  </button>
-                </div>
-              ))}
+              {connections.length === 0 && listPanel !== 'connection' ? (
+                <p style={{ margin: '12px 0 0 0', fontSize: 14, color: textSecondary }}>
+                  No sources yet. Open List or add an RSS feed above.
+                </p>
+              ) : null}
             </section>
 
             <button
@@ -414,26 +591,6 @@ const AdminSettingsScreen = () => {
         )}
       </div>
 
-      <AdminListModal
-        open={listModal === 'category'}
-        onClose={() => setListModal(null)}
-        title="Categories"
-        items={categories}
-        itemType="category"
-        onDeleteItem={handleRemoveCategory}
-        onDeleteAll={handleDeleteAllCategories}
-        colors={{ textPrimary, textSecondary, border: borderColor, surface: cardBackground }}
-      />
-      <AdminListModal
-        open={listModal === 'connection'}
-        onClose={() => setListModal(null)}
-        title="Connections"
-        items={connections}
-        itemType="connection"
-        onDeleteItem={handleRemoveConnection}
-        onDeleteAll={handleDeleteAllConnections}
-        colors={{ textPrimary, textSecondary, border: borderColor, surface: cardBackground }}
-      />
     </div>
   );
 };

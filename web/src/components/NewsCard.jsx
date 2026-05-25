@@ -9,9 +9,11 @@ import {
     MoreHorizontal,
     TrendingUp,
     CheckCircle,
+    AlertTriangle,
     Clock,
     ArrowRight,
 } from 'lucide-react';
+import { getFeedItemCredibilityMeta } from '../utils/credibilityIndicator';
 
 export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark, layout = 'grid' }) => {
     const isMasonry = layout === 'masonry';
@@ -24,6 +26,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const likeCount = Number(item.like_count ?? item.upvotes ?? 0);
     const dislikeCount = Number(item.dislike_count ?? 0);
     const cardSummary = getCardSummaryText(item);
+    const credMeta = getFeedItemCredibilityMeta(item);
 
     const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
     const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
@@ -165,9 +168,23 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                     }}>
                                         {item.source || 'Source'}
                                     </span>
-                                    {item.verified && (
+                                    {credMeta.show && credMeta.labelKey === 'fake' ? (
+                                        <AlertTriangle
+                                            size={12}
+                                            color={credMeta.style.color}
+                                            strokeWidth={2.5}
+                                            title={credMeta.labelName}
+                                        />
+                                    ) : credMeta.show ? (
+                                        <CheckCircle
+                                            size={12}
+                                            color={credMeta.style.color}
+                                            fill={credMeta.style.color}
+                                            title={credMeta.labelName}
+                                        />
+                                    ) : item.verified ? (
                                         <CheckCircle size={12} color="#10b981" fill="#10b981" />
-                                    )}
+                                    ) : null}
                                 </div>
                                 <div style={{
                                     display: 'flex',

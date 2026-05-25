@@ -40,7 +40,13 @@ async function refreshAccess(baseUrl) {
  * @param {string} url - full URL
  * @param {RequestInit} options
  */
-export async function apiFetch(url, options = {}, baseUrlForRefresh = '') {
+/**
+ * @param {string} url
+ * @param {RequestInit} [options]
+ * @param {string} [baseUrlForRefresh]
+ * @param {number} [timeoutMs] optional timeout (e.g. TTS synthesis)
+ */
+export async function apiFetch(url, options = {}, baseUrlForRefresh = '', timeoutMs) {
     let token = await getAccessToken();
     const headers = {
         Accept: 'application/json',
@@ -48,13 +54,13 @@ export async function apiFetch(url, options = {}, baseUrlForRefresh = '') {
     };
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    let res = await fetchWithTimeout(url, { ...options, headers });
+    let res = await fetchWithTimeout(url, { ...options, headers }, timeoutMs);
 
     if (res.status === 401 && baseUrlForRefresh) {
         const newAccess = await refreshAccess(baseUrlForRefresh);
         if (newAccess) {
             headers.Authorization = `Bearer ${newAccess}`;
-            res = await fetchWithTimeout(url, { ...options, headers });
+            res = await fetchWithTimeout(url, { ...options, headers }, timeoutMs);
         }
     }
 

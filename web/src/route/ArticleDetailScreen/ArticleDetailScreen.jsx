@@ -8,6 +8,7 @@ import {
     Share2, 
     Clock, 
     CheckCircle,
+    AlertTriangle,
     MoreHorizontal,
     ArrowLeft
 } from 'lucide-react';
@@ -16,8 +17,10 @@ import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, remove
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { mapApiItem } from '../../utils/loadFeed';
-import { normalizeArticleForDetail } from '../../utils/articleNavigation';
+import { getFeedItemCredibilityMeta } from '../../utils/credibilityIndicator';
+import { normalizeArticleForDetail, getArticleListenText } from '../../utils/articleNavigation';
 import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
+import ArticleTtsPlayer from '../../components/ArticleTtsPlayer';
 
 const ArticleDetailScreen = () => {
     const navigate = useNavigate();
@@ -34,6 +37,7 @@ const ArticleDetailScreen = () => {
     const [fetchError, setFetchError] = useState(location.state?.fetchError || '');
 
     const articleKey = String(article.id || routeArticleId || '').trim();
+    const credMeta = getFeedItemCredibilityMeta(article);
     const { success } = useUIFeedback();
 
     const [reaction, setReactionState] = useState(null);
@@ -294,9 +298,13 @@ const ArticleDetailScreen = () => {
                             }}>
                                 {article.source || 'Source'}
                             </span>
-                            {article.verified && (
+                            {credMeta.show && credMeta.labelKey === 'fake' ? (
+                                <AlertTriangle size={14} color={credMeta.style.color} strokeWidth={2.5} />
+                            ) : credMeta.show ? (
+                                <CheckCircle size={14} color={credMeta.style.color} fill={credMeta.style.color} />
+                            ) : article.verified ? (
                                 <CheckCircle size={14} color="#10b981" fill="#10b981" />
-                            )}
+                            ) : null}
                         </div>
                         <div style={{
                             display: 'flex',
@@ -358,6 +366,11 @@ const ArticleDetailScreen = () => {
                 }}>
                     {article.title || 'Article Title'}
                 </h1>
+
+                <ArticleTtsPlayer
+                    text={getArticleListenText(article)}
+                    disabled={!!fetchError}
+                />
 
                 {/* Article Content */}
                 <div style={{

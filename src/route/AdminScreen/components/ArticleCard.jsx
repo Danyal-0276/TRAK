@@ -1,170 +1,154 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
-import { Edit2, Trash2, FileText } from 'lucide-react-native';
-import { useTheme } from '../../../theme/ThemeContext';
+import { View, TouchableOpacity, StyleSheet, Linking } from 'react-native';
+import { Eye, Trash2, Clock, Tag } from 'lucide-react-native';
 import Text from '../../../components/ui/Text';
+import ArticleInsightBadges, {
+  ArticleCredibilityIndicator,
+  ArticleTopicKeywords,
+} from './ArticleInsightBadges';
 
-const ArticleCard = ({ article, onEdit, onDelete, readOnly = false }) => {
-  const { theme } = useTheme();
-  const { colors } = theme;
-  const isPublished = article.status === 'published';
+const ArticleCard = ({ article, onEdit, onDelete, onView, palette }) => {
+  const cardBg = palette?.card || '#fff';
+  const border = palette?.border || '#e5e7eb';
+  const textPrimary = palette?.textPrimary || '#0f172a';
+  const textSecondary = palette?.textSecondary || '#64748b';
+  const textTertiary = palette?.textTertiary || '#94a3b8';
+  const primary = palette?.primary || '#0f172a';
+  const isDark = palette?.isDark;
+  const sourceLabel = article.source || article.source_key || 'Source';
+  const initials = String(sourceLabel).substring(0, 2).toUpperCase() || 'N';
+  const summary = article.ai_summary || article.excerpt || article.description;
+
+  const handleView = () => {
+    if (onView) onView(article);
+    else if (onEdit) onEdit(article);
+    else if (article.canonical_url) Linking.openURL(article.canonical_url);
+  };
 
   return (
-    <View style={[styles.itemCard, {
-      backgroundColor: colors.surface,
-      borderColor: isPublished ? colors.border : colors.primary,
-      borderWidth: isPublished ? 1 : 2,
-    }]}>
-      <View style={styles.itemInfo}>
-        <View style={styles.itemHeader}>
-          <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-            <FileText size={20} color={colors.primary} />
+    <View style={[styles.card, { backgroundColor: cardBg, borderColor: border }]}>
+      <View style={styles.topRow}>
+        <View style={styles.sourceRow}>
+          <View style={[styles.sourceAvatar, { backgroundColor: primary }]}>
+            <Text style={styles.sourceInitials}>{initials}</Text>
           </View>
-          <View style={styles.itemTitleContainer}>
-            <Text variant="body" color={colors.textPrimary} style={styles.itemTitle}>
-              {article.title}
+          <View style={{ flex: 1, minWidth: 0 }}>
+            <Text variant="body" color={textPrimary} style={{ fontWeight: '600', fontSize: 13 }}>
+              {sourceLabel}
             </Text>
-            <Text variant="caption" color={colors.textSecondary} style={styles.itemSubtitle}>
-              By {article.author}
-            </Text>
+            <View style={styles.timeRow}>
+              <Clock size={10} color={textTertiary} />
+              <Text variant="caption" color={textTertiary} style={{ marginLeft: 4, fontSize: 11 }}>
+                {article.time || article.date || '—'}
+              </Text>
+            </View>
           </View>
         </View>
-        <View style={styles.itemMeta}>
-          <View style={[styles.categoryBadge, { backgroundColor: `${colors.primary}10` }]}>
-            <Text variant="caption" style={[styles.categoryText, { color: colors.primary }]}>
-              {article.category}
-            </Text>
-          </View>
-          <View style={[
-            styles.statusBadge, 
-            { backgroundColor: isPublished ? `${colors.primary}20` : `${colors.error}20` }
-          ]}>
-            <View style={[
-              styles.statusDot,
-              { backgroundColor: isPublished ? colors.primary : colors.error }
-            ]} />
-            <Text variant="caption" style={[
-              styles.statusText,
-              { color: isPublished ? colors.primary : colors.error }
-            ]}>
-              {article.status}
-            </Text>
-          </View>
-          <Text variant="caption" color={colors.textTertiary} style={styles.itemDate}>
-            {article.date}
+        <ArticleCredibilityIndicator article={article} />
+      </View>
+
+      {article.category ? (
+        <View style={[styles.categoryPill, { backgroundColor: palette?.pageAlt || '#f3f4f6' }]}>
+          <Tag size={10} color={textSecondary} />
+          <Text variant="caption" color={textSecondary} style={styles.categoryText}>
+            {article.category}
           </Text>
         </View>
+      ) : null}
+
+      <ArticleInsightBadges article={article} palette={palette} />
+      <ArticleTopicKeywords
+        keywords={article.topic_keywords}
+        textSecondary={textSecondary}
+        isDark={isDark}
+        borderColor={border}
+      />
+
+      <Text variant="body" color={textPrimary} style={styles.title} numberOfLines={3}>
+        {article.title}
+      </Text>
+
+      {summary ? (
+        <Text variant="caption" color={textSecondary} style={styles.excerpt} numberOfLines={2}>
+          {summary}
+        </Text>
+      ) : null}
+
+      <View style={[styles.footer, { borderTopColor: palette?.borderLight || border }]}>
+        <TouchableOpacity style={[styles.footerBtn, { borderColor: border, backgroundColor: palette?.pageAlt }]} onPress={handleView}>
+          <Eye size={12} color={textPrimary} />
+          <Text variant="caption" color={textPrimary} style={{ fontWeight: '600', marginLeft: 4 }}>
+            View
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.footerBtn, styles.deleteBtn]}
+          onPress={() => onDelete?.(article)}
+        >
+          <Trash2 size={12} color="#ef4444" />
+          <Text variant="caption" style={{ color: '#ef4444', fontWeight: '600', marginLeft: 4 }}>
+            Delete
+          </Text>
+        </TouchableOpacity>
       </View>
-      {!readOnly && (
-        <View style={styles.itemActions}>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: `${colors.primary}15` }]}
-            onPress={() => onEdit(article)}
-            activeOpacity={0.7}
-          >
-            <Edit2 size={18} color={colors.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.actionButton, { backgroundColor: `${colors.error}15` }]}
-            onPress={() => onDelete(article.id)}
-            activeOpacity={0.7}
-          >
-            <Trash2 size={18} color={colors.error} />
-          </TouchableOpacity>
-        </View>
-      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  itemCard: {
-    flexDirection: 'row',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    justifyContent: 'space-between',
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
+  card: {
+    borderRadius: 12,
+    borderWidth: 1,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 2,
   },
-  itemInfo: {
-    flex: 1,
-  },
-  itemHeader: {
-    flexDirection: 'row',
+  topRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 },
+  sourceRow: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 },
+  sourceAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 6,
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
     justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
+    marginRight: 8,
   },
-  itemTitleContainer: {
-    flex: 1,
-  },
-  itemTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  itemSubtitle: {
-    fontSize: 14,
-  },
-  itemMeta: {
+  sourceInitials: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  timeRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2 },
+  categoryPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 8,
+    alignSelf: 'flex-start',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginBottom: 10,
   },
-  categoryBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  categoryText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 6,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'capitalize',
-  },
-  itemDate: {
-    fontSize: 12,
-  },
-  itemActions: {
+  categoryText: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  title: { fontSize: 16, fontWeight: '600', lineHeight: 22, marginBottom: 8 },
+  excerpt: { lineHeight: 18, marginBottom: 12 },
+  footer: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    marginTop: 4,
   },
-  actionButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+  footerBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1,
   },
+  deleteBtn: { borderColor: '#ef4444', backgroundColor: '#fff5f5' },
 });
 
 export default ArticleCard;

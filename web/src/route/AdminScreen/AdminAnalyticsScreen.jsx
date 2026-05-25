@@ -172,8 +172,8 @@ const AdminAnalyticsScreen = () => {
                 <div
                   key={index}
                   onClick={() => {
-                    if (stat.key === 'raw') navigate('/admin/articles?scope=raw');
-                    else if (stat.key === 'processed') navigate('/admin/articles?scope=processed');
+                    if (stat.key === 'raw') navigate('/admin/articles?pipeline=raw');
+                    else if (stat.key === 'processed') navigate('/admin/articles?pipeline=done');
                     else setActiveMetric(stat.key);
                   }}
                   style={{

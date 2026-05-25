@@ -1,0 +1,42 @@
+.admin-page-transition {
+  width: 100%;
+  will-change: opacity, transform;
+}
+
+.admin-page-transition--in {
+  animation: adminPageEnter 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.admin-page-transition--out {
+  animation: adminPageExit 0.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  pointer-events: none;
+}
+
+@keyframes adminPageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes adminPageExit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-page-transition--in,
+  .admin-page-transition--out {
+    animation: none !important;
+  }
+}

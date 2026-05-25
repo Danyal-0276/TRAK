@@ -13,8 +13,9 @@ async function parseJson(res) {
   return data;
 }
 
-export async function getAdminAnalytics() {
-  const res = await apiFetch(`${ADMIN_PREFIX}/analytics/`);
+export async function getAdminAnalytics({ cacheBust = false } = {}) {
+  const suffix = cacheBust ? `?_t=${Date.now()}` : '';
+  const res = await apiFetch(`${ADMIN_PREFIX}/analytics/${suffix}`);
   return parseJson(res);
 }
 
@@ -106,5 +107,60 @@ export async function patchAdminSettings(payload) {
 
 export async function getAdminNotifications() {
   const res = await apiFetch(`${ADMIN_PREFIX}/notifications/`);
+  return parseJson(res);
+}
+
+export async function createAdminCategory(name, subcategories = []) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/settings/categories/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, subcategories }),
+  });
+  return parseJson(res);
+}
+
+export async function deleteAdminCategory(slug) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/settings/categories/${encodeURIComponent(slug)}/`, {
+    method: 'DELETE',
+  });
+  if (res.status === 204) return {};
+  return parseJson(res);
+}
+
+export async function addAdminSubcategory(categorySlug, name) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/settings/categories/${encodeURIComponent(categorySlug)}/subcategories/`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    }
+  );
+  return parseJson(res);
+}
+
+export async function deleteAdminSubcategory(categorySlug, subSlug) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/settings/categories/${encodeURIComponent(categorySlug)}/subcategories/${encodeURIComponent(subSlug)}/`,
+    { method: 'DELETE' }
+  );
+  if (res.status === 204) return {};
+  return parseJson(res);
+}
+
+export async function createAdminConnection(name, url = '') {
+  const res = await apiFetch(`${ADMIN_PREFIX}/settings/connections/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, url }),
+  });
+  return parseJson(res);
+}
+
+export async function deleteAdminConnection(slug) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/settings/connections/${encodeURIComponent(slug)}/`, {
+    method: 'DELETE',
+  });
+  if (res.status === 204) return {};
   return parseJson(res);
 }

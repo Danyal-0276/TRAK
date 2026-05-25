@@ -1,114 +1,254 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { BarChart3 } from 'lucide-react-native';
-import { useTheme } from '../../../theme/ThemeContext';
-import StatCard from '../components/StatCard';
-import ChartSection from '../components/ChartSection';
-import KeywordTable from '../components/KeywordTable';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import {
+  FileText,
+  BarChart3,
+  Activity,
+  Users,
+  AlertTriangle,
+  Layers,
+  Rss,
+  Play,
+  CheckCircle2,
+} from 'lucide-react-native';
 import Text from '../../../components/ui/Text';
+import AdminPipelineProgressBar from '../components/AdminPipelineProgressBar';
+import AdminStatKpiCard from '../components/AdminStatKpiCard';
+import AdminDashboardCharts from '../components/AdminDashboardCharts';
+import AdminScrapeSourcesPanel from '../components/AdminScrapeSourcesPanel';
+import { buildDashboardStatCards, emptyAnalyticsSnapshot } from '../dashboardChartUtils';
 
-const DashboardTab = ({ stats, keywords, onRunPipeline, pipelineRunning = false }) => {
-  const { theme } = useTheme();
-  const { colors } = theme;
-  
-  const userTrendData = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    datasets: [{
-      data: [1.8, 2.2, 2.8, 3.4, 4.8, 6.2, 7.8],
-      color: (opacity = 1) => `rgba(99, 102, 241, ${opacity})`,
-      strokeWidth: 3,
-    }],
-  };
+const PIPELINE_BATCH_SIZE = 15;
+
+const STAT_ICONS = {
+  raw: FileText,
+  processed: CheckCircle2,
+  queue: Activity,
+  failed: AlertTriangle,
+  completion: BarChart3,
+  sources: Rss,
+  users: Users,
+  credibility: Layers,
+};
+
+const DashboardTab = ({
+  palette,
+  chartData,
+  hasAnalytics = false,
+  statCards: statCardsProp,
+  analyticsError = null,
+  overviewLoading = false,
+  isOverviewActive = true,
+  onKpiPress,
+  onManageSettings,
+  refreshing = false,
+  onRunPipeline,
+  pipelineRunning = false,
+  pipelineProgress = 0,
+  pipelineRunPhase = 'idle',
+  pipelineRunLabel = '',
+  liveUpdatedLabel = '',
+}) => {
+  const snapshot = chartData || emptyAnalyticsSnapshot();
+  const kpiWidth = Dimensions.get('window').width >= 520 ? '23%' : '48%';
+
+  const statCards = (statCardsProp?.length
+    ? statCardsProp
+    : buildDashboardStatCards(snapshot, palette)
+  ).map((card) => ({
+    ...card,
+    icon: STAT_ICONS[card.key] || FileText,
+    value: overviewLoading ? '…' : card.value,
+    width: kpiWidth,
+  }));
+
+  const failures = snapshot?.recent_pipeline_failures || [];
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: palette.page }]}>
       <View style={styles.header}>
-        <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-          <BarChart3 size={20} color={colors.primary} />
-        </View>
-        <Text variant="title" color={colors.textPrimary} style={styles.title}>
-          Dashboard Overview
-        </Text>
-      </View>
-
-      <View style={styles.statsGrid}>
-        {stats.map((stat, index) => (
-          <StatCard key={index} label={stat.label} value={stat.value} />
-        ))}
-      </View>
-
-      <ChartSection
-        title="User trend"
-        dateRange="Last 7 days"
-        data={userTrendData}
-        config={{
-          yAxisSuffix: 'K',
-          propsForDots: { r: '0' },
-        }}
-      />
-
-      <KeywordTable keywords={keywords} />
-
-      {onRunPipeline ? (
-        <View style={{ paddingHorizontal: 20, marginTop: 24, marginBottom: 16 }}>
-          <TouchableOpacity
-            onPress={onRunPipeline}
-            disabled={pipelineRunning}
-            style={{
-              backgroundColor: colors.primary,
-              paddingVertical: 14,
-              borderRadius: 10,
-              alignItems: 'center',
-              opacity: pipelineRunning ? 0.7 : 1,
-            }}
-            activeOpacity={0.85}
-          >
-            {pipelineRunning ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text variant="body" style={{ color: '#fff', fontWeight: '600' }}>
-                Run AI pipeline (batch)
-              </Text>
-            )}
-          </TouchableOpacity>
-          <Text variant="caption" color={colors.textSecondary} style={{ marginTop: 8, textAlign: 'center' }}>
-            Processes pending raw articles on the server (admin only).
+        <View style={{ flex: 1 }}>
+          <Text variant="caption" color={palette.textTertiary} style={styles.eyebrow}>
+            ADMIN
           </Text>
+          <Text variant="title" color={palette.textPrimary} style={styles.title}>
+            Dashboard
+          </Text>
+          <Text variant="caption" color={palette.textSecondary}>
+            Live scrape, pipeline & credibility{liveUpdatedLabel ? ` · Updated ${liveUpdatedLabel}` : ''}
+          </Text>
+          {isOverviewActive ? (
+            <View style={styles.liveRow}>
+              <View style={[styles.liveDot, { backgroundColor: palette.primary, opacity: refreshing ? 0.45 : 1 }]} />
+              <Text variant="caption" color={palette.textTertiary} style={{ fontWeight: '600' }}>
+                {refreshing ? 'Updating…' : 'Live · refreshes every 20s'}
+              </Text>
+            </View>
+          ) : null}
         </View>
-      ) : null}
+      </View>
+
+      {overviewLoading ? (
+        <View style={styles.skeletonGrid}>
+          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
+            <View
+              key={i}
+              style={[styles.skeletonCard, { backgroundColor: palette.card, borderColor: palette.border, width: kpiWidth }]}
+            />
+          ))}
+        </View>
+      ) : (
+        <>
+          <View style={styles.statsGrid}>
+            {statCards.map((stat) => (
+              <AdminStatKpiCard
+                key={stat.key}
+                stat={stat}
+                palette={palette}
+                onPress={onKpiPress ? () => onKpiPress(stat.key) : undefined}
+              />
+            ))}
+          </View>
+
+          {analyticsError ? (
+            <View style={[styles.errorBanner, { backgroundColor: palette.warningBg, borderColor: palette.warning }]}>
+              <Text variant="caption" color={palette.textSecondary} style={{ lineHeight: 18 }}>
+                {analyticsError} Data still updates automatically every 20 seconds.
+              </Text>
+            </View>
+          ) : null}
+
+          <AdminDashboardCharts snapshot={snapshot} palette={palette} />
+
+          <View style={styles.pipelineRowSection}>
+            <View style={[styles.pipelineCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
+              <Text variant="subtitle" color={palette.textPrimary} style={{ fontWeight: '700', marginBottom: 6 }}>
+                AI pipeline
+              </Text>
+              <Text variant="caption" color={palette.textSecondary} style={{ marginBottom: 14, lineHeight: 18 }}>
+                Run fake detection, fact-check, summary, and keywords on pending raw articles.{' '}
+                <Text style={{ color: palette.textPrimary, fontWeight: '700' }}>
+                  {snapshot?.pipeline_summary?.queued ?? 0}
+                </Text>{' '}
+                in queue.
+              </Text>
+              <View style={styles.pipelineRow}>
+                <TouchableOpacity
+                  onPress={onRunPipeline}
+                  disabled={pipelineRunning}
+                  style={[styles.runBtn, { backgroundColor: palette.primary, opacity: pipelineRunning ? 0.9 : 1 }]}
+                >
+                  {pipelineRunning ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <>
+                      <Play size={16} color="#fff" fill="#fff" />
+                      <Text variant="body" style={styles.runBtnText}>
+                        Run batch ({PIPELINE_BATCH_SIZE})
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                {pipelineRunPhase !== 'idle' ? (
+                  <AdminPipelineProgressBar
+                    progress={pipelineProgress}
+                    phase={pipelineRunPhase}
+                    label={pipelineRunLabel}
+                    palette={palette}
+                  />
+                ) : null}
+              </View>
+            </View>
+
+            <View style={[styles.failuresCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
+              <Text variant="subtitle" color={palette.textPrimary} style={{ fontWeight: '700', marginBottom: 10 }}>
+                Recent failures
+              </Text>
+              {failures.length === 0 ? (
+                <Text variant="caption" color={palette.textSecondary}>
+                  No recent pipeline errors.
+                </Text>
+              ) : (
+                failures.slice(0, 5).map((f, i) => (
+                  <View
+                    key={`${f.title}-${i}`}
+                    style={[styles.failureItem, i < failures.length - 1 && { borderBottomColor: palette.borderLight, borderBottomWidth: 1 }]}
+                  >
+                    <Text variant="caption" color={palette.textPrimary} style={{ fontWeight: '600' }} numberOfLines={2}>
+                      {f.title}
+                    </Text>
+                    <Text variant="caption" color={palette.textTertiary} style={{ marginTop: 2 }}>
+                      {f.source_key}
+                    </Text>
+                    <Text variant="caption" color={palette.error} style={{ marginTop: 4 }} numberOfLines={3}>
+                      {f.error}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+          </View>
+
+          <AdminScrapeSourcesPanel
+            connections={snapshot?.scrape_connections}
+            palette={palette}
+            onManageSettings={onManageSettings}
+          />
+        </>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    paddingTop: 8,
-  },
+  container: { paddingTop: 8, paddingBottom: 8 },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     paddingHorizontal: 20,
-    marginBottom: 20,
+    marginBottom: 16,
+    gap: 12,
   },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
+  eyebrow: { fontWeight: '600', letterSpacing: 1, marginBottom: 4 },
+  title: { fontSize: 22, fontWeight: '800', marginBottom: 4 },
+  liveRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
+  liveDot: { width: 8, height: 8, borderRadius: 4 },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     paddingHorizontal: 20,
-    marginBottom: 24,
     justifyContent: 'space-between',
+    marginBottom: 8,
   },
+  skeletonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    paddingHorizontal: 20,
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
+  skeletonCard: { height: 108, borderRadius: 14, borderWidth: 1, marginBottom: 12 },
+  errorBanner: {
+    marginHorizontal: 20,
+    marginBottom: 12,
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  pipelineRowSection: { paddingHorizontal: 20, gap: 12, marginBottom: 8 },
+  pipelineCard: { padding: 16, borderRadius: 14, borderWidth: 1 },
+  failuresCard: { padding: 16, borderRadius: 14, borderWidth: 1, maxHeight: 220 },
+  pipelineRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' },
+  runBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  runBtnText: { color: '#fff', fontWeight: '700' },
+  failureItem: { paddingBottom: 10, marginBottom: 10 },
 });
 
 export default DashboardTab;

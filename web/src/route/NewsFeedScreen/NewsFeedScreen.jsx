@@ -14,6 +14,7 @@ import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, setReactionForArticle } from '../../utils/reactionsStorage';
 import { getCardSummaryText } from '../../utils/articleNavigation';
 import { openArticleDetail } from '../../utils/openArticleDetail';
+import { useFeedCache } from '../../context/FeedCacheContext';
 
 const NewsFeedScreen = () => {
     const { theme } = useTheme();
@@ -28,21 +29,29 @@ const NewsFeedScreen = () => {
     const [activeTab, setActiveTab] = useState(
         ['For you', 'Bookmarks', 'Trending'].includes(normalizedTab) ? normalizedTab : 'For you'
     );
-    const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
-    const [votedItems, setVotedItems] = useState({});
-    const [newsData, setNewsData] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [feedError, setFeedError] = useState('');
+    const { getHomeFeed, saveHomeFeed, isFresh } = useFeedCache();
+    const restoredRef = useRef(false);
+
+    const cachedHome = getHomeFeed();
+    const hasCachedHome = isFresh(cachedHome) && Array.isArray(cachedHome?.newsData) && cachedHome.newsData.length > 0;
+
+    const [bookmarkedItems, setBookmarkedItems] = useState(
+        () => (hasCachedHome ? new Set(cachedHome.bookmarkIds || []) : new Set())
+    );
+    const [votedItems, setVotedItems] = useState(() => (hasCachedHome ? cachedHome.votedItems || {} : {}));
+    const [newsData, setNewsData] = useState(() => (hasCachedHome ? cachedHome.newsData : []));
+    const [loading, setLoading] = useState(!hasCachedHome);
+    const [feedError, setFeedError] = useState(() => (hasCachedHome ? cachedHome.feedError || '' : ''));
     const { keywords: feedKeywords } = useUserKeywords();
     const hasFeedPersonalization = useMemo(
         () => (feedKeywords || []).length > 0,
         [(feedKeywords || []).join('\x1f')]
     );
-    const [nextCursor, setNextCursor] = useState('');
-    const [hasMore, setHasMore] = useState(false);
+    const [nextCursor, setNextCursor] = useState(() => (hasCachedHome ? cachedHome.nextCursor || '' : ''));
+    const [hasMore, setHasMore] = useState(() => (hasCachedHome ? Boolean(cachedHome.hasMore) : false));
     const [loadingMore, setLoadingMore] = useState(false);
 
-    const feedModeRef = useRef('explore');
+    const feedModeRef = useRef(hasCachedHome ? cachedHome.feedMode || 'explore' : 'explore');
     const loadAbortRef = useRef(null);
 
     const mapFeedResults = (rawItems, reactionMap) =>
@@ -78,7 +87,24 @@ const NewsFeedScreen = () => {
         return loadExplorePage({ limit: 50, cursor });
     }, []);
 
-    const loadNews = useCallback(async () => {
+    const loadNews = useCallback(async ({ force = false } = {}) => {
+        const cached = getHomeFeed();
+        if (!force && isFresh(cached) && Array.isArray(cached?.newsData) && cached.newsData.length) {
+            setNewsData(cached.newsData);
+            setNextCursor(cached.nextCursor || '');
+            setHasMore(Boolean(cached.hasMore));
+            setVotedItems(cached.votedItems || {});
+            setBookmarkedItems(new Set(cached.bookmarkIds || []));
+            setBookmarkIds(cached.bookmarkIds || []);
+            feedModeRef.current = cached.feedMode || 'explore';
+            setFeedError(cached.feedError || '');
+            setLoading(false);
+            if (cached.scrollY) {
+                requestAnimationFrame(() => window.scrollTo(0, cached.scrollY));
+            }
+            return;
+        }
+
         if (loadAbortRef.current) {
             loadAbortRef.current.abort();
         }
@@ -143,7 +169,52 @@ const NewsFeedScreen = () => {
                 setLoading(false);
             }
         }
-    }, []);
+    }, [getHomeFeed, isFresh]);
+
+    const persistHomeFeed = useCallback(() => {
+        if (!newsData.length) return;
+        saveHomeFeed({
+            newsData,
+            nextCursor,
+            hasMore,
+            votedItems,
+            bookmarkIds: Array.from(bookmarkedItems),
+            feedMode: feedModeRef.current,
+            feedError,
+            scrollY: window.scrollY,
+            activeTab,
+        });
+    }, [newsData, nextCursor, hasMore, votedItems, bookmarkedItems, feedError, activeTab, saveHomeFeed]);
+
+    useEffect(() => {
+        persistHomeFeed();
+    }, [persistHomeFeed]);
+
+    useEffect(() => {
+        return () => {
+            if (newsData.length) {
+                saveHomeFeed({
+                    newsData,
+                    nextCursor,
+                    hasMore,
+                    votedItems,
+                    bookmarkIds: Array.from(bookmarkedItems),
+                    feedMode: feedModeRef.current,
+                    feedError,
+                    scrollY: window.scrollY,
+                    activeTab,
+                });
+            }
+        };
+    }, [newsData, nextCursor, hasMore, votedItems, bookmarkedItems, feedError, activeTab, saveHomeFeed]);
+
+    useEffect(() => {
+        if (restoredRef.current || !hasCachedHome) return;
+        restoredRef.current = true;
+        if (cachedHome.scrollY) {
+            requestAnimationFrame(() => window.scrollTo(0, cachedHome.scrollY));
+        }
+    }, [hasCachedHome, cachedHome]);
 
     const loadMore = useCallback(async () => {
         if (!hasMore || loadingMore || !nextCursor) return;
@@ -168,11 +239,12 @@ const NewsFeedScreen = () => {
     });
 
     useEffect(() => {
+        if (hasCachedHome) return;
         loadNews();
         return () => {
             loadAbortRef.current?.abort();
         };
-    }, [loadNews]);
+    }, [loadNews, hasCachedHome]);
 
     useEffect(() => {
         if (rawTab) {
@@ -377,7 +449,7 @@ const NewsFeedScreen = () => {
                                 </p>
                                 <button
                                     type="button"
-                                    onClick={() => loadNews()}
+                                    onClick={() => loadNews({ force: true })}
                                     style={{
                                         padding: '12px 20px',
                                         backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',

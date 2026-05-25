@@ -10,8 +10,9 @@ async function parseJson(res) {
   return data;
 }
 
-export async function getAdminAnalytics() {
-  const res = await apiFetch(`${ADMIN_PREFIX}/analytics/`, {}, API_BASE);
+export async function getAdminAnalytics({ cacheBust = false } = {}) {
+  const suffix = cacheBust ? `?_t=${Date.now()}` : '';
+  const res = await apiFetch(`${ADMIN_PREFIX}/analytics/${suffix}`, {}, API_BASE);
   return parseJson(res);
 }
 
@@ -95,5 +96,93 @@ export async function patchAdminSettings(payload) {
 
 export async function getAdminNotifications() {
   const res = await apiFetch(`${ADMIN_PREFIX}/notifications/`, {}, API_BASE);
+  return parseJson(res);
+}
+
+export async function patchAdminArticle(scope, articleId, payload) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/articles/${encodeURIComponent(scope)}/${encodeURIComponent(articleId)}/`,
+    { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) },
+    API_BASE
+  );
+  return parseJson(res);
+}
+
+export async function deleteAdminArticle(scope, articleId) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/articles/${encodeURIComponent(scope)}/${encodeURIComponent(articleId)}/`,
+    { method: 'DELETE' },
+    API_BASE
+  );
+  if (res.status === 204) return {};
+  return parseJson(res);
+}
+
+export async function createAdminCategory(name, subcategories = []) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/settings/categories/`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, subcategories }),
+    },
+    API_BASE
+  );
+  return parseJson(res);
+}
+
+export async function deleteAdminCategory(slug) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/settings/categories/${encodeURIComponent(slug)}/`,
+    { method: 'DELETE' },
+    API_BASE
+  );
+  if (res.status === 204) return {};
+  return parseJson(res);
+}
+
+export async function createAdminConnection(name, url = '') {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/settings/connections/`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, url }),
+    },
+    API_BASE
+  );
+  return parseJson(res);
+}
+
+export async function deleteAdminConnection(slug) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/settings/connections/${encodeURIComponent(slug)}/`,
+    { method: 'DELETE' },
+    API_BASE
+  );
+  if (res.status === 204) return {};
+  return parseJson(res);
+}
+
+export async function addAdminSubcategory(categorySlug, name) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/settings/categories/${encodeURIComponent(categorySlug)}/subcategories/`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    },
+    API_BASE
+  );
+  return parseJson(res);
+}
+
+export async function deleteAdminSubcategory(categorySlug, subSlug) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/settings/categories/${encodeURIComponent(categorySlug)}/subcategories/${encodeURIComponent(subSlug)}/`,
+    { method: 'DELETE' },
+    API_BASE
+  );
+  if (res.status === 204) return {};
   return parseJson(res);
 }
