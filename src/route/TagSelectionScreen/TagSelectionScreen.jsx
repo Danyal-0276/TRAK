@@ -13,7 +13,7 @@ import { SelectedCount } from './components/SelectedCount';
 import { Tag } from './components/Tag';
 import { ContinueButton } from './components/ContinueButton';
 import { newsTagsWithSubcategories } from './constants/newsCategories';
-import { fetchPlatformCategories } from '../../api/newsApi';
+import { loadTagsWithSubcategories } from '../../utils/platformTaxonomy';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
 import { loadUserKeywords } from '../../utils/userKeywordsStorage';
@@ -65,23 +65,8 @@ const TagSelectionScreen = ({ navigation, route }) => {
     useEffect(() => {
         let mounted = true;
         (async () => {
-            try {
-                const data = await fetchPlatformCategories();
-                const adminCats = (data.categories || [])
-                    .map((c) => (typeof c === 'string' ? c : c?.name || c?.id || ''))
-                    .map((s) => String(s).trim().toLowerCase().replace(/\s+/g, '-'))
-                    .filter(Boolean);
-                if (!adminCats.length || !mounted) return;
-                setTagsMap((prev) => {
-                    const next = { ...prev };
-                    for (const key of adminCats) {
-                        if (!next[key]) next[key] = [];
-                    }
-                    return next;
-                });
-            } catch (_) {
-                /* keep defaults */
-            }
+            const map = await loadTagsWithSubcategories();
+            if (mounted) setTagsMap(map);
         })();
         return () => {
             mounted = false;

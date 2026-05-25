@@ -28,12 +28,10 @@ import { trackKeywords } from '../../api/newsApi';
 import { getAccessToken } from '../../api/client';
 import { loadUserKeywords, setUserKeywords, invalidateUserKeywordsCache } from '../../utils/userKeywordsStorage';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
-import { newsTagsWithSubcategories } from '../TagSelectionScreen/constants/newsCategories';
+import { loadTagsWithSubcategories, taxonomyTermsFromMap } from '../../utils/platformTaxonomy';
+import { goToMainTab } from '../../navigation/goToMainTab';
 
 const { width, height } = Dimensions.get('window');
-const BUILTIN_TAXONOMY_TERMS = new Set(
-    Object.entries(newsTagsWithSubcategories).flatMap(([main, subs]) => [main, ...(subs || [])])
-);
 
 const KeywordSelectionScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
@@ -42,14 +40,11 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
     const [selectedKeywords, setSelectedKeywords] = useState([]);
     const [keywordInput, setKeywordInput] = useState('');
     const [loading, setLoading] = useState(false);
-    
     // Get selected tags from previous screen
     const { fromSettings = false } = route.params || {};
     const selectedTags = Array.isArray(route.params?.selectedTags) ? route.params.selectedTags : [];
     const keywordsLoaded = useRef(false);
-    const goToSettings = () => {
-        navigation.navigate('MainTabs', { screen: 'Settings' });
-    };
+    const goToSettings = () => goToMainTab(navigation, 'Settings');
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -121,9 +116,10 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
         keywordsLoaded.current = true;
         let mounted = true;
         (async () => {
-            const saved = await loadUserKeywords();
+            const [map, saved] = await Promise.all([loadTagsWithSubcategories(), loadUserKeywords()]);
             if (!mounted) return;
-            const customOnly = saved.filter((k) => !BUILTIN_TAXONOMY_TERMS.has(String(k || '').toLowerCase()));
+            const terms = taxonomyTermsFromMap(map);
+            const customOnly = saved.filter((k) => !terms.has(String(k || '').toLowerCase()));
             if (customOnly.length) setSelectedKeywords(customOnly);
         })();
         return () => {

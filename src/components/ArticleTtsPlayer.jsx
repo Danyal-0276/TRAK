@@ -1,0 +1,246 @@
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
+import { Volume2, Square } from 'lucide-react-native';
+import Text from './ui/Text';
+import {
+  TTS_LANGUAGES,
+  requestArticleTtsPlan,
+  playArticleTtsStreaming,
+  stopNativePlayback,
+} from '../utils/articleTts';
+
+export default function ArticleTtsPlayer({ text, colors, disabled = false }) {
+  const [language, setLanguage] = useState('english');
+  const [status, setStatus] = useState('idle');
+  const [error, setError] = useState('');
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const playbackRef = useRef(null);
+  const cancelledRef = useRef(false);
+  const audioStartedRef = useRef(false);
+  const statusRef = useRef(status);
+  statusRef.current = status;
+
+  const listenText = String(text || '').trim();
+  const primary = colors?.primary || '#3b82f6';
+  const border = colors?.border || '#e5e7eb';
+  const bg = colors?.surfaceElevated || colors?.backgroundSecondary || '#f8fafc';
+  const textPrimary = colors?.textPrimary || '#0f172a';
+  const textSecondary = colors?.textSecondary || '#64748b';
+
+  const stopPlayback = useCallback(() => {
+    cancelledRef.current = true;
+    playbackRef.current?.stop?.();
+    playbackRef.current = null;
+    stopNativePlayback();
+    setProgress({ current: 0, total: 0 });
+    setStatus('idle');
+    setError('');
+  }, []);
+
+  useEffect(() => () => stopPlayback(), [stopPlayback]);
+
+  const handlePlay = async () => {
+    if (!listenText || disabled) return;
+    if (statusRef.current === 'playing' || statusRef.current === 'loading') {
+      stopPlayback();
+      return;
+    }
+
+    cancelledRef.current = false;
+    audioStartedRef.current = false;
+    setError('');
+    setProgress({ current: 0, total: 0 });
+    setStatus('loading');
+
+    try {
+      const segments = await requestArticleTtsPlan(listenText);
+      if (cancelledRef.current) return;
+
+      setProgress({ current: 0, total: segments.length });
+
+      const session = playArticleTtsStreaming(segments, language, {
+        isCancelled: () => cancelledRef.current,
+        onFirstReady: () => {
+          if (!cancelledRef.current) {
+            audioStartedRef.current = true;
+            setStatus('playing');
+          }
+        },
+        onProgress: (current, total) => {
+          if (!cancelledRef.current) setProgress({ current, total });
+        },
+      });
+
+      playbackRef.current = session;
+
+      await session.promise;
+
+      if (cancelledRef.current) return;
+
+      playbackRef.current = null;
+      if (!audioStartedRef.current) {
+        setStatus('error');
+        setError(
+          'Playback did not start. Restart Django, run pip install -r requirements.txt, then try again.'
+        );
+        return;
+      }
+      setStatus('idle');
+      setProgress({ current: 0, total: 0 });
+    } catch (e) {
+      if (cancelledRef.current) return;
+      stopPlayback();
+      setStatus('error');
+      const msg = e?.message || 'Could not play audio.';
+      if (
+        msg.includes('Cannot find module') ||
+        msg.includes('native module') ||
+        msg.includes('not linked') ||
+        msg.includes('Rebuild the app')
+      ) {
+        setError('Rebuild the app: npm install, then npm run android (or ios).');
+      } else if (msg.includes('Sign in')) {
+        setError(msg);
+      } else if (msg.includes('timed out') || msg.includes('reachable')) {
+        setError(`${msg} Set API_BASE in src/config/api.local.js to your Django server IP.`);
+      } else {
+        setError(msg);
+      }
+    }
+  };
+
+  if (!listenText) return null;
+
+  const isActive = status === 'loading' || status === 'playing';
+  const progressPct =
+    progress.total > 0 ? Math.min(100, (progress.current / progress.total) * 100) : null;
+
+  return (
+    <View style={[styles.wrap, { borderColor: border, backgroundColor: bg }]}>
+      <Text variant="caption" color={textPrimary} style={styles.heading}>
+        Listen to article
+      </Text>
+
+      <View style={styles.langRow}>
+        {TTS_LANGUAGES.map((lang) => {
+          const active = language === lang.id;
+          return (
+            <TouchableOpacity
+              key={lang.id}
+              disabled={isActive || disabled}
+              onPress={() => {
+                if (language !== lang.id) {
+                  stopPlayback();
+                  setLanguage(lang.id);
+                }
+              }}
+              style={[
+                styles.langChip,
+                {
+                  borderColor: active ? primary : border,
+                  backgroundColor: active ? `${primary}18` : 'transparent',
+                },
+              ]}
+            >
+              <Text
+                variant="caption"
+                style={{ color: active ? primary : textSecondary, fontWeight: '700', fontSize: 12 }}
+              >
+                {lang.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <View style={styles.playRow}>
+        <TouchableOpacity
+          style={[styles.playBtn, { backgroundColor: isActive ? '#64748b' : primary }]}
+          onPress={handlePlay}
+          disabled={disabled}
+          activeOpacity={0.85}
+        >
+          {status === 'loading' ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : status === 'playing' ? (
+            <Square size={18} color="#fff" fill="#fff" />
+          ) : (
+            <Volume2 size={18} color="#fff" />
+          )}
+          <Text style={styles.playLabel}>{isActive ? 'Stop' : 'Play'}</Text>
+        </TouchableOpacity>
+
+        {isActive ? (
+          <View style={[styles.progressTrack, { backgroundColor: border }]}>
+            {progressPct == null ? (
+              <View style={[styles.progressIndeterminate, { backgroundColor: primary }]} />
+            ) : (
+              <View
+                style={[
+                  styles.progressFill,
+                  { backgroundColor: primary, width: `${progressPct}%` },
+                ]}
+              />
+            )}
+          </View>
+        ) : null}
+      </View>
+
+      {error ? (
+        <Text variant="caption" style={{ color: colors?.error || '#ef4444', marginTop: 8 }}>
+          {error}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  wrap: {
+    marginBottom: 20,
+    padding: 14,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
+  heading: { fontWeight: '700', fontSize: 13, marginBottom: 10 },
+  langRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  langChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  playRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    minHeight: 40,
+  },
+  playBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 0,
+    gap: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  playLabel: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  progressTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    overflow: 'hidden',
+    minWidth: 72,
+  },
+  progressFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  progressIndeterminate: {
+    width: '35%',
+    height: '100%',
+    borderRadius: 3,
+    opacity: 0.9,
+  },
+});

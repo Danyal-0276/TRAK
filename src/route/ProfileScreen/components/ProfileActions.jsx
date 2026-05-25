@@ -4,6 +4,7 @@ import { Edit, Settings, Shield, ChevronRight, LogOut } from 'lucide-react-nativ
 import { useTheme } from '../../../theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
 import Text from '../../../components/ui/Text';
+import { goToMainTab } from '../../../navigation/goToMainTab';
 
 const ActionRow = ({ icon: Icon, label, subtitle, onPress, colors, accent, danger }) => (
   <TouchableOpacity
@@ -44,13 +45,9 @@ const ProfileActions = ({ navigation, onLogout }) => {
       ? 'rgba(129,140,248,0.14)'
       : '#eff6ff';
 
-  const openSettingsTab = () => {
-    navigation.getParent()?.navigate('MainTabs', { screen: 'Settings' });
-  };
+  const openSettingsTab = () => goToMainTab(navigation, 'Settings');
 
-  const openAdmin = () => {
-    navigation.getParent()?.getParent()?.navigate('AdminScreen');
-  };
+  const openAdmin = () => goToMainTab(navigation, 'Admin');
 
   return (
     <View style={styles.wrap}>

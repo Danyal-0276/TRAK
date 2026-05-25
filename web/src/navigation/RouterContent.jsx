@@ -16,13 +16,6 @@ import SearchScreen from '../route/SearchScreen/SearchScreen';
 import NotificationsScreen from '../route/NotificationsScreen/NotificationsScreen';
 import ProfileScreen from '../route/ProfileScreen/ProfileScreen';
 import AdminShell from '../route/AdminScreen/components/AdminShell';
-import AdminDashboardScreen from '../route/AdminScreen/AdminDashboardScreen';
-import AdminUsersScreen from '../route/AdminScreen/AdminUsersScreen';
-import AdminAdminsScreen from '../route/AdminScreen/AdminAdminsScreen';
-import AdminProfileScreen from '../route/AdminScreen/AdminProfileScreen';
-import AdminArticlesScreen from '../route/AdminScreen/AdminArticlesScreen';
-import AdminNotificationsScreen from '../route/AdminScreen/AdminNotificationsScreen';
-import AdminSettingsScreen from '../route/AdminScreen/AdminSettingsScreen';
 import SettingsScreen from '../route/SettingsScreen/SettingsScreen';
 import EditProfileScreen from '../route/EditProfileScreen/EditProfileScreen';
 import PrivacyScreen from '../route/PrivacyScreen/PrivacyScreen';
@@ -93,14 +86,14 @@ const RouterContent = () => {
         {/* Admin-only panel (same as mobile — no newsfeed chrome) */}
         <Route path="/admin" element={<ProtectedRoute requireAdmin><AdminShell /></ProtectedRoute>}>
           <Route index element={<Navigate to="dashboard" replace />} />
-          <Route path="dashboard" element={<AdminDashboardScreen />} />
-          <Route path="users" element={<AdminUsersScreen />} />
-          <Route path="admins" element={<AdminAdminsScreen />} />
-          <Route path="profile" element={<AdminProfileScreen />} />
-          <Route path="articles" element={<AdminArticlesScreen />} />
+          <Route path="dashboard" />
+          <Route path="users" />
+          <Route path="admins" />
+          <Route path="profile" />
+          <Route path="articles" />
+          <Route path="notifications" />
+          <Route path="settings" />
           <Route path="analytics" element={<Navigate to="/admin/dashboard" replace />} />
-          <Route path="notifications" element={<AdminNotificationsScreen />} />
-          <Route path="settings" element={<AdminSettingsScreen />} />
         </Route>
         
         {/* Default redirect */}

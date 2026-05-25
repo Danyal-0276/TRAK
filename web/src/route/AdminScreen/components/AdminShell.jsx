@@ -1,9 +1,10 @@
 import React from 'react';
-import { Outlet, Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Shield, LogOut } from 'lucide-react';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
 import AdminTabNav from './AdminTabNav';
+import AdminKeepAliveOutlet from './AdminKeepAliveOutlet';
 
 export default function AdminShell() {
   const { theme } = useTheme();
@@ -116,8 +117,8 @@ export default function AdminShell() {
         <AdminTabNav />
       </header>
 
-      <main>
-        <Outlet />
+      <main style={{ overflow: 'visible' }}>
+        <AdminKeepAliveOutlet />
       </main>
     </div>
   );

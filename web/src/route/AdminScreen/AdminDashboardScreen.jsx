@@ -1,338 +1,485 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
-import { getResponsivePadding, getResponsiveMaxWidth, getResponsiveGridColumns, getResponsiveGap, getResponsiveFontSize } from '../../utils/responsiveStyles';
 import {
-    FileText,
-    Hash,
-    BarChart3,
-    Activity,
-    ArrowRight,
-    Play,
+  getResponsivePadding,
+  getResponsiveMaxWidth,
+  getResponsiveGap,
+  getResponsiveFontSize,
+} from '../../utils/responsiveStyles';
+import {
+  FileText,
+  BarChart3,
+  Activity,
+  Users,
+  AlertTriangle,
+  Layers,
+  Rss,
+  Play,
+  RefreshCw,
+  CheckCircle2,
 } from 'lucide-react';
 import { postAdminPipelineRun } from '../../api/adminApi';
-import AdminAnalyticsSection from './components/AdminAnalyticsSection';
 import { loadAdminOverview, buildOverviewStatCards } from './loadAdminOverview';
-import { toUserTrendChartData } from './mockAdminData';
-import AdminChartSection from './components/AdminChartSection';
-import { SkeletonStatCards, SkeletonTableRows } from '../../components/skeletons/SkeletonLayouts';
+import { emptyAnalyticsSnapshot, enrichAnalyticsSnapshot, isAnalyticsPayload } from './dashboardChartUtils';
+import { getAdminDashboardPalette, DASHBOARD_POLL_INTERVAL_MS } from './adminTheme';
+import { isDashboardPath } from './hooks/useAdminTabActive';
+import AdminDashboardCharts from './components/AdminDashboardCharts';
+import AdminScrapeSourcesPanel from './components/AdminScrapeSourcesPanel';
+import AdminStatKpiCard from './components/AdminStatKpiCard';
+import AdminPipelineProgressBar from './components/AdminPipelineProgressBar';
+import { SkeletonStatCards } from '../../components/skeletons/SkeletonLayouts';
+
+const PIPELINE_BATCH_SIZE = 15;
+
+const STAT_ICONS = {
+  raw: FileText,
+  processed: CheckCircle2,
+  queue: Activity,
+  failed: AlertTriangle,
+  completion: BarChart3,
+  sources: Rss,
+  users: Users,
+  credibility: Layers,
+};
 
 const AdminDashboardScreen = () => {
-    const { theme } = useTheme();
-    const { colors } = theme;
-    const isDark = theme.mode === 'dark';
-    const { isMobile, isTablet } = useResponsive();
-    const navigate = useNavigate();
-    const [snapshot, setSnapshot] = useState(null);
-    const [modelMetrics, setModelMetrics] = useState(null);
-    const [keywords, setKeywords] = useState([]);
-    const [mockAnalytics, setMockAnalytics] = useState(null);
-    const [overviewUsers, setOverviewUsers] = useState([]);
-    const [articleCount, setArticleCount] = useState(0);
-    const [loading, setLoading] = useState(true);
-    const [pipelineBusy, setPipelineBusy] = useState(false);
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const isDark = theme.mode === 'dark';
+  const { isMobile, isTablet } = useResponsive();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const dashboardActive = isDashboardPath(location.pathname);
+  const [snapshot, setSnapshot] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [pipelineBusy, setPipelineBusy] = useState(false);
+  const [pipelineProgress, setPipelineProgress] = useState(0);
+  const [pipelineRunPhase, setPipelineRunPhase] = useState('idle');
+  const [pipelineRunLabel, setPipelineRunLabel] = useState('');
+  const [analyticsError, setAnalyticsError] = useState(null);
+  const [liveUpdatedAt, setLiveUpdatedAt] = useState(null);
+  const hasSnapshotRef = useRef(false);
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+  const palette = useMemo(() => getAdminDashboardPalette(colors, isDark), [colors, isDark]);
+  const chartData = snapshot || emptyAnalyticsSnapshot();
+  const showInitialSkeleton = loading && !snapshot;
 
-    useEffect(() => {
-        loadStats();
-    }, []);
+  useEffect(() => {
+    hasSnapshotRef.current = Boolean(snapshot);
+  }, [snapshot]);
 
-    const loadStats = async () => {
-        try {
-            setLoading(true);
-            const data = await loadAdminOverview();
-            setSnapshot(data.serverAnalytics);
-            setModelMetrics(data.modelMetrics);
-            setKeywords(data.keywords);
-            setMockAnalytics(data.mockAnalytics);
-            setOverviewUsers(data.users);
-            setArticleCount(data.articles.length);
-        } catch (error) {
-            console.error('Error loading admin stats:', error);
-            setSnapshot(null);
-            setModelMetrics(null);
-            setMockAnalytics(null);
-        } finally {
-            setLoading(false);
-        }
+  const loadStats = useCallback(async ({ silent = false, manual = false } = {}) => {
+    const isInitial = !hasSnapshotRef.current;
+    try {
+      setRefreshing(true);
+      if (isInitial && !silent) setLoading(true);
+      setAnalyticsError(null);
+
+      const data = await loadAdminOverview({
+        cacheBust: manual || !silent,
+        requireAnalytics: manual,
+      });
+
+      const mappedArticles = (data.articles || []).map((doc) => ({
+        scope: doc.scope,
+        fetched_at: doc.fetched_at,
+        processed_at: doc.processed_at,
+      }));
+      const enriched = enrichAnalyticsSnapshot(data.serverAnalytics, mappedArticles);
+      const hasActivity =
+        enriched.activity_daily?.some((r) => (r.scraped || 0) + (r.processed || 0) > 0) ||
+        isAnalyticsPayload(data.serverAnalytics);
+
+      if (hasActivity || data.serverAnalytics) {
+        setSnapshot({ ...enriched, _refreshedAt: Date.now() });
+        setAnalyticsError(data.serverAnalytics ? null : data.analyticsError || null);
+      } else {
+        setAnalyticsError(data.analyticsError || 'Could not load analytics from the server.');
+        if (manual || !silent) setSnapshot(null);
+      }
+      setLiveUpdatedAt(new Date());
+    } catch (error) {
+      console.error('Error loading admin stats:', error);
+      setAnalyticsError(error?.message || 'Failed to load analytics.');
+      if (manual || !silent) setSnapshot(null);
+    } finally {
+      setRefreshing(false);
+      setLoading(false);
+    }
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    loadStats({ manual: true, silent: false });
+  }, [loadStats]);
+
+  useEffect(() => {
+    loadStats();
+  }, [loadStats]);
+
+  useEffect(() => {
+    if (!dashboardActive) return undefined;
+
+    const poll = () => {
+      if (document.visibilityState === 'visible') loadStats({ silent: true });
     };
 
-    const statMeta = [
-        { icon: FileText, color: '#f59e0b' },
-        { icon: BarChart3, color: '#10b981' },
-        { icon: Activity, color: '#3b82f6' },
-        { icon: Hash, color: '#8b5cf6' },
-    ];
-
-    const statCards = buildOverviewStatCards({
-        serverAnalytics: snapshot,
-        articles: { length: articleCount },
-        users: overviewUsers,
-    }).map((card, index) => ({
-        ...card,
-        icon: statMeta[index]?.icon || FileText,
-        color: statMeta[index]?.color || '#64748b',
-        value: loading ? '—' : card.value,
-    }));
-
-    const runPipeline = async () => {
-        setPipelineBusy(true);
-        try {
-            const result = await postAdminPipelineRun(15);
-            window.alert(typeof result === 'object' ? JSON.stringify(result, null, 2).slice(0, 1200) : String(result));
-            await loadStats();
-        } catch (e) {
-            window.alert(e?.message || 'Pipeline run failed');
-        } finally {
-            setPipelineBusy(false);
-        }
+    const id = window.setInterval(poll, DASHBOARD_POLL_INTERVAL_MS);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') loadStats({ silent: true });
     };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [dashboardActive, loadStats]);
 
-    return (
-        <>
-            <style>{`
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `}</style>
-            <div style={{
-                minHeight: '100vh',
-                backgroundColor: backgroundColor,
-                paddingTop: '0',
-                marginTop: '0',
-            }}>
-            <div style={{
-                maxWidth: getResponsiveMaxWidth(isMobile, isTablet, '1400px'),
-                margin: '0 auto',
-                width: '100%',
-                padding: getResponsivePadding(isMobile, isTablet),
-            }}>
-                {/* Header Section */}
-                <div style={{
-                    marginTop: '0',
-                    marginBottom: isMobile ? '20px' : '32px',
-                    paddingTop: '0',
-                }}>
-                    <h1 style={{
-                        fontSize: getResponsiveFontSize(isMobile, isTablet, 28),
-                        fontWeight: '700',
-                        color: textPrimary,
-                        margin: '0 0 8px 0',
-                        paddingTop: '0',
-                        letterSpacing: '-0.5px',
-                    }}>
-                        Dashboard Overview
-                    </h1>
-                    <p style={{
-                        fontSize: '15px',
-                        color: textSecondary,
-                        margin: '0',
-                        lineHeight: '1.5',
-                    }}>
-                        Platform stats, analytics, and pipeline controls (same as mobile admin overview)
-                    </p>
-                </div>
+  const statCards = buildOverviewStatCards({
+    serverAnalytics: chartData,
+    palette,
+  }).map((card) => ({
+    ...card,
+    icon: STAT_ICONS[card.key] || FileText,
+    value: showInitialSkeleton ? '—' : card.value,
+  }));
 
-                {/* Stats Grid */}
-                {loading ? (
-                    <>
-                        <SkeletonStatCards count={4} isDark={isDark} colors={colors} />
-                        <div style={{ marginTop: 24 }}>
-                            <SkeletonTableRows rows={5} isDark={isDark} colors={colors} />
-                        </div>
-                    </>
-                ) : null}
-                <div style={{
-                    display: loading ? 'none' : 'grid',
-                    gridTemplateColumns: getResponsiveGridColumns(isMobile, isTablet, 250),
-                    gap: getResponsiveGap(isMobile, isTablet),
-                    marginBottom: isMobile ? '20px' : '32px',
-                }}>
-                    {statCards.map((stat, index) => {
-                        const Icon = stat.icon;
-                        return (
-                            <div
-                                key={index}
-                                onClick={() => navigate(stat.path)}
-                                style={{
-                                    backgroundColor: cardBackground,
-                                    borderRadius: '12px',
-                                    border: `1px solid ${borderColor}`,
-                                    padding: '24px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                    boxShadow: isDark ? '0 1px 3px rgba(0, 0, 0, 0.2)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
-                                    e.currentTarget.style.boxShadow = isDark 
-                                        ? '0 4px 12px rgba(129, 140, 248, 0.3)' 
-                                        : '0 4px 12px rgba(0, 0, 0, 0.1)';
-                                    e.currentTarget.style.transform = 'translateY(-2px)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.borderColor = borderColor;
-                                    e.currentTarget.style.boxShadow = isDark 
-                                        ? '0 1px 3px rgba(0, 0, 0, 0.2)' 
-                                        : '0 1px 3px rgba(0, 0, 0, 0.05)';
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                }}
-                            >
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    marginBottom: '16px',
-                                }}>
-                                    <div style={{
-                                        width: '48px',
-                                        height: '48px',
-                                        borderRadius: '10px',
-                                        backgroundColor: stat.color + '20',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                    }}>
-                                        <Icon size={24} color={stat.color} />
-                                    </div>
-                                    <ArrowRight size={18} color={textSecondary} />
-                                </div>
-                                <div style={{
-                                    fontSize: '32px',
-                                    fontWeight: '700',
-                                    color: textPrimary,
-                                    marginBottom: '4px',
-                                }}>
-                                    {loading ? '...' : stat.value}
-                                </div>
-                                <div style={{
-                                    fontSize: '14px',
-                                    color: textSecondary,
-                                    fontWeight: '500',
-                                }}>
-                                    {stat.label}
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+  const resetPipelineRunUi = () => {
+    setPipelineRunPhase('idle');
+    setPipelineProgress(0);
+    setPipelineRunLabel('');
+  };
 
-                {/* Quick Actions */}
-                <div style={{
-                    backgroundColor: cardBackground,
-                    borderRadius: '12px',
-                    border: `1px solid ${borderColor}`,
-                    padding: '24px',
-                    marginBottom: '32px',
-                }}>
-                    <h2 style={{
-                        fontSize: '20px',
-                        fontWeight: '700',
-                        color: textPrimary,
-                        margin: '0 0 20px 0',
-                    }}>
-                        Pipeline
-                    </h2>
-                    <div style={{ maxWidth: 420 }}>
-                        <button
-                            type="button"
-                            onClick={runPipeline}
-                            disabled={pipelineBusy}
-                            style={{
-                                padding: '16px',
-                                border: `1px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`,
-                                background: isDark ? 'rgba(129, 140, 248, 0.12)' : '#f8fafc',
-                                borderRadius: '8px',
-                                cursor: pipelineBusy ? 'wait' : 'pointer',
-                                textAlign: 'left',
-                                transition: 'all 0.2s ease',
-                                opacity: pipelineBusy ? 0.75 : 1,
-                            }}
-                        >
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                marginBottom: '4px',
-                            }}>
-                                <Play size={18} color={textPrimary} />
-                                <span style={{
-                                    fontSize: '15px',
-                                    fontWeight: '600',
-                                    color: textPrimary,
-                                }}>
-                                    {pipelineBusy ? 'Running pipeline…' : 'Run AI pipeline'}
-                                </span>
-                            </div>
-                            <div style={{
-                                fontSize: '13px',
-                                color: textSecondary,
-                            }}>
-                                Process a batch of pending raw articles on the server
-                            </div>
-                        </button>
-                    </div>
-                </div>
+  const runPipeline = async () => {
+    if (pipelineBusy) return;
+    setPipelineBusy(true);
+    setPipelineRunPhase('running');
+    setPipelineProgress(4);
+    setPipelineRunLabel('Starting batch…');
 
-                {!loading && (
-                  <>
-                    <AdminChartSection
-                      title="User trend"
-                      dateRange="Last 7 days"
-                      data={toUserTrendChartData()}
-                      lines={[{ dataKey: 'value', color: '#6366f1', strokeWidth: 3, showDots: false }]}
-                      yAxisSuffix="K"
-                      colors={{
-                        textPrimary,
-                        textSecondary,
-                        grid: borderColor,
-                        cardBackground,
-                      }}
-                    />
-                    <div style={{ backgroundColor: cardBackground, borderRadius: '12px', border: `1px solid ${borderColor}`, padding: '24px', marginBottom: '32px', overflowX: 'auto' }}>
-                      <h2 style={{ fontSize: '18px', fontWeight: 700, color: textPrimary, margin: '0 0 16px 0' }}>Top keywords</h2>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '14px' }}>
-                        <thead>
-                          <tr style={{ borderBottom: `1px solid ${borderColor}` }}>
-                            <th style={{ textAlign: 'left', padding: '8px 0', color: textSecondary }}>Keyword</th>
-                            <th style={{ textAlign: 'right', padding: '8px 0', color: textSecondary }}>Searches</th>
-                            <th style={{ textAlign: 'right', padding: '8px 0', color: textSecondary }}>Trend</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {keywords.map((k) => (
-                            <tr key={k.id} style={{ borderBottom: `1px solid ${borderColor}` }}>
-                              <td style={{ padding: '10px 0', color: textPrimary }}>{k.word}</td>
-                              <td style={{ padding: '10px 0', textAlign: 'right', color: textPrimary }}>{k.searches}</td>
-                              <td style={{ padding: '10px 0', textAlign: 'right', color: textSecondary }}>{k.trend}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                    <AdminAnalyticsSection
-                      serverAnalytics={snapshot}
-                      modelMetrics={modelMetrics}
-                      mockAnalytics={mockAnalytics}
-                      colors={{ textPrimary, textSecondary, border: borderColor, primary: colors.primary || '#3b82f6' }}
-                      cardBackground={cardBackground}
-                      borderColor={borderColor}
-                    />
-                  </>
-                )}
+    const maxSimulated = 90;
+    const tick = window.setInterval(() => {
+      setPipelineProgress((prev) => {
+        if (prev >= maxSimulated) return prev;
+        const bump = Math.max(2, (maxSimulated - prev) * 0.12);
+        return Math.min(maxSimulated, prev + bump);
+      });
+    }, 280);
 
+    try {
+      const result = await postAdminPipelineRun(PIPELINE_BATCH_SIZE);
+      window.clearInterval(tick);
+      const ok = result?.processed_ok ?? 0;
+      const err = result?.errors ?? 0;
+      setPipelineProgress(100);
+      setPipelineRunPhase('success');
+      setPipelineRunLabel(`Done · ${ok} processed${err ? ` · ${err} errors` : ''}`);
+      await loadStats({ silent: true });
+      window.setTimeout(resetPipelineRunUi, 2200);
+    } catch (e) {
+      window.clearInterval(tick);
+      setPipelineProgress(100);
+      setPipelineRunPhase('error');
+      setPipelineRunLabel(e?.message || 'Pipeline run failed');
+      window.setTimeout(resetPipelineRunUi, 2800);
+    } finally {
+      setPipelineBusy(false);
+    }
+  };
+
+  const showPipelineProgress = pipelineRunPhase !== 'idle';
+
+  const failures = chartData?.recent_pipeline_failures || [];
+  const updatedLabel = liveUpdatedAt
+    ? liveUpdatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    : chartData?.generated_at
+      ? chartData.generated_at.slice(0, 16).replace('T', ' ')
+      : null;
+
+  const kpiGridColumns = isMobile
+    ? '1fr'
+    : isTablet
+      ? 'repeat(2, minmax(0, 1fr))'
+      : 'repeat(4, minmax(0, 1fr))';
+
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: palette.page, paddingTop: 0 }}>
+      <div
+        style={{
+          maxWidth: getResponsiveMaxWidth(isMobile, isTablet, '1400px'),
+          margin: '0 auto',
+          width: '100%',
+          padding: getResponsivePadding(isMobile, isTablet),
+        }}
+      >
+        <header
+          style={{
+            marginBottom: isMobile ? 20 : 28,
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'flex-start',
+            gap: 16,
+          }}
+        >
+          <div>
+            <p
+              style={{
+                margin: '0 0 6px',
+                fontSize: 12,
+                fontWeight: 600,
+                letterSpacing: '0.06em',
+                textTransform: 'uppercase',
+                color: palette.textTertiary,
+              }}
+            >
+              Admin
+            </p>
+            <h1
+              style={{
+                fontSize: getResponsiveFontSize(isMobile, isTablet, 28),
+                fontWeight: 800,
+                color: palette.textPrimary,
+                margin: '0 0 6px',
+                letterSpacing: '-0.03em',
+              }}
+            >
+              Dashboard
+            </h1>
+            <p style={{ fontSize: 14, color: palette.textSecondary, margin: 0, maxWidth: 520, lineHeight: 1.5 }}>
+              Live scrape, pipeline, and credibility metrics
+              {updatedLabel ? ` · Updated ${updatedLabel}` : ''}
+            </p>
+            {dashboardActive ? (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  marginTop: 10,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: palette.textTertiary,
+                }}
+              >
+                <span
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: '50%',
+                    backgroundColor: palette.primary,
+                    opacity: refreshing ? 0.45 : 1,
+                    boxShadow: refreshing ? 'none' : `0 0 0 3px ${palette.border}`,
+                  }}
+                />
+                {refreshing ? 'Updating…' : 'Live · refreshes every 20s'}
+              </div>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={handleRefresh}
+            disabled={refreshing}
+            aria-busy={refreshing}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '10px 16px',
+              borderRadius: 10,
+              border: `1px solid ${refreshing ? palette.primary : palette.border}`,
+              background: refreshing ? palette.infoBg : palette.card,
+              color: palette.textPrimary,
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: refreshing ? 'wait' : 'pointer',
+              opacity: refreshing ? 0.9 : 1,
+              boxShadow: `0 1px 2px ${palette.shadowLight}`,
+            }}
+          >
+            <RefreshCw
+              size={16}
+              color={palette.primary}
+              style={{
+                animation: refreshing ? 'spin 0.85s linear infinite' : 'none',
+              }}
+            />
+            {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+          <style>{`
+            @keyframes spin {
+              from { transform: rotate(0deg); }
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+        </header>
+
+        {showInitialSkeleton ? (
+          <SkeletonStatCards count={8} isDark={isDark} colors={colors} />
+        ) : (
+          <>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: kpiGridColumns,
+                gap: getResponsiveGap(isMobile, isTablet),
+                marginBottom: 24,
+              }}
+            >
+              {statCards.map((stat) => (
+                <AdminStatKpiCard
+                  key={stat.key}
+                  stat={stat}
+                  palette={palette}
+                  isDark={isDark}
+                  primary={palette.primary}
+                  onNavigate={navigate}
+                />
+              ))}
             </div>
-        </div>
-        </>
-    );
+
+            {analyticsError ? (
+              <div
+                style={{
+                  padding: '14px 18px',
+                  marginBottom: 16,
+                  color: palette.textSecondary,
+                  backgroundColor: palette.warningBg,
+                  borderRadius: 10,
+                  border: `1px solid ${palette.warning}`,
+                  fontSize: 13,
+                }}
+              >
+                {analyticsError} Charts below use empty data until the API works. Restart the backend and click
+                Refresh.
+              </div>
+            ) : null}
+
+            <section id="dashboard-charts" style={{ marginBottom: 24 }}>
+              <AdminDashboardCharts
+                snapshot={chartData}
+                palette={palette}
+                isMobile={isMobile}
+                isTablet={isTablet}
+              />
+            </section>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1.2fr 0.8fr',
+                gap: 16,
+                marginBottom: 20,
+              }}
+            >
+              <div
+                style={{
+                  backgroundColor: palette.card,
+                  borderRadius: 14,
+                  border: `1px solid ${palette.border}`,
+                  boxShadow: `0 1px 2px ${palette.shadowLight}`,
+                  padding: 20,
+                }}
+              >
+                <h2 style={{ fontSize: 15, fontWeight: 700, color: palette.textPrimary, margin: '0 0 6px' }}>
+                  AI pipeline
+                </h2>
+                <p style={{ fontSize: 13, color: palette.textSecondary, margin: '0 0 18px', lineHeight: 1.45 }}>
+                  Run fake detection, fact-check, summary, and keywords on pending raw articles.
+                  <strong style={{ color: palette.textPrimary }}> {chartData?.pipeline_summary?.queued ?? 0}</strong>{' '}
+                  in queue.
+                </p>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 14,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={runPipeline}
+                    disabled={pipelineBusy}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px 18px',
+                      border: 'none',
+                      borderRadius: 10,
+                      background: palette.primary,
+                      color: '#ffffff',
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: pipelineBusy ? 'wait' : 'pointer',
+                      opacity: pipelineBusy ? 0.92 : 1,
+                      boxShadow: `0 4px 14px ${palette.shadow}`,
+                      transition: 'background 0.25s ease, color 0.25s ease',
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Play size={18} fill="currentColor" />
+                    {pipelineBusy ? 'Running…' : `Run batch (${PIPELINE_BATCH_SIZE})`}
+                  </button>
+
+                  {showPipelineProgress ? (
+                    <AdminPipelineProgressBar
+                      progress={pipelineProgress}
+                      phase={pipelineRunPhase}
+                      label={pipelineRunLabel}
+                      palette={palette}
+                      isDark={isDark}
+                    />
+                  ) : null}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  backgroundColor: palette.card,
+                  borderRadius: 14,
+                  border: `1px solid ${palette.border}`,
+                  boxShadow: `0 1px 2px ${palette.shadowLight}`,
+                  padding: 18,
+                  maxHeight: 200,
+                  overflowY: 'auto',
+                }}
+              >
+                <h3 style={{ fontSize: 14, fontWeight: 700, color: palette.textPrimary, margin: '0 0 12px' }}>
+                  Recent failures
+                </h3>
+                {failures.length === 0 ? (
+                  <p style={{ fontSize: 13, color: palette.textSecondary, margin: 0 }}>No recent pipeline errors.</p>
+                ) : (
+                  failures.map((f, i) => (
+                    <div
+                      key={i}
+                      style={{
+                        paddingBottom: 10,
+                        marginBottom: 10,
+                        borderBottom: i < failures.length - 1 ? `1px solid ${palette.borderLight}` : 'none',
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 600, color: palette.textPrimary, lineHeight: 1.35 }}>
+                        {f.title}
+                      </div>
+                      <div style={{ fontSize: 11, color: palette.textTertiary, marginTop: 2 }}>{f.source_key}</div>
+                      <div style={{ fontSize: 11, color: palette.error, marginTop: 4, lineHeight: 1.35 }}>{f.error}</div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <AdminScrapeSourcesPanel connections={chartData?.scrape_connections} palette={palette} />
+          </>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default AdminDashboardScreen;
-

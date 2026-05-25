@@ -29,8 +29,9 @@ async function refreshAccess() {
 /**
  * @param {string} url
  * @param {RequestInit} [options]
+ * @param {number} [timeoutMs] override default API timeout (e.g. TTS synthesis)
  */
-export async function apiFetch(url, options = {}) {
+export async function apiFetch(url, options = {}, timeoutMs) {
   let token = getAccess();
   const headers = {
     Accept: 'application/json',
@@ -38,13 +39,13 @@ export async function apiFetch(url, options = {}) {
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  let res = await fetchWithTimeout(url, { ...options, headers });
+  let res = await fetchWithTimeout(url, { ...options, headers }, timeoutMs);
 
   if (res.status === 401) {
     const next = await refreshAccess();
     if (next) {
       headers.Authorization = `Bearer ${next}`;
-      res = await fetchWithTimeout(url, { ...options, headers });
+      res = await fetchWithTimeout(url, { ...options, headers }, timeoutMs);
     }
   }
 

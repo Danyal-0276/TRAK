@@ -105,9 +105,27 @@ export function AuthProvider({ children }) {
         } catch (err) {
             throw new Error(formatNetworkError(err, 'sign in'));
         }
-        const data = await res.json().catch(() => ({}));
+        const rawText = await res.text();
+        let data = {};
+        if (rawText.trim()) {
+            try {
+                data = JSON.parse(rawText);
+            } catch {
+                if (rawText.includes('Invalid HTTP_HOST')) {
+                    throw new Error(
+                        `Cannot reach Django at ${API_BASE}. Restart the server after pulling latest code, or use USB: adb reverse tcp:8000 tcp:8000 and ANDROID_USE_USB_REVERSE=true in api.local.js.`
+                    );
+                }
+            }
+        }
         if (!res.ok) {
-            throw new Error(data.detail || data.non_field_errors?.[0] || 'Login failed');
+            throw new Error(
+                data.detail ||
+                    data.non_field_errors?.[0] ||
+                    (res.status === 401
+                        ? 'Invalid email or password.'
+                        : `Login failed (HTTP ${res.status}).`)
+            );
         }
         await setTokens(data.access, data.refresh);
         const u = data.user || (await fetchMe());

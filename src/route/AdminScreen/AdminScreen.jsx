@@ -1,14 +1,24 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { View, ScrollView, StyleSheet, StatusBar, Animated, Dimensions, Alert } from 'react-native';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import {
+  View,
+  ScrollView,
+  StyleSheet,
+  StatusBar,
+  Animated,
+  Dimensions,
+  Alert,
+  AppState,
+  useWindowDimensions,
+} from 'react-native';
+import { TabView } from 'react-native-tab-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import {
   deleteAdminUser,
-  getAdminAnalytics,
+  deleteAdminArticle,
   getAdminArticles,
-  getAdminModelMetrics,
   getAdminNotifications,
   getAdminSettings,
   getAdminUsers,
@@ -16,8 +26,23 @@ import {
   patchAdminUser,
   postAdminCreate,
   postAdminPipelineRun,
+  createAdminCategory,
+  deleteAdminCategory,
+  addAdminSubcategory,
+  deleteAdminSubcategory,
+  createAdminConnection,
+  deleteAdminConnection,
 } from '../../api/adminApi';
-import MockAPI from './Service/MockAPI';
+import { loadAdminOverview } from './loadAdminOverview';
+import { getAdminDashboardPalette, DASHBOARD_POLL_INTERVAL_MS } from './adminTheme';
+import {
+  buildDashboardStatCards,
+  KPI_TAB_NAV,
+  emptyAnalyticsSnapshot,
+  enrichAnalyticsSnapshot,
+  isAnalyticsPayload,
+} from './dashboardChartUtils';
+import { normAdminCategories, normAdminConnections } from '../../utils/adminLists';
 import Header from './components/Header';
 import TabNavigation from './components/TabNavigation';
 import DashboardTab from './screens/DashboardTab';
@@ -28,29 +53,51 @@ import ArticlesTab from './screens/ArticlesTab';
 import NotificationsTab from './screens/NotificationsTab';
 import SettingsTab from './screens/SettingsTab';
 import EditModal from './components/EditModal';
-import ListModal from './components/ListModal';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
-import { normAdminList, toAdminPayloadList } from '../../utils/adminLists';
+import { buildArticleDetailParams } from '../../utils/articleNavigation';
+import { getArticlesApiScope, filterArticlesForDisplay } from '../../utils/adminArticleFilters';
+import { ADMIN_TAB_ROUTES } from '../../navigation/adminTabIds';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const PIPELINE_BATCH_SIZE = 15;
 
 function mapAdminArticleRow(doc) {
   const dateStr = doc.fetched_at || doc.processed_at || '';
   const shortDate =
     typeof dateStr === 'string' ? dateStr.slice(0, 16).replace('T', ' ') : String(dateStr || '');
-  const status =
-    doc.scope === 'raw'
-      ? String(doc.pipeline_status ?? 'pending')
-      : String(doc.credibility_label ?? '—');
-  const published = doc.scope === 'processed' && doc.credibility_label != null && doc.credibility_label !== '';
+  const excerpt = doc.description || doc.summary || '';
+  const fullContent = doc.content || doc.description || doc.summary || doc.canonical_url || '';
   return {
     id: doc.id,
+    scope: doc.scope,
     title: doc.title || '(no title)',
     author: doc.source_key || (doc.canonical_url ? String(doc.canonical_url).slice(0, 48) : '—'),
+    source: doc.source_key || '—',
     category: doc.scope === 'raw' ? 'Raw' : 'Processed',
-    status: published ? 'published' : status,
+    status: doc.scope === 'raw' ? String(doc.pipeline_status ?? 'pending') : String(doc.credibility_label_name ?? '—'),
     date: shortDate || '—',
+    time: shortDate || '—',
     fromApi: true,
+    fetched_at: doc.fetched_at,
+    processed_at: doc.processed_at,
+    canonical_url: doc.canonical_url,
+    excerpt,
+    description: excerpt,
+    ai_summary: doc.summary || '',
+    fullContent,
+    content: fullContent,
+    pipeline_status: doc.pipeline_status,
+    moderation_status: doc.moderation_status,
+    credibility_label: doc.credibility_label,
+    credibility_label_name: doc.credibility_label_name,
+    credibility_score: doc.credibility_score,
+    credibility_probs: doc.credibility_probs,
+    credibility_max_prob: doc.credibility_max_prob,
+    fake_detection_label: doc.fake_detection_label,
+    fact_check_verdict: doc.fact_check_verdict,
+    fact_check_hits: doc.fact_check_hits,
+    source_key: doc.source_key,
+    topic_keywords: doc.topic_keywords || [],
   };
 }
 
@@ -58,27 +105,46 @@ const AdminScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { user, isAdmin, isSuperAdmin, bootstrapped, logout } = useAuth();
   const { colors } = theme;
+  const isDark = theme.mode === 'dark';
+  const adminPalette = useMemo(() => getAdminDashboardPalette(colors, isDark), [colors, isDark]);
   const insets = useSafeAreaInsets();
-  const { confirm, error: showError } = useFeedback();
-  const [activeTab, setActiveTab] = useState('overview');
+  const { confirm, error: showError, success: showSuccess } = useFeedback();
+  const layout = useWindowDimensions();
+  const [tabIndex, setTabIndex] = useState(0);
+  const activeTab = ADMIN_TAB_ROUTES[tabIndex]?.key ?? 'overview';
+  const setActiveTab = useCallback((tab) => {
+    const i = ADMIN_TAB_ROUTES.findIndex((r) => r.key === tab);
+    if (i >= 0) setTabIndex(i);
+    setSearchQuery('');
+  }, []);
   const [users, setUsers] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [apiArticles, setApiArticles] = useState([]);
   const [serverAnalytics, setServerAnalytics] = useState(null);
   const [modelMetrics, setModelMetrics] = useState(null);
   const [pipelineRunning, setPipelineRunning] = useState(false);
-  const [keywords, setKeywords] = useState([]);
+  const [pipelineProgress, setPipelineProgress] = useState(0);
+  const [pipelineRunPhase, setPipelineRunPhase] = useState('idle');
+  const [pipelineRunLabel, setPipelineRunLabel] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [liveUpdatedAt, setLiveUpdatedAt] = useState(null);
+  const [articlePipelineFilter, setArticlePipelineFilter] = useState('');
+  const [articlesLoading, setArticlesLoading] = useState(false);
+  const [connectionUrlInput, setConnectionUrlInput] = useState('');
+  const [overviewLoading, setOverviewLoading] = useState(true);
+  const [analyticsError, setAnalyticsError] = useState(null);
+  const hasSnapshotRef = useRef(false);
   const [notifications, setNotifications] = useState([]);
   const [settings, setSettings] = useState({});
   const [categories, setCategories] = useState([]);
   const [connections, setConnections] = useState([]);
-  const [analytics, setAnalytics] = useState(null);
   const [categoryInput, setCategoryInput] = useState('');
   const [connectionInput, setConnectionInput] = useState('');
+  const [subInputs, setSubInputs] = useState({});
+  const [selectedCategorySlug, setSelectedCategorySlug] = useState('');
+  const [listPanel, setListPanel] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
-  const [listModalVisible, setListModalVisible] = useState(false);
-  const [listModalType, setListModalType] = useState('');
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
 
@@ -135,49 +201,72 @@ const AdminScreen = ({ navigation }) => {
   }, [bootstrapped, user, isAdmin, navigation]);
 
   useEffect(() => {
-    if (!bootstrapped || !isAdmin) return;
-    loadData();
-  }, [bootstrapped, isAdmin]);
+    hasSnapshotRef.current = Boolean(serverAnalytics);
+  }, [serverAnalytics]);
 
-  useEffect(() => {
-    if (!bootstrapped || !isAdmin || (activeTab !== 'users' && activeTab !== 'admins')) return;
-    const id = setTimeout(() => {
-      loadData();
-    }, 350);
-    return () => clearTimeout(id);
-  }, [searchQuery, activeTab, bootstrapped, isAdmin]);
+  const loadOverview = useCallback(async ({ manual = false, silent = false } = {}) => {
+    const isInitial = !hasSnapshotRef.current;
+    try {
+      if (!silent) setRefreshing(true);
+      if (isInitial) setOverviewLoading(true);
+      setAnalyticsError(null);
+      const data = await loadAdminOverview({ cacheBust: manual || !silent, requireAnalytics: manual });
+      const mapped = (data.articles || []).map(mapAdminArticleRow);
+      if (mapped.length) setApiArticles(mapped);
+      const enriched = enrichAnalyticsSnapshot(data.serverAnalytics, mapped, {
+        users: data.users,
+        connections: data.connections?.length ? data.connections : connections,
+      });
+      const hasKpis =
+        isAnalyticsPayload(data.serverAnalytics) ||
+        mapped.length > 0 ||
+        (data.users?.length ?? 0) > 0 ||
+        (data.connections?.length ?? connections.length) > 0;
+      if (hasKpis) {
+        setServerAnalytics({ ...enriched, _refreshedAt: Date.now() });
+        setAnalyticsError(
+          data.serverAnalytics ? null : data.analyticsError || 'Using article and settings counts (analytics API unavailable).'
+        );
+      } else {
+        setAnalyticsError(data.analyticsError || 'Could not load dashboard data from the server.');
+        if (manual || !silent) setServerAnalytics(null);
+      }
+      if (data.modelMetrics) setModelMetrics(data.modelMetrics);
+      if (data.connections?.length) setConnections(data.connections);
+      setLiveUpdatedAt(new Date());
+    } catch (e) {
+      setAnalyticsError(e?.message || 'Failed to load analytics.');
+      if (manual || !silent) setServerAnalytics(null);
+    } finally {
+      if (!silent) setRefreshing(false);
+      setOverviewLoading(false);
+    }
+  }, [connections]);
+
+  const loadArticles = useCallback(async () => {
+    const apiScope = getArticlesApiScope(articlePipelineFilter);
+    setArticlesLoading(true);
+    try {
+      const res = await getAdminArticles({ page: 1, pageSize: 200, scope: apiScope });
+      setApiArticles((res.results || []).map(mapAdminArticleRow));
+    } catch (e) {
+      Alert.alert('Articles', e?.message || 'Could not load articles.');
+      setApiArticles([]);
+    } finally {
+      setArticlesLoading(false);
+    }
+  }, [articlePipelineFilter]);
 
   const loadData = async () => {
-    let svr = null;
-    let arts = [];
-    try {
-      svr = await getAdminAnalytics();
-    } catch (e) {
-      Alert.alert('Admin API', e?.message || 'Could not load analytics.');
-    }
-    try {
-      const res = await getAdminArticles({ page: 1, pageSize: 50, scope: 'all' });
-      arts = (res.results || []).map(mapAdminArticleRow);
-    } catch (e) {
-      Alert.alert('Admin API', e?.message || 'Could not load articles.');
-    }
-    try {
-      const mm = await getAdminModelMetrics();
-      setModelMetrics(mm);
-    } catch {
-      setModelMetrics(null);
-    }
-    setServerAnalytics(svr);
-    setApiArticles(arts);
+    await loadOverview({ silent: true });
+    await loadArticles();
 
     const listQ = activeTab === 'users' || activeTab === 'admins' ? searchQuery.trim() : '';
-    const [usersRes, adminsRes, keywordsData, notificationsRes, settingsRes, analyticsData] = await Promise.all([
+    const [usersRes, adminsRes, notificationsRes, settingsRes] = await Promise.all([
       getAdminUsers({ q: activeTab === 'users' ? listQ : '', role: 'user' }),
       getAdminUsers({ q: activeTab === 'admins' ? listQ : '', role: 'admin' }),
-      MockAPI.getKeywords(),
       getAdminNotifications(),
       getAdminSettings(),
-      MockAPI.getAnalytics(),
     ]);
     const usersData = (usersRes.results || []).map((u) => ({
       id: u.id,
@@ -211,16 +300,14 @@ const AdminScreen = ({ navigation }) => {
       language: settingsRes.language || 'English',
       timezone: settingsRes.timezone || 'UTC',
     };
-    const categoriesData = normAdminList(settingsRes.categories || []);
-    const connectionsData = normAdminList(settingsRes.connections || []);
+    const categoriesData = normAdminCategories(settingsRes.categories || []);
+    const connectionsData = normAdminConnections(settingsRes.connections || []);
     setUsers(usersData);
     setAdmins(adminsData);
-    setKeywords(keywordsData);
     setNotifications(notificationsData);
     setSettings(settingsData);
     setCategories(categoriesData);
     setConnections(connectionsData);
-    setAnalytics(analyticsData);
   };
 
   const handleCreateAdmin = async (email, password) => {
@@ -228,17 +315,100 @@ const AdminScreen = ({ navigation }) => {
     await loadData();
   };
 
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin) return;
+    loadData();
+  }, [bootstrapped, isAdmin]);
+
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin) return;
+    loadArticles();
+  }, [articlePipelineFilter, bootstrapped, isAdmin, loadArticles]);
+
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin || activeTab !== 'articles') return;
+    loadArticles();
+  }, [activeTab, bootstrapped, isAdmin, loadArticles]);
+
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin || (activeTab !== 'users' && activeTab !== 'admins')) return;
+    const id = setTimeout(() => loadData(), 350);
+    return () => clearTimeout(id);
+  }, [searchQuery, activeTab, bootstrapped, isAdmin]);
+
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin || activeTab !== 'overview') return;
+    loadOverview({ silent: true });
+  }, [bootstrapped, isAdmin, activeTab, loadOverview]);
+
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin || activeTab !== 'overview') return undefined;
+    const poll = () => {
+      if (AppState.currentState === 'active') loadOverview({ silent: true });
+    };
+    const id = setInterval(poll, DASHBOARD_POLL_INTERVAL_MS);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') loadOverview({ silent: true });
+    });
+    return () => {
+      clearInterval(id);
+      sub.remove();
+    };
+  }, [activeTab, bootstrapped, isAdmin, loadOverview]);
+
+  const resetPipelineRunUi = () => {
+    setPipelineRunPhase('idle');
+    setPipelineProgress(0);
+    setPipelineRunLabel('');
+  };
+
   const runPipeline = async () => {
+    if (pipelineRunning) return;
     setPipelineRunning(true);
+    setPipelineRunPhase('running');
+    setPipelineProgress(4);
+    setPipelineRunLabel('Starting batch…');
+    const maxSimulated = 90;
+    const tick = setInterval(() => {
+      setPipelineProgress((prev) => {
+        if (prev >= maxSimulated) return prev;
+        return Math.min(maxSimulated, prev + Math.max(2, (maxSimulated - prev) * 0.12));
+      });
+    }, 280);
     try {
-      const result = await postAdminPipelineRun(15);
-      Alert.alert('Pipeline', JSON.stringify(result).slice(0, 800));
-      await loadData();
+      const result = await postAdminPipelineRun(PIPELINE_BATCH_SIZE);
+      clearInterval(tick);
+      const ok = result?.processed_ok ?? 0;
+      const err = result?.errors ?? 0;
+      setPipelineProgress(100);
+      setPipelineRunPhase('success');
+      setPipelineRunLabel(`Done · ${ok} processed${err ? ` · ${err} errors` : ''}`);
+      await loadOverview({ silent: true });
+      await loadArticles();
+      setTimeout(resetPipelineRunUi, 2200);
     } catch (e) {
-      Alert.alert('Pipeline', e?.message || 'Run failed.');
+      clearInterval(tick);
+      setPipelineProgress(100);
+      setPipelineRunPhase('error');
+      setPipelineRunLabel(e?.message || 'Run failed');
+      setTimeout(resetPipelineRunUi, 2800);
     } finally {
       setPipelineRunning(false);
     }
+  };
+
+  const handleKpiPress = (key) => {
+    const nav = KPI_TAB_NAV[key];
+    if (!nav) return;
+    setActiveTab(nav.tab);
+    setSearchQuery('');
+    if (nav.tab === 'articles') {
+      setArticlePipelineFilter(nav.pipeline || '');
+    }
+  };
+
+  const handleArticlePipelineFilterChange = (filter) => {
+    setArticlePipelineFilter(filter);
   };
 
   const handleLogout = async () => {
@@ -250,32 +420,25 @@ const AdminScreen = ({ navigation }) => {
     }
   };
 
-  const stats = serverAnalytics
-    ? [
-        { label: 'Raw articles', value: String(serverAnalytics.raw_total ?? 0) },
-        { label: 'Processed', value: String(serverAnalytics.processed_total ?? 0) },
-        { label: 'In feed list', value: String(apiArticles.length) },
-        {
-          label: 'Pipeline states',
-          value: String(Object.keys(serverAnalytics.raw_by_pipeline_status || {}).length),
-        },
-      ]
-    : [
-        { label: 'Total Users', value: users.length.toString() },
-        { label: 'Active Users', value: users.filter(u => u.status === 'active').length.toString() },
-        { label: 'Keywords (mock)', value: keywords.length.toString() },
-        { label: 'Articles (mock)', value: '—' },
-      ];
-
-  const handleTabChange = (tab) => {
-    if (tab === activeTab) return;
-    setActiveTab(tab);
-    setSearchQuery('');
-  };
+  const chartData = enrichAnalyticsSnapshot(serverAnalytics, apiArticles, {
+    users,
+    connections,
+  });
+  const hasAnalytics =
+    isAnalyticsPayload(serverAnalytics) &&
+    (Number(chartData.raw_total) > 0 ||
+      Number(chartData.processed_total) > 0 ||
+      apiArticles.length > 0);
+  const statCards = buildDashboardStatCards(chartData, adminPalette);
+  const liveUpdatedLabel = liveUpdatedAt
+    ? liveUpdatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    : serverAnalytics?.generated_at
+      ? String(serverAnalytics.generated_at).slice(0, 16).replace('T', ' ')
+      : '';
 
   const handleEdit = (item) => {
     if (item?.fromApi) {
-      Alert.alert('Read-only', 'This article is loaded from the API; editing is not available in the app yet.');
+      Alert.alert('Article', `${item.title}\nScope: ${item.scope}\nStatus: ${item.status}`);
       return;
     }
     setEditingItem(item);
@@ -283,14 +446,26 @@ const AdminScreen = ({ navigation }) => {
     setModalVisible(true);
   };
 
-  const handleDelete = async (id, type) => {
+  const handleDelete = async (idOrArticle, type) => {
     if (type === 'article') {
-      const row = apiArticles.find(a => String(a.id) === String(id));
-      if (row?.fromApi) {
-        Alert.alert('Read-only', 'Articles come from the database; delete is not exposed here yet.');
-        return;
+      const row = typeof idOrArticle === 'object' ? idOrArticle : apiArticles.find((a) => String(a.id) === String(idOrArticle));
+      if (!row) return;
+      const accepted = await confirm({
+        title: 'Delete article?',
+        message: 'Remove this article from the database?',
+        confirmText: 'Delete',
+        danger: true,
+      });
+      if (!accepted) return;
+      try {
+        await deleteAdminArticle(row.scope, row.id);
+        await loadArticles();
+      } catch (e) {
+        showError(e?.message || 'Delete failed');
       }
+      return;
     }
+    const id = typeof idOrArticle === 'object' ? idOrArticle.id : idOrArticle;
     const accepted = await confirm({
       title: 'Confirm Delete',
       message: 'Are you sure you want to delete this item?',
@@ -299,7 +474,6 @@ const AdminScreen = ({ navigation }) => {
     });
     if (!accepted) return;
     if (type === 'user' || type === 'admin') await deleteAdminUser(id);
-    else if (type === 'article') await MockAPI.deleteArticle(id);
     loadData();
   };
 
@@ -309,8 +483,7 @@ const AdminScreen = ({ navigation }) => {
         if (editingItem) await patchAdminUser(editingItem.id, { is_active: formData.status === 'active' });
         else throw new Error('User creation is restricted to auth registration.');
       } else if (activeTab === 'articles') {
-        if (editingItem) await MockAPI.updateArticle(editingItem.id, formData);
-        else await MockAPI.createArticle(formData);
+        throw new Error('Create or edit articles from the articles list only.');
       }
       loadData();
       setModalVisible(false);
@@ -325,26 +498,7 @@ const AdminScreen = ({ navigation }) => {
     setFormData({ ...formData, [field]: value });
   };
 
-  const handleSettingsChange = async (updates) => {
-    const pushOn =
-      updates.pushNotification !== undefined
-        ? updates.pushNotification
-        : updates.emailNotification !== undefined
-          ? updates.emailNotification
-          : updates.inAppNotification !== undefined
-            ? updates.inAppNotification
-            : settings.pushNotification;
-    const payload = {
-      notifications_enabled_default: pushOn !== undefined ? !!pushOn : !!settings.notifications,
-      allow_external_connections:
-        updates.connections !== undefined ? !!updates.connections : !!settings.connections,
-      moderation_mode: updates.moderationMode || settings.moderationMode || 'review',
-      categories: toAdminPayloadList(categories),
-      connections: toAdminPayloadList(connections),
-      language: updates.language || settings.language || 'English',
-      timezone: updates.timezone || settings.timezone || 'UTC',
-    };
-    const updated = await patchAdminSettings(payload);
+  const applySettingsFromApi = (updated) => {
     setSettings({
       notifications: !!updated.notifications_enabled_default,
       pushNotification: !!updated.notifications_enabled_default,
@@ -357,57 +511,271 @@ const AdminScreen = ({ navigation }) => {
     });
   };
 
+  const reloadSettings = useCallback(async () => {
+    try {
+      const settingsRes = await getAdminSettings();
+      applySettingsFromApi(settingsRes);
+      const cats = normAdminCategories(settingsRes.categories || []);
+      setCategories(cats);
+      setConnections(normAdminConnections(settingsRes.connections || []));
+      setSelectedCategorySlug((prev) => (prev && cats.some((c) => c.slug === prev) ? prev : ''));
+      return cats;
+    } catch (e) {
+      showError(e?.message || 'Could not load settings from server.');
+      return [];
+    }
+  }, [showError]);
+
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin || activeTab !== 'settings') return;
+    reloadSettings();
+  }, [bootstrapped, isAdmin, activeTab, reloadSettings]);
+
+  const handleSettingsChange = async (updates) => {
+    const pushOn =
+      updates.pushNotification !== undefined
+        ? updates.pushNotification
+        : updates.emailNotification !== undefined
+          ? updates.emailNotification
+          : updates.inAppNotification !== undefined
+            ? updates.inAppNotification
+            : settings.pushNotification;
+    try {
+      const payload = {
+        notifications_enabled_default: pushOn !== undefined ? !!pushOn : !!settings.pushNotification,
+        language: updates.language || settings.language || 'English',
+        timezone: updates.timezone || settings.timezone || 'UTC',
+      };
+      const updated = await patchAdminSettings(payload);
+      applySettingsFromApi(updated);
+      if (updates.language) showSuccess(`Language set to ${updates.language}`);
+      else if (updates.timezone) showSuccess(`Timezone set to ${updates.timezone}`);
+    } catch (e) {
+      showError(e?.message || 'Failed to update settings.');
+    }
+  };
+
+  const selectedCategory = useMemo(
+    () => categories.find((c) => c.slug === selectedCategorySlug) || null,
+    [categories, selectedCategorySlug]
+  );
+
+  const toggleListPanel = (panel) => {
+    setListPanel((prev) => (prev === panel ? null : panel));
+  };
+
   const handleAddCategory = async () => {
     const name = categoryInput.trim();
     if (!name) return;
-    const next = [...toAdminPayloadList(categories), name];
-    await patchAdminSettings({ categories: next });
-    setCategoryInput('');
-    loadData();
+    try {
+      await createAdminCategory(name, []);
+      setCategoryInput('');
+      const cats = await reloadSettings();
+      const added = cats.find((c) => c.name.toLowerCase() === name.toLowerCase());
+      if (added) setSelectedCategorySlug(added.slug);
+      showSuccess('Category saved to database.');
+    } catch (e) {
+      showError(e?.message || 'Could not add category');
+    }
   };
 
-  const handleRemoveCategory = async (id) => {
-    const next = toAdminPayloadList(categories).filter((c) => c !== id);
-    await patchAdminSettings({ categories: next });
-    loadData();
+  const handleRemoveCategory = async (slug) => {
+    try {
+      await deleteAdminCategory(slug);
+      await reloadSettings();
+      setSelectedCategorySlug((prev) => (prev === slug ? '' : prev));
+    } catch (e) {
+      showError(e?.message || 'Could not remove category');
+    }
+  };
+
+  const handleAddSubcategory = async (categorySlug) => {
+    const name = String(subInputs[categorySlug] || '').trim();
+    if (!name) return;
+    try {
+      await addAdminSubcategory(categorySlug, name);
+      setSubInputs((prev) => ({ ...prev, [categorySlug]: '' }));
+      await reloadSettings();
+      showSuccess('Subcategory added.');
+    } catch (e) {
+      showError(e?.message || 'Could not add subcategory');
+    }
+  };
+
+  const handleRemoveSubcategory = async (categorySlug, subSlug) => {
+    try {
+      await deleteAdminSubcategory(categorySlug, subSlug);
+      await reloadSettings();
+    } catch (e) {
+      showError(e?.message || 'Could not remove subcategory');
+    }
   };
 
   const handleAddConnection = async () => {
     const name = connectionInput.trim();
+    const url = connectionUrlInput.trim();
     if (!name) return;
-    const next = [...toAdminPayloadList(connections), name];
-    await patchAdminSettings({ connections: next });
-    setConnectionInput('');
-    loadData();
+    if (!url) {
+      showError('URL is required (RSS feed or site feed URL).');
+      return;
+    }
+    try {
+      await createAdminConnection(name, url);
+      setConnectionInput('');
+      setConnectionUrlInput('');
+      await reloadSettings();
+      await loadOverview({ silent: true });
+      showSuccess('Connection saved to database.');
+    } catch (e) {
+      showError(e?.message || 'Could not add connection');
+    }
   };
 
-  const handleRemoveConnection = async (id) => {
-    const next = toAdminPayloadList(connections).filter((c) => c !== id);
-    await patchAdminSettings({ connections: next });
-    loadData();
-  };
-
-  const openListModal = (type) => {
-    setListModalType(type);
-    setListModalVisible(true);
+  const handleRemoveConnection = async (slug) => {
+    try {
+      await deleteAdminConnection(slug);
+      await reloadSettings();
+      await loadOverview({ silent: true });
+    } catch (e) {
+      showError(e?.message || 'Could not remove connection');
+    }
   };
 
   const handleDeleteAllCategories = async () => {
-    for (let cat of categories) await MockAPI.removeCategory(cat.id);
-    loadData();
+    try {
+      await patchAdminSettings({ categories: [] });
+      await reloadSettings();
+      setListPanel(null);
+      setSelectedCategorySlug('');
+    } catch (e) {
+      showError(e?.message || 'Could not delete categories');
+    }
   };
 
   const handleDeleteAllConnections = async () => {
-    for (let conn of connections) await MockAPI.removeConnection(conn.id);
-    loadData();
+    try {
+      await patchAdminSettings({ connections: [] });
+      await reloadSettings();
+      await loadOverview({ silent: true });
+      setListPanel(null);
+    } catch (e) {
+      showError(e?.message || 'Could not delete connections');
+    }
   };
 
-  const filteredArticles = apiArticles.filter(
-    a =>
-      a.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      a.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      String(a.status).toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredArticles = filterArticlesForDisplay(apiArticles, articlePipelineFilter, searchQuery);
+
+  const renderAdminScene = ({ route }) => {
+    const scroll = (content) => (
+      <ScrollView
+        style={styles.mainScroll}
+        contentContainerStyle={styles.mainScrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {content}
+        <View style={styles.bottomSpacer} />
+      </ScrollView>
+    );
+
+    switch (route.key) {
+      case 'overview':
+        return scroll(
+          <>
+            <DashboardTab
+              palette={adminPalette}
+              chartData={chartData}
+              hasAnalytics={hasAnalytics}
+              statCards={statCards}
+              analyticsError={analyticsError}
+              overviewLoading={overviewLoading}
+              isOverviewActive={activeTab === 'overview'}
+              onKpiPress={handleKpiPress}
+              onManageSettings={() => setActiveTab('settings')}
+              refreshing={refreshing}
+              onRunPipeline={runPipeline}
+              pipelineRunning={pipelineRunning}
+              pipelineProgress={pipelineProgress}
+              pipelineRunPhase={pipelineRunPhase}
+              pipelineRunLabel={pipelineRunLabel}
+              liveUpdatedLabel={liveUpdatedLabel}
+            />
+            <AnalyticsTab serverAnalytics={hasAnalytics ? chartData : null} modelMetrics={modelMetrics} />
+          </>
+        );
+      case 'users':
+        return scroll(
+          <UsersTab
+            users={users}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onEdit={handleEdit}
+            onDelete={(id) => handleDelete(id, 'user')}
+          />
+        );
+      case 'admins':
+        return scroll(
+          <AdminsTab
+            admins={admins}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onDelete={(id) => handleDelete(id, 'admin')}
+            onCreate={isSuperAdmin ? handleCreateAdmin : null}
+          />
+        );
+      case 'articles':
+        return scroll(
+          <ArticlesTab
+            articles={filteredArticles}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onViewArticle={(article) =>
+              navigation.navigate('ArticleDetail', buildArticleDetailParams(article))
+            }
+            onDelete={(article) => handleDelete(article, 'article')}
+            pipelineFilter={articlePipelineFilter}
+            onPipelineFilterChange={handleArticlePipelineFilterChange}
+            loading={articlesLoading}
+            palette={adminPalette}
+          />
+        );
+      case 'notifications':
+        return scroll(<NotificationsTab notifications={notifications} />);
+      case 'settings':
+        return scroll(
+          <SettingsTab
+            settings={settings}
+            onSettingsChange={handleSettingsChange}
+            categories={categories}
+            connections={connections}
+            categoryInput={categoryInput}
+            setCategoryInput={setCategoryInput}
+            connectionInput={connectionInput}
+            setConnectionInput={setConnectionInput}
+            connectionUrlInput={connectionUrlInput}
+            setConnectionUrlInput={setConnectionUrlInput}
+            subInputs={subInputs}
+            setSubInputs={setSubInputs}
+            selectedCategorySlug={selectedCategorySlug}
+            onSelectedCategorySlugChange={setSelectedCategorySlug}
+            selectedCategory={selectedCategory}
+            listPanel={listPanel}
+            onToggleListPanel={toggleListPanel}
+            onCloseListPanel={() => setListPanel(null)}
+            onAddCategory={handleAddCategory}
+            onRemoveCategory={handleRemoveCategory}
+            onAddSubcategory={handleAddSubcategory}
+            onRemoveSubcategory={handleRemoveSubcategory}
+            onAddConnection={handleAddConnection}
+            onRemoveConnection={handleRemoveConnection}
+            onDeleteAllCategories={handleDeleteAllCategories}
+            onDeleteAllConnections={handleDeleteAllConnections}
+            onLogout={handleLogout}
+          />
+        );
+      default:
+        return null;
+    }
+  };
 
   const userFields = [
     { name: 'name', label: 'Name', type: 'text', placeholder: 'Enter name' },
@@ -498,76 +866,31 @@ const AdminScreen = ({ navigation }) => {
       />
 
       <Header />
-      <TabNavigation activeTab={activeTab} onTabChange={handleTabChange} />
+      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
-      <Animated.ScrollView
-        style={[styles.mainScroll, {
+      <Animated.View
+        style={{
+          flex: 1,
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],
-        }]}
-        contentContainerStyle={styles.mainScrollContent}
-        showsVerticalScrollIndicator={false}
+        }}
       >
-        {(activeTab === 'overview' || activeTab === 'dashboard' || activeTab === 'analytics') && (
-          <>
-            <DashboardTab
-              stats={stats}
-              keywords={keywords}
-              onRunPipeline={runPipeline}
-              pipelineRunning={pipelineRunning}
-            />
-            <AnalyticsTab analytics={analytics} serverAnalytics={serverAnalytics} modelMetrics={modelMetrics} />
-          </>
-        )}
-        {activeTab === 'users' && (
-          <UsersTab
-            users={users}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onEdit={handleEdit}
-            onDelete={(id) => handleDelete(id, 'user')}
-          />
-        )}
-        {activeTab === 'admins' && (
-          <AdminsTab
-            admins={admins}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onDelete={(id) => handleDelete(id, 'admin')}
-            onCreate={isSuperAdmin ? handleCreateAdmin : null}
-          />
-        )}
-        {activeTab === 'articles' && (
-          <ArticlesTab
-            articles={filteredArticles}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onEdit={handleEdit}
-            onDelete={(id) => handleDelete(id, 'article')}
-            articleReadOnly={(a) => !!a?.fromApi}
-          />
-        )}
-        {activeTab === 'notifications' && <NotificationsTab notifications={notifications} />}
-        {activeTab === 'settings' && (
-          <SettingsTab
-            settings={settings}
-            onSettingsChange={handleSettingsChange}
-            categories={categories}
-            connections={connections}
-            categoryInput={categoryInput}
-            setCategoryInput={setCategoryInput}
-            connectionInput={connectionInput}
-            setConnectionInput={setConnectionInput}
-            onAddCategory={handleAddCategory}
-            onRemoveCategory={handleRemoveCategory}
-            onAddConnection={handleAddConnection}
-            onRemoveConnection={handleRemoveConnection}
-            onOpenListModal={openListModal}
-            onLogout={handleLogout}
-          />
-        )}
-        <View style={styles.bottomSpacer} />
-      </Animated.ScrollView>
+        <TabView
+          navigationState={{ index: tabIndex, routes: ADMIN_TAB_ROUTES }}
+          renderScene={renderAdminScene}
+          onIndexChange={(i) => {
+            setTabIndex(i);
+            setSearchQuery('');
+          }}
+          initialLayout={{ width: layout.width }}
+          renderTabBar={() => null}
+          swipeEnabled
+          animationEnabled
+          lazy
+          removeClippedSubviews
+          style={{ flex: 1 }}
+        />
+      </Animated.View>
 
       <EditModal
         visible={modalVisible}
@@ -583,19 +906,6 @@ const AdminScreen = ({ navigation }) => {
         onSave={handleSave}
       />
 
-      <ListModal
-        visible={listModalVisible}
-        onClose={() => setListModalVisible(false)}
-        title="List"
-        items={listModalType === 'category' ? categories : connections}
-        onDeleteItem={
-          listModalType === 'category' ? handleRemoveCategory : handleRemoveConnection
-        }
-        onDeleteAll={
-          listModalType === 'category' ? handleDeleteAllCategories : handleDeleteAllConnections
-        }
-        itemType={listModalType}
-      />
     </SafeAreaView>
   );
 };

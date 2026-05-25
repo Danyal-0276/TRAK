@@ -15,6 +15,7 @@ import { useUIFeedback } from "../../components/ui/UIFeedback";
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction, submitArticleReport } from "../../utils/Service/api";
 import { getBookmarkIds, setBookmarkIds } from "../../utils/bookmarksStorage";
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from "../../utils/reactionsStorage";
+import { useFeedCache } from "../../context/FeedCacheContext";
 
 function deriveTrendingFromArticles(articles) {
   const counts = {};
@@ -61,6 +62,7 @@ const SearchScreen = () => {
     const [discoverMenuOpen, setDiscoverMenuOpen] = useState(false);
     const lastScrollY = useRef(0);
     const [headerHidden, setHeaderHidden] = useState(false);
+    const { getExploreFeed, saveExploreFeed, isFresh } = useFeedCache();
 
     const [categories, setCategories] = useState(["All"]);
 
@@ -76,7 +78,27 @@ const SearchScreen = () => {
 
     useEffect(() => {
         const q = debouncedQuery.trim();
+        const queryKey = q.toLowerCase();
         const seq = ++loadSeqRef.current;
+
+        const cached = getExploreFeed(queryKey);
+        if (isFresh(cached) && Array.isArray(cached?.allNews) && cached.allNews.length) {
+            setAllNews(cached.allNews);
+            setFilteredNews(cached.filteredNews || cached.allNews);
+            setNextCursor(cached.nextCursor || '');
+            setHasMore(Boolean(cached.hasMore));
+            setCategories(cached.categories || ['All']);
+            setActiveTab(cached.activeTab || 'All');
+            setVotedItems(cached.votedItems || {});
+            setBookmarkedItems(new Set(cached.bookmarkIds || []));
+            setLoadError(cached.loadError || '');
+            setLoading(false);
+            if (cached.scrollY) {
+                requestAnimationFrame(() => window.scrollTo(0, cached.scrollY));
+            }
+            return;
+        }
+
         (async () => {
             setLoading(true);
             setLoadError('');
@@ -123,7 +145,43 @@ const SearchScreen = () => {
                 if (seq === loadSeqRef.current) setLoading(false);
             }
         })();
-    }, [debouncedQuery, retryTick]);
+    }, [debouncedQuery, retryTick, getExploreFeed, isFresh]);
+
+    useEffect(() => {
+        if (!allNews.length) return;
+        const queryKey = debouncedQuery.trim().toLowerCase();
+        saveExploreFeed(queryKey, {
+            allNews,
+            filteredNews,
+            nextCursor,
+            hasMore,
+            categories,
+            activeTab,
+            votedItems,
+            bookmarkIds: Array.from(bookmarkedItems),
+            loadError,
+            scrollY: window.scrollY,
+        });
+    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, debouncedQuery, saveExploreFeed]);
+
+    useEffect(() => {
+        const queryKey = debouncedQuery.trim().toLowerCase();
+        return () => {
+            if (!allNews.length) return;
+            saveExploreFeed(queryKey, {
+                allNews,
+                filteredNews,
+                nextCursor,
+                hasMore,
+                categories,
+                activeTab,
+                votedItems,
+                bookmarkIds: Array.from(bookmarkedItems),
+                loadError,
+                scrollY: window.scrollY,
+            });
+        };
+    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, debouncedQuery, saveExploreFeed]);
 
     const loadMore = useCallback(async () => {
         if (!hasMore || loadingMore || !nextCursor) return;

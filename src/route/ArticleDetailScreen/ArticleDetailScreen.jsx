@@ -23,7 +23,8 @@ import { ArticleActions } from './components/ArticleActions';
 import { useTheme } from '../../theme/ThemeContext';
 import { fetchArticle } from '../../api/newsApi';
 import { mapApiItem } from '../../utils/loadFeed';
-import { normalizeArticleForDetail } from '../../utils/articleNavigation';
+import { normalizeArticleForDetail, getArticleListenText } from '../../utils/articleNavigation';
+import ArticleTtsPlayer from '../../components/ArticleTtsPlayer';
 import { getAccessToken } from '../../api/client';
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
@@ -321,6 +322,11 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                                 readTime={article.readTime}
                             />
                         </Animated.View>
+
+                        <ArticleTtsPlayer
+                            text={getArticleListenText(article)}
+                            colors={colors}
+                        />
 
                         {/* Article Content */}
                         <Animated.View

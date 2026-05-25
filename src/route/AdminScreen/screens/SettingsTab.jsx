@@ -1,12 +1,13 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Settings as SettingsIcon, Plus, Trash2 } from 'lucide-react-native';
+import { Settings as SettingsIcon, Plus, Trash2, X } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import ToggleSwitch from '../components/ToggleSwitch';
 import SettingRow from '../components/SettingRow';
 import Text from '../../../components/ui/Text';
-import LinearGradient from 'react-native-linear-gradient';
 import { useFeedback } from '../../../components/ui/FeedbackProvider';
+import AdminListPanel from '../components/AdminListPanel';
+import AdminCategoryPicker from '../components/AdminCategoryPicker';
 
 const LANGUAGE_OPTIONS = ['English', 'Urdu', 'Arabic', 'French', 'Spanish'];
 const TIMEZONE_OPTIONS = ['UTC', 'Asia/Karachi', 'Asia/Dubai', 'Europe/London', 'America/New_York'];
@@ -20,16 +21,46 @@ const SettingsTab = ({
   setCategoryInput,
   connectionInput,
   setConnectionInput,
+  connectionUrlInput = '',
+  setConnectionUrlInput,
+  subInputs,
+  setSubInputs,
+  selectedCategorySlug,
+  onSelectedCategorySlugChange,
+  selectedCategory,
+  listPanel,
+  onToggleListPanel,
+  onCloseListPanel,
   onAddCategory,
   onRemoveCategory,
+  onAddSubcategory,
+  onRemoveSubcategory,
   onAddConnection,
   onRemoveConnection,
-  onOpenListModal,
+  onDeleteAllCategories,
+  onDeleteAllConnections,
   onLogout,
 }) => {
   const { theme } = useTheme();
   const { confirm } = useFeedback();
   const { colors } = theme;
+
+  const listColors = {
+    textPrimary: colors.textPrimary,
+    textSecondary: colors.textSecondary,
+    border: colors.border,
+    panelBg: colors.backgroundSecondary,
+    error: colors.error,
+    surface: colors.surface,
+  };
+
+  const pickerColors = {
+    ...listColors,
+    inputBg: colors.backgroundSecondary,
+    card: colors.surface,
+    primary: colors.primary,
+    textTertiary: colors.textTertiary,
+  };
 
   return (
     <View style={styles.managementSection}>
@@ -44,28 +75,22 @@ const SettingsTab = ({
         </View>
       </View>
 
-      <View style={[styles.settingsSection, {
-        backgroundColor: colors.surface,
-        borderColor: colors.border,
-      }]}>
+      <View style={[styles.settingsSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Text variant="subtitle" color={colors.textPrimary} style={styles.settingsSectionTitle}>
           Notification Setting
         </Text>
-        
         <SettingRow label="Push Notification">
           <ToggleSwitch
             value={settings.pushNotification}
             onValueChange={(value) => onSettingsChange({ pushNotification: value })}
           />
         </SettingRow>
-
         <SettingRow label="Email Notification">
           <ToggleSwitch
             value={settings.emailNotification}
             onValueChange={(value) => onSettingsChange({ emailNotification: value })}
           />
         </SettingRow>
-
         <SettingRow label="In-app Notification">
           <ToggleSwitch
             value={settings.inAppNotification}
@@ -74,10 +99,7 @@ const SettingsTab = ({
         </SettingRow>
       </View>
 
-      <View style={[styles.settingsSection, {
-        backgroundColor: colors.surface,
-        borderColor: colors.border,
-      }]}>
+      <View style={[styles.settingsSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <Text variant="subtitle" color={colors.textPrimary} style={styles.settingsSectionTitle}>
           Language & Region
         </Text>
@@ -121,40 +143,55 @@ const SettingsTab = ({
         </SettingRow>
       </View>
 
-      <View style={[styles.settingsSection, {
-        backgroundColor: colors.surface,
-        borderColor: colors.border,
-      }]}>
+      <View style={[styles.settingsSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.settingsSectionHeader}>
-          <Text variant="subtitle" color={colors.textPrimary} style={styles.settingsSectionTitle}>
+          <Text variant="subtitle" color={colors.textPrimary} style={[styles.settingsSectionTitle, { marginBottom: 0 }]}>
             Manage Category
           </Text>
           <TouchableOpacity
-            style={[styles.listButton, { backgroundColor: colors.primary }]}
-            onPress={() => onOpenListModal('category')}
+            style={[
+              styles.listButton,
+              { backgroundColor: listPanel === 'category' ? colors.textSecondary : colors.primary },
+            ]}
+            onPress={() => onToggleListPanel('category')}
             activeOpacity={0.8}
           >
             <Text variant="caption" color={colors.surface} style={styles.listButtonText}>
-              List
+              {listPanel === 'category' ? 'Hide list' : 'List'}
             </Text>
           </TouchableOpacity>
         </View>
 
+        <AdminListPanel
+          open={listPanel === 'category'}
+          onClose={onCloseListPanel}
+          title="All categories"
+          items={categories}
+          itemType="category"
+          onDeleteItem={onRemoveCategory}
+          onDeleteAll={onDeleteAllCategories}
+          colors={listColors}
+        />
+
         <View style={styles.inputRow}>
           <TextInput
-            style={[styles.settingInput, {
-              backgroundColor: colors.backgroundSecondary,
-              borderColor: colors.border,
-              color: colors.textPrimary,
-            }]}
+            style={[
+              styles.settingInput,
+              {
+                backgroundColor: colors.backgroundSecondary,
+                borderColor: colors.border,
+                color: colors.textPrimary,
+              },
+            ]}
             placeholder="Enter Category"
             value={categoryInput}
             onChangeText={setCategoryInput}
             placeholderTextColor={colors.textTertiary}
             cursorColor={colors.primary}
+            onSubmitEditing={onAddCategory}
           />
-          <TouchableOpacity 
-            style={[styles.addBtn, { backgroundColor: colors.primary }]} 
+          <TouchableOpacity
+            style={[styles.addBtn, { backgroundColor: colors.primary }]}
             onPress={onAddCategory}
             activeOpacity={0.8}
           >
@@ -162,61 +199,176 @@ const SettingsTab = ({
           </TouchableOpacity>
         </View>
 
-        {categories.map((category) => (
-          <View key={category.id} style={styles.inputRow}>
-            <View style={[styles.settingInput, {
-              backgroundColor: colors.backgroundSecondary,
-              borderColor: colors.border,
-            }]}>
-              <Text variant="body" color={colors.textPrimary} style={styles.inputText}>
-                {category.name}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.removeBtn, { backgroundColor: `${colors.error}15` }]}
-              onPress={() => onRemoveCategory(category.id)}
-              activeOpacity={0.8}
-            >
-              <Trash2 size={18} color={colors.error} />
-            </TouchableOpacity>
-          </View>
-        ))}
+        {categories.length > 0 ? (
+          <>
+            <Text variant="caption" color={colors.textSecondary} style={styles.fieldLabel}>
+              Select category
+            </Text>
+            <AdminCategoryPicker
+              categories={categories}
+              value={selectedCategorySlug}
+              onChange={onSelectedCategorySlugChange}
+              colors={pickerColors}
+            />
+
+            {selectedCategory ? (
+              <View
+                style={[
+                  styles.subcategoryCard,
+                  { borderColor: colors.border, backgroundColor: colors.backgroundSecondary },
+                ]}
+              >
+                <View style={styles.subcategoryHeader}>
+                  <Text variant="body" color={colors.textPrimary} style={{ fontWeight: '700', flex: 1 }}>
+                    {selectedCategory.name}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.removeBtn, { backgroundColor: `${colors.error}15` }]}
+                    onPress={() => onRemoveCategory(selectedCategory.slug)}
+                    activeOpacity={0.8}
+                  >
+                    <Trash2 size={18} color={colors.error} />
+                  </TouchableOpacity>
+                </View>
+
+                <Text variant="caption" color={colors.textSecondary} style={{ marginBottom: 8 }}>
+                  Subcategories
+                </Text>
+                <View style={styles.chipWrap}>
+                  {(selectedCategory.subcategories || []).length ? (
+                    selectedCategory.subcategories.map((sub) => (
+                      <View
+                        key={sub.id || sub.slug}
+                        style={[styles.chip, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                      >
+                        <Text variant="caption" color={colors.textPrimary}>
+                          {sub.name}
+                        </Text>
+                        <TouchableOpacity
+                          onPress={() => onRemoveSubcategory(selectedCategory.slug, sub.slug)}
+                          hitSlop={6}
+                        >
+                          <X size={14} color={colors.textSecondary} />
+                        </TouchableOpacity>
+                      </View>
+                    ))
+                  ) : (
+                    <Text variant="caption" color={colors.textSecondary}>
+                      No subcategories yet.
+                    </Text>
+                  )}
+                </View>
+
+                <View style={[styles.inputRow, { marginBottom: 0 }]}>
+                  <TextInput
+                    style={[
+                      styles.settingInput,
+                      {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                        color: colors.textPrimary,
+                        fontSize: 14,
+                      },
+                    ]}
+                    placeholder="Add subcategory"
+                    value={subInputs[selectedCategory.slug] || ''}
+                    onChangeText={(text) =>
+                      setSubInputs((prev) => ({ ...prev, [selectedCategory.slug]: text }))
+                    }
+                    placeholderTextColor={colors.textTertiary}
+                    cursorColor={colors.primary}
+                    onSubmitEditing={() => onAddSubcategory(selectedCategory.slug)}
+                  />
+                  <TouchableOpacity
+                    style={[styles.addBtn, { backgroundColor: colors.primary, width: 44, height: 44, borderRadius: 12 }]}
+                    onPress={() => onAddSubcategory(selectedCategory.slug)}
+                    activeOpacity={0.8}
+                  >
+                    <Plus size={16} color={colors.surface} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : null}
+          </>
+        ) : (
+          <Text variant="body" color={colors.textSecondary} style={{ marginTop: 4 }}>
+            No categories yet. Add one above.
+          </Text>
+        )}
       </View>
 
-      <View style={[styles.settingsSection, {
-        backgroundColor: colors.surface,
-        borderColor: colors.border,
-      }]}>
+      <View style={[styles.settingsSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
         <View style={styles.settingsSectionHeader}>
-          <Text variant="subtitle" color={colors.textPrimary} style={styles.settingsSectionTitle}>
-            Manage Connection
-          </Text>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text variant="subtitle" color={colors.textPrimary} style={[styles.settingsSectionTitle, { marginBottom: 0 }]}>
+              Manage Connection
+            </Text>
+            <Text variant="caption" color={colors.textSecondary} style={{ marginTop: 6, lineHeight: 18 }}>
+              News scrape sources (RSS feeds and built-in sites). Used when running the RSS scraper.
+            </Text>
+          </View>
           <TouchableOpacity
-            style={[styles.listButton, { backgroundColor: colors.primary }]}
-            onPress={() => onOpenListModal('connection')}
+            style={[
+              styles.listButton,
+              { backgroundColor: listPanel === 'connection' ? colors.textSecondary : colors.primary },
+            ]}
+            onPress={() => onToggleListPanel('connection')}
             activeOpacity={0.8}
           >
             <Text variant="caption" color={colors.surface} style={styles.listButtonText}>
-              List
+              {listPanel === 'connection' ? 'Hide list' : 'List'}
             </Text>
           </TouchableOpacity>
         </View>
 
+        <AdminListPanel
+          open={listPanel === 'connection'}
+          onClose={onCloseListPanel}
+          title="All connections"
+          items={connections}
+          itemType="connection"
+          onDeleteItem={onRemoveConnection}
+          onDeleteAll={onDeleteAllConnections}
+          colors={listColors}
+        />
+
         <View style={styles.inputRow}>
           <TextInput
-            style={[styles.settingInput, {
-              backgroundColor: colors.backgroundSecondary,
-              borderColor: colors.border,
-              color: colors.textPrimary,
-            }]}
-            placeholder="Enter Connection"
+            style={[
+              styles.settingInput,
+              {
+                backgroundColor: colors.backgroundSecondary,
+                borderColor: colors.border,
+                color: colors.textPrimary,
+              },
+            ]}
+            placeholder="Connection name"
             value={connectionInput}
             onChangeText={setConnectionInput}
             placeholderTextColor={colors.textTertiary}
             cursorColor={colors.primary}
           />
-          <TouchableOpacity 
-            style={[styles.addBtn, { backgroundColor: colors.primary }]} 
+        </View>
+        <View style={styles.inputRow}>
+          <TextInput
+            style={[
+              styles.settingInput,
+              {
+                backgroundColor: colors.backgroundSecondary,
+                borderColor: colors.border,
+                color: colors.textPrimary,
+              },
+            ]}
+            placeholder="RSS / feed URL (required)"
+            value={connectionUrlInput}
+            onChangeText={setConnectionUrlInput}
+            placeholderTextColor={colors.textTertiary}
+            cursorColor={colors.primary}
+            autoCapitalize="none"
+            onSubmitEditing={onAddConnection}
+          />
+          <TouchableOpacity
+            style={[styles.addBtn, { backgroundColor: colors.primary }]}
             onPress={onAddConnection}
             activeOpacity={0.8}
           >
@@ -224,32 +376,15 @@ const SettingsTab = ({
           </TouchableOpacity>
         </View>
 
-        {connections.map((connection) => (
-          <View key={connection.id} style={styles.inputRow}>
-            <View style={[styles.settingInput, {
-              backgroundColor: colors.backgroundSecondary,
-              borderColor: colors.border,
-            }]}>
-              <Text variant="body" color={colors.textPrimary} style={styles.inputText}>
-                {connection.name}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.removeBtn, { backgroundColor: `${colors.error}15` }]}
-              onPress={() => onRemoveConnection(connection.id)}
-              activeOpacity={0.8}
-            >
-              <Trash2 size={18} color={colors.error} />
-            </TouchableOpacity>
-          </View>
-        ))}
+        {connections.length === 0 && listPanel !== 'connection' ? (
+          <Text variant="body" color={colors.textSecondary} style={{ marginTop: 4 }}>
+            No sources yet. Open List or add an RSS feed above.
+          </Text>
+        ) : null}
       </View>
 
       <TouchableOpacity
-        style={[styles.logoutButton, {
-          backgroundColor: colors.backgroundSecondary,
-          borderColor: colors.border,
-        }]}
+        style={[styles.logoutButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
         onPress={async () => {
           const accepted = await confirm({
             title: 'Logout',
@@ -270,20 +405,9 @@ const SettingsTab = ({
 };
 
 const styles = StyleSheet.create({
-  managementSection: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  managementHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  managementSection: { paddingHorizontal: 20, paddingTop: 8 },
+  managementHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
   iconContainer: {
     width: 40,
     height: 40,
@@ -292,16 +416,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-  },
+  sectionTitle: { fontSize: 20, fontWeight: '700' },
   settingsSection: {
     borderRadius: 16,
     padding: 20,
     marginBottom: 16,
     borderWidth: 1,
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -310,38 +431,16 @@ const styles = StyleSheet.create({
   settingsSectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 16,
   },
-  settingsSectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 16,
-  },
-  listButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  listButtonText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  settingValueButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  settingValueText: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 12,
-  },
+  settingsSectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 16 },
+  listButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  listButtonText: { fontSize: 12, fontWeight: '700' },
+  settingValueButton: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8 },
+  settingValueText: { fontSize: 13, fontWeight: '600' },
+  fieldLabel: { fontWeight: '600', marginBottom: 8, marginTop: 4 },
+  inputRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 12 },
   settingInput: {
     flex: 1,
     borderRadius: 12,
@@ -350,39 +449,33 @@ const styles = StyleSheet.create({
     fontSize: 15,
     borderWidth: 1.5,
   },
-  inputText: {
-    fontSize: 15,
-  },
   addBtn: {
     width: 48,
     height: 48,
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: "#000",
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  removeBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    justifyContent: 'center',
+  removeBtn: { width: 44, height: 44, borderRadius: 12, justifyContent: 'center', alignItems: 'center' },
+  subcategoryCard: { borderRadius: 12, borderWidth: 1, padding: 16, marginTop: 12 },
+  subcategoryHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12, minHeight: 32 },
+  chip: {
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
   },
-  logoutButton: {
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 24,
-    borderWidth: 1.5,
-  },
-  logoutButtonText: {
-    fontSize: 15,
-    fontWeight: '700',
-  },
+  logoutButton: { paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 24, borderWidth: 1.5 },
+  logoutButtonText: { fontSize: 15, fontWeight: '700' },
 });
 
 export default SettingsTab;

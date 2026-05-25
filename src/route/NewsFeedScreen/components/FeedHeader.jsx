@@ -3,6 +3,7 @@ import { TouchableOpacity, StyleSheet } from 'react-native';
 import { Settings } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import PageScreenHeader from '../../../components/ui/PageScreenHeader';
+import { goToMainTab } from '../../../navigation/goToMainTab';
 
 export const FeedHeader = ({ navigation }) => {
     const { theme } = useTheme();
@@ -16,9 +17,7 @@ export const FeedHeader = ({ navigation }) => {
             rightAction={
                 <TouchableOpacity
                     style={[headerStyles.iconButton, { backgroundColor: colors.backgroundSecondary }]}
-                    onPress={() =>
-                        navigation.getParent()?.navigate('MainTabs', { screen: 'Settings' })
-                    }
+                    onPress={() => goToMainTab(navigation, 'Settings')}
                     activeOpacity={0.7}
                 >
                     <Settings size={20} color={colors.textPrimary} strokeWidth={2} />

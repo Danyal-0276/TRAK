@@ -1,0 +1,120 @@
+/* Animated selects (react-select) */
+.admin-animated-select__control {
+  transition:
+    border-color 0.22s ease,
+    box-shadow 0.22s ease,
+    background-color 0.22s ease;
+}
+
+.admin-animated-select__chevron {
+  display: flex;
+  align-items: center;
+  transition: transform 0.22s ease, color 0.22s ease;
+}
+
+.admin-animated-select__chevron--open {
+  transform: rotate(180deg);
+}
+
+.admin-animated-select__menu {
+  animation: adminSelectMenuIn 0.22s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  transform-origin: top center;
+}
+
+@keyframes adminSelectMenuIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.admin-animated-select__option {
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease;
+}
+
+/* Inline list panel expand/collapse */
+.admin-list-panel-wrap {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-bottom: 0;
+  transition:
+    grid-template-rows 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.22s ease,
+    margin-bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.admin-list-panel-wrap--open {
+  grid-template-rows: 1fr;
+  opacity: 1;
+  margin-bottom: 16px;
+  pointer-events: auto;
+}
+
+.admin-list-panel-wrap--closing {
+  grid-template-rows: 0fr;
+  opacity: 0;
+  margin-bottom: 0;
+  pointer-events: none;
+}
+
+.admin-list-panel-inner {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.admin-list-panel {
+  border-radius: 12px;
+  overflow: hidden;
+  max-height: min(320px, 45vh);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+  transform: translateY(-4px);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.admin-list-panel-wrap--open .admin-list-panel {
+  transform: translateY(0);
+}
+
+.admin-list-panel-wrap--closing .admin-list-panel {
+  transform: translateY(-4px);
+}
+
+.admin-list-panel__row {
+  animation: adminListRowIn 0.2s ease backwards;
+}
+
+@keyframes adminListRowIn {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-animated-select__control,
+  .admin-animated-select__chevron,
+  .admin-animated-select__menu,
+  .admin-animated-select__option,
+  .admin-list-panel-wrap,
+  .admin-list-panel,
+  .admin-list-panel__row {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}

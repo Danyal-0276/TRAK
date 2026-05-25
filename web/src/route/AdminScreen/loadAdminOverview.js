@@ -4,21 +4,35 @@ import {
   getAdminModelMetrics,
   getAdminUsers,
 } from '../../api/adminApi';
-import { MOCK_ANALYTICS, MOCK_KEYWORDS } from './mockAdminData';
+import { buildDashboardStatCards, isAnalyticsPayload } from './dashboardChartUtils';
+import { MOCK_ANALYTICS } from './mockAdminData';
 
 /**
  * Same admin API bundle as mobile AdminScreen.loadData (overview slice).
  * Real data from Django `/api/admin/*`; mock analytics/keywords only when analytics API fails.
  */
-export async function loadAdminOverview() {
+export async function loadAdminOverview({ cacheBust = false, requireAnalytics = false } = {}) {
   let serverAnalytics = null;
   let modelMetrics = null;
   let articles = [];
   let users = [];
 
+  let analyticsError = null;
   try {
-    serverAnalytics = await getAdminAnalytics();
-  } catch {
+    const raw = await getAdminAnalytics({ cacheBust });
+    if (isAnalyticsPayload(raw)) {
+      serverAnalytics = raw;
+    } else {
+      const detail = raw?.detail || raw?.message;
+      analyticsError =
+        typeof detail === 'string'
+          ? detail
+          : 'Analytics API returned an unexpected response.';
+      if (requireAnalytics) throw new Error(analyticsError);
+    }
+  } catch (err) {
+    if (requireAnalytics) throw err;
+    analyticsError = err?.message || 'Could not load analytics.';
     serverAnalytics = null;
   }
 
@@ -49,43 +63,12 @@ export async function loadAdminOverview() {
     modelMetrics,
     articles,
     users,
-    keywords: MOCK_KEYWORDS,
+    analyticsError,
     mockAnalytics: serverAnalytics ? null : MOCK_ANALYTICS,
   };
 }
 
-export function buildOverviewStatCards({ serverAnalytics, articles, users }) {
-  if (serverAnalytics) {
-    const pipelineKeyCount = Object.keys(serverAnalytics.raw_by_pipeline_status || {}).length;
-    return [
-      {
-        label: 'Raw articles',
-        value: String(serverAnalytics.raw_total ?? 0),
-        path: '/admin/articles?scope=raw',
-      },
-      {
-        label: 'Processed',
-        value: String(serverAnalytics.processed_total ?? 0),
-        path: '/admin/articles?scope=processed',
-      },
-      {
-        label: 'In feed list',
-        value: String(articles.length),
-        path: '/admin/articles',
-      },
-      {
-        label: 'Pipeline states',
-        value: String(pipelineKeyCount),
-        path: '/admin/dashboard',
-      },
-    ];
-  }
-
-  const active = users.filter((u) => u.is_active !== false).length;
-  return [
-    { label: 'Total Users', value: String(users.length), path: '/admin/users' },
-    { label: 'Active Users', value: String(active), path: '/admin/users' },
-    { label: 'Keywords (mock)', value: String(MOCK_KEYWORDS.length), path: '/admin/dashboard' },
-    { label: 'Articles (mock)', value: '—', path: '/admin/articles' },
-  ];
+export function buildOverviewStatCards({ serverAnalytics, palette }) {
+  if (!palette) return [];
+  return buildDashboardStatCards(serverAnalytics, palette);
 }

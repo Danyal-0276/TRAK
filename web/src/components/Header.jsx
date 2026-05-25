@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Bell, Settings, User, Menu, X, Shield } from 'lucide-react';
+import { Search, Bell, Menu, X } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
@@ -11,8 +11,8 @@ const Header = () => {
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
-    const { isAdmin, user } = useAuth();
-    const { isMobile, isTablet } = useResponsive();
+    const { user } = useAuth();
+    const { isMobile, isTablet, isDesktop } = useResponsive();
     const navigate = useNavigate();
     const location = useLocation();
     const [searchQuery, setSearchQuery] = useState('');
@@ -35,7 +35,6 @@ const Header = () => {
         })();
     }, [location.pathname, user?.id, user?.pk, user?.email]);
 
-    // Don't show header on auth pages
     const hideHeaderPaths = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'];
     if (hideHeaderPaths.includes(location.pathname) || location.pathname.startsWith('/admin')) {
         return null;
@@ -48,12 +47,131 @@ const Header = () => {
         }
     };
 
+    const handleLogoClick = useCallback(() => {
+        navigate('/newsfeed');
+    }, [navigate]);
+
+    const handleNavLinkClick = useCallback((path, { closeMenu = false } = {}) => {
+        const isActive = location.pathname === path;
+        if (isActive) {
+            if (window.scrollY > 4) {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        } else {
+            navigate(path);
+        }
+        if (closeMenu) {
+            setShowMobileMenu(false);
+        }
+    }, [location.pathname, navigate]);
+
     const navLinks = [
         { path: '/newsfeed', label: 'Home' },
         { path: '/search', label: 'Explore' },
         { path: '/categories', label: 'Categories' },
         { path: '/about', label: 'About' },
     ];
+
+    const contentOffset = isDesktop ? 'max(0px, calc((100% - 1200px) / 2))' : 0;
+
+    const rightActions = (
+        <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: isMobile ? '8px' : '12px',
+            minWidth: isMobile ? 'auto' : isDesktop ? 'auto' : '180px',
+            justifyContent: 'flex-end',
+            flexShrink: 0,
+            ...(isDesktop ? {} : {
+                position: 'absolute',
+                right: '24px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                zIndex: 2,
+            }),
+        }}>
+            <button
+                onClick={() => navigate('/notifications')}
+                style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '10px',
+                    border: 'none',
+                    backgroundColor: location.pathname === '/notifications'
+                        ? (isDark ? colors.surface || '#1E293B' : '#f3f4f6')
+                        : 'transparent',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease',
+                    position: 'relative',
+                }}
+                onMouseEnter={(e) => {
+                    if (location.pathname !== '/notifications') {
+                        e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                    }
+                }}
+                onMouseLeave={(e) => {
+                    if (location.pathname !== '/notifications') {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                    }
+                }}
+            >
+                <Bell size={20} color={location.pathname === '/notifications'
+                    ? (isDark ? colors.primary || '#818CF8' : '#000000')
+                    : (isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280')} />
+                <div style={{
+                    position: 'absolute',
+                    top: '8px',
+                    right: '8px',
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: '#ef4444',
+                    border: `2px solid ${isDark ? colors.background || '#0F172A' : '#ffffff'}`,
+                }} />
+            </button>
+
+            <button
+                onClick={() => navigate('/profile')}
+                style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '50%',
+                    border: `2px solid ${isDark ? colors.border || '#334155' : '#e5e7eb'}`,
+                    backgroundColor: isDark ? colors.surface || '#1E293B' : '#ffffff',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#000000';
+                    e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
+                }}
+                onMouseLeave={(e) => {
+                    if (!showUserMenu) {
+                        e.currentTarget.style.borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+                        e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#ffffff';
+                    }
+                }}
+            >
+                {avatarPreview ? (
+                    <img src={avatarPreview} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                ) : (
+                    <Text variant="body" style={{
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        color: isDark ? colors.textPrimary || '#F1F5F9' : '#000000',
+                    }}>
+                        {profileInitial}
+                    </Text>
+                )}
+            </button>
+        </div>
+    );
 
     return (
         <header style={{
@@ -65,61 +183,123 @@ const Header = () => {
             borderBottom: `1px solid ${isDark ? colors.border || '#334155' : '#e5e7eb'}`,
             zIndex: 1000,
             boxShadow: isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
+            paddingRight: isDesktop ? '280px' : 0,
         }}>
             <div style={{
-                maxWidth: '1280px',
-                margin: '0 auto',
-                padding: isMobile ? '0 16px' : isTablet ? '0 24px' : '0 32px',
+                position: 'relative',
+                width: '100%',
+                maxWidth: isDesktop ? 'none' : '1280px',
+                margin: isDesktop ? 0 : '0 auto',
+                paddingLeft: isMobile ? '16px' : isTablet ? '16px' : '24px',
+                paddingRight: isMobile ? '16px' : isTablet ? '24px' : '24px',
                 height: '64px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: isMobile ? '8px' : '16px',
+                ...(isDesktop ? {
+                    display: 'grid',
+                    gridTemplateColumns: 'auto minmax(200px, 1fr) auto',
+                    columnGap: '24px',
+                    alignItems: 'center',
+                } : {
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: isMobile ? '8px' : '16px',
+                }),
             }}>
-                {/* Logo */}
-                <div
-                    onClick={() => navigate('/newsfeed')}
-                    style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        cursor: 'pointer',
-                        gap: isMobile ? '8px' : '12px',
-                        minWidth: isMobile ? 'auto' : '180px',
-                        flexShrink: 0,
-                    }}
-                >
-                    <div style={{
-                        width: isMobile ? '32px' : '36px',
-                        height: isMobile ? '32px' : '36px',
-                        backgroundColor: isDark ? colors.primary || '#818CF8' : '#000000',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                    }}>
-                        <img 
-                            src="/images/whiteLogo.svg" 
-                            alt="TRAK Logo" 
-                            style={{ 
-                                width: isMobile ? '20px' : '24px', 
-                                height: isMobile ? '20px' : '24px',
-                            }} 
-                        />
-                    </div>
-                    {!isMobile && (
-                        <Text variant="title" style={{
-                            fontSize: isTablet ? '20px' : '24px',
-                            fontWeight: '800',
-                            color: isDark ? colors.textPrimary || '#F1F5F9' : '#000000',
-                            letterSpacing: '-0.5px',
+                <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: isDesktop ? '40px' : '0',
+                    marginLeft: contentOffset,
+                    flexShrink: 0,
+                    minWidth: 0,
+                }}>
+                    <div
+                        onClick={handleLogoClick}
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                            gap: isMobile ? '8px' : '12px',
+                            minWidth: isMobile ? 'auto' : isDesktop ? 'auto' : '180px',
+                            flexShrink: 0,
+                        }}
+                    >
+                        <div style={{
+                            width: isMobile ? '32px' : '36px',
+                            height: isMobile ? '32px' : '36px',
+                            backgroundColor: isDark ? colors.primary || '#818CF8' : '#000000',
+                            borderRadius: '8px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
                         }}>
-                            TRAK
-                        </Text>
+                            <img
+                                src="/images/whiteLogo.svg"
+                                alt="TRAK Logo"
+                                style={{
+                                    width: isMobile ? '20px' : '24px',
+                                    height: isMobile ? '20px' : '24px',
+                                }}
+                            />
+                        </div>
+                        {!isMobile && (
+                            <Text variant="title" style={{
+                                fontSize: isTablet ? '20px' : '24px',
+                                fontWeight: '800',
+                                color: isDark ? colors.textPrimary || '#F1F5F9' : '#000000',
+                                letterSpacing: '-0.5px',
+                            }}>
+                                TRAK
+                            </Text>
+                        )}
+                    </div>
+
+                    {!isMobile && isDesktop && (
+                        <nav style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: isDesktop ? '32px' : '40px',
+                            flexShrink: 0,
+                        }}>
+                            {navLinks.map((link) => (
+                                <button
+                                    key={link.path}
+                                    onClick={() => handleNavLinkClick(link.path)}
+                                    style={{
+                                        padding: '8px 0',
+                                        border: 'none',
+                                        background: 'transparent',
+                                        cursor: 'pointer',
+                                        fontSize: '15px',
+                                        fontWeight: location.pathname === link.path ? 600 : 500,
+                                        color: location.pathname === link.path
+                                            ? (isDark ? colors.primary || '#818CF8' : '#000000')
+                                            : (isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280'),
+                                        borderBottom: location.pathname === link.path
+                                            ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#000000'}`
+                                            : '2px solid transparent',
+                                        transition: 'all 0.2s ease',
+                                        whiteSpace: 'nowrap',
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (location.pathname !== link.path) {
+                                            e.currentTarget.style.color = isDark ? colors.primary || '#818CF8' : '#000000';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (location.pathname !== link.path) {
+                                            e.currentTarget.style.color = isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280';
+                                        }
+                                    }}
+                                >
+                                    {link.label}
+                                </button>
+                            ))}
+                        </nav>
                     )}
                 </div>
 
-                {/* Navigation Links - Hidden on mobile */}
-                {!isMobile && (
+                {!isMobile && !isDesktop && (
                     <nav style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -130,7 +310,7 @@ const Header = () => {
                         {navLinks.map((link) => (
                             <button
                                 key={link.path}
-                                onClick={() => navigate(link.path)}
+                                onClick={() => handleNavLinkClick(link.path)}
                                 style={{
                                     padding: '8px 0',
                                     border: 'none',
@@ -138,11 +318,11 @@ const Header = () => {
                                     cursor: 'pointer',
                                     fontSize: isTablet ? '14px' : '15px',
                                     fontWeight: location.pathname === link.path ? 600 : 500,
-                                    color: location.pathname === link.path 
+                                    color: location.pathname === link.path
                                         ? (isDark ? colors.primary || '#818CF8' : '#000000')
                                         : (isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280'),
-                                    borderBottom: location.pathname === link.path 
-                                        ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#000000'}` 
+                                    borderBottom: location.pathname === link.path
+                                        ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#000000'}`
                                         : '2px solid transparent',
                                     transition: 'all 0.2s ease',
                                 }}
@@ -163,14 +343,18 @@ const Header = () => {
                     </nav>
                 )}
 
-                {/* Search Bar - Responsive */}
                 {!isMobile && (
-                    <form onSubmit={handleSearch} style={{
-                        flex: 1,
-                        maxWidth: isTablet ? '200px' : '400px',
-                        margin: '0 16px',
-                        position: 'relative',
-                    }}>
+                    <form
+                        onSubmit={handleSearch}
+                        style={{
+                            width: '100%',
+                            maxWidth: isDesktop ? '400px' : isTablet ? '200px' : '400px',
+                            margin: isDesktop ? '0 auto' : '0 16px',
+                            justifySelf: isDesktop ? 'center' : undefined,
+                            flex: isDesktop ? 'none' : 1,
+                            minWidth: 0,
+                        }}
+                    >
                         <div style={{
                             position: 'relative',
                             display: 'flex',
@@ -196,8 +380,8 @@ const Header = () => {
                                 onFocus={(e) => {
                                     e.target.style.backgroundColor = isDark ? colors.backgroundElevated || '#334155' : '#ffffff';
                                     e.target.style.borderColor = isDark ? colors.primary || '#818CF8' : '#000000';
-                                    e.target.style.boxShadow = isDark 
-                                        ? '0 0 0 3px rgba(129, 140, 248, 0.2)' 
+                                    e.target.style.boxShadow = isDark
+                                        ? '0 0 0 3px rgba(129, 140, 248, 0.2)'
                                         : '0 0 0 3px rgba(0, 0, 0, 0.1)';
                                 }}
                                 onBlur={(e) => {
@@ -210,7 +394,6 @@ const Header = () => {
                     </form>
                 )}
 
-                {/* Mobile Search Button */}
                 {isMobile && (
                     <button
                         onClick={() => navigate('/search')}
@@ -237,7 +420,6 @@ const Header = () => {
                     </button>
                 )}
 
-                {/* Mobile Menu Button */}
                 {isMobile && (
                     <button
                         onClick={() => setShowMobileMenu(!showMobileMenu)}
@@ -246,8 +428,8 @@ const Header = () => {
                             height: '40px',
                             borderRadius: '10px',
                             border: 'none',
-                            backgroundColor: showMobileMenu 
-                                ? (isDark ? colors.surface || '#1E293B' : '#f3f4f6') 
+                            backgroundColor: showMobileMenu
+                                ? (isDark ? colors.surface || '#1E293B' : '#f3f4f6')
                                 : 'transparent',
                             cursor: 'pointer',
                             display: 'flex',
@@ -264,99 +446,9 @@ const Header = () => {
                     </button>
                 )}
 
-                {/* Right Actions */}
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: isMobile ? '8px' : '12px',
-                    minWidth: isMobile ? 'auto' : '180px',
-                    justifyContent: 'flex-end',
-                    flexShrink: 0,
-                }}>
-                    <button
-                        onClick={() => navigate('/notifications')}
-                        style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '10px',
-                            border: 'none',
-                            backgroundColor: location.pathname === '/notifications' 
-                                ? (isDark ? colors.surface || '#1E293B' : '#f3f4f6') 
-                                : 'transparent',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s ease',
-                            position: 'relative',
-                        }}
-                        onMouseEnter={(e) => {
-                            if (location.pathname !== '/notifications') {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
-                            }
-                        }}
-                        onMouseLeave={(e) => {
-                            if (location.pathname !== '/notifications') {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                            }
-                        }}
-                    >
-                        <Bell size={20} color={location.pathname === '/notifications' 
-                            ? (isDark ? colors.primary || '#818CF8' : '#000000')
-                            : (isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280')} />
-                        <div style={{
-                            position: 'absolute',
-                            top: '8px',
-                            right: '8px',
-                            width: '8px',
-                            height: '8px',
-                            borderRadius: '50%',
-                            backgroundColor: '#ef4444',
-                            border: `2px solid ${isDark ? colors.background || '#0F172A' : '#ffffff'}`,
-                        }} />
-                    </button>
-
-                    <button
-                        onClick={() => navigate('/profile')}
-                        style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            border: `2px solid ${isDark ? colors.border || '#334155' : '#e5e7eb'}`,
-                            backgroundColor: isDark ? colors.surface || '#1E293B' : '#ffffff',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'all 0.2s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#000000';
-                            e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
-                        }}
-                        onMouseLeave={(e) => {
-                            if (!showUserMenu) {
-                                e.currentTarget.style.borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
-                                e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#ffffff';
-                            }
-                        }}
-                    >
-                        {avatarPreview ? (
-                            <img src={avatarPreview} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                        ) : (
-                            <Text variant="body" style={{
-                                fontSize: '16px',
-                                fontWeight: '600',
-                                color: isDark ? colors.textPrimary || '#F1F5F9' : '#000000',
-                            }}>
-                                {profileInitial}
-                            </Text>
-                        )}
-                    </button>
-                </div>
+                {rightActions}
             </div>
 
-            {/* Mobile Menu */}
             {isMobile && showMobileMenu && (
                 <div style={{
                     position: 'absolute',
@@ -377,21 +469,18 @@ const Header = () => {
                         {navLinks.map((link) => (
                             <button
                                 key={link.path}
-                                onClick={() => {
-                                    navigate(link.path);
-                                    setShowMobileMenu(false);
-                                }}
+                                onClick={() => handleNavLinkClick(link.path, { closeMenu: true })}
                                 style={{
                                     padding: '12px 16px',
                                     border: 'none',
-                                    background: location.pathname === link.path 
+                                    background: location.pathname === link.path
                                         ? (isDark ? colors.surface || '#1E293B' : '#f3f4f6')
                                         : 'transparent',
                                     borderRadius: '8px',
                                     cursor: 'pointer',
                                     fontSize: '15px',
                                     fontWeight: location.pathname === link.path ? 600 : 500,
-                                    color: location.pathname === link.path 
+                                    color: location.pathname === link.path
                                         ? (isDark ? colors.primary || '#818CF8' : '#000000')
                                         : (isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280'),
                                     textAlign: 'left',
