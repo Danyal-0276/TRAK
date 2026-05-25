@@ -57,6 +57,7 @@ import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { buildArticleDetailParams } from '../../utils/articleNavigation';
 import { getArticlesApiScope, filterArticlesForDisplay } from '../../utils/adminArticleFilters';
 import { ADMIN_TAB_ROUTES } from '../../navigation/adminTabIds';
+import { openAdminNotificationsSocket } from '../../api/adminNotificationsRealtime';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PIPELINE_BATCH_SIZE = 15;
@@ -187,6 +188,41 @@ const AdminScreen = ({ navigation }) => {
       }),
     ]).start();
   }, []);
+
+  const adminSocketRef = useRef(null);
+  const adminReconnectRef = useRef(null);
+
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    const connect = async () => {
+      const ws = await openAdminNotificationsSocket((payload) => {
+        if (payload?.type !== 'notification.created' || !payload.notification?.id) return;
+        const n = payload.notification;
+        setNotifications((prev) => {
+          if (prev.some((row) => String(row.id) === String(n.id))) return prev;
+          return [
+            {
+              id: n.id,
+              title: n.type || 'alert',
+              message: n.text || n.details || '',
+              status: 'unread',
+            },
+            ...prev,
+          ];
+        });
+      });
+      if (!ws) return;
+      adminSocketRef.current = ws;
+      ws.onclose = () => {
+        adminReconnectRef.current = setTimeout(connect, 2500);
+      };
+    };
+    connect();
+    return () => {
+      if (adminSocketRef.current) adminSocketRef.current.close();
+      if (adminReconnectRef.current) clearTimeout(adminReconnectRef.current);
+    };
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!bootstrapped) return;

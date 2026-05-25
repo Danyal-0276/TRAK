@@ -46,8 +46,8 @@ const NotificationTabs = ({ notifications, onMarkAsRead, onNotificationPress, on
   const [index, setIndex] = useState(0);
   const [routes] = useState([
     { key: "all", title: "All" },
-    { key: "mentions", title: "Mentions" },
     { key: "keywords", title: "Keywords" },
+    { key: "system", title: "System" },
   ]);
 
   const renderScene = ({ route }) => {
@@ -61,20 +61,26 @@ const NotificationTabs = ({ notifications, onMarkAsRead, onNotificationPress, on
             onListScroll={onListScroll}
           />
         );
-      case 'mentions':
-        return <NotificationList 
-          data={notifications.filter(n => n.type === "mention" || n.text.includes("@Shahroz"))} 
-          onMarkAsRead={onMarkAsRead}
-          onNotificationPress={onNotificationPress}
-          onListScroll={onListScroll}
-        />;
       case 'keywords':
-        return <NotificationList 
-          data={notifications.filter(n => n.type === "keyword")} 
-          onMarkAsRead={onMarkAsRead}
-          onNotificationPress={onNotificationPress}
-          onListScroll={onListScroll}
-        />;
+        return (
+          <NotificationList
+            data={notifications.filter((n) => n.type === 'keyword_match')}
+            onMarkAsRead={onMarkAsRead}
+            onNotificationPress={onNotificationPress}
+            onListScroll={onListScroll}
+          />
+        );
+      case 'system':
+        return (
+          <NotificationList
+            data={notifications.filter((n) =>
+              ['system', 'welcome_back'].includes(n.type)
+            )}
+            onMarkAsRead={onMarkAsRead}
+            onNotificationPress={onNotificationPress}
+            onListScroll={onListScroll}
+          />
+        );
       default:
         return null;
     }

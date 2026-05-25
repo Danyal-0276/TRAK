@@ -1,5 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NativeModules, Platform } from 'react-native';
+import { NativeModules, Platform, TurboModuleRegistry } from 'react-native';
+
+function hasNativeModule(name) {
+  if (NativeModules[name]) return true;
+  try {
+    return TurboModuleRegistry.get(name) != null;
+  } catch {
+    return false;
+  }
+}
 
 const KEY = 'trak_device_token';
 
@@ -9,11 +18,7 @@ function randomToken() {
 
 /** True only when the native @react-native-firebase/app module is in the binary. */
 function isFirebaseNativeLinked() {
-  try {
-    return Boolean(NativeModules.RNFBAppModule);
-  } catch {
-    return false;
-  }
+  return hasNativeModule('RNFBAppModule');
 }
 
 function tryFcmMessaging() {

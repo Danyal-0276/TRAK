@@ -74,9 +74,15 @@ const NotificationsScreen = () => {
         if (activeTab === 'All') {
             setFilteredNotifications(notifications);
         } else if (activeTab === 'Unread') {
-            setFilteredNotifications(notifications.filter(n => !n.read));
+            setFilteredNotifications(notifications.filter((n) => !n.read));
+        } else if (activeTab === 'Keywords') {
+            setFilteredNotifications(notifications.filter((n) => n.type === 'keyword_match'));
+        } else if (activeTab === 'System') {
+            setFilteredNotifications(
+                notifications.filter((n) => ['system', 'welcome_back'].includes(n.type))
+            );
         } else if (activeTab === 'Important') {
-            setFilteredNotifications(notifications.filter(n => n.important));
+            setFilteredNotifications(notifications.filter((n) => n.important));
         }
     };
 
@@ -122,7 +128,10 @@ const NotificationsScreen = () => {
             case 'follow':
                 return <UserPlus size={20} color="#8b5cf6" />;
             case 'keyword':
+            case 'keyword_match':
                 return <Hash size={20} color="#f59e0b" />;
+            case 'welcome_back':
+                return <Bell size={20} color="#3b82f6" />;
             default:
                 return <Bell size={20} color="#64748b" />;
         }
@@ -239,7 +248,18 @@ const NotificationsScreen = () => {
                     {[
                         { id: 'All', label: 'All', count: notifications.length },
                         { id: 'Unread', label: 'Unread', count: unreadCount },
-                        { id: 'Important', label: 'Important', count: importantCount },
+                        {
+                            id: 'Keywords',
+                            label: 'Keywords',
+                            count: notifications.filter((n) => n.type === 'keyword_match').length,
+                        },
+                        {
+                            id: 'System',
+                            label: 'System',
+                            count: notifications.filter((n) =>
+                                ['system', 'welcome_back'].includes(n.type)
+                            ).length,
+                        },
                     ].map((tab) => (
                         <button
                             key={tab.id}
