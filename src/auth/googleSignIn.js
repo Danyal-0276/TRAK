@@ -1,4 +1,14 @@
-import { NativeModules } from 'react-native';
+import { NativeModules, TurboModuleRegistry } from 'react-native';
+
+/** New Architecture exposes TurboModules via TurboModuleRegistry, not NativeModules. */
+function hasNativeModule(name) {
+  if (NativeModules[name]) return true;
+  try {
+    return TurboModuleRegistry.get(name) != null;
+  } catch {
+    return false;
+  }
+}
 
 /** Web client ID (client_type 3) from android/app/google-services.json */
 const WEB_CLIENT_ID =
@@ -23,7 +33,7 @@ export function formatGoogleAuthError(error) {
 }
 
 function ensureFirebaseNative() {
-  if (!NativeModules.RNFBAppModule) {
+  if (!hasNativeModule('RNFBAppModule')) {
     throw new Error(
       'Firebase native module is missing. Run: npx react-native run-android',
     );
@@ -31,7 +41,7 @@ function ensureFirebaseNative() {
 }
 
 function ensureGoogleSignInNative() {
-  if (!NativeModules.RNGoogleSignin) {
+  if (!hasNativeModule('RNGoogleSignin')) {
     throw new Error(
       'Google Sign-In native module is missing. Uninstall the app, then run: npx react-native run-android',
     );

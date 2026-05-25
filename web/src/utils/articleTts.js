@@ -156,7 +156,7 @@ function decodeToAudioBuffer(ctx, base64Audio) {
 export function playArticleTtsStreaming(
   segments,
   language,
-  { onProgress, onUrduPart, onFirstReady, isCancelled } = {}
+  { onProgress, onUrduPart, onFirstReady, onSegmentStart, isCancelled } = {}
 ) {
   const session = { stopped: false, activeSource: null, ctx: null, gain: null };
 
@@ -290,6 +290,9 @@ export function playArticleTtsStreaming(
 
         if (i === 0) onFirstReady?.();
         if (entry?.urdu && onUrduPart) onUrduPart(entry.urdu, i);
+
+        const durationMs = Math.round((entry.buffer?.duration || 3) * 1000);
+        onSegmentStart?.(i, { durationMs, segmentText: segments[i] });
 
         if (!session.stopped && !isCancelled?.()) {
           await playAudioBuffer(entry.buffer);

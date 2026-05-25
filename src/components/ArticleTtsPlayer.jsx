@@ -8,8 +8,18 @@ import {
   playArticleTtsStreaming,
   stopNativePlayback,
 } from '../utils/articleTts';
+import {
+  lineIndicesForSegment,
+  scheduleLineHighlights,
+} from '../utils/ttsHighlight';
 
-export default function ArticleTtsPlayer({ text, colors, disabled = false }) {
+export default function ArticleTtsPlayer({
+  text,
+  colors,
+  disabled = false,
+  highlightLines = [],
+  onActiveLineIndex,
+}) {
   const [language, setLanguage] = useState('english');
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
@@ -18,6 +28,7 @@ export default function ArticleTtsPlayer({ text, colors, disabled = false }) {
   const cancelledRef = useRef(false);
   const audioStartedRef = useRef(false);
   const statusRef = useRef(status);
+  const cancelLineHighlightRef = useRef(null);
   statusRef.current = status;
 
   const listenText = String(text || '').trim();
@@ -27,15 +38,22 @@ export default function ArticleTtsPlayer({ text, colors, disabled = false }) {
   const textPrimary = colors?.textPrimary || '#0f172a';
   const textSecondary = colors?.textSecondary || '#64748b';
 
+  const clearLineHighlights = useCallback(() => {
+    cancelLineHighlightRef.current?.();
+    cancelLineHighlightRef.current = null;
+    onActiveLineIndex?.(-1);
+  }, [onActiveLineIndex]);
+
   const stopPlayback = useCallback(() => {
     cancelledRef.current = true;
     playbackRef.current?.stop?.();
     playbackRef.current = null;
     stopNativePlayback();
+    clearLineHighlights();
     setProgress({ current: 0, total: 0 });
     setStatus('idle');
     setError('');
-  }, []);
+  }, [clearLineHighlights]);
 
   useEffect(() => () => stopPlayback(), [stopPlayback]);
 
@@ -50,6 +68,7 @@ export default function ArticleTtsPlayer({ text, colors, disabled = false }) {
     audioStartedRef.current = false;
     setError('');
     setProgress({ current: 0, total: 0 });
+    clearLineHighlights();
     setStatus('loading');
 
     try {
@@ -66,6 +85,19 @@ export default function ArticleTtsPlayer({ text, colors, disabled = false }) {
             setStatus('playing');
           }
         },
+        onSegmentStart: (segmentIndex, { durationMs }) => {
+          if (cancelledRef.current) return;
+          cancelLineHighlightRef.current?.();
+          const indices = lineIndicesForSegment(highlightLines, segmentIndex);
+          if (!indices.length) return;
+          cancelLineHighlightRef.current = scheduleLineHighlights(
+            indices,
+            highlightLines,
+            durationMs,
+            (lineIdx) => onActiveLineIndex?.(lineIdx),
+            () => cancelledRef.current
+          );
+        },
         onProgress: (current, total) => {
           if (!cancelledRef.current) setProgress({ current, total });
         },
@@ -78,6 +110,7 @@ export default function ArticleTtsPlayer({ text, colors, disabled = false }) {
       if (cancelledRef.current) return;
 
       playbackRef.current = null;
+      clearLineHighlights();
       if (!audioStartedRef.current) {
         setStatus('error');
         setError(
