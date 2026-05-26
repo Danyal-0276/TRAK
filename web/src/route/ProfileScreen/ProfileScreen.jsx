@@ -518,16 +518,16 @@ const UserProfileScreen = () => {
                     <ActionRow icon={LogOut} label="Log out" subtitle="Sign out of this device" onClick={handleLogout} danger />
                 </div>
 
-                    {!isAdmin && (!emailVerified || !phoneVerified) && (
+                    {!isAdmin && !emailVerified && (
                         <div className="trak-profile-verify">
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
                                 <ShieldCheck size={16} color={textPrimary} />
                                 <span style={{ fontSize: '14px', fontWeight: '700', color: textPrimary }}>
-                                    Verify your account
+                                    Verify your email
                                 </span>
                             </div>
                             <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: textSecondary }}>
-                                Request a code and enter it below to verify your email or phone.
+                                Your email address has not been verified yet. Enter your email below to receive a verification code.
                             </p>
                             <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
                                 <button type="button" onClick={() => setVerificationChannel("email")} style={{ padding: '7px 12px', borderRadius: '8px', border: `1px solid ${verificationChannel === "email" ? (isDark ? colors.primary || '#818CF8' : '#0f172a') : borderColor}`, background: verificationChannel === "email" ? (isDark ? 'rgba(129,140,248,0.15)' : '#eef2ff') : 'transparent', cursor: 'pointer', color: textPrimary, fontSize: '12px', fontWeight: 600 }}>Email</button>
@@ -551,7 +551,12 @@ const UserProfileScreen = () => {
                                 </button>
                             </div>
                             {verifyMessage ? (
-                                <div style={{ marginTop: '10px', fontSize: '12px', color: textSecondary }}>
+                                <div style={{
+                                    marginTop: '10px', fontSize: '12px',
+                                    color: verifyMessage.toLowerCase().includes('success') || verifyMessage.toLowerCase().includes('verified')
+                                        ? '#16a34a'
+                                        : '#ef4444',
+                                }}>
                                     {verifyMessage}
                                 </div>
                             ) : null}

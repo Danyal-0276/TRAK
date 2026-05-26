@@ -1,4 +1,5 @@
 import { fetchWithTimeout } from '../../api/fetchWithTimeout';
+import { normalizeApiError } from '../normalizeApiError';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
@@ -12,19 +13,17 @@ const jsonHeaders = {
 };
 
 const parseError = async (res) => {
-  let detail = `Request failed (${res.status})`;
+  let payload = null;
   try {
-    const payload = await res.json();
-    if (payload?.detail) {
-      detail = payload.detail;
-    } else if (typeof payload === 'object' && payload !== null) {
-      const first = Object.values(payload)[0];
-      detail = Array.isArray(first) ? String(first[0]) : String(first);
-    }
+    payload = await res.json();
   } catch (_) {
     // ignore parse issues
   }
-  throw new Error(detail);
+  const { message, fields } = normalizeApiError(payload, res.status);
+  const err = new Error(message);
+  err.fields = fields;
+  err.status = res.status;
+  throw err;
 };
 
 async function request(path, options = {}) {

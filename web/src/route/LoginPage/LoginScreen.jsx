@@ -55,7 +55,14 @@ const LoginScreen = () => {
             const userData = await login(email, password);
             navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed');
         } catch (error) {
-            setErrors(prev => ({ ...prev, password: error.message || 'Invalid email or password' }));
+            const fieldErrors = error.fields || {};
+            if (fieldErrors.email) {
+                setErrors(prev => ({ ...prev, email: fieldErrors.email }));
+            } else if (fieldErrors.password) {
+                setErrors(prev => ({ ...prev, password: fieldErrors.password }));
+            } else {
+                setErrors(prev => ({ ...prev, password: error.message || 'Incorrect email or password. Please try again.' }));
+            }
         } finally {
             setLoading(false);
         }

@@ -73,9 +73,20 @@ const SignUpScreen = () => {
                 navigate('/verify-email', { state: { email, fromSignup: true } });
             }
         } catch (error) {
-            const msg = error.message || 'Signup failed';
-            const isPasswordError = msg.toLowerCase().includes('password');
-            setErrors((prev) => ({ ...prev, [isPasswordError ? 'password' : 'email']: msg }));
+            const fieldErrors = error.fields || {};
+            if (Object.keys(fieldErrors).length > 0) {
+                const mapped = {};
+                for (const [key, val] of Object.entries(fieldErrors)) {
+                    if (key === 'email') mapped.email = val;
+                    else if (key === 'password' || key === 'password_confirm') mapped.password = val;
+                    else if (key === 'full_name') mapped.fullName = val;
+                    else if (key === 'phone') mapped.phone = val;
+                    else mapped.email = val;
+                }
+                setErrors((prev) => ({ ...prev, ...mapped }));
+            } else {
+                setErrors((prev) => ({ ...prev, email: error.message || 'Sign up failed. Please try again.' }));
+            }
         } finally {
             setLoading(false);
         }
