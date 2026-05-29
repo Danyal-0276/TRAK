@@ -36,7 +36,10 @@ export const AuthProvider = ({ children }) => {
     const applySession = (session) => {
         saveAuthSession(session);
         setUser(session.user);
-        registerDeviceToken(getOrCreatePushToken(), 'web').catch(() => {});
+        // Fire-and-forget — do not block login/signup completion
+        setTimeout(() => {
+            registerDeviceToken(getOrCreatePushToken(), 'web').catch(() => {});
+        }, 0);
         return session.user;
     };
 

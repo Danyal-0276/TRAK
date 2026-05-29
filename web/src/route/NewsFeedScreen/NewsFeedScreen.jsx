@@ -15,6 +15,7 @@ import { getReactionMap, setReactionForArticle } from '../../utils/reactionsStor
 import { getCardSummaryText } from '../../utils/articleNavigation';
 import { openArticleDetail } from '../../utils/openArticleDetail';
 import { useFeedCache } from '../../context/FeedCacheContext';
+import { filterFeedByUserKeywords } from '../../utils/feedKeywordMatch';
 
 const NewsFeedScreen = () => {
     const { theme } = useTheme();
@@ -341,8 +342,14 @@ const NewsFeedScreen = () => {
                 return bk - ak;
             });
         }
+        // "For you" tab: filter to user's selected topics/keywords when available
+        if (hasFeedPersonalization && feedKeywords?.length) {
+            const filtered = filterFeedByUserKeywords(newsData, feedKeywords);
+            // Fall back to all articles if none match (avoids empty feed surprise)
+            return filtered.length > 0 ? filtered : newsData;
+        }
         return newsData;
-    }, [newsData, activeTab, bookmarkedItems]);
+    }, [newsData, activeTab, bookmarkedItems, hasFeedPersonalization, feedKeywords]);
 
     return (
         <div style={{

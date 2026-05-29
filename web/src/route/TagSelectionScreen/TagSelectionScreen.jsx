@@ -55,25 +55,29 @@ const TagSelectionScreen = () => {
         };
     }, [fromSignup, navigate]);
 
+    // Restore previously selected tags once taxonomy has loaded.
+    // Runs whenever mainTags changes (i.e., after taxonomy async load completes).
     useEffect(() => {
         if (fromSignup) return;
+        if (!mainTags.length) return; // taxonomy not loaded yet
         const saved = getUserKeywords();
         if (!saved.length) return;
+        // Normalise to lowercase for reliable matching
+        const savedLower = saved.map((s) => s.toLowerCase());
         const next = new Set();
         for (const main of mainTags) {
             const subs = tagsMap[main] || [];
-            if (saved.includes(main)) next.add(main);
+            if (savedLower.includes(main.toLowerCase())) next.add(main);
             for (const sub of subs) {
-                if (saved.includes(sub)) {
+                if (savedLower.includes(sub.toLowerCase())) {
                     next.add(main);
                     next.add(sub);
                 }
             }
         }
         if (next.size) setSelectedTags(Array.from(next));
-    // Intentionally run once on mount; fromSignup is fixed for this navigation.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [mainTags.join('\x1f')]);
 
     const toggleMainTag = (tag) => {
         setSelectedTags(prev => {

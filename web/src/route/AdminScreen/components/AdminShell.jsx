@@ -6,10 +6,37 @@ import { useAuth } from '../../../context/AuthContext';
 import AdminTabNav from './AdminTabNav';
 import AdminKeepAliveOutlet from './AdminKeepAliveOutlet';
 
+function AdminAvatarChip({ user, isSuperAdmin, colors, isDark }) {
+  const email = user?.email || '';
+  const initial = email.charAt(0).toUpperCase() || 'A';
+  const accentBg = isDark ? 'rgba(129,140,248,0.15)' : '#f1f5f9';
+  const accentText = isDark ? '#818cf8' : '#0f172a';
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+      <div style={{
+        width: 34, height: 34, borderRadius: 17,
+        backgroundColor: accentBg,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 14, fontWeight: 700, color: accentText, flexShrink: 0,
+      }}>
+        {initial}
+      </div>
+      <div style={{ lineHeight: 1.3 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {email}
+        </div>
+        <div style={{ fontSize: 11, color: isDark ? '#818cf8' : '#64748b', fontWeight: 500 }}>
+          {isSuperAdmin ? 'Super Admin' : 'Administrator'}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminShell() {
   const { theme } = useTheme();
   const { colors } = theme;
-  const { user, isAdmin, loading, logout } = useAuth();
+  const { user, isAdmin, isSuperAdmin, loading, logout } = useAuth();
   const navigate = useNavigate();
   const isDark = theme.mode === 'dark';
 
@@ -93,6 +120,8 @@ export default function AdminShell() {
               Admin Panel
             </h1>
           </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <AdminAvatarChip user={user} isSuperAdmin={isSuperAdmin} colors={colors} isDark={isDark} />
           <button
             type="button"
             onClick={handleLogout}
@@ -113,6 +142,7 @@ export default function AdminShell() {
             <LogOut size={18} />
             Logout
           </button>
+          </div>
         </div>
         <AdminTabNav />
       </header>

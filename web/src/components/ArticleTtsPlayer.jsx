@@ -164,9 +164,9 @@ export default function ArticleTtsPlayer({
                   style={{
                     padding: '6px 12px',
                     borderRadius: 8,
-                    border: `1px solid ${active ? '#3b82f6' : border}`,
-                    background: active ? (isDark ? 'rgba(59, 130, 246, 0.2)' : '#eff6ff') : 'transparent',
-                    color: active ? '#3b82f6' : textSecondary,
+                    border: `1px solid ${active ? textPrimary : border}`,
+                    background: active ? (isDark ? 'rgba(241,245,249,0.12)' : '#f1f5f9') : 'transparent',
+                    color: active ? textPrimary : textSecondary,
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -192,7 +192,7 @@ export default function ArticleTtsPlayer({
               borderRadius: 8,
               border: 'none',
               flexShrink: 0,
-              background: isActive ? '#64748b' : '#3b82f6',
+              background: isDark ? (isActive ? '#475569' : '#1e293b') : (isActive ? '#334155' : '#0f172a'),
               color: '#fff',
               fontSize: 14,
               fontWeight: 600,
@@ -231,7 +231,7 @@ export default function ArticleTtsPlayer({
                     width: '35%',
                     height: '100%',
                     borderRadius: 3,
-                    backgroundColor: '#3b82f6',
+                    backgroundColor: isDark ? '#94a3b8' : '#0f172a',
                     animation: 'trak-tts-indet 1.1s ease-in-out infinite',
                   }}
                 />
@@ -241,7 +241,7 @@ export default function ArticleTtsPlayer({
                     width: `${progressPct}%`,
                     height: '100%',
                     borderRadius: 3,
-                    backgroundColor: '#3b82f6',
+                    backgroundColor: isDark ? '#94a3b8' : '#0f172a',
                     transition: 'width 0.2s ease',
                   }}
                 />
