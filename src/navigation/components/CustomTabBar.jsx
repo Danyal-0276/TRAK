@@ -52,10 +52,13 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
     const renderTabIcon = (routeName, isFocused) => {
         const IconComponent = iconMap[routeName] || iconMap.Home;
+        // Light theme: active pill is white — icon must be dark, not white.
+        const activeIconColor = isDark ? colors.textPrimary : (colors.primary || '#0a0a0a');
+        const inactiveIconColor = isDark ? colors.textTertiary : 'rgba(255,255,255,0.55)';
         return (
             <IconComponent
                 size={isFocused ? 24 : 22}
-                color={isFocused ? (isDark ? colors.textPrimary : '#ffffff') : (isDark ? colors.textTertiary : 'rgba(255,255,255,0.55)')}
+                color={isFocused ? activeIconColor : inactiveIconColor}
                 strokeWidth={isFocused ? 2.25 : 2}
             />
         );
