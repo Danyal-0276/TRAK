@@ -3,16 +3,18 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { useResponsive } from '../../hooks/useResponsive';
-import { getResponsivePadding, getResponsiveMaxWidth, getResponsiveGridColumns, getResponsiveGap, getResponsiveFontSize } from '../../utils/responsiveStyles';
+import { getResponsiveGridColumns, getResponsiveGap } from '../../utils/responsiveStyles';
 import {
     FileText,
     Search,
     Eye,
     Clock,
     Tag,
-    ChevronRight,
     Trash2,
 } from 'lucide-react';
+import AdminPageLayout from './components/AdminPageLayout';
+import AdminPageHeader from './components/AdminPageHeader';
+import { useAdminPageMeta } from './adminPageMeta';
 import { deleteAdminArticle, getAdminArticles, patchAdminArticle } from '../../api/adminApi';
 import {
     getArticlesApiScope,
@@ -41,7 +43,6 @@ const AdminArticlesScreen = () => {
     const [pipelineFilter, setPipelineFilter] = useState(initialRoute.pipelineFilter);
     const [statusById, setStatusById] = useState({});
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
     const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
     const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
     const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
@@ -146,6 +147,7 @@ const AdminArticlesScreen = () => {
     };
 
     const filteredArticles = filterArticlesForDisplay(articles, pipelineFilter, searchQuery);
+    const { title, description } = useAdminPageMeta();
 
     return (
         <>
@@ -155,47 +157,8 @@ const AdminArticlesScreen = () => {
                     100% { transform: rotate(360deg); }
                 }
             `}</style>
-            <div style={{
-                minHeight: '100vh',
-                backgroundColor: backgroundColor,
-                paddingTop: '0',
-                marginTop: '0',
-            }}>
-            <div style={{
-                maxWidth: getResponsiveMaxWidth(isMobile, isTablet, '1400px'),
-                margin: '0 auto',
-                width: '100%',
-                padding: getResponsivePadding(isMobile, isTablet),
-            }}>
-                {/* Header Section */}
-                <div style={{
-                    marginTop: '0',
-                    marginBottom: isMobile ? '16px' : '24px',
-                    paddingTop: '0',
-                }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: textSecondary, marginBottom: '10px' }}>
-                        <button onClick={() => navigate('/admin/dashboard')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Admin</button>
-                        <ChevronRight size={14} />
-                        <span style={{ color: textPrimary, fontWeight: 600 }}>Articles</span>
-                    </div>
-                    <h1 style={{
-                        fontSize: getResponsiveFontSize(isMobile, isTablet, 28),
-                        fontWeight: '700',
-                        color: textPrimary,
-                        margin: '0 0 8px 0',
-                        paddingTop: '0',
-                        letterSpacing: '-0.5px',
-                    }}>
-                        Articles Management
-                    </h1>
-                    <p style={{
-                        fontSize: '15px',
-                        color: textSecondary,
-                        margin: '0',
-                        lineHeight: '1.5',
-                    }}>
-                        Live list from MongoDB — filter by pipeline status.
-                    </p>
+            <AdminPageLayout maxWidth="1400px">
+                <AdminPageHeader title={title} description={description}>
                     <div style={{
                             display: 'flex',
                             flexWrap: 'wrap',
@@ -243,9 +206,9 @@ const AdminArticlesScreen = () => {
                                 );
                             })}
                         </div>
-                </div>
+                </AdminPageHeader>
 
-                {/* Search Bar */}
+                <div className="admin-page-body">
                 <div style={{
                     marginBottom: '24px',
                 }}>
@@ -570,8 +533,8 @@ const AdminArticlesScreen = () => {
                         ))}
                     </div>
                 )}
-            </div>
-        </div>
+                </div>
+            </AdminPageLayout>
         </>
     );
 };

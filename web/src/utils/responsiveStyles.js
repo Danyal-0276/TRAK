@@ -8,6 +8,13 @@ export const getResponsivePadding = (isMobile, isTablet) => {
     return '0 24px 24px 24px';
 };
 
+/** Admin pages: shell provides outer padding; use for inner sections only if needed. */
+export const getAdminPagePadding = (isMobile, isTablet) => {
+    if (isMobile) return '16px';
+    if (isTablet) return '20px';
+    return '24px';
+};
+
 export const getResponsiveMaxWidth = (isMobile, isTablet, desktopWidth = '1400px') => {
     if (isMobile) return '100%';
     if (isTablet) return '100%';

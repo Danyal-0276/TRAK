@@ -1,20 +1,18 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Shield, Search, Trash2, Plus, Mail, Calendar } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { useResponsive } from '../../hooks/useResponsive';
-import { getResponsivePadding, getResponsiveMaxWidth, getResponsiveFontSize } from '../../utils/responsiveStyles';
+import AdminPageLayout from './components/AdminPageLayout';
+import AdminPageHeader from './components/AdminPageHeader';
+import { useAdminPageMeta } from './adminPageMeta';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { deleteAdminUser, getAdminUsers, postAdminCreate } from '../../api/adminApi';
 import { SkeletonTableRows } from '../../components/skeletons/SkeletonLayouts';
 
 export default function AdminAdminsScreen() {
-  const navigate = useNavigate();
   const { theme } = useTheme();
   const { colors } = theme;
   const isDark = theme.mode === 'dark';
-  const { isMobile, isTablet } = useResponsive();
   const { isSuperAdmin } = useAuth();
   const { confirm, success, error: notifyError } = useUIFeedback();
   const [admins, setAdmins] = useState([]);
@@ -25,7 +23,6 @@ export default function AdminAdminsScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [creating, setCreating] = useState(false);
 
-  const backgroundColor = colors.background;
   const cardBackground = colors.surface;
   const textPrimary = colors.textPrimary;
   const textSecondary = colors.textSecondary;
@@ -89,45 +86,35 @@ export default function AdminAdminsScreen() {
     }
   };
 
-  return (
-    <div style={{ minHeight: '100vh', backgroundColor }}>
-      <div
-        style={{
-          maxWidth: getResponsiveMaxWidth(isMobile, isTablet, '1200px'),
-          margin: '0 auto',
-          padding: getResponsivePadding(isMobile, isTablet),
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-          <div>
-            <h1 style={{ fontSize: getResponsiveFontSize(isMobile, isTablet, 28), fontWeight: 700, color: textPrimary, margin: '0 0 8px' }}>
-              Administrators
-            </h1>
-            <p style={{ color: textSecondary, margin: 0 }}>Admin accounts only</p>
-          </div>
-          {isSuperAdmin ? (
-            <button
-              type="button"
-              onClick={() => setShowCreate(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '12px 18px',
-                borderRadius: 10,
-                border: 'none',
-                background: colors.primary || '#3b82f6',
-                color: '#fff',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              <Plus size={18} />
-              Create admin
-            </button>
-          ) : null}
-        </div>
+  const { title, description } = useAdminPageMeta();
 
+  const createAdminAction = isSuperAdmin ? (
+    <button
+      type="button"
+      onClick={() => setShowCreate(true)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '12px 18px',
+        borderRadius: 10,
+        border: 'none',
+        background: colors.primary || '#3b82f6',
+        color: '#fff',
+        fontWeight: 600,
+        cursor: 'pointer',
+      }}
+    >
+      <Plus size={18} />
+      Create admin
+    </button>
+  ) : null;
+
+  return (
+    <>
+      <AdminPageLayout maxWidth="1200px">
+        <AdminPageHeader title={title} description={description} actions={createAdminAction} />
+        <div className="admin-page-body">
         <div style={{ position: 'relative', marginBottom: 20 }}>
           <Search size={18} color={textSecondary} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
           <input
@@ -223,7 +210,8 @@ export default function AdminAdminsScreen() {
               ) : null}
             </div>
           ))}
-      </div>
+        </div>
+      </AdminPageLayout>
 
       {showCreate ? (
         <div
@@ -284,6 +272,6 @@ export default function AdminAdminsScreen() {
           </form>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }

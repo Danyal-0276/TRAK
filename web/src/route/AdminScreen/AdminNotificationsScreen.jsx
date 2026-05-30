@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
-import { useResponsive } from '../../hooks/useResponsive';
-import { getResponsivePadding, getResponsiveMaxWidth } from '../../utils/responsiveStyles';
-import { Bell, ChevronRight } from 'lucide-react';
+import { Bell } from 'lucide-react';
+import AdminPageLayout from './components/AdminPageLayout';
+import AdminPageHeader from './components/AdminPageHeader';
+import { useAdminPageMeta } from './adminPageMeta';
 import { getAdminNotifications } from '../../api/adminApi';
 import { openAdminNotificationsSocket } from '../../api/adminNotificationsRealtime';
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
@@ -12,15 +12,13 @@ const AdminNotificationsScreen = () => {
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
-    const { isMobile, isTablet } = useResponsive();
-    const navigate = useNavigate();
+    const { title, description } = useAdminPageMeta();
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('All');
     const socketRef = React.useRef(null);
     const reconnectRef = React.useRef(null);
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
     const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
     const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
     const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
@@ -90,21 +88,9 @@ const AdminNotificationsScreen = () => {
     });
 
     return (
-        <div style={{ minHeight: '100vh', backgroundColor }}>
-            <div style={{
-                maxWidth: getResponsiveMaxWidth(isMobile, isTablet, '900px'),
-                margin: '0 auto',
-                padding: getResponsivePadding(isMobile, isTablet),
-            }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: textSecondary, marginBottom: 10 }}>
-                    <button type="button" onClick={() => navigate('/admin/dashboard')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Admin</button>
-                    <ChevronRight size={14} />
-                    <span style={{ color: textPrimary, fontWeight: 600 }}>Notifications</span>
-                </div>
-                <h1 style={{ fontSize: 26, fontWeight: 700, color: textPrimary, margin: '0 0 8px' }}>Admin notifications</h1>
-                <p style={{ color: textSecondary, marginBottom: 16 }}>Pipeline errors, system alerts, push and email (Gmail SMTP).</p>
-
-                <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        <AdminPageLayout maxWidth="1200px">
+            <AdminPageHeader title={title} description={description}>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
                     {['All', 'Errors', 'System'].map((tab) => (
                         <button
                             key={tab}
@@ -124,7 +110,9 @@ const AdminNotificationsScreen = () => {
                         </button>
                     ))}
                 </div>
+            </AdminPageHeader>
 
+            <div className="admin-page-body">
                 {loading ? <SkeletonListRows rows={8} isDark={isDark} colors={colors} /> : null}
                 {!loading && filtered.length === 0 ? (
                     <div style={{ padding: 32, textAlign: 'center', color: textSecondary, border: `1px dashed ${borderColor}`, borderRadius: 12 }}>
@@ -164,7 +152,7 @@ const AdminNotificationsScreen = () => {
                     </div>
                 ))}
             </div>
-        </div>
+        </AdminPageLayout>
     );
 };
 

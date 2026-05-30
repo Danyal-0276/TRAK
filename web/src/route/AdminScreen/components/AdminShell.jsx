@@ -1,44 +1,62 @@
-import React from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { Shield, LogOut } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Navigate, useNavigate, useLocation } from 'react-router-dom';
+import { Menu } from 'lucide-react';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
-import AdminTabNav from './AdminTabNav';
+import AdminSidebar from './AdminSidebar';
 import AdminKeepAliveOutlet from './AdminKeepAliveOutlet';
-
-function AdminAvatarChip({ user, isSuperAdmin, colors, isDark }) {
-  const email = user?.email || '';
-  const initial = email.charAt(0).toUpperCase() || 'A';
-  const accentBg = isDark ? 'rgba(129,140,248,0.15)' : '#f1f5f9';
-  const accentText = isDark ? '#818cf8' : '#0f172a';
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <div style={{
-        width: 34, height: 34, borderRadius: 17,
-        backgroundColor: accentBg,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 14, fontWeight: 700, color: accentText, flexShrink: 0,
-      }}>
-        {initial}
-      </div>
-      <div style={{ lineHeight: 1.3 }}>
-        <div style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {email}
-        </div>
-        <div style={{ fontSize: 11, color: isDark ? '#818cf8' : '#64748b', fontWeight: 500 }}>
-          {isSuperAdmin ? 'Super Admin' : 'Administrator'}
-        </div>
-      </div>
-    </div>
-  );
-}
+import './adminShell.css';
 
 export default function AdminShell() {
   const { theme } = useTheme();
   const { colors } = theme;
   const { user, isAdmin, isSuperAdmin, loading, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const isDark = theme.mode === 'dark';
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
+  );
+
+  const sidebarVisible = isDesktop || sidebarOpen;
+
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const onChange = () => {
+      setIsDesktop(mq.matches);
+      if (mq.matches) setSidebarOpen(false);
+    };
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  const shellVars = useMemo(
+    () => ({
+      '--admin-border': colors.border,
+      '--admin-sidebar-bg': isDark ? '#0f172a' : '#ffffff',
+      '--admin-topbar-bg': isDark ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255, 255, 255, 0.92)',
+      '--admin-card': isDark ? '#1e293b' : '#ffffff',
+      '--admin-text-primary': colors.textPrimary,
+      '--admin-text-secondary': colors.textSecondary,
+      '--admin-text-tertiary': isDark ? '#94a3b8' : '#64748b',
+      '--admin-primary': colors.primary || '#2563eb',
+      '--admin-brand-icon-bg': isDark ? 'rgba(59, 130, 246, 0.15)' : '#eff6ff',
+      '--admin-nav-hover': isDark ? 'rgba(148, 163, 184, 0.08)' : '#f4f4f5',
+      '--admin-nav-active-bg': isDark ? 'rgba(59, 130, 246, 0.12)' : '#eff6ff',
+      '--admin-nav-active-text': isDark ? '#93c5fd' : '#1d4ed8',
+      '--admin-error': '#ef4444',
+      '--admin-error-bg': isDark ? 'rgba(239, 68, 68, 0.12)' : '#fef2f2',
+      '--admin-page-bg': isDark ? '#0a0a0a' : '#f5f5f5',
+      '--admin-shadow-light': isDark ? 'rgba(0, 0, 0, 0.25)' : 'rgba(0, 0, 0, 0.04)',
+    }),
+    [colors, isDark]
+  );
 
   if (loading) {
     return (
@@ -48,7 +66,7 @@ export default function AdminShell() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: isDark ? colors.background : '#f9fafb',
+          backgroundColor: isDark ? colors.background : '#f5f5f5',
         }}
       >
         <p style={{ color: colors.textSecondary }}>Loading admin panel…</p>
@@ -70,86 +88,40 @@ export default function AdminShell() {
   };
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        backgroundColor: isDark ? colors.background || '#0F172A' : '#f9fafb',
-      }}
-    >
-      <header
-        style={{
-          backgroundColor: colors.surface,
-          borderBottom: `1px solid ${colors.border}`,
-          boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.2)' : '0 1px 3px rgba(0,0,0,0.05)',
-        }}
-      >
-        <div
-          style={{
-            maxWidth: 1400,
-            margin: '0 auto',
-            padding: '16px 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: 16,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <div
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: `${colors.primary || '#3b82f6'}15`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Shield size={24} color={colors.primary || '#3b82f6'} strokeWidth={2.5} />
-            </div>
-            <h1
-              style={{
-                margin: 0,
-                fontSize: 22,
-                fontWeight: 700,
-                color: colors.textPrimary,
-                letterSpacing: '-0.3px',
-              }}
-            >
-              Admin Panel
-            </h1>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <AdminAvatarChip user={user} isSuperAdmin={isSuperAdmin} colors={colors} isDark={isDark} />
+    <div className="admin-shell" style={shellVars}>
+      {sidebarOpen ? (
+        <button
+          type="button"
+          className="admin-shell__backdrop"
+          aria-label="Close menu"
+          onClick={() => setSidebarOpen(false)}
+        />
+      ) : null}
+
+      <AdminSidebar
+        open={sidebarVisible}
+        onClose={() => setSidebarOpen(false)}
+        user={user}
+        isSuperAdmin={isSuperAdmin}
+        onLogout={handleLogout}
+      />
+
+      <div className="admin-shell__main">
+        {!isDesktop ? (
           <button
             type="button"
-            onClick={handleLogout}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '10px 16px',
-              borderRadius: 10,
-              border: `1px solid ${colors.border}`,
-              background: 'transparent',
-              color: colors.textPrimary,
-              cursor: 'pointer',
-              fontSize: 14,
-              fontWeight: 600,
-            }}
+            className="admin-shell__mobile-menu"
+            aria-label="Open menu"
+            onClick={() => setSidebarOpen(true)}
           >
-            <LogOut size={18} />
-            Logout
+            <Menu size={20} />
           </button>
-          </div>
-        </div>
-        <AdminTabNav />
-      </header>
+        ) : null}
 
-      <main style={{ overflow: 'visible' }}>
-        <AdminKeepAliveOutlet />
-      </main>
+        <div className="admin-shell__content">
+          <AdminKeepAliveOutlet />
+        </div>
+      </div>
     </div>
   );
 }

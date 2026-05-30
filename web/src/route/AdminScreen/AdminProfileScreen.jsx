@@ -3,19 +3,19 @@ import { useNavigate } from 'react-router-dom';
 import { Shield, Settings, LogOut } from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { useResponsive } from '../../hooks/useResponsive';
-import { getResponsivePadding, getResponsiveMaxWidth } from '../../utils/responsiveStyles';
+import AdminPageLayout from './components/AdminPageLayout';
+import AdminPageHeader from './components/AdminPageHeader';
+import { useAdminPageMeta } from './adminPageMeta';
 
 export default function AdminProfileScreen() {
   const { theme } = useTheme();
   const { colors } = theme;
   const isDark = theme.mode === 'dark';
-  const { isMobile, isTablet } = useResponsive();
   const navigate = useNavigate();
   const { user, isSuperAdmin, logout } = useAuth();
 
-  const backgroundColor = isDark ? colors.background || '#0F172A' : '#f9fafb';
   const cardBackground = colors.surface;
+  const { title, description } = useAdminPageMeta();
   const textPrimary = colors.textPrimary;
   const textSecondary = colors.textSecondary;
   const borderColor = colors.border;
@@ -30,17 +30,9 @@ export default function AdminProfileScreen() {
     : '—';
 
   return (
-    <div style={{ minHeight: '100vh', backgroundColor }}>
-      <div
-        style={{
-          maxWidth: getResponsiveMaxWidth(isMobile, isTablet, '640px'),
-          margin: '0 auto',
-          padding: getResponsivePadding(isMobile, isTablet),
-        }}
-      >
-        <h1 style={{ fontSize: 26, fontWeight: 700, color: textPrimary, margin: '0 0 8px' }}>Admin profile</h1>
-        <p style={{ color: textSecondary, marginBottom: 24 }}>Signed-in administrator account</p>
-
+    <AdminPageLayout maxWidth="640px">
+      <AdminPageHeader title={title} description={description} />
+      <div className="admin-page-body">
         <div
           style={{
             backgroundColor: cardBackground,
@@ -129,7 +121,7 @@ export default function AdminProfileScreen() {
           Logout
         </button>
       </div>
-    </div>
+    </AdminPageLayout>
   );
 }
 

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
-import { getResponsivePadding, getResponsiveMaxWidth, getResponsiveFontSize } from '../../utils/responsiveStyles';
+import AdminPageLayout from './components/AdminPageLayout';
+import AdminPageHeader from './components/AdminPageHeader';
+import { useAdminPageMeta } from './adminPageMeta';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { 
     Users, 
@@ -11,8 +13,7 @@ import {
     CheckCircle, 
     XCircle,
     Mail,
-    Calendar
-    ,ChevronRight
+    Calendar,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { deleteAdminUser, getAdminUsers, patchAdminUser } from '../../api/adminApi';
@@ -29,7 +30,6 @@ const AdminUsersScreen = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
     const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
     const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
     const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
@@ -93,6 +93,8 @@ const AdminUsersScreen = () => {
         }
     };
 
+    const { title, description } = useAdminPageMeta();
+
     return (
         <>
             <style>{`
@@ -101,55 +103,9 @@ const AdminUsersScreen = () => {
                     100% { transform: rotate(360deg); }
                 }
             `}</style>
-            <div style={{
-                minHeight: '100vh',
-                backgroundColor: backgroundColor,
-                paddingTop: '0',
-                marginTop: '0',
-            }}>
-            <div style={{
-                maxWidth: getResponsiveMaxWidth(isMobile, isTablet, '1400px'),
-                margin: '0 auto',
-                width: '100%',
-                padding: getResponsivePadding(isMobile, isTablet),
-            }}>
-                {/* Header Section */}
-                <div style={{
-                    marginTop: '0',
-                    marginBottom: isMobile ? '16px' : '24px',
-                    paddingTop: '0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexDirection: isMobile ? 'column' : 'row',
-                    gap: isMobile ? '12px' : '0',
-                }}>
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: textSecondary, marginBottom: '10px' }}>
-                            <button onClick={() => navigate('/admin/dashboard')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Admin</button>
-                            <ChevronRight size={14} />
-                            <span style={{ color: textPrimary, fontWeight: 600 }}>Users</span>
-                        </div>
-                        <h1 style={{
-                            fontSize: getResponsiveFontSize(isMobile, isTablet, 28),
-                            fontWeight: '700',
-                            color: textPrimary,
-                            margin: '0 0 8px 0',
-                            paddingTop: '0',
-                            letterSpacing: '-0.5px',
-                        }}>
-                            Users Management
-                        </h1>
-                        <p style={{
-                            fontSize: '15px',
-                            color: textSecondary,
-                            margin: '0',
-                            lineHeight: '1.5',
-                        }}>
-                            Manage all platform users and their accounts
-                        </p>
-                    </div>
-                </div>
+            <AdminPageLayout maxWidth="1400px">
+                <AdminPageHeader title={title} description={description} />
+                <div className="admin-page-body">
 
                 {/* Search Bar */}
                 <div style={{
@@ -414,8 +370,8 @@ const AdminUsersScreen = () => {
                         ))}
                     </div>
                 )}
-            </div>
-        </div>
+                </div>
+            </AdminPageLayout>
         </>
     );
 };
