@@ -173,10 +173,12 @@ const NewsFeedScreen = ({ navigation }) => {
         setSkipEntryAnim(true);
     }, [activeTab]);
 
-    const { translateY: headerTranslateY, handleScroll, showHeader } = useCollapsibleHeader({
+    const { translateY: headerTranslateY, handleScroll, showHeader, headerHidden } = useCollapsibleHeader({
         hideOffset: TOTAL_HEADER_HEIGHT,
         hideThreshold: 50,
     });
+
+    const topChromeColor = headerHidden ? colors.background : colors.surface;
 
     const feedModeRef = useRef(hasCachedHome ? cachedHome.feedMode || 'explore' : 'explore');
     const initialLoadRef = useRef(hasCachedHome);
@@ -585,16 +587,16 @@ const NewsFeedScreen = ({ navigation }) => {
 
     return (
         <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
-            <StatusBar 
-                barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} 
-                backgroundColor="transparent" 
-                translucent 
+            <StatusBar
+                barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'}
+                backgroundColor={topChromeColor}
+                translucent
             />
             
             {/* Enhanced gradient background */}
             <LinearGradient
                 colors={theme.mode === 'dark' 
-                    ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
+                    ? [colors.background, colors.backgroundSecondary, colors.background]
                     : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
                 }
                 start={{ x: 0, y: 0 }}
@@ -602,13 +604,13 @@ const NewsFeedScreen = ({ navigation }) => {
                 style={styles.gradientBackground}
             />
             
-            <View 
+            <View
                 style={[
                     styles.statusBarCover,
-                    { 
+                    {
                         height: insets.top,
-                        backgroundColor: colors.background 
-                    }
+                        backgroundColor: topChromeColor,
+                    },
                 ]}
             />
 
@@ -619,7 +621,7 @@ const NewsFeedScreen = ({ navigation }) => {
                         { 
                             paddingTop: insets.top,
                             transform: [{ translateY: headerTranslateY }],
-                            backgroundColor: colors.surface,
+                            backgroundColor: topChromeColor,
                             shadowColor: colors.shadowDark || '#000',
                         },
                     ]}

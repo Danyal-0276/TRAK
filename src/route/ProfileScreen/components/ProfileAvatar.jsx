@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { View, Image, StyleSheet } from 'react-native';
+import { useTheme } from '../../../theme/ThemeContext';
 import Text from '../../../components/ui/Text';
+import { filledActionColors } from '../../../theme/buttonContrast';
 
 function getInitials(name) {
   if (!name) return 'U';
@@ -15,6 +17,10 @@ function hasAvatarUri(uri) {
 }
 
 export default function ProfileAvatar({ uri, name, accent, surfaceColor }) {
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const isDark = theme.mode === 'dark';
+  const action = filledActionColors(colors, isDark);
   const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
@@ -23,9 +29,10 @@ export default function ProfileAvatar({ uri, name, accent, surfaceColor }) {
 
   const showImage = hasAvatarUri(uri) && !loadFailed;
   const initials = getInitials(name);
+  const placeholderBg = action.background;
 
   return (
-    <View style={[styles.ring, { borderColor: surfaceColor, backgroundColor: showImage ? surfaceColor : accent }]}>
+    <View style={[styles.ring, { borderColor: surfaceColor || colors.surface, backgroundColor: colors.surface }]}>
       {showImage ? (
         <Image
           source={{ uri }}
@@ -33,8 +40,8 @@ export default function ProfileAvatar({ uri, name, accent, surfaceColor }) {
           onError={() => setLoadFailed(true)}
         />
       ) : (
-        <View style={[styles.placeholder, { backgroundColor: accent }]}>
-          <Text style={styles.initials} color="#FFFFFF">
+        <View style={[styles.placeholder, { backgroundColor: placeholderBg }]}>
+          <Text style={[styles.initials, { color: action.foreground }]}>
             {initials}
           </Text>
         </View>

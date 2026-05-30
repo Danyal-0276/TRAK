@@ -13,12 +13,12 @@ import {
   UIManager,
   Linking,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import { MessageCircle, Send, Trash2, X, Sparkles } from 'lucide-react-native';
 import { chatWithBot, clearChatHistory, getChatHistory } from '../utils/Service/api';
 import { useTheme } from '../theme/ThemeContext';
 import { useFeedback } from './ui/FeedbackProvider';
 import { useAuth } from '../context/AuthContext';
+import { filledActionColors } from '../theme/buttonContrast';
 
 const QUICK_PROMPTS = [
   'Top tech headlines',
@@ -147,6 +147,9 @@ const ChatBotWidget = () => {
     return null;
   }
 
+  const isDark = theme.mode === 'dark';
+  const action = filledActionColors(colors, isDark);
+
   return (
     <View pointerEvents="box-none" style={styles.root}>
       {open ? (
@@ -167,13 +170,10 @@ const ChatBotWidget = () => {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }]}
         >
-          <LinearGradient
-            colors={theme.mode === 'dark' ? ['#1E293B', '#334155'] : ['#0f172a', '#1e293b']}
-            style={styles.header}
-          >
+          <View style={[styles.header, { backgroundColor: colors.backgroundSecondary, borderBottomWidth: 1, borderBottomColor: colors.border }]}>
             <View style={styles.headerLeft}>
-              <Sparkles size={16} color="#fff" />
-              <Text style={styles.headerTitle}>TRAK AI Assistant</Text>
+              <Sparkles size={16} color={colors.textPrimary} />
+              <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>TRAK AI Assistant</Text>
             </View>
             <View style={styles.headerActions}>
               <TouchableOpacity
@@ -190,26 +190,30 @@ const ChatBotWidget = () => {
                 }}
                 style={styles.iconBtn}
               >
-                <Trash2 size={16} color="#fff" />
+                <Trash2 size={16} color={colors.textSecondary} />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setOpen(false)} style={styles.iconBtn}>
-                <X size={18} color="#fff" />
+                <X size={18} color={colors.textSecondary} />
               </TouchableOpacity>
             </View>
-          </LinearGradient>
+          </View>
 
           <ScrollView ref={scrollRef} style={styles.messages} contentContainerStyle={{ padding: 12 }}>
             {messages.map((m, i) => (
               <View key={`${m.role}-${i}`} style={[styles.msgWrap, m.role === 'user' ? styles.userWrap : styles.botWrap]}>
-                <Text style={[styles.msg, m.role === 'user' ? styles.userMsg : { color: colors.textPrimary, backgroundColor: colors.backgroundSecondary }]}>
+                <Text
+                  style={[
+                    styles.msg,
+                    m.role === 'user'
+                      ? { color: action.foreground, backgroundColor: action.background }
+                      : { color: colors.textPrimary, backgroundColor: colors.backgroundSecondary },
+                  ]}
+                >
                   {m.text}
                 </Text>
                 {m.articleUrl ? (
-                  <TouchableOpacity style={[styles.articleCard, { borderColor: colors.border }]} onPress={() => Linking.openURL(m.articleUrl)}>
-                    <LinearGradient
-                      colors={theme.mode === 'dark' ? ['rgba(51,65,85,0.65)', 'rgba(30,41,59,0.65)'] : ['rgba(248,250,252,0.86)', 'rgba(255,255,255,0.86)']}
-                      style={styles.articleCardInner}
-                    >
+                  <TouchableOpacity style={[styles.articleCard, { borderColor: colors.border, backgroundColor: colors.backgroundSecondary }]} onPress={() => Linking.openURL(m.articleUrl)}>
+                    <View style={styles.articleCardInner}>
                       <Text style={{ color: colors.textTertiary, fontSize: 10, marginBottom: 4 }}>
                         {m.source || 'TRAK Source'}
                       </Text>
@@ -217,7 +221,7 @@ const ChatBotWidget = () => {
                         {m.articleTitle || 'Open related article'}
                       </Text>
                       <Text style={{ color: colors.textSecondary, fontSize: 11, marginTop: 6 }}>View article</Text>
-                    </LinearGradient>
+                    </View>
                   </TouchableOpacity>
                 ) : null}
               </View>
@@ -242,8 +246,12 @@ const ChatBotWidget = () => {
               style={[styles.input, { color: colors.textPrimary, borderColor: colors.border }]}
               onSubmitEditing={() => sendMessage()}
             />
-            <TouchableOpacity style={styles.sendBtn} disabled={loading} onPress={() => sendMessage()}>
-              <Send size={14} color="#fff" />
+            <TouchableOpacity
+              style={[styles.sendBtn, { backgroundColor: action.background }]}
+              disabled={loading}
+              onPress={() => sendMessage()}
+            >
+              <Send size={14} color={action.foreground} />
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
@@ -258,11 +266,13 @@ const ChatBotWidget = () => {
             ],
           }}
         >
-          <TouchableOpacity onPress={() => { setOpen(true); setHasUnread(false); }} style={styles.fab}>
-            <LinearGradient colors={['#0f172a', '#334155']} style={styles.fabInner}>
-              {hasUnread ? <View style={styles.unreadDot} /> : null}
-              <MessageCircle size={22} color="#fff" />
-            </LinearGradient>
+          <TouchableOpacity
+            onPress={() => { setOpen(true); setHasUnread(false); }}
+            style={[styles.fab, { backgroundColor: action.background }]}
+            activeOpacity={0.88}
+          >
+            {hasUnread ? <View style={[styles.unreadDot, { borderColor: action.background }]} /> : null}
+            <MessageCircle size={22} color={action.foreground} />
           </TouchableOpacity>
         </Animated.View>
       )}
@@ -272,8 +282,18 @@ const ChatBotWidget = () => {
 
 const styles = StyleSheet.create({
   root: { position: 'absolute', right: 16, bottom: 98, zIndex: 9999 },
-  fab: { borderRadius: 28, overflow: 'hidden' },
-  fabInner: { width: 56, height: 56, justifyContent: 'center', alignItems: 'center' },
+  fab: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
   panel: {
     width: 340,
     height: 470,
@@ -289,19 +309,18 @@ const styles = StyleSheet.create({
   header: { paddingHorizontal: 12, paddingVertical: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  headerTitle: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  headerTitle: { fontSize: 13, fontWeight: '700' },
   iconBtn: { padding: 4 },
   messages: { flex: 1 },
   msgWrap: { marginBottom: 8, maxWidth: '88%' },
   userWrap: { alignSelf: 'flex-end' },
   botWrap: { alignSelf: 'flex-start' },
   msg: { paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, fontSize: 12, lineHeight: 18 },
-  userMsg: { color: '#fff', backgroundColor: '#0f172a' },
   quickRow: { flexDirection: 'row', gap: 6, paddingHorizontal: 10, paddingBottom: 8, flexWrap: 'wrap' },
   quickChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 8, paddingVertical: 5 },
   inputRow: { flexDirection: 'row', alignItems: 'center', padding: 10, borderTopWidth: 1, gap: 8 },
   input: { flex: 1, borderWidth: 1, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 8, fontSize: 12 },
-  sendBtn: { width: 34, height: 34, borderRadius: 8, backgroundColor: '#0f172a', alignItems: 'center', justifyContent: 'center' },
+  sendBtn: { width: 34, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   unreadDot: {
     position: 'absolute',
     top: 8,

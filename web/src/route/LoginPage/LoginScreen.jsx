@@ -6,9 +6,16 @@ import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
 import { startSocialOAuth } from '../../utils/Service/api';
 import { getPostAuthPath } from '../../utils/authNavigation';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
+import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
+import TrakLogo from '../../components/TrakLogo';
 
 const LoginScreen = () => {
     const navigate = useNavigate();
+    const { theme } = useTheme();
+    const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
     const [searchParams] = useSearchParams();
     const { login, completeSocialLogin, loginWithGoogle } = useAuth();
     const { error: showError } = useUIFeedback();
@@ -93,7 +100,7 @@ const LoginScreen = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: '#ffffff',
+                backgroundColor: colors.background,
                 padding: '24px',
                 position: 'relative',
                 overflow: 'hidden',
@@ -106,20 +113,13 @@ const LoginScreen = () => {
                 zIndex: 1,
             }}>
                 <div style={{ marginBottom: '48px', textAlign: 'left' }}>
-                    <img 
-                        src="/images/whiteLogo.svg" 
-                        alt="TRAK" 
-                        style={{ 
-                            width: '32px', 
-                            height: '32px',
-                            filter: 'invert(1)',
-                            marginBottom: '40px',
-                        }} 
-                    />
+                    <div style={{ marginBottom: '40px' }}>
+                        <TrakLogo size={36} />
+                    </div>
                     <h1 style={{
                         fontSize: '30px',
                         fontWeight: '600',
-                        color: '#0f172a',
+                        color: colors.textPrimary,
                         margin: '0 0 8px 0',
                         letterSpacing: '-0.5px',
                         lineHeight: '1.2',
@@ -128,7 +128,7 @@ const LoginScreen = () => {
                     </h1>
                     <p style={{
                         fontSize: '15px',
-                        color: '#64748b',
+                        color: colors.textSecondary,
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
@@ -142,7 +142,7 @@ const LoginScreen = () => {
                             display: 'block',
                             fontSize: '14px',
                             fontWeight: '500',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             marginBottom: '8px',
                         }}>
                             Email address
@@ -156,22 +156,22 @@ const LoginScreen = () => {
                                 width: '100%',
                                 padding: '11px 14px',
                                 fontSize: '15px',
-                                border: errors.email ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                border: errors.email ? '1px solid #ef4444' : `1px solid ${colors.border}`,
                                 borderRadius: '6px',
                                 outline: 'none',
                                 transition: 'all 0.2s',
-                                color: '#0f172a',
-                                backgroundColor: '#ffffff',
+                                color: colors.textPrimary,
+                                backgroundColor: colors.backgroundSecondary,
                                 boxSizing: 'border-box',
                                 fontFamily: 'inherit',
                             }}
                             onFocus={(e) => {
-                                e.target.style.borderColor = '#0f172a';
-                                e.target.style.boxShadow = '0 0 0 3px rgba(15, 23, 42, 0.1)';
+                                e.target.style.borderColor = colors.primary;
+                                e.target.style.boxShadow = isDark ? '0 0 0 3px rgba(255,255,255,0.08)' : '0 0 0 3px rgba(0,0,0,0.08)';
                             }}
                             onBlur={(e) => {
                                 if (!errors.email) {
-                                    e.target.style.borderColor = '#cbd5e1';
+                                    e.target.style.borderColor = colors.border;
                                     e.target.style.boxShadow = 'none';
                                 }
                             }}
@@ -197,13 +197,13 @@ const LoginScreen = () => {
                             <label style={{
                                 fontSize: '14px',
                                 fontWeight: '500',
-                                color: '#0f172a',
+                                color: colors.textPrimary,
                             }}>
                                 Password
                             </label>
                             <Link to="/forgot-password" style={{
                                 fontSize: '14px',
-                                color: '#0f172a',
+                                color: colors.textPrimary,
                                 textDecoration: 'none',
                                 fontWeight: '500',
                             }}>
@@ -221,22 +221,22 @@ const LoginScreen = () => {
                                     width: '100%',
                                     padding: '11px 45px 11px 14px',
                                     fontSize: '15px',
-                                    border: errors.password ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                    border: errors.password ? '1px solid #ef4444' : `1px solid ${colors.border}`,
                                     borderRadius: '6px',
                                     outline: 'none',
                                     transition: 'all 0.2s',
-                                    color: '#0f172a',
-                                    backgroundColor: '#ffffff',
+                                    color: colors.textPrimary,
+                                    backgroundColor: colors.backgroundSecondary,
                                     boxSizing: 'border-box',
                                     fontFamily: 'inherit',
                                 }}
                                 onFocus={(e) => {
-                                    e.target.style.borderColor = '#0f172a';
-                                    e.target.style.boxShadow = '0 0 0 3px rgba(15, 23, 42, 0.1)';
+                                    e.target.style.borderColor = colors.primary;
+                                    e.target.style.boxShadow = isDark ? '0 0 0 3px rgba(255,255,255,0.08)' : '0 0 0 3px rgba(0,0,0,0.08)';
                                 }}
                                 onBlur={(e) => {
                                     if (!errors.password) {
-                                        e.target.style.borderColor = '#cbd5e1';
+                                        e.target.style.borderColor = colors.border;
                                         e.target.style.boxShadow = 'none';
                                     }
                                 }}
@@ -252,7 +252,7 @@ const LoginScreen = () => {
                                     background: 'transparent',
                                     border: 'none',
                                     cursor: 'pointer',
-                                    color: '#64748b',
+                                    color: colors.textSecondary,
                                     padding: '4px',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -278,8 +278,8 @@ const LoginScreen = () => {
                         style={{
                             width: '100%',
                             padding: '12px 20px',
-                            backgroundColor: '#0f172a',
-                            color: '#ffffff',
+                            backgroundColor: action.background,
+                            color: action.foreground,
                             border: 'none',
                             borderRadius: '6px',
                             fontSize: '15px',
@@ -296,12 +296,12 @@ const LoginScreen = () => {
                         }}
                         onMouseEnter={(e) => {
                             if (!loading) {
-                                e.currentTarget.style.backgroundColor = '#1e293b';
+                                e.currentTarget.style.opacity = '0.92';
                             }
                         }}
                         onMouseLeave={(e) => {
                             if (!loading) {
-                                e.currentTarget.style.backgroundColor = '#0f172a';
+                                e.currentTarget.style.opacity = '1';
                             }
                         }}
                     >
@@ -319,15 +319,15 @@ const LoginScreen = () => {
                     alignItems: 'center',
                     margin: '32px 0',
                 }}>
-                    <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
+                    <div style={{ flex: 1, height: '1px', backgroundColor: colors.border }} />
                     <span style={{ 
                         padding: '0 16px', 
                         fontSize: '14px', 
-                        color: '#94a3b8',
+                        color: colors.textTertiary,
                     }}>
                         Or continue with
                     </span>
-                    <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
+                    <div style={{ flex: 1, height: '1px', backgroundColor: colors.border }} />
                 </div>
 
                     <div style={{ 
@@ -394,13 +394,13 @@ const LoginScreen = () => {
                                 style={{
                                     flex: 1,
                                     padding: '11px 16px',
-                                    border: '1px solid #e2e8f0',
+                                    border: `1px solid ${colors.border}`,
                                     borderRadius: '6px',
-                                    backgroundColor: '#ffffff',
+                                    backgroundColor: colors.backgroundSecondary,
                                     cursor: socialLoading !== null ? 'not-allowed' : 'pointer',
                                     transition: 'all 0.2s',
                                     fontWeight: '500',
-                                    color: '#0f172a',
+                                    color: colors.textPrimary,
                                     fontSize: '14px',
                                     fontFamily: 'inherit',
                                     display: 'flex',
@@ -411,14 +411,14 @@ const LoginScreen = () => {
                                 }}
                                 onMouseEnter={(e) => {
                                     if (socialLoading === null) {
-                                        e.currentTarget.style.borderColor = '#cbd5e1';
-                                        e.currentTarget.style.backgroundColor = '#f8fafc';
+                                        e.currentTarget.style.borderColor = colors.textTertiary;
+                                        e.currentTarget.style.backgroundColor = colors.surface;
                                     }
                                 }}
                                 onMouseLeave={(e) => {
                                     if (socialLoading === null) {
-                                        e.currentTarget.style.borderColor = '#e2e8f0';
-                                        e.currentTarget.style.backgroundColor = '#ffffff';
+                                        e.currentTarget.style.borderColor = colors.border;
+                                        e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
                                     }
                                 }}
                             >
@@ -427,7 +427,7 @@ const LoginScreen = () => {
                                         width: '16px',
                                         height: '16px',
                                         border: '2px solid #e2e8f0',
-                                        borderTop: '2px solid #0f172a',
+                                        borderTop: `2px solid ${colors.textPrimary}`,
                                         borderRadius: '50%',
                                         animation: 'spin 0.8s linear infinite',
                                     }} />
@@ -443,12 +443,12 @@ const LoginScreen = () => {
                 <div style={{ textAlign: 'center' }}>
                     <p style={{ 
                         fontSize: '15px', 
-                        color: '#64748b',
+                        color: colors.textSecondary,
                         margin: '0',
                     }}>
                         Don't have an account?{' '}
                         <Link to="/signup" style={{
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             textDecoration: 'none',
                             fontWeight: '500',
                         }}>

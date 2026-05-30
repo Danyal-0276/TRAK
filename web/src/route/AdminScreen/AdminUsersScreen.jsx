@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
-import { getResponsivePadding, getResponsiveMaxWidth, getResponsiveFontSize } from '../../utils/responsiveStyles';
+import { useAdminTheme } from './useAdminTheme';
+import AdminPageLayout from './components/AdminPageLayout';
+import AdminPageHeader from './components/AdminPageHeader';
+import { useAdminPageMeta } from './adminPageMeta';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { 
     Users, 
@@ -11,8 +13,7 @@ import {
     CheckCircle, 
     XCircle,
     Mail,
-    Calendar
-    ,ChevronRight
+    Calendar,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { deleteAdminUser, getAdminUsers, patchAdminUser } from '../../api/adminApi';
@@ -20,20 +21,17 @@ import { SkeletonTableRows } from '../../components/skeletons/SkeletonLayouts';
 
 const AdminUsersScreen = () => {
     const navigate = useNavigate();
-    const { theme } = useTheme();
-    const { colors } = theme;
-    const isDark = theme.mode === 'dark';
+    const { palette, isDark, colors } = useAdminTheme();
     const { isMobile, isTablet } = useResponsive();
     const { confirm, success, error: notifyError } = useUIFeedback();
     const [users, setUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const cardBackground = palette.card;
+    const textPrimary = palette.textPrimary;
+    const textSecondary = palette.textSecondary;
+    const borderColor = palette.border;
 
     const loadUsers = useCallback(async () => {
         try {
@@ -93,6 +91,8 @@ const AdminUsersScreen = () => {
         }
     };
 
+    const { title, description } = useAdminPageMeta();
+
     return (
         <>
             <style>{`
@@ -101,55 +101,9 @@ const AdminUsersScreen = () => {
                     100% { transform: rotate(360deg); }
                 }
             `}</style>
-            <div style={{
-                minHeight: '100vh',
-                backgroundColor: backgroundColor,
-                paddingTop: '0',
-                marginTop: '0',
-            }}>
-            <div style={{
-                maxWidth: getResponsiveMaxWidth(isMobile, isTablet, '1400px'),
-                margin: '0 auto',
-                width: '100%',
-                padding: getResponsivePadding(isMobile, isTablet),
-            }}>
-                {/* Header Section */}
-                <div style={{
-                    marginTop: '0',
-                    marginBottom: isMobile ? '16px' : '24px',
-                    paddingTop: '0',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    flexDirection: isMobile ? 'column' : 'row',
-                    gap: isMobile ? '12px' : '0',
-                }}>
-                    <div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: textSecondary, marginBottom: '10px' }}>
-                            <button onClick={() => navigate('/admin/dashboard')} style={{ border: 'none', background: 'transparent', color: textSecondary, cursor: 'pointer', padding: 0 }}>Admin</button>
-                            <ChevronRight size={14} />
-                            <span style={{ color: textPrimary, fontWeight: 600 }}>Users</span>
-                        </div>
-                        <h1 style={{
-                            fontSize: getResponsiveFontSize(isMobile, isTablet, 28),
-                            fontWeight: '700',
-                            color: textPrimary,
-                            margin: '0 0 8px 0',
-                            paddingTop: '0',
-                            letterSpacing: '-0.5px',
-                        }}>
-                            Users Management
-                        </h1>
-                        <p style={{
-                            fontSize: '15px',
-                            color: textSecondary,
-                            margin: '0',
-                            lineHeight: '1.5',
-                        }}>
-                            Manage all platform users and their accounts
-                        </p>
-                    </div>
-                </div>
+            <AdminPageLayout maxWidth="1400px">
+                <AdminPageHeader title={title} description={description} />
+                <div className="admin-page-body">
 
                 {/* Search Bar */}
                 <div style={{
@@ -169,7 +123,7 @@ const AdminUsersScreen = () => {
                             style={{
                                 width: '100%',
                                 padding: '12px 16px 12px 44px',
-                                backgroundColor: isDark ? colors.surface || '#1E293B' : '#f9fafb',
+                                backgroundColor: palette.inputBg,
                                 border: `1px solid ${borderColor}`,
                                 borderRadius: '8px',
                                 fontSize: '14px',
@@ -178,14 +132,14 @@ const AdminUsersScreen = () => {
                                 color: textPrimary,
                             }}
                             onFocus={(e) => {
-                                e.target.style.backgroundColor = isDark ? colors.backgroundElevated || '#334155' : '#ffffff';
-                                e.target.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
+                                e.target.style.backgroundColor = palette.card;
+                                e.target.style.borderColor = palette.textPrimary;
                                 e.target.style.boxShadow = isDark 
                                     ? '0 0 0 3px rgba(129, 140, 248, 0.2)' 
                                     : '0 0 0 3px rgba(0, 0, 0, 0.1)';
                             }}
                             onBlur={(e) => {
-                                e.target.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                                e.target.style.backgroundColor = palette.inputBg;
                                 e.target.style.borderColor = borderColor;
                                 e.target.style.boxShadow = 'none';
                             }}
@@ -203,7 +157,7 @@ const AdminUsersScreen = () => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         padding: '80px 20px',
-                        backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f9fafb',
+                        backgroundColor: palette.pageAlt,
                         borderRadius: '12px',
                         border: `1px solid ${borderColor}`,
                     }}>
@@ -238,7 +192,7 @@ const AdminUsersScreen = () => {
                             gap: isMobile ? '8px' : '16px',
                             padding: isMobile ? '12px 16px' : '16px 20px',
                             borderBottom: `1px solid ${borderColor}`,
-                            backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f9fafb',
+                            backgroundColor: palette.pageAlt,
                         }}>
                             <div style={{ fontSize: '12px', fontWeight: '600', color: textSecondary, textTransform: 'uppercase' }}>Name</div>
                             <div style={{ fontSize: '12px', fontWeight: '600', color: textSecondary, textTransform: 'uppercase' }}>Email</div>
@@ -261,7 +215,7 @@ const AdminUsersScreen = () => {
                                     transition: 'all 0.2s ease',
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
+                                    e.currentTarget.style.backgroundColor = palette.pageAlt;
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.backgroundColor = cardBackground;
@@ -277,7 +231,7 @@ const AdminUsersScreen = () => {
                                         width: '40px',
                                         height: '40px',
                                         borderRadius: '8px',
-                                        backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',
+                                        backgroundColor: palette.textPrimary,
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
@@ -376,8 +330,8 @@ const AdminUsersScreen = () => {
                                             transition: 'all 0.2s ease',
                                         }}
                                         onMouseEnter={(e) => {
-                                            e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
-                                            e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
+                                            e.currentTarget.style.backgroundColor = palette.pageAlt;
+                                            e.currentTarget.style.borderColor = palette.textPrimary;
                                         }}
                                         onMouseLeave={(e) => {
                                             e.currentTarget.style.backgroundColor = 'transparent';
@@ -414,8 +368,8 @@ const AdminUsersScreen = () => {
                         ))}
                     </div>
                 )}
-            </div>
-        </div>
+                </div>
+            </AdminPageLayout>
         </>
     );
 };

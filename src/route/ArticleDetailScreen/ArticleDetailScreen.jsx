@@ -2,19 +2,22 @@
 // ============================================
 // FILE: screens/ArticleDetailScreen.jsx
 // ============================================
-import React, { useRef, useEffect, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useState, useMemo, useCallback } from 'react';
 import {
     View,
+    Text,
     StyleSheet,
     StatusBar,
     ScrollView,
     Animated,
     Dimensions,
+    TouchableOpacity,
 } from 'react-native';
 import { shareArticle, openArticleMenu } from '../../utils/articleMenu';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { FeedSkeleton } from '../../components/FeedSkeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import { ArticleDetailHeader } from './components/ArticleDetailHeader';
 import { ArticleSourceInfo } from './components/ArticleSourceInfo';
@@ -26,6 +29,7 @@ import { mapApiItem } from '../../utils/loadFeed';
 import { normalizeArticleForDetail, getArticleListenText } from '../../utils/articleNavigation';
 import { buildHighlightLinesFromContent } from '../../utils/ttsHighlight';
 import ArticleTtsPlayer from '../../components/ArticleTtsPlayer';
+import { stopNativePlayback } from '../../utils/articleTts';
 import { getAccessToken } from '../../api/client';
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
@@ -47,6 +51,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     const [detailLoading, setDetailLoading] = useState(
         !initialArticle.title && !initialArticle.fullContent && !initialArticle.excerpt
     );
+    const [fetchError, setFetchError] = useState('');
     const articleId = String(route.params?.articleId || initialArticle.id || '');
     const [activeTtsLineIndex, setActiveTtsLineIndex] = useState(-1);
 
@@ -110,7 +115,9 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 const rv = row?.reaction === 'like' ? 'up' : row?.reaction === 'dislike' ? 'down' : null;
                 setReactionState(rowVal ?? rv ?? null);
             } catch (e) {
-                console.warn('Article fetch:', e?.message);
+                if (!cancelled) {
+                    setFetchError(e?.message || 'Could not load this article.');
+                }
             } finally {
                 if (!cancelled) setDetailLoading(false);
             }
@@ -224,6 +231,24 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         openArticleMenu({ ...article, id: articleId }, feedback);
     };
 
+    const handleBack = () => {
+        stopNativePlayback();
+        if (navigation.canGoBack()) {
+            navigation.goBack();
+            return;
+        }
+        navigation.navigate('MainTabs', { screen: 'Home' });
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            const unsub = navigation.addListener('beforeRemove', () => {
+                stopNativePlayback();
+            });
+            return unsub;
+        }, [navigation])
+    );
+
     return (
         <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
             <StatusBar 
@@ -234,7 +259,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
             {/* Enhanced gradient background */}
             <LinearGradient
                 colors={theme.mode === 'dark' 
-                    ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
+                    ? [colors.background, colors.backgroundSecondary, colors.background]
                     : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
                 }
                 start={{ x: 0, y: 0 }}
@@ -286,13 +311,28 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                         transform: [{ translateY: slideAnim }],
                     }}
                 >
-                    <ArticleDetailHeader onMorePress={handleMoreMenu} />
+                    <ArticleDetailHeader onBackPress={handleBack} onMorePress={handleMoreMenu} />
                 </Animated.View>
 
                 {/* Article Content */}
                 {detailLoading ? (
                     <View style={{ padding: 16, flex: 1 }}>
                         <FeedSkeleton colors={colors} count={2} />
+                    </View>
+                ) : fetchError && !article.title ? (
+                    <View style={styles.errorWrap}>
+                        <Text style={{ color: colors.textPrimary, fontSize: 16, fontWeight: '600', marginBottom: 8 }}>
+                            Could not load article
+                        </Text>
+                        <Text style={{ color: colors.textSecondary, fontSize: 14, textAlign: 'center', marginBottom: 16 }}>
+                            {fetchError}
+                        </Text>
+                        <TouchableOpacity
+                            style={[styles.retryBtn, { backgroundColor: colors.primary }]}
+                            onPress={handleBack}
+                        >
+                            <Text style={{ color: colors.textOnPrimary || '#fff', fontWeight: '600' }}>Go back</Text>
+                        </TouchableOpacity>
                     </View>
                 ) : (
                 <ScrollView
@@ -448,6 +488,17 @@ const styles = StyleSheet.create({
     },
     bottomSpacer: {
         height: 20,
+    },
+    errorWrap: {
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 24,
+    },
+    retryBtn: {
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 8,
     },
 });
 

@@ -1,23 +1,22 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { useTheme } from '../../../theme/ThemeContext';
+import { useAdminTheme } from '../useAdminTheme';
 import Text from '../../../components/ui/Text';
 
 const EmptyState = ({ icon: Icon, title, subtitle }) => {
-  const { theme } = useTheme();
-  const { colors } = theme;
+  const { palette } = useAdminTheme();
 
   return (
-    <View style={[styles.emptyState, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+    <View style={[styles.emptyState, { backgroundColor: palette.card, borderColor: palette.border }]}>
       {Icon && (
-        <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}10` }]}>
-          <Icon size={48} color={colors.textTertiary} strokeWidth={1.5} />
+        <View style={[styles.iconContainer, { backgroundColor: `${palette.primary}10` }]}>
+          <Icon size={48} color={palette.textTertiary} strokeWidth={1.5} />
         </View>
       )}
-      <Text variant="title" color={colors.textPrimary} style={styles.emptyStateTitle}>
+      <Text variant="title" color={palette.textPrimary} style={styles.emptyStateTitle}>
         {title}
       </Text>
-      <Text variant="body" color={colors.textSecondary} style={styles.emptyStateText}>
+      <Text variant="body" color={palette.textSecondary} style={styles.emptyStateText}>
         {subtitle}
       </Text>
     </View>

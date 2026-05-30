@@ -25,7 +25,7 @@ export const Footer = ({ onSignInPress }) => {
                     padding: 0,
                 }}
             >
-                <Text variant="caption" color={colors.primary} style={{ fontSize: 14, fontWeight: '700', letterSpacing: -0.2 }}>
+                <Text variant="caption" color={colors.textLink || colors.textPrimary} style={{ fontSize: 14, fontWeight: '700', letterSpacing: -0.2 }}>
                     Sign in
                 </Text>
             </button>

@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
-import { MoreHorizontal } from 'lucide-react-native';
+import { ChevronLeft, MoreHorizontal } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
+import TrakLogo from '../../../components/TrakLogo';
 
-export const ArticleDetailHeader = ({ onMorePress }) => {
+export const ArticleDetailHeader = ({ onBackPress, onMorePress }) => {
     const { theme } = useTheme();
     const { colors } = theme;
 
@@ -19,10 +20,25 @@ export const ArticleDetailHeader = ({ onMorePress }) => {
             ]}
         >
             <TouchableOpacity
-                style={[styles.moreButton, { backgroundColor: colors.backgroundSecondary }]}
+                style={[styles.iconButton, { backgroundColor: colors.backgroundSecondary }]}
+                onPress={onBackPress}
+                activeOpacity={0.7}
+                accessibilityLabel="Go back"
+                accessibilityRole="button"
+            >
+                <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.25} />
+            </TouchableOpacity>
+
+            <View style={styles.logoCenter} pointerEvents="none">
+                <TrakLogo size={28} />
+            </View>
+
+            <TouchableOpacity
+                style={[styles.iconButton, { backgroundColor: colors.backgroundSecondary }]}
                 onPress={onMorePress}
                 activeOpacity={0.7}
                 accessibilityLabel="More options"
+                accessibilityRole="button"
             >
                 <MoreHorizontal size={20} color={colors.textSecondary} />
             </TouchableOpacity>
@@ -33,10 +49,10 @@ export const ArticleDetailHeader = ({ onMorePress }) => {
 const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
-        justifyContent: 'flex-end',
+        justifyContent: 'space-between',
         alignItems: 'center',
-        paddingHorizontal: 20,
-        paddingVertical: 14,
+        paddingHorizontal: 16,
+        paddingVertical: 10,
         borderBottomWidth: 1,
         ...Platform.select({
             ios: {
@@ -49,11 +65,19 @@ const styles = StyleSheet.create({
             },
         }),
     },
-    moreButton: {
+    logoCenter: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    iconButton: {
         width: 40,
         height: 40,
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
+        zIndex: 1,
     },
 });

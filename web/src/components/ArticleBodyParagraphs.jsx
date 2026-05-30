@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { splitArticleParagraphs } from '../utils/articleParagraphs';
+import { useTheme } from '../theme/ThemeContext';
 
 export function ArticleBodyParagraphs({
   content,
@@ -7,8 +8,11 @@ export function ArticleBodyParagraphs({
   paragraphStyle,
   highlightLines = [],
   activeLineIndex = -1,
-  highlightColor = '#3b82f6',
+  highlightColor,
 }) {
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const activeHighlight = highlightColor || colors.primary;
   const lineRefs = useRef({});
   const paragraphs = splitArticleParagraphs(content);
   const useKaraoke = highlightLines.length > 0;
@@ -30,8 +34,8 @@ export function ArticleBodyParagraphs({
     if (globalIdx === activeLineIndex) {
       return {
         ...base,
-        backgroundColor: `${highlightColor}22`,
-        color: '#0f172a',
+        backgroundColor: `${activeHighlight}22`,
+        color: colors.textPrimary,
         fontWeight: 600,
         borderRadius: 6,
         padding: '4px 8px',

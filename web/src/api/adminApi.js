@@ -3,6 +3,7 @@
  */
 import { ADMIN_PREFIX } from '../config/api';
 import { apiFetch } from './client';
+import { PIPELINE_RUN_TIMEOUT_MS } from './fetchWithTimeout';
 
 async function parseJson(res) {
   const data = await res.json().catch(() => ({}));
@@ -34,7 +35,7 @@ export async function postAdminPipelineRun(limit = 10) {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ limit }),
-  });
+  }, PIPELINE_RUN_TIMEOUT_MS);
   return parseJson(res);
 }
 

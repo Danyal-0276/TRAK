@@ -1,5 +1,6 @@
 import React from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { View } from 'react-native';
+import TrakLogo from '../components/TrakLogo';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AuthStack from './AuthStack.jsx';
@@ -69,7 +70,7 @@ export default function AppNavigation() {
                     backgroundColor: theme.colors.background,
                 }}
             >
-                <ActivityIndicator size="small" color={theme.colors.primary} />
+                <TrakLogo size={56} />
             </View>
         );
     }

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Rss, Globe, CheckCircle2, XCircle, Settings2 } from 'lucide-react-native';
 import Text from '../../../components/ui/Text';
 
@@ -7,6 +7,13 @@ export default function AdminScrapeSourcesPanel({ connections, palette, onManage
   const sources = connections?.sources || [];
   const active = connections?.active ?? 0;
   const total = connections?.total ?? 0;
+  const ingest = connections?.ingest || {};
+  const rssFromIngest = ingest.rss_feeds_used_by_scraper;
+  const rssFromKind = sources.filter((s) => s.kind === 'rss').length;
+  const rssUsed =
+    typeof rssFromIngest === 'number' && rssFromIngest > 0
+      ? rssFromIngest
+      : rssFromKind || ingest.rss_catalog_feeds || 0;
 
   return (
     <View style={[styles.section, { backgroundColor: palette.card, borderColor: palette.border }]}>
@@ -16,7 +23,7 @@ export default function AdminScrapeSourcesPanel({ connections, palette, onManage
             Scrape sources
           </Text>
           <Text variant="caption" color={palette.textSecondary} style={{ marginTop: 4 }}>
-            {active} of {total} connections active
+            {active} of {total} in Admin · RSS uses {rssUsed} feeds
           </Text>
         </View>
         {onManageSettings ? (
@@ -37,12 +44,13 @@ export default function AdminScrapeSourcesPanel({ connections, palette, onManage
             No scrape sources configured.
           </Text>
         ) : (
-          sources.map((s) => {
+          <ScrollView style={{ maxHeight: 420 }} nestedScrollEnabled>
+          {sources.map((s) => {
             const on = s.active !== false;
             const Icon = s.kind === 'rss' ? Rss : Globe;
             return (
               <View
-                key={s.slug || s.name}
+                key={`${s.slug}-${s.url || s.name}`}
                 style={[
                   styles.sourceCard,
                   {
@@ -69,7 +77,8 @@ export default function AdminScrapeSourcesPanel({ connections, palette, onManage
                 )}
               </View>
             );
-          })
+          })}
+          </ScrollView>
         )}
       </View>
     </View>

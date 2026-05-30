@@ -1,4 +1,4 @@
-import { useRef, useCallback, useEffect } from 'react';
+import { useRef, useCallback, useEffect, useState } from 'react';
 import { Animated, Easing } from 'react-native';
 import { setTabBarHidden } from '../navigation/tabBarVisibility';
 
@@ -18,6 +18,7 @@ export function useCollapsibleHeader({
   const translateY = useRef(new Animated.Value(0)).current;
   const lastScrollY = useRef(0);
   const headerHiddenRef = useRef(false);
+  const [headerHidden, setHeaderHidden] = useState(false);
   const hideOffsetRef = useRef(hideOffset);
 
   useEffect(() => {
@@ -28,6 +29,7 @@ export function useCollapsibleHeader({
     (hidden) => {
       if (headerHiddenRef.current === hidden) return;
       headerHiddenRef.current = hidden;
+      setHeaderHidden(hidden);
       if (syncTabBar) setTabBarHidden(hidden);
       translateY.stopAnimation();
       Animated.timing(translateY, {
@@ -77,6 +79,7 @@ export function useCollapsibleHeader({
     handleScroll,
     showHeader,
     hideHeader,
+    headerHidden,
     headerHiddenRef,
   };
 }

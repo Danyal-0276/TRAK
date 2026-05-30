@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { ShieldCheck } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import Text from '../../../components/ui/Text';
+import { filledActionColors } from '../../../theme/buttonContrast';
 
 const VerificationCard = ({
   channel,
@@ -19,8 +20,9 @@ const VerificationCard = ({
   const { theme } = useTheme();
   const { colors } = theme;
   const isDark = theme.mode === 'dark';
-  const accent = colors.primary || (isDark ? '#818CF8' : '#0f172a');
-  const accentSoft = colors.primary ? `${colors.primary}18` : isDark ? 'rgba(129,140,248,0.14)' : '#eff6ff';
+  const accent = colors.primary;
+  const action = filledActionColors(colors, isDark);
+  const accentSoft = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
 
   return (
     <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
@@ -49,7 +51,7 @@ const VerificationCard = ({
               },
             ]}
           >
-            <Text style={[styles.channelLabel, { color: channel === ch ? accent : colors.textSecondary }]}>
+            <Text style={[styles.channelLabel, { color: channel === ch ? (isDark ? colors.textPrimary : accent) : colors.textSecondary }]}>
               {ch === 'email' ? 'Email' : 'Phone'}
             </Text>
           </TouchableOpacity>
@@ -57,9 +59,11 @@ const VerificationCard = ({
         <TouchableOpacity
           onPress={onSend}
           disabled={sending}
-          style={[styles.sendBtn, { backgroundColor: accent, opacity: sending ? 0.7 : 1 }]}
+          style={[styles.sendBtn, { backgroundColor: action.background, opacity: sending ? 0.7 : 1 }]}
         >
-          <Text style={styles.sendBtnText}>{sending ? 'Sending…' : 'Send code'}</Text>
+          <Text style={[styles.sendBtnText, { color: action.foreground }]}>
+            {sending ? 'Sending…' : 'Send code'}
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -149,7 +153,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendBtnText: {
-    color: '#fff',
     fontSize: 13,
     fontWeight: '700',
   },

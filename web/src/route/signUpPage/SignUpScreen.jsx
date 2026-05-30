@@ -5,9 +5,16 @@ import { useAuth } from '../../context/AuthContext';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
 import { startSocialOAuth } from '../../utils/Service/api';
 import { getPostAuthPath, getPostAuthState } from '../../utils/authNavigation';
+import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
+import TrakLogo from '../../components/TrakLogo';
 
 const SignUpScreen = () => {
     const navigate = useNavigate();
+    const { theme } = useTheme();
+    const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
     const { register, loginWithGoogle } = useAuth();
     const [fullName, setFullName] = useState('');
     const [phone, setPhone] = useState('');
@@ -117,7 +124,7 @@ const SignUpScreen = () => {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                backgroundColor: '#ffffff',
+                backgroundColor: colors.background,
                 padding: '24px',
                 position: 'relative',
                 overflow: 'hidden',
@@ -131,20 +138,13 @@ const SignUpScreen = () => {
             }}>
                 {/* Logo */}
                 <div style={{ marginBottom: '48px', textAlign: 'left' }}>
-                    <img 
-                        src="/images/whiteLogo.svg" 
-                        alt="TRAK" 
-                        style={{ 
-                            width: '32px', 
-                            height: '32px',
-                            filter: 'invert(1)',
-                            marginBottom: '40px',
-                        }} 
-                    />
+                    <div style={{ marginBottom: '40px' }}>
+                        <TrakLogo size={36} />
+                    </div>
                     <h1 style={{
                         fontSize: '30px',
                         fontWeight: '600',
-                        color: '#0f172a',
+                        color: colors.textPrimary,
                         margin: '0 0 8px 0',
                         letterSpacing: '-0.5px',
                         lineHeight: '1.2',
@@ -168,7 +168,7 @@ const SignUpScreen = () => {
                             display: 'block',
                             fontSize: '14px',
                             fontWeight: '500',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             marginBottom: '8px',
                         }}>
                             Full Name
@@ -182,22 +182,22 @@ const SignUpScreen = () => {
                                 width: '100%',
                                 padding: '11px 14px',
                                 fontSize: '15px',
-                                border: errors.fullName ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                border: errors.fullName ? '1px solid #ef4444' : `1px solid ${colors.border}`,
                                 borderRadius: '6px',
                                 outline: 'none',
                                 transition: 'all 0.2s',
-                                color: '#0f172a',
-                                backgroundColor: '#ffffff',
+                                color: colors.textPrimary,
+                                backgroundColor: colors.background,
                                 boxSizing: 'border-box',
                                 fontFamily: 'inherit',
                             }}
                             onFocus={(e) => {
-                                e.target.style.borderColor = '#0f172a';
+                                e.target.style.borderColor = colors.primary;
                                 e.target.style.boxShadow = '0 0 0 3px rgba(15, 23, 42, 0.1)';
                             }}
                             onBlur={(e) => {
                                 if (!errors.fullName) {
-                                    e.target.style.borderColor = '#cbd5e1';
+                                    e.target.style.borderColor = colors.border;
                                     e.target.style.boxShadow = 'none';
                                 }
                             }}
@@ -219,7 +219,7 @@ const SignUpScreen = () => {
                             display: 'block',
                             fontSize: '14px',
                             fontWeight: '500',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             marginBottom: '8px',
                         }}>
                             Email address
@@ -233,22 +233,22 @@ const SignUpScreen = () => {
                                 width: '100%',
                                 padding: '11px 14px',
                                 fontSize: '15px',
-                                border: errors.email ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                border: errors.email ? '1px solid #ef4444' : `1px solid ${colors.border}`,
                                 borderRadius: '6px',
                                 outline: 'none',
                                 transition: 'all 0.2s',
-                                color: '#0f172a',
-                                backgroundColor: '#ffffff',
+                                color: colors.textPrimary,
+                                backgroundColor: colors.background,
                                 boxSizing: 'border-box',
                                 fontFamily: 'inherit',
                             }}
                             onFocus={(e) => {
-                                e.target.style.borderColor = '#0f172a';
+                                e.target.style.borderColor = colors.primary;
                                 e.target.style.boxShadow = '0 0 0 3px rgba(15, 23, 42, 0.1)';
                             }}
                             onBlur={(e) => {
                                 if (!errors.email) {
-                                    e.target.style.borderColor = '#cbd5e1';
+                                    e.target.style.borderColor = colors.border;
                                     e.target.style.boxShadow = 'none';
                                 }
                             }}
@@ -270,7 +270,7 @@ const SignUpScreen = () => {
                             display: 'block',
                             fontSize: '14px',
                             fontWeight: '500',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             marginBottom: '8px',
                         }}>
                             Phone number (optional)
@@ -284,12 +284,12 @@ const SignUpScreen = () => {
                                 width: '100%',
                                 padding: '11px 14px',
                                 fontSize: '15px',
-                                border: errors.phone ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                border: errors.phone ? '1px solid #ef4444' : `1px solid ${colors.border}`,
                                 borderRadius: '6px',
                                 outline: 'none',
                                 transition: 'all 0.2s',
-                                color: '#0f172a',
-                                backgroundColor: '#ffffff',
+                                color: colors.textPrimary,
+                                backgroundColor: colors.background,
                                 boxSizing: 'border-box',
                                 fontFamily: 'inherit',
                             }}
@@ -313,7 +313,7 @@ const SignUpScreen = () => {
                                 display: 'block',
                                 fontSize: '14px',
                                 fontWeight: '500',
-                                color: '#0f172a',
+                                color: colors.textPrimary,
                                 marginBottom: '8px',
                             }}>
                                 Password
@@ -329,22 +329,22 @@ const SignUpScreen = () => {
                                             width: '100%',
                                             padding: '11px 45px 11px 14px',
                                             fontSize: '15px',
-                                            border: errors.password ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                            border: errors.password ? '1px solid #ef4444' : `1px solid ${colors.border}`,
                                             borderRadius: '6px',
                                             outline: 'none',
                                             transition: 'all 0.2s',
-                                            color: '#0f172a',
-                                            backgroundColor: '#ffffff',
+                                            color: colors.textPrimary,
+                                            backgroundColor: colors.background,
                                             boxSizing: 'border-box',
                                             fontFamily: 'inherit',
                                         }}
                                     onFocus={(e) => {
-                                        e.target.style.borderColor = '#0f172a';
+                                        e.target.style.borderColor = colors.primary;
                                         e.target.style.boxShadow = '0 0 0 3px rgba(15, 23, 42, 0.1)';
                                     }}
                                     onBlur={(e) => {
                                         if (!errors.password) {
-                                            e.target.style.borderColor = '#cbd5e1';
+                                            e.target.style.borderColor = colors.border;
                                             e.target.style.boxShadow = 'none';
                                         }
                                     }}
@@ -384,7 +384,7 @@ const SignUpScreen = () => {
                                 display: 'block',
                                 fontSize: '14px',
                                 fontWeight: '500',
-                                color: '#0f172a',
+                                color: colors.textPrimary,
                                 marginBottom: '8px',
                             }}>
                                 Confirm
@@ -400,22 +400,22 @@ const SignUpScreen = () => {
                                             width: '100%',
                                             padding: '11px 45px 11px 14px',
                                             fontSize: '15px',
-                                            border: errors.confirmPassword ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                            border: errors.confirmPassword ? '1px solid #ef4444' : `1px solid ${colors.border}`,
                                             borderRadius: '6px',
                                             outline: 'none',
                                             transition: 'all 0.2s',
-                                            color: '#0f172a',
-                                            backgroundColor: '#ffffff',
+                                            color: colors.textPrimary,
+                                            backgroundColor: colors.background,
                                             boxSizing: 'border-box',
                                             fontFamily: 'inherit',
                                         }}
                                     onFocus={(e) => {
-                                        e.target.style.borderColor = '#0f172a';
+                                        e.target.style.borderColor = colors.primary;
                                         e.target.style.boxShadow = '0 0 0 3px rgba(15, 23, 42, 0.1)';
                                     }}
                                     onBlur={(e) => {
                                         if (!errors.confirmPassword) {
-                                            e.target.style.borderColor = '#cbd5e1';
+                                            e.target.style.borderColor = colors.border;
                                             e.target.style.boxShadow = 'none';
                                         }
                                     }}
@@ -469,7 +469,7 @@ const SignUpScreen = () => {
                                     height: '16px',
                                     marginTop: '2px',
                                     cursor: 'pointer',
-                                    accentColor: '#0f172a',
+                                    accentColor: colors.primary,
                                     flexShrink: 0,
                                 }}
                             />
@@ -486,7 +486,7 @@ const SignUpScreen = () => {
                                         setShowTermsModal(true);
                                     }}
                                     style={{
-                                        color: '#0f172a',
+                                        color: colors.textPrimary,
                                         textDecoration: 'none',
                                         fontWeight: '500',
                                         background: 'transparent',
@@ -506,7 +506,7 @@ const SignUpScreen = () => {
                                         setShowPrivacyModal(true);
                                     }}
                                     style={{
-                                        color: '#0f172a',
+                                        color: colors.textPrimary,
                                         textDecoration: 'none',
                                         fontWeight: '500',
                                         background: 'transparent',
@@ -548,8 +548,8 @@ const SignUpScreen = () => {
                         style={{
                             width: '100%',
                             padding: '12px 20px',
-                            backgroundColor: '#0f172a',
-                            color: '#ffffff',
+                            backgroundColor: action.background,
+                            color: action.foreground,
                             border: 'none',
                             borderRadius: '6px',
                             fontSize: '15px',
@@ -565,14 +565,10 @@ const SignUpScreen = () => {
                             fontFamily: 'inherit',
                         }}
                         onMouseEnter={(e) => {
-                            if (!loading) {
-                                e.currentTarget.style.backgroundColor = '#1e293b';
-                            }
+                            if (!loading) e.currentTarget.style.opacity = '0.92';
                         }}
                         onMouseLeave={(e) => {
-                            if (!loading) {
-                                e.currentTarget.style.backgroundColor = '#0f172a';
-                            }
+                            if (!loading) e.currentTarget.style.opacity = '1';
                         }}
                     >
                         {loading ? 'Creating account...' : (
@@ -590,7 +586,7 @@ const SignUpScreen = () => {
                     alignItems: 'center',
                     margin: '32px 0',
                 }}>
-                    <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
+                    <div style={{ flex: 1, height: '1px', backgroundColor: colors.border }} />
                     <span style={{ 
                         padding: '0 16px', 
                         fontSize: '14px', 
@@ -598,7 +594,7 @@ const SignUpScreen = () => {
                     }}>
                         Or continue with
                     </span>
-                    <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
+                    <div style={{ flex: 1, height: '1px', backgroundColor: colors.border }} />
                 </div>
 
                 {/* Social Buttons */}
@@ -673,13 +669,13 @@ const SignUpScreen = () => {
                                 style={{
                                     flex: 1,
                                     padding: '11px 16px',
-                                    border: '1px solid #e2e8f0',
+                                    border: `1px solid ${colors.border}`,
                                     borderRadius: '6px',
-                                    backgroundColor: '#ffffff',
+                                    backgroundColor: colors.background,
                                     cursor: socialLoading !== null ? 'not-allowed' : 'pointer',
                                     transition: 'all 0.2s',
                                     fontWeight: '500',
-                                    color: '#0f172a',
+                                    color: colors.textPrimary,
                                     fontSize: '14px',
                                     fontFamily: 'inherit',
                                     display: 'flex',
@@ -690,14 +686,14 @@ const SignUpScreen = () => {
                                 }}
                                 onMouseEnter={(e) => {
                                     if (socialLoading === null) {
-                                        e.currentTarget.style.borderColor = '#cbd5e1';
+                                        e.currentTarget.style.borderColor = colors.textTertiary;
                                         e.currentTarget.style.backgroundColor = '#f8fafc';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
                                     if (socialLoading === null) {
-                                        e.currentTarget.style.borderColor = '#e2e8f0';
-                                        e.currentTarget.style.backgroundColor = '#ffffff';
+                                        e.currentTarget.style.borderColor = colors.border;
+                                        e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
                                     }
                                 }}
                             >
@@ -705,8 +701,8 @@ const SignUpScreen = () => {
                                     <div style={{
                                         width: '16px',
                                         height: '16px',
-                                        border: '2px solid #e2e8f0',
-                                        borderTop: '2px solid #0f172a',
+                                        border: `2px solid ${colors.border}`,
+                                        borderTop: `2px solid ${colors.textPrimary}`,
                                         borderRadius: '50%',
                                         animation: 'spin 0.8s linear infinite',
                                     }} />
@@ -728,7 +724,7 @@ const SignUpScreen = () => {
                     }}>
                         Already have an account?{' '}
                         <Link to="/login" style={{
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             textDecoration: 'none',
                             fontWeight: '500',
                         }}>
@@ -756,7 +752,7 @@ const SignUpScreen = () => {
                 onClick={() => setShowTermsModal(false)}
                 >
                     <div style={{
-                        backgroundColor: '#ffffff',
+                        backgroundColor: colors.background,
                         borderRadius: '8px',
                         maxWidth: '700px',
                         width: '100%',
@@ -774,13 +770,13 @@ const SignUpScreen = () => {
                             alignItems: 'center',
                             position: 'sticky',
                             top: 0,
-                            backgroundColor: '#ffffff',
+                            backgroundColor: colors.background,
                             zIndex: 10,
                         }}>
                             <h2 style={{
                                 fontSize: '24px',
                                 fontWeight: '600',
-                                color: '#0f172a',
+                                color: colors.textPrimary,
                                 margin: 0,
                             }}>
                                 Terms of Service
@@ -809,11 +805,11 @@ const SignUpScreen = () => {
                                 Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                             </p>
                             <section style={{ marginBottom: '24px' }}>
-                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 12px 0' }}>1. Acceptance of Terms</h3>
+                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: colors.textPrimary, margin: '0 0 12px 0' }}>1. Acceptance of Terms</h3>
                                 <p style={{ margin: '0 0 12px 0' }}>By accessing and using TRAK, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to abide by the above, please do not use this service.</p>
                             </section>
                             <section style={{ marginBottom: '24px' }}>
-                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 12px 0' }}>2. Use License</h3>
+                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: colors.textPrimary, margin: '0 0 12px 0' }}>2. Use License</h3>
                                 <p style={{ margin: '0 0 12px 0' }}>Permission is granted to temporarily access the materials on TRAK's website for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title, and under this license you may not:</p>
                                 <ul style={{ margin: '0 0 12px 0', paddingLeft: '20px' }}>
                                     <li style={{ marginBottom: '6px' }}>Modify or copy the materials</li>
@@ -823,11 +819,11 @@ const SignUpScreen = () => {
                                 </ul>
                             </section>
                             <section style={{ marginBottom: '24px' }}>
-                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 12px 0' }}>3. User Accounts</h3>
+                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: colors.textPrimary, margin: '0 0 12px 0' }}>3. User Accounts</h3>
                                 <p style={{ margin: '0 0 12px 0' }}>When you create an account with us, you must provide information that is accurate, complete, and current at all times. You are responsible for safeguarding the password and for all activities that occur under your account.</p>
                             </section>
                             <section style={{ marginBottom: '24px' }}>
-                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 12px 0' }}>4. Contact Information</h3>
+                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: colors.textPrimary, margin: '0 0 12px 0' }}>4. Contact Information</h3>
                                 <p style={{ margin: '0' }}>If you have any questions about these Terms of Service, please contact us at support@trak.com</p>
                             </section>
                         </div>
@@ -853,7 +849,7 @@ const SignUpScreen = () => {
                 onClick={() => setShowPrivacyModal(false)}
                 >
                     <div style={{
-                        backgroundColor: '#ffffff',
+                        backgroundColor: colors.background,
                         borderRadius: '8px',
                         maxWidth: '700px',
                         width: '100%',
@@ -871,13 +867,13 @@ const SignUpScreen = () => {
                             alignItems: 'center',
                             position: 'sticky',
                             top: 0,
-                            backgroundColor: '#ffffff',
+                            backgroundColor: colors.background,
                             zIndex: 10,
                         }}>
                             <h2 style={{
                                 fontSize: '24px',
                                 fontWeight: '600',
-                                color: '#0f172a',
+                                color: colors.textPrimary,
                                 margin: 0,
                             }}>
                                 Privacy Policy
@@ -906,23 +902,23 @@ const SignUpScreen = () => {
                                 Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
                             </p>
                             <section style={{ marginBottom: '24px' }}>
-                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 12px 0' }}>1. Information We Collect</h3>
+                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: colors.textPrimary, margin: '0 0 12px 0' }}>1. Information We Collect</h3>
                                 <p style={{ margin: '0 0 12px 0' }}>We collect information that you provide directly to us, including account information (name, email address, password), profile information and preferences, content you save, share, or interact with, and search queries and browsing history.</p>
                             </section>
                             <section style={{ marginBottom: '24px' }}>
-                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 12px 0' }}>2. How We Use Your Information</h3>
+                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: colors.textPrimary, margin: '0 0 12px 0' }}>2. How We Use Your Information</h3>
                                 <p style={{ margin: '0 0 12px 0' }}>We use the information we collect to provide, maintain, and improve our services, personalize your experience, send you technical notices and updates, and respond to your comments and questions.</p>
                             </section>
                             <section style={{ marginBottom: '24px' }}>
-                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 12px 0' }}>3. Information Sharing</h3>
+                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: colors.textPrimary, margin: '0 0 12px 0' }}>3. Information Sharing</h3>
                                 <p style={{ margin: '0 0 12px 0' }}>We do not sell, trade, or rent your personal information to third parties. We may share your information only with your consent, with service providers who perform services on our behalf, or to comply with legal obligations.</p>
                             </section>
                             <section style={{ marginBottom: '24px' }}>
-                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 12px 0' }}>4. Data Security</h3>
+                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: colors.textPrimary, margin: '0 0 12px 0' }}>4. Data Security</h3>
                                 <p style={{ margin: '0 0 12px 0' }}>We implement appropriate technical and organizational security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction.</p>
                             </section>
                             <section style={{ marginBottom: '24px' }}>
-                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: '#0f172a', margin: '0 0 12px 0' }}>5. Contact Us</h3>
+                                <h3 style={{ fontSize: '18px', fontWeight: '600', color: colors.textPrimary, margin: '0 0 12px 0' }}>5. Contact Us</h3>
                                 <p style={{ margin: '0' }}>If you have any questions about this Privacy Policy, please contact us at privacy@trak.com</p>
                             </section>
                         </div>

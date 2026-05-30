@@ -1,30 +1,30 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Edit2, Trash2, User } from 'lucide-react-native';
-import { useTheme } from '../../../theme/ThemeContext';
+import { useAdminTheme } from '../useAdminTheme';
 import Text from '../../../components/ui/Text';
 import LinearGradient from 'react-native-linear-gradient';
 
-const UserCard = ({ user, onEdit, onDelete }) => {
-  const { theme } = useTheme();
-  const { colors } = theme;
+const UserCard = ({ user, onEdit, onDelete, palette: paletteProp }) => {
+  const { palette: themePalette } = useAdminTheme();
+  const palette = paletteProp || themePalette;
   const isActive = user.status === 'active';
 
   return (
     <View style={[styles.itemCard, {
-      backgroundColor: colors.surface,
-      borderColor: colors.border,
+      backgroundColor: palette.card,
+      borderColor: palette.border,
     }]}>
       <View style={styles.itemInfo}>
         <View style={styles.itemHeader}>
-          <View style={[styles.avatarContainer, { backgroundColor: `${colors.primary}15` }]}>
-            <User size={20} color={colors.primary} />
+          <View style={[styles.avatarContainer, { backgroundColor: `${palette.primary}15` }]}>
+            <User size={20} color={palette.primary} />
           </View>
           <View style={styles.itemTitleContainer}>
-            <Text variant="body" color={colors.textPrimary} style={styles.itemTitle}>
+            <Text variant="body" color={palette.textPrimary} style={styles.itemTitle}>
               {user.name}
             </Text>
-            <Text variant="caption" color={colors.textSecondary} style={styles.itemSubtitle}>
+            <Text variant="caption" color={palette.textSecondary} style={styles.itemSubtitle}>
               {user.email}
             </Text>
           </View>
@@ -32,44 +32,44 @@ const UserCard = ({ user, onEdit, onDelete }) => {
         <View style={styles.itemMeta}>
           <View style={[
             styles.statusBadge, 
-            { backgroundColor: isActive ? `${colors.primary}20` : `${colors.textSecondary}20` }
+            { backgroundColor: isActive ? `${palette.primary}20` : `${palette.textSecondary}20` }
           ]}>
             <View style={[
               styles.statusDot,
-              { backgroundColor: isActive ? colors.primary : colors.textSecondary }
+              { backgroundColor: isActive ? palette.primary : palette.textSecondary }
             ]} />
             <Text variant="caption" style={[
               styles.statusText,
-              { color: isActive ? colors.primary : colors.textSecondary }
+              { color: isActive ? palette.primary : palette.textSecondary }
             ]}>
               {user.status}
             </Text>
           </View>
           {user.isAdmin ? (
-            <View style={[styles.statusBadge, { backgroundColor: `${colors.error}18` }]}>
-              <Text variant="caption" style={[styles.statusText, { color: colors.error }]}>Admin</Text>
+            <View style={[styles.statusBadge, { backgroundColor: `${palette.error}18` }]}>
+              <Text variant="caption" style={[styles.statusText, { color: palette.error }]}>Admin</Text>
             </View>
           ) : null}
-          <Text variant="caption" color={colors.textTertiary} style={styles.itemDate}>
+          <Text variant="caption" color={palette.textTertiary} style={styles.itemDate}>
             Joined: {user.joinDate}
           </Text>
         </View>
       </View>
       <View style={styles.itemActions}>
         <TouchableOpacity 
-          style={[styles.actionButton, { backgroundColor: `${colors.primary}15` }]} 
+          style={[styles.actionButton, { backgroundColor: `${palette.primary}15` }]} 
           onPress={() => onEdit(user)}
           activeOpacity={0.7}
         >
-          <Edit2 size={18} color={colors.primary} />
+          <Edit2 size={18} color={palette.primary} />
         </TouchableOpacity>
         {onDelete ? (
           <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: `${colors.error}15` }]} 
+            style={[styles.actionButton, { backgroundColor: `${palette.error}15` }]} 
             onPress={() => onDelete(user.id)}
             activeOpacity={0.7}
           >
-            <Trash2 size={18} color={colors.error} />
+            <Trash2 size={18} color={palette.error} />
           </TouchableOpacity>
         ) : null}
       </View>

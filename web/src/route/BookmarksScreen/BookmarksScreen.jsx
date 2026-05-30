@@ -156,8 +156,8 @@ const BookmarksScreen = () => {
 
     const bookmarkedNews = newsData.filter((item) => bookmarkedItems.has(String(item.id)));
 
-    const pageBg = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const headingColor = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
+    const pageBg = colors.background;
+    const headingColor = colors.textPrimary;
     const subColor = isDark ? colors.textSecondary || '#94a3b8' : '#64748b';
 
     return (

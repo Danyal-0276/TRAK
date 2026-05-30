@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Shield } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import { requestPasswordReset, verifyPasswordResetOtp } from '../../api/authPasswordApi';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import Text from '../../components/ui/Text';
@@ -18,6 +19,8 @@ import Text from '../../components/ui/Text';
 const ForgotPasswordCodeScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const { colors } = theme;
+  const isDark = theme.mode === 'dark';
+  const action = filledActionColors(colors, isDark);
   const { error: showError } = useFeedback();
   const email = (route.params?.email || '').trim().toLowerCase();
   const emailSent = route.params?.emailSent !== false;
@@ -107,18 +110,18 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
             styles.codeInput,
             {
               borderColor: colors.border,
-              color: colors.text,
+              color: colors.textPrimary,
               backgroundColor: colors.surface,
             },
           ]}
         />
 
         <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
+          style={[styles.primaryBtn, { backgroundColor: action.background }]}
           onPress={onVerify}
           disabled={loading || code.replace(/\D/g, '').length !== 6}
         >
-          <Text variant="button" color={colors.textInverse}>
+          <Text variant="button" color={action.foreground}>
             {loading ? 'Verifying…' : 'Continue'}
           </Text>
         </TouchableOpacity>

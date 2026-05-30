@@ -43,7 +43,7 @@ export default function AdminListPanel({
   const textPrimary = colors.textPrimary;
   const textSecondary = colors.textSecondary;
   const borderColor = colors.border;
-  const panelBg = colors.panelBg || colors.surface;
+  const panelBg = colors.panelBg || colors.card || colors.surface;
   const errorColor = colors.error || '#ef4444';
 
   const handleDeleteItem = async (item) => {

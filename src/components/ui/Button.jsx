@@ -11,7 +11,7 @@ const Button = ({ title, onPress, variant = 'primary', primaryColors, style, tex
   const content = (
     <View style={[styles.row, { gap: spacing.sm, alignItems: 'center', justifyContent: 'center' }]}> 
       {leftIcon}
-      <Text variant="button" color={variant === 'outline' ? colors.textPrimary : colors.surface} style={textStyle}>
+      <Text variant="button" color={variant === 'outline' ? colors.textPrimary : (colors.textOnPrimary || colors.surface)} style={textStyle}>
         {title}
       </Text>
       {rightIcon}

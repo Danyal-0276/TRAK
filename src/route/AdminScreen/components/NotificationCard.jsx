@@ -1,20 +1,39 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Bell } from 'lucide-react-native';
+import { useAdminTheme } from '../useAdminTheme';
 
-const NotificationCard = ({ notification }) => {
+const NotificationCard = ({ notification, palette: paletteProp }) => {
+  const { palette: themePalette } = useAdminTheme();
+  const palette = paletteProp || themePalette;
+
   return (
-    <View style={styles.notificationCard}>
-      <View style={styles.notificationIcon}>
-        <Bell size={20} color="#666" />
+    <View
+      style={[
+        styles.notificationCard,
+        {
+          backgroundColor: palette.card,
+          borderColor: palette.border,
+          borderWidth: 1,
+        },
+      ]}
+    >
+      <View style={[styles.notificationIcon, { backgroundColor: palette.pageAlt }]}>
+        <Bell size={20} color={palette.textSecondary} />
       </View>
       <View style={styles.notificationContent}>
-        <Text style={styles.notificationSource}>{notification.source}</Text>
-        <Text style={styles.notificationMessage}>{notification.message}</Text>
-        <Text style={styles.notificationTime}>{notification.time}</Text>
+        <Text style={[styles.notificationSource, { color: palette.textPrimary }]}>
+          {notification.source}
+        </Text>
+        <Text style={[styles.notificationMessage, { color: palette.textSecondary }]}>
+          {notification.message}
+        </Text>
+        <Text style={[styles.notificationTime, { color: palette.textTertiary }]}>
+          {notification.time}
+        </Text>
       </View>
       <TouchableOpacity style={styles.notificationAction}>
-        <Text style={styles.notificationActionText}>•••</Text>
+        <Text style={[styles.notificationActionText, { color: palette.textTertiary }]}>•••</Text>
       </TouchableOpacity>
     </View>
   );
@@ -23,7 +42,6 @@ const NotificationCard = ({ notification }) => {
 const styles = StyleSheet.create({
   notificationCard: {
     flexDirection: 'row',
-    backgroundColor: '#f8f8f8',
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
@@ -33,7 +51,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -43,26 +60,21 @@ const styles = StyleSheet.create({
   },
   notificationSource: {
     fontSize: 14,
-    fontWeight: '700',
-    color: '#000',
+    fontWeight: '600',
     marginBottom: 4,
   },
   notificationMessage: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 13,
     marginBottom: 4,
   },
   notificationTime: {
     fontSize: 12,
-    color: '#999',
   },
   notificationAction: {
     padding: 8,
   },
   notificationActionText: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#999',
+    fontSize: 16,
   },
 });
 

@@ -1,9 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, StyleSheet, StatusBar, Animated, TouchableOpacity, Dimensions, ActivityIndicator } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
-import WhiteLogo from '../../assets/images/whiteLogo.svg';
 import { useTheme } from '../../theme/ThemeContext';
-import Screen from '../../components/ui/Screen';
+import TrakLogo from '../../components/TrakLogo';
+import { filledActionColors } from '../../theme/buttonContrast';
 import Text from '../../components/ui/Text';
 
 const { width } = Dimensions.get('window');
@@ -11,12 +10,13 @@ const { width } = Dimensions.get('window');
 const OpeningScreen = ({ navigation }) => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
     const [signInLoading, setSignInLoading] = useState(false);
     const [createAccountLoading, setCreateAccountLoading] = useState(false);
     // Animation values
     const logoScale = useRef(new Animated.Value(0)).current;
     const logoOpacity = useRef(new Animated.Value(0)).current;
-    const logoRotation = useRef(new Animated.Value(0)).current;
     const brandNameOpacity = useRef(new Animated.Value(0)).current;
     const brandNameTranslateY = useRef(new Animated.Value(20)).current;
     const welcomeOpacity = useRef(new Animated.Value(0)).current;
@@ -40,11 +40,6 @@ const OpeningScreen = ({ navigation }) => {
             Animated.timing(logoOpacity, {
                 toValue: 1,
                 duration: 800,
-                useNativeDriver: true,
-            }),
-            Animated.timing(logoRotation, {
-                toValue: 1,
-                duration: 1000,
                 useNativeDriver: true,
             }),
         ]).start();
@@ -140,11 +135,6 @@ const OpeningScreen = ({ navigation }) => {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
-    const logoRotationInterpolate = logoRotation.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['0deg', '360deg'],
-    });
-
     return (
         <View style={[styles.container, { backgroundColor: colors.background }]}>
             <StatusBar 
@@ -153,26 +143,13 @@ const OpeningScreen = ({ navigation }) => {
                 translucent
             />
 
-            {/* Enhanced Gradient Background */}
-            <LinearGradient
-                colors={theme.mode === 'dark' 
-                    ? ['#0F172A', '#1E293B', '#334155', '#475569', '#334155', '#1E293B', '#0F172A']
-                    : ['#FFFFFF', '#F8FAFC', '#F1F5F9', '#E2E8F0', '#F1F5F9', '#F8FAFC', '#FFFFFF']
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={StyleSheet.absoluteFillObject}
-            />
-
-            {/* Decorative Animated Circles */}
+            {/* Decorative circles — neutral grey only */}
             <Animated.View
                 style={[
                     styles.decorativeCircle1,
                     {
                         transform: [{ scale: circle1Scale }],
-                        backgroundColor: theme.mode === 'dark' 
-                            ? 'rgba(129, 140, 248, 0.1)' 
-                            : 'rgba(15, 23, 42, 0.03)',
+                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
                     },
                 ]}
             />
@@ -181,9 +158,7 @@ const OpeningScreen = ({ navigation }) => {
                     styles.decorativeCircle2,
                     {
                         transform: [{ scale: circle2Scale }],
-                        backgroundColor: theme.mode === 'dark' 
-                            ? 'rgba(139, 92, 246, 0.08)' 
-                            : 'rgba(15, 23, 42, 0.02)',
+                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.025)',
                     },
                 ]}
             />
@@ -192,9 +167,7 @@ const OpeningScreen = ({ navigation }) => {
                     styles.decorativeCircle3,
                     {
                         transform: [{ scale: circle3Scale }],
-                        backgroundColor: theme.mode === 'dark' 
-                            ? 'rgba(99, 102, 241, 0.06)' 
-                            : 'rgba(15, 23, 42, 0.015)',
+                        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
                     },
                 ]}
             />
@@ -216,32 +189,13 @@ const OpeningScreen = ({ navigation }) => {
                             styles.logoGlow,
                             {
                                 transform: [{ scale: pulseScale }],
-                                backgroundColor: theme.mode === 'dark'
-                                    ? 'rgba(129, 140, 248, 0.2)'
-                                    : 'rgba(15, 23, 42, 0.08)',
+                                backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
                             },
                         ]}
                     />
-                    
-                    <Animated.View
-                        style={[
-                            styles.logoContainer,
-                            {
-                                transform: [{ rotate: logoRotationInterpolate }],
-                            },
-                        ]}
-                    >
-                        <LinearGradient
-                            colors={theme.mode === 'dark'
-                                ? ['#818CF8', '#A78BFA', '#C084FC']
-                                : [colors.primary, colors.primary, colors.primary]
-                            }
-                            start={{ x: 0, y: 0 }}
-                            end={{ x: 1, y: 1 }}
-                            style={styles.logoWrapper}
-                        >
-                            <WhiteLogo width={80} height={80} />
-                        </LinearGradient>
+
+                    <Animated.View style={styles.logoContainer}>
+                        <TrakLogo size={88} />
                     </Animated.View>
                     
                     <Animated.Text
@@ -284,7 +238,7 @@ const OpeningScreen = ({ navigation }) => {
                             <Text variant="title" style={[styles.welcomeTitle, { color: colors.textPrimary }]}>
                                 Get Started
                             </Text>
-                            <View style={[styles.titleUnderline, { backgroundColor: theme.mode === 'dark' ? 'rgba(129, 140, 248, 0.3)' : 'rgba(15, 23, 42, 0.1)' }]} />
+                            <View style={[styles.titleUnderline, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.12)' }]} />
                         </View>
                         <Text variant="body" style={[styles.welcomeSubtitle, { color: colors.textSecondary }]}>
                             Discover personalized news content{'\n'}
@@ -319,38 +273,33 @@ const OpeningScreen = ({ navigation }) => {
                             style={styles.primaryButtonWrapper}
                             disabled={signInLoading || createAccountLoading}
                         >
-                            <LinearGradient
-                                colors={theme.mode === 'dark'
-                                    ? ['#818CF8', '#A78BFA', '#C084FC']
-                                    : [colors.primary, colors.primary]
-                                }
-                                start={{ x: 0, y: 0 }}
-                                end={{ x: 1, y: 0 }}
+                            <View
                                 style={[
-                                    styles.primaryButton, 
-                                    { 
+                                    styles.primaryButton,
+                                    {
+                                        backgroundColor: action.background,
                                         shadowColor: colors.shadow,
                                         opacity: (signInLoading || createAccountLoading) ? 0.7 : 1,
-                                    }
+                                    },
                                 ]}
                             >
                                 {signInLoading ? (
                                     <View style={styles.loadingContainer}>
-                                        <ActivityIndicator 
-                                            size="small" 
-                                            color={colors.textInverse}
+                                        <ActivityIndicator
+                                            size="small"
+                                            color={action.foreground}
                                             style={styles.spinner}
                                         />
-                                        <Text variant="button" style={[styles.primaryButtonText, { color: colors.textInverse }]}>
+                                        <Text variant="button" style={[styles.primaryButtonText, { color: action.foreground }]}>
                                             Loading...
                                         </Text>
                                     </View>
                                 ) : (
-                                    <Text variant="button" style={[styles.primaryButtonText, { color: colors.textInverse }]}>
+                                    <Text variant="button" style={[styles.primaryButtonText, { color: action.foreground }]}>
                                         Sign In
                                     </Text>
                                 )}
-                            </LinearGradient>
+                            </View>
                         </TouchableOpacity>
                         
                         <TouchableOpacity
@@ -372,16 +321,12 @@ const OpeningScreen = ({ navigation }) => {
                             disabled={signInLoading || createAccountLoading}
                         >
                             <View style={[
-                                styles.secondaryButton, 
-                                { 
-                                    borderColor: theme.mode === 'dark' 
-                                        ? 'rgba(255, 255, 255, 0.4)' 
-                                        : colors.borderDark || '#CBD5E1',
-                                    backgroundColor: theme.mode === 'dark' 
-                                        ? 'rgba(255, 255, 255, 0.15)' 
-                                        : '#FFFFFF',
+                                styles.secondaryButton,
+                                {
+                                    borderColor: colors.border,
+                                    backgroundColor: isDark ? colors.surface : colors.surface,
                                     opacity: (signInLoading || createAccountLoading) ? 0.7 : 1,
-                                }
+                                },
                             ]}>
                                 {createAccountLoading ? (
                                     <View style={styles.loadingContainer}>
@@ -463,17 +408,6 @@ const styles = StyleSheet.create({
     logoContainer: {
         marginBottom: 24,
         zIndex: 1,
-    },
-    logoWrapper: {
-        width: 140,
-        height: 140,
-        borderRadius: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-        shadowOffset: { width: 0, height: 15 },
-        shadowOpacity: 0.35,
-        shadowRadius: 25,
-        elevation: 15,
     },
     brandName: {
         fontSize: 50,

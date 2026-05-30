@@ -1,11 +1,14 @@
 import React from 'react';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import Text from './Text';
 import './Button.css';
 
 const Button = ({ title, onPress, variant = 'primary', primaryColors, style, textStyle, leftIcon, rightIcon, disabled }) => {
   const { theme } = useTheme();
   const { colors } = theme;
+  const isDark = theme.mode === 'dark';
+  const action = filledActionColors(colors, isDark);
 
   const getButtonStyle = () => {
     const baseStyle = {
@@ -24,63 +27,63 @@ const Button = ({ title, onPress, variant = 'primary', primaryColors, style, tex
       letterSpacing: '0.2px',
       width: '100%',
       boxShadow: 'none',
-      ...style
+      ...style,
     };
 
     if (variant === 'primary') {
-      const gradientColors = primaryColors || (colors.primaryGradient || [colors.primaryLight, colors.primary]);
+      const bg = primaryColors?.[0] || action.background;
       return {
         ...baseStyle,
-        background: `linear-gradient(135deg, ${gradientColors.join(', ')})`,
-        color: '#ffffff',
-        boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
+        background: bg,
+        color: action.foreground,
+        boxShadow: isDark ? '0 4px 12px rgba(0, 0, 0, 0.35)' : '0 4px 12px rgba(0, 0, 0, 0.12)',
       };
     }
 
     if (variant === 'secondary') {
       return {
         ...baseStyle,
-        backgroundColor: colors.textPrimary || '#0f172a',
-        color: '#ffffff',
-        boxShadow: '0 2px 8px rgba(15, 23, 42, 0.15)',
+        backgroundColor: action.background,
+        color: action.foreground,
+        boxShadow: isDark ? '0 2px 8px rgba(0, 0, 0, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.12)',
       };
     }
 
-    // outline
     return {
       ...baseStyle,
-      border: `2px solid ${colors.border || '#e2e8f0'}`,
+      border: `2px solid ${colors.border}`,
       backgroundColor: 'transparent',
-      color: colors.textPrimary || '#0f172a',
+      color: colors.textPrimary,
       background: 'transparent',
     };
   };
+
+  const buttonStyle = getButtonStyle();
+  const labelColor = variant === 'outline' ? colors.textPrimary : action.foreground;
 
   return (
     <button
       onClick={onPress}
       disabled={disabled}
-      style={getButtonStyle()}
+      style={buttonStyle}
       className="button-modern"
       onMouseEnter={(e) => {
         if (!disabled && variant === 'primary') {
           e.currentTarget.style.transform = 'translateY(-1px)';
-          e.currentTarget.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.4)';
         } else if (!disabled && variant === 'outline') {
-          e.currentTarget.style.backgroundColor = colors.backgroundSecondary || '#f8fafc';
+          e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
         }
       }}
       onMouseLeave={(e) => {
         if (!disabled && variant === 'primary') {
           e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
         } else if (!disabled && variant === 'outline') {
           e.currentTarget.style.backgroundColor = 'transparent';
         }
       }}
     >
       {leftIcon}
-      <Text variant="button" color={variant === 'outline' ? colors.textPrimary : '#ffffff'} style={textStyle}>
+      <Text variant="button" color={labelColor} style={textStyle}>
         {title}
       </Text>
       {rightIcon}

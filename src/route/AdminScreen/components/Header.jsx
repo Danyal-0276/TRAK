@@ -1,13 +1,12 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Shield } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../../theme/ThemeContext';
+import { useAdminTheme } from '../useAdminTheme';
 import Text from '../../../components/ui/Text';
+import TrakLogo from '../../../components/TrakLogo';
 
 const Header = () => {
-  const { theme } = useTheme();
-  const { colors } = theme;
+  const { palette } = useAdminTheme();
   const insets = useSafeAreaInsets();
 
   return (
@@ -15,19 +14,22 @@ const Header = () => {
       style={[
         styles.header,
         {
-          backgroundColor: colors.surface,
-          borderBottomColor: colors.border,
+          backgroundColor: palette.card,
+          borderBottomColor: palette.border,
           paddingTop: Math.max(insets.top, 12),
         },
       ]}
     >
       <View style={styles.headerContent}>
-        <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-          <Shield size={24} color={colors.primary} strokeWidth={2.5} />
+        <TrakLogo size={32} showContainer />
+        <View style={styles.titleBlock}>
+          <Text variant="title" style={[styles.headerTitle, { color: palette.textPrimary }]}>
+            TRAK Admin
+          </Text>
+          <Text variant="caption" style={{ color: palette.textTertiary, marginTop: 2 }}>
+            News operations
+          </Text>
         </View>
-        <Text variant="title" style={[styles.headerTitle, { color: colors.textPrimary }]}>
-          Admin Panel
-        </Text>
       </View>
     </View>
   );
@@ -51,15 +53,11 @@ const styles = StyleSheet.create({
     paddingBottom: 16,
     gap: 12,
   },
-  iconContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+  titleBlock: {
+    alignItems: 'flex-start',
   },
   headerTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '700',
   },
 });

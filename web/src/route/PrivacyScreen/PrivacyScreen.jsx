@@ -1,14 +1,18 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
+import { useTheme } from '../../theme/ThemeContext';
+import { themedPageRoot } from '../../theme/themePageStyles';
 
 const PrivacyScreen = () => {
     const navigate = useNavigate();
+    const { theme } = useTheme();
+    const { colors } = theme;
+    const isDark = theme.mode === 'dark';
 
     return (
         <div style={{
-            minHeight: '100vh',
-            backgroundColor: '#ffffff',
+            ...themedPageRoot(colors),
             padding: '24px',
         }}>
             <div style={{
@@ -25,7 +29,7 @@ const PrivacyScreen = () => {
                         padding: '8px 0',
                         border: 'none',
                         background: 'transparent',
-                        color: '#64748b',
+                        color: colors.textSecondary,
                         fontSize: '14px',
                         fontWeight: '500',
                         cursor: 'pointer',
@@ -42,7 +46,7 @@ const PrivacyScreen = () => {
                     style={{ 
                         width: '32px', 
                         height: '32px',
-                        filter: 'invert(1)',
+                        filter: isDark ? 'none' : 'invert(1)',
                         marginBottom: '40px',
                     }} 
                 />
@@ -50,7 +54,7 @@ const PrivacyScreen = () => {
                 <h1 style={{
                     fontSize: '36px',
                     fontWeight: '700',
-                    color: '#0f172a',
+                    color: colors.textPrimary,
                     margin: '0 0 16px 0',
                     letterSpacing: '-0.5px',
                 }}>
@@ -58,7 +62,7 @@ const PrivacyScreen = () => {
                 </h1>
                 <p style={{
                     fontSize: '15px',
-                    color: '#64748b',
+                    color: colors.textSecondary,
                     margin: '0 0 48px 0',
                 }}>
                     Last updated: {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
@@ -67,27 +71,27 @@ const PrivacyScreen = () => {
                 {/* Content */}
                 <div style={{
                     lineHeight: '1.8',
-                    color: '#334155',
+                    color: colors.textSecondary,
                 }}>
                     <section style={{ marginBottom: '40px' }}>
                         <h2 style={{
                             fontSize: '24px',
                             fontWeight: '600',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             margin: '0 0 16px 0',
                         }}>
                             1. Information We Collect
                         </h2>
                         <p style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                         }}>
                             We collect information that you provide directly to us, including:
                         </p>
                         <ul style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                             paddingLeft: '24px',
                         }}>
@@ -98,7 +102,7 @@ const PrivacyScreen = () => {
                         </ul>
                         <p style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                         }}>
                             We also automatically collect certain information about your device and how you interact with our service, including IP address, browser type, and usage data.
@@ -109,21 +113,21 @@ const PrivacyScreen = () => {
                         <h2 style={{
                             fontSize: '24px',
                             fontWeight: '600',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             margin: '0 0 16px 0',
                         }}>
                             2. How We Use Your Information
                         </h2>
                         <p style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                         }}>
                             We use the information we collect to:
                         </p>
                         <ul style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                             paddingLeft: '24px',
                         }}>
@@ -139,21 +143,21 @@ const PrivacyScreen = () => {
                         <h2 style={{
                             fontSize: '24px',
                             fontWeight: '600',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             margin: '0 0 16px 0',
                         }}>
                             3. Information Sharing and Disclosure
                         </h2>
                         <p style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                         }}>
                             We do not sell, trade, or rent your personal information to third parties. We may share your information only in the following circumstances:
                         </p>
                         <ul style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                             paddingLeft: '24px',
                         }}>
@@ -168,21 +172,21 @@ const PrivacyScreen = () => {
                         <h2 style={{
                             fontSize: '24px',
                             fontWeight: '600',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             margin: '0 0 16px 0',
                         }}>
                             4. Data Security
                         </h2>
                         <p style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                         }}>
                             We implement appropriate technical and organizational security measures to protect your personal information against unauthorized access, alteration, disclosure, or destruction. However, no method of transmission over the Internet or electronic storage is 100% secure.
                         </p>
                         <p style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                         }}>
                             Your account information is protected by a password. It is important that you protect against unauthorized access to your account and password by selecting a strong password and limiting access to your computer and browser.
@@ -193,21 +197,21 @@ const PrivacyScreen = () => {
                         <h2 style={{
                             fontSize: '24px',
                             fontWeight: '600',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             margin: '0 0 16px 0',
                         }}>
                             5. Your Rights and Choices
                         </h2>
                         <p style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                         }}>
                             You have the right to:
                         </p>
                         <ul style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                             paddingLeft: '24px',
                         }}>
@@ -222,21 +226,21 @@ const PrivacyScreen = () => {
                         <h2 style={{
                             fontSize: '24px',
                             fontWeight: '600',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             margin: '0 0 16px 0',
                         }}>
                             6. Cookies and Tracking Technologies
                         </h2>
                         <p style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                         }}>
                             We use cookies and similar tracking technologies to track activity on our service and hold certain information. Cookies are files with a small amount of data which may include an anonymous unique identifier.
                         </p>
                         <p style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                         }}>
                             You can instruct your browser to refuse all cookies or to indicate when a cookie is being sent. However, if you do not accept cookies, you may not be able to use some portions of our service.
@@ -247,14 +251,14 @@ const PrivacyScreen = () => {
                         <h2 style={{
                             fontSize: '24px',
                             fontWeight: '600',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             margin: '0 0 16px 0',
                         }}>
                             7. Children's Privacy
                         </h2>
                         <p style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                         }}>
                             Our service is not intended for children under the age of 13. We do not knowingly collect personal information from children under 13. If you are a parent or guardian and believe your child has provided us with personal information, please contact us.
@@ -265,14 +269,14 @@ const PrivacyScreen = () => {
                         <h2 style={{
                             fontSize: '24px',
                             fontWeight: '600',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             margin: '0 0 16px 0',
                         }}>
                             8. Changes to This Privacy Policy
                         </h2>
                         <p style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                         }}>
                             We may update our Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy on this page and updating the "Last updated" date.
@@ -283,14 +287,14 @@ const PrivacyScreen = () => {
                         <h2 style={{
                             fontSize: '24px',
                             fontWeight: '600',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             margin: '0 0 16px 0',
                         }}>
                             9. Contact Us
                         </h2>
                         <p style={{
                             fontSize: '15px',
-                            color: '#334155',
+                            color: colors.textSecondary,
                             margin: '0 0 16px 0',
                         }}>
                             If you have any questions about this Privacy Policy, please contact us at privacy@trak.com
