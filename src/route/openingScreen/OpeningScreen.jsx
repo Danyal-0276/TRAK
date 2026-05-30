@@ -156,7 +156,7 @@ const OpeningScreen = ({ navigation }) => {
             {/* Enhanced Gradient Background */}
             <LinearGradient
                 colors={theme.mode === 'dark' 
-                    ? ['#0F172A', '#1E293B', '#334155', '#475569', '#334155', '#1E293B', '#0F172A']
+                    ? [colors.background, colors.backgroundSecondary, colors.background]
                     : ['#FFFFFF', '#F8FAFC', '#F1F5F9', '#E2E8F0', '#F1F5F9', '#F8FAFC', '#FFFFFF']
                 }
                 start={{ x: 0, y: 0 }}

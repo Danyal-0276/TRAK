@@ -11,7 +11,10 @@ import {
   LogOut,
   Newspaper,
   ShieldCheck,
+  Moon,
+  Sun,
 } from 'lucide-react';
+import { useTheme } from '../../../theme/ThemeContext';
 import './adminShell.css';
 
 const MAIN_NAV = [
@@ -46,6 +49,8 @@ export default function AdminSidebar({
   onLogout,
 }) {
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme.mode === 'dark';
 
   const renderLink = ({ path, icon: Icon, label }) => {
     const active = linkActive(location.pathname, path);
@@ -103,6 +108,15 @@ export default function AdminSidebar({
             </div>
           </div>
         </div>
+        <button
+          type="button"
+          className="admin-sidebar__footer-btn"
+          onClick={toggleTheme}
+          style={{ marginBottom: 8 }}
+        >
+          {isDark ? <Sun size={16} /> : <Moon size={16} />}
+          {isDark ? 'Light mode' : 'Dark mode'}
+        </button>
         <NavLink
           to="/newsfeed"
           className="admin-sidebar__footer-btn"

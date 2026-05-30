@@ -45,11 +45,11 @@ const AppSidebar = () => {
         { label: 'Terms', path: '/terms' },
     ];
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
 
     return (
         <aside style={{
@@ -91,7 +91,7 @@ const AppSidebar = () => {
                                     padding: '8px 12px',
                                     border: 'none',
                                     background: isActive 
-                                        ? (isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6')
+                                        ? (isDark ? colors.surfaceElevated : '#f3f4f6')
                                         : 'transparent',
                                     cursor: 'pointer',
                                     borderRadius: '6px',
@@ -100,7 +100,7 @@ const AppSidebar = () => {
                                 }}
                                 onMouseEnter={(e) => {
                                     if (!isActive) {
-                                        e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                                        e.currentTarget.style.backgroundColor = isDark ? colors.surface : '#f9fafb';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
@@ -112,7 +112,7 @@ const AppSidebar = () => {
                                 <Icon 
                                     size={16} 
                                     color={isActive 
-                                        ? (isDark ? colors.primary || '#818CF8' : '#0f172a')
+                                        ? colors.primary
                                         : textSecondary
                                     } 
                                     strokeWidth={isActive ? 2.5 : 2} 
@@ -121,7 +121,7 @@ const AppSidebar = () => {
                                     fontSize: '13px',
                                     fontWeight: isActive ? '600' : '500',
                                     color: isActive 
-                                        ? (isDark ? colors.primary || '#818CF8' : '#0f172a')
+                                        ? colors.primary
                                         : textSecondary,
                                 }}>
                                     {link.label}
@@ -162,7 +162,7 @@ const AppSidebar = () => {
                                 border: 'none',
                                 background: 'transparent',
                                 padding: 0,
-                                color: isDark ? colors.primary || '#818CF8' : '#0f172a',
+                                color: colors.primary,
                                 cursor: 'pointer',
                                 fontWeight: 600,
                                 textDecoration: 'underline',
@@ -186,8 +186,8 @@ const AppSidebar = () => {
                                 backgroundColor: cardBackground,
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
-                                e.currentTarget.style.borderColor = isDark ? colors.borderLight || '#475569' : '#d1d5db';
+                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated : '#f9fafb';
+                                e.currentTarget.style.borderColor = isDark ? colors.borderLight : '#d1d5db';
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.backgroundColor = cardBackground;
@@ -241,7 +241,7 @@ const AppSidebar = () => {
                                 textDecoration: location.pathname === path ? 'underline' : 'none',
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.color = isDark ? colors.primary || '#818CF8' : '#64748b';
+                                e.currentTarget.style.color = isDark ? colors.primary : '#64748b';
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.color = textSecondary;

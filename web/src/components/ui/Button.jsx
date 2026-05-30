@@ -40,7 +40,7 @@ const Button = ({ title, onPress, variant = 'primary', primaryColors, style, tex
     if (variant === 'secondary') {
       return {
         ...baseStyle,
-        backgroundColor: colors.textPrimary || '#0f172a',
+        backgroundColor: colors.textPrimary,
         color: '#ffffff',
         boxShadow: '0 2px 8px rgba(15, 23, 42, 0.15)',
       };
@@ -51,7 +51,7 @@ const Button = ({ title, onPress, variant = 'primary', primaryColors, style, tex
       ...baseStyle,
       border: `2px solid ${colors.border || '#e2e8f0'}`,
       backgroundColor: 'transparent',
-      color: colors.textPrimary || '#0f172a',
+      color: colors.textPrimary,
       background: 'transparent',
     };
   };

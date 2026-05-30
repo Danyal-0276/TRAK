@@ -158,7 +158,7 @@ export default function SettingsScreen() {
             }}
             onMouseEnter={(e) => {
                 if (onPress) {
-                    e.currentTarget.style.backgroundColor = darkTheme ? '#334155' : '#f9fafb';
+                    e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
                 }
             }}
             onMouseLeave={(e) => {
@@ -208,7 +208,7 @@ export default function SettingsScreen() {
                         width: '44px',
                         height: '24px',
                         borderRadius: '12px',
-                        backgroundColor: switchValue ? (darkTheme ? '#818CF8' : '#0f172a') : (darkTheme ? '#334155' : '#e5e7eb'),
+                        backgroundColor: switchValue ? colors.primary : (darkTheme ? colors.surfaceElevated : colors.border),
                         cursor: 'pointer',
                         transition: 'all 0.2s ease',
                         flexShrink: 0,
@@ -221,7 +221,7 @@ export default function SettingsScreen() {
                         width: '20px',
                         height: '20px',
                         borderRadius: '50%',
-                        backgroundColor: '#ffffff',
+                        backgroundColor: colors.surface,
                         transition: 'all 0.2s ease',
                         boxShadow: '0 2px 4px rgba(0, 0, 0, 0.2)',
                     }} />
@@ -244,7 +244,7 @@ export default function SettingsScreen() {
                         outline: 'none',
                     }}
                     onFocus={(e) => {
-                        e.target.style.borderColor = darkTheme ? '#818CF8' : '#0f172a';
+                        e.target.style.borderColor = colors.primary;
                     }}
                     onBlur={(e) => {
                         e.target.style.borderColor = borderColor;
@@ -299,11 +299,11 @@ export default function SettingsScreen() {
         </div>
     );
 
-    const backgroundColor = darkTheme ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = darkTheme ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = darkTheme ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = darkTheme ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = darkTheme ? colors.border || '#334155' : '#e5e7eb';
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
 
     return (
         <div style={{
@@ -352,7 +352,7 @@ export default function SettingsScreen() {
                 {isSaving && (
                     <div style={{
                         padding: '12px 16px',
-                        backgroundColor: darkTheme ? '#1e293b' : '#f8fafc',
+                        backgroundColor: colors.backgroundSecondary,
                         border: `1px solid ${borderColor}`,
                         borderRadius: '8px',
                         marginBottom: '24px',
@@ -395,13 +395,13 @@ export default function SettingsScreen() {
                 {/* Account Section */}
                 <SettingsSection title="Account">
                     <SettingsRow
-                        icon={<User size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={<User size={20} color={colors.textPrimary} />}
                         label="Profile"
                         description="Edit your profile information"
                         onPress={() => navigate("/profile")}
                     />
                     <SettingsRow
-                        icon={<User size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={<User size={20} color={colors.textPrimary} />}
                         label="Edit Profile"
                         description="Update your name, bio, and other details"
                         onPress={() => navigate("/edit-profile")}
@@ -413,7 +413,7 @@ export default function SettingsScreen() {
                     description="Topics you follow in your personalized feed"
                 >
                     <SettingsRow
-                        icon={<Tag size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={<Tag size={20} color={colors.textPrimary} />}
                         label="Following news channels"
                         description="Choose categories and keywords"
                         onPress={() => navigate('/tag-selection', { state: { fromSettings: true } })}
@@ -426,7 +426,7 @@ export default function SettingsScreen() {
                     description="Push, email, and keyword alerts"
                 >
                     <SettingsRow
-                        icon={<Bell size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={<Bell size={20} color={colors.textPrimary} />}
                         label="Push Notifications"
                         description="Receive notifications in your browser"
                         switchEnabled
@@ -434,7 +434,7 @@ export default function SettingsScreen() {
                         onSwitchChange={() => handleToggle('pushNotifications')}
                     />
                     <SettingsRow
-                        icon={<Mail size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={<Mail size={20} color={colors.textPrimary} />}
                         label="Email Notifications"
                         description="Get notified via email"
                         switchEnabled
@@ -442,7 +442,7 @@ export default function SettingsScreen() {
                         onSwitchChange={() => handleToggle('emailNotifications')}
                     />
                     <SettingsRow
-                        icon={<Tag size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={<Tag size={20} color={colors.textPrimary} />}
                         label="Keyword Alerts"
                         description="Get notified when articles match your keywords"
                         switchEnabled
@@ -450,7 +450,7 @@ export default function SettingsScreen() {
                         onSwitchChange={() => handleToggle('keywordAlerts')}
                     />
                     <SettingsRow
-                        icon={<Clock size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={<Clock size={20} color={colors.textPrimary} />}
                         label="Quiet Hours"
                         description="Mute notifications during specific hours"
                         switchEnabled
@@ -500,13 +500,13 @@ export default function SettingsScreen() {
                 {/* Privacy & Security */}
                 <SettingsSection title="Privacy & Security">
                     <SettingsRow
-                        icon={<Lock size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={<Lock size={20} color={colors.textPrimary} />}
                         label="Privacy & Security"
                         description="Manage your privacy settings"
                         onPress={() => navigate("/privacy")}
                     />
                     <SettingsRow
-                        icon={<Shield size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={<Shield size={20} color={colors.textPrimary} />}
                         label="Data & Storage"
                         description="View and manage your data"
                         onPress={() => navigate("/data")}
@@ -516,7 +516,7 @@ export default function SettingsScreen() {
                 {/* Content */}
                 <SettingsSection title="Content">
                     <SettingsRow
-                        icon={<Tag size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={<Tag size={20} color={colors.textPrimary} />}
                         label="Manage Categories"
                         description="Customize your news categories"
                         onPress={() => navigate("/tag-selection?fromSettings=1", { state: { fromSettings: true } })}
@@ -526,13 +526,13 @@ export default function SettingsScreen() {
                 {/* Preferences */}
                 <SettingsSection title="Preferences">
                     <SettingsRow
-                        icon={darkTheme ? <Sun size={20} color={colors.textPrimary || '#0f172a'} /> : <Moon size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={darkTheme ? <Sun size={20} color={colors.textPrimary} /> : <Moon size={20} color={colors.textPrimary} />}
                         label={darkTheme ? "Light Mode" : "Dark Mode"}
                         description="Switch between light and dark theme"
                         onPress={toggleTheme}
                     />
                     <SettingsRow
-                        icon={<Globe size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={<Globe size={20} color={colors.textPrimary} />}
                         label="Language"
                         description="Choose your preferred language"
                         selectEnabled
@@ -547,7 +547,7 @@ export default function SettingsScreen() {
                         onSelectChange={(value) => handleSelectChange('language', value)}
                     />
                     <SettingsRow
-                        icon={<Clock size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={<Clock size={20} color={colors.textPrimary} />}
                         label="Timezone"
                         description="Set your timezone"
                         selectEnabled
@@ -566,7 +566,7 @@ export default function SettingsScreen() {
                 {/* About */}
                 <SettingsSection title="About">
                     <SettingsRow
-                        icon={<Info size={20} color={colors.textPrimary || '#0f172a'} />}
+                        icon={<Info size={20} color={colors.textPrimary} />}
                         label="About TRAK"
                         description="Learn more about the app"
                         onPress={() => navigate("/about")}

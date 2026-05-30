@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTheme } from '../../theme/ThemeContext';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, ArrowRight, ArrowLeft } from 'lucide-react';
 import Text from '../../components/ui/Text';
@@ -6,6 +7,8 @@ import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
 import { requestPasswordReset } from '../../api/authPasswordApi';
 
 const ForgotPasswordScreen = () => {
+    const { theme } = useTheme();
+    const { colors } = theme;
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
@@ -49,7 +52,7 @@ const ForgotPasswordScreen = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#ffffff',
+            backgroundColor: colors.background,
             padding: '24px',
             position: 'relative',
             overflow: 'hidden',
@@ -71,7 +74,7 @@ const ForgotPasswordScreen = () => {
                         padding: '0',
                         border: 'none',
                         background: 'transparent',
-                        color: '#64748b',
+                        color: colors.textSecondary,
                         fontSize: '14px',
                         fontWeight: '500',
                         cursor: 'pointer',
@@ -97,7 +100,7 @@ const ForgotPasswordScreen = () => {
                     <h1 style={{
                         fontSize: '30px',
                         fontWeight: '600',
-                        color: '#0f172a',
+                        color: colors.textPrimary,
                         margin: '0 0 8px 0',
                         letterSpacing: '-0.5px',
                         lineHeight: '1.2',
@@ -106,7 +109,7 @@ const ForgotPasswordScreen = () => {
                     </h1>
                     <p style={{
                         fontSize: '15px',
-                        color: '#64748b',
+                        color: colors.textSecondary,
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
@@ -120,7 +123,7 @@ const ForgotPasswordScreen = () => {
                             display: 'block',
                             fontSize: '14px',
                             fontWeight: '500',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             marginBottom: '8px',
                         }}>
                             Email address
@@ -138,13 +141,13 @@ const ForgotPasswordScreen = () => {
                                 borderRadius: '6px',
                                 outline: 'none',
                                 transition: 'all 0.2s',
-                                color: '#0f172a',
-                                backgroundColor: '#ffffff',
+                                color: colors.textPrimary,
+                                backgroundColor: colors.background,
                                 boxSizing: 'border-box',
                                 fontFamily: 'inherit',
                             }}
                             onFocus={(e) => {
-                                e.target.style.borderColor = '#0f172a';
+                                e.target.style.borderColor = colors.primary;
                                 e.target.style.boxShadow = '0 0 0 3px rgba(15, 23, 42, 0.1)';
                             }}
                             onBlur={(e) => {
@@ -171,7 +174,7 @@ const ForgotPasswordScreen = () => {
                         style={{
                             width: '100%',
                             padding: '12px 20px',
-                            backgroundColor: '#0f172a',
+                            backgroundColor: colors.primary,
                             color: '#ffffff',
                             border: 'none',
                             borderRadius: '6px',
@@ -189,12 +192,12 @@ const ForgotPasswordScreen = () => {
                         }}
                         onMouseEnter={(e) => {
                             if (!loading) {
-                                e.currentTarget.style.backgroundColor = '#1e293b';
+                                e.currentTarget.style.backgroundColor = colors.primaryDark;
                             }
                         }}
                         onMouseLeave={(e) => {
                             if (!loading) {
-                                e.currentTarget.style.backgroundColor = '#0f172a';
+                                e.currentTarget.style.backgroundColor = colors.primary;
                             }
                         }}
                     >
@@ -210,12 +213,12 @@ const ForgotPasswordScreen = () => {
                 <div style={{ textAlign: 'center' }}>
                     <p style={{ 
                         fontSize: '15px', 
-                        color: '#64748b',
+                        color: colors.textSecondary,
                         margin: '0',
                     }}>
                         Remember your password?{' '}
                         <Link to="/login" style={{
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             textDecoration: 'none',
                             fontWeight: '500',
                         }}>

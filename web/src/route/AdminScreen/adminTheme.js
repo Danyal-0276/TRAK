@@ -1,21 +1,41 @@
 /**
- * Admin dashboard: neutral black / white / grey chrome; blue charts;
- * green / red / blue accents on KPI cards and semantic data.
+ * Admin dashboard: neutral black / white / grey chrome;
+ * grey chart series; green / red / amber for semantic KPI and pipeline states.
  */
+
+import { LIGHT_CHROME, DARK_CHROME } from '../../theme/trakChromeTokens';
 
 const CRED_NAMES = { '0': 'Real', '1': 'Fake', '2': 'Suspicious', none: 'Unset' };
 
-const BLUE = {
-  50: '#eff6ff',
-  100: '#dbeafe',
-  200: '#bfdbfe',
-  300: '#93c5fd',
-  400: '#60a5fa',
-  500: '#3b82f6',
-  600: '#2563eb',
-  700: '#1d4ed8',
-  800: '#1e40af',
-  900: '#1e3a8a',
+function adminBaseChrome(chrome) {
+  return {
+    textPrimary: chrome.textPrimary,
+    textSecondary: chrome.textSecondary,
+    textTertiary: chrome.textTertiary,
+    border: chrome.border,
+    borderLight: chrome.borderLight,
+    card: chrome.surface,
+    cardHover: chrome.surfaceHover,
+    page: chrome.background,
+    pageAlt: chrome.backgroundTertiary,
+    sidebar: chrome.sidebar,
+    inputBg: chrome.backgroundSecondary,
+    shadow: chrome.shadow,
+    shadowLight: chrome.shadowLight,
+  };
+}
+
+const GREY = {
+  50: '#fafafa',
+  100: '#f5f5f5',
+  200: '#e5e5e5',
+  300: '#d4d4d4',
+  400: '#a3a3a3',
+  500: '#737373',
+  600: '#525252',
+  700: '#404040',
+  800: '#262626',
+  900: '#171717',
 };
 
 const SEMANTIC = {
@@ -23,155 +43,127 @@ const SEMANTIC = {
   greenDark: '#22c55e',
   red: '#dc2626',
   redDark: '#ef4444',
-  blue: BLUE[600],
-  blueLight: BLUE[400],
   yellow: '#ca8a04',
   yellowDark: '#eab308',
   amber: '#d97706',
 };
 
 const LIGHT = {
-  textPrimary: '#0a0a0a',
-  textSecondary: '#525252',
-  textTertiary: '#737373',
-  border: '#e5e5e5',
-  borderLight: '#f0f0f0',
-  card: '#ffffff',
-  cardHover: '#fafafa',
-  page: '#f5f5f5',
-  pageAlt: '#ebebeb',
-  sidebar: '#ffffff',
-  inputBg: '#f8fafc',
-  primary: '#2563eb',
+  ...adminBaseChrome(LIGHT_CHROME),
+  primary: '#0a0a0a',
   navHover: '#f4f4f5',
-  navActiveBg: BLUE[50],
-  navActiveText: BLUE[700],
-  shadow: 'rgba(0, 0, 0, 0.08)',
-  shadowLight: 'rgba(0, 0, 0, 0.04)',
+  navActiveBg: GREY[100],
+  navActiveText: GREY[900],
   success: SEMANTIC.green,
   warning: SEMANTIC.amber,
   error: SEMANTIC.red,
-  info: SEMANTIC.blue,
+  info: GREY[600],
   successBg: '#f0fdf4',
   warningBg: '#fffbeb',
   errorBg: '#fef2f2',
-  infoBg: BLUE[50],
+  infoBg: GREY[100],
   yellow: SEMANTIC.yellow,
   yellowBg: '#fefce8',
   pipeline: {
-    pending: BLUE[400],
+    pending: GREY[500],
     processing: SEMANTIC.yellow,
     done: SEMANTIC.green,
     failed: SEMANTIC.red,
-    unknown: '#a3a3a3',
+    unknown: GREY[400],
   },
   credibility: {
     Real: SEMANTIC.green,
     Fake: SEMANTIC.red,
     Suspicious: SEMANTIC.yellow,
-    Unset: '#a3a3a3',
+    Unset: GREY[400],
     '0': SEMANTIC.green,
     '1': SEMANTIC.red,
     '2': SEMANTIC.yellow,
-    none: '#a3a3a3',
+    none: GREY[400],
   },
   chart: {
-    scraped: BLUE[500],
-    processed: BLUE[700],
-    primary: BLUE[600],
-    secondary: BLUE[400],
-    info: BLUE[300],
-    rawBar: BLUE[500],
-    procBar: BLUE[800],
-    factCheck: BLUE[600],
-    series: [BLUE[600], BLUE[500], BLUE[400], BLUE[700], BLUE[300], BLUE[800]],
+    scraped: GREY[600],
+    processed: GREY[800],
+    primary: GREY[700],
+    secondary: GREY[500],
+    info: GREY[400],
+    rawBar: GREY[600],
+    procBar: GREY[800],
+    factCheck: GREY[700],
+    series: [GREY[700], GREY[600], GREY[500], GREY[800], GREY[400], GREY[900]],
   },
   statAccent: {
-    raw: BLUE[600],
+    raw: GREY[700],
     processed: SEMANTIC.green,
-    queue: BLUE[500],
+    queue: GREY[600],
     failed: SEMANTIC.red,
     completion: SEMANTIC.green,
-    sources: BLUE[600],
-    users: BLUE[700],
-    credibility: BLUE[600],
+    sources: GREY[700],
+    users: GREY[800],
+    credibility: GREY[600],
   },
 };
 
 const DARK = {
-  textPrimary: '#fafafa',
-  textSecondary: '#a3a3a3',
-  textTertiary: '#737373',
-  border: '#2e2e2e',
-  borderLight: '#262626',
-  card: '#141414',
-  cardHover: '#1a1a1a',
-  page: '#0a0a0a',
-  pageAlt: '#171717',
-  sidebar: '#111111',
-  inputBg: '#1a1a1a',
-  primary: BLUE[400],
+  ...adminBaseChrome(DARK_CHROME),
+  primary: GREY[50],
   navHover: 'rgba(255, 255, 255, 0.06)',
-  navActiveBg: '#1e3a8a33',
-  navActiveText: BLUE[300],
-  shadow: 'rgba(0, 0, 0, 0.45)',
-  shadowLight: 'rgba(0, 0, 0, 0.25)',
+  navActiveBg: 'rgba(255, 255, 255, 0.08)',
+  navActiveText: GREY[50],
   success: SEMANTIC.greenDark,
   warning: '#fbbf24',
   error: SEMANTIC.redDark,
-  info: BLUE[400],
+  info: GREY[400],
   successBg: '#14532d33',
   warningBg: '#78350f33',
   errorBg: '#7f1d1d33',
-  infoBg: '#1e3a8a33',
+  infoBg: '#262626',
   yellow: SEMANTIC.yellowDark,
   yellowBg: '#42200633',
   pipeline: {
-    pending: BLUE[400],
+    pending: GREY[400],
     processing: SEMANTIC.yellowDark,
     done: SEMANTIC.greenDark,
     failed: SEMANTIC.redDark,
-    unknown: '#525252',
+    unknown: GREY[500],
   },
   credibility: {
     Real: SEMANTIC.greenDark,
     Fake: SEMANTIC.redDark,
     Suspicious: SEMANTIC.yellowDark,
-    Unset: '#737373',
+    Unset: GREY[500],
     '0': SEMANTIC.greenDark,
     '1': SEMANTIC.redDark,
     '2': SEMANTIC.yellowDark,
-    none: '#737373',
+    none: GREY[500],
   },
   chart: {
-    scraped: BLUE[400],
-    processed: BLUE[300],
-    primary: BLUE[400],
-    secondary: BLUE[500],
-    info: BLUE[200],
-    rawBar: BLUE[500],
-    procBar: BLUE[300],
-    factCheck: BLUE[400],
-    series: [BLUE[400], BLUE[500], BLUE[300], BLUE[200], BLUE[600], BLUE[700]],
+    scraped: GREY[400],
+    processed: GREY[300],
+    primary: GREY[300],
+    secondary: GREY[500],
+    info: GREY[400],
+    rawBar: GREY[500],
+    procBar: GREY[300],
+    factCheck: GREY[400],
+    series: [GREY[300], GREY[400], GREY[500], GREY[200], GREY[600], GREY[700]],
   },
   statAccent: {
-    raw: BLUE[400],
+    raw: GREY[300],
     processed: SEMANTIC.greenDark,
-    queue: BLUE[400],
+    queue: GREY[400],
     failed: SEMANTIC.redDark,
     completion: SEMANTIC.greenDark,
-    sources: BLUE[400],
-    users: BLUE[300],
-    credibility: BLUE[400],
+    sources: GREY[300],
+    users: GREY[200],
+    credibility: GREY[400],
   },
 };
 
-/** Dashboard palette: grey UI chrome + blue charts + semantic card accents. */
 export function getAdminDashboardPalette(_colors, isDark = false) {
   return isDark ? { ...DARK, isDark: true } : { ...LIGHT, isDark: false };
 }
 
-/** CSS custom properties for admin shell + page layout (web). */
 export function getAdminCssVars(palette) {
   return {
     '--admin-border': palette.border,
@@ -205,6 +197,6 @@ export function credibilityColor(palette, labelOrKey) {
   return palette.credibility[labelOrKey] || palette.credibility[CRED_NAMES[labelOrKey]] || palette.textTertiary;
 }
 
-export { CRED_NAMES, BLUE };
+export { CRED_NAMES, GREY };
 
 export const DASHBOARD_POLL_INTERVAL_MS = 20_000;

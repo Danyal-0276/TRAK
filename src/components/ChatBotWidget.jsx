@@ -168,7 +168,7 @@ const ChatBotWidget = () => {
           style={[styles.panel, { backgroundColor: colors.surface, borderColor: colors.border }]}
         >
           <LinearGradient
-            colors={theme.mode === 'dark' ? ['#1E293B', '#334155'] : ['#0f172a', '#1e293b']}
+            colors={[colors.background, colors.backgroundSecondary]}
             style={styles.header}
           >
             <View style={styles.headerLeft}>
@@ -259,7 +259,7 @@ const ChatBotWidget = () => {
           }}
         >
           <TouchableOpacity onPress={() => { setOpen(true); setHasUnread(false); }} style={styles.fab}>
-            <LinearGradient colors={['#0f172a', '#334155']} style={styles.fabInner}>
+            <LinearGradient colors={[colors.primary, colors.primaryDark]} style={styles.fabInner}>
               {hasUnread ? <View style={styles.unreadDot} /> : null}
               <MessageCircle size={22} color="#fff" />
             </LinearGradient>

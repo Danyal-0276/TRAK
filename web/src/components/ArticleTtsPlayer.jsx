@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Volume2, Square, Loader2 } from 'lucide-react';
+import { useTheme } from '../theme/ThemeContext';
 import {
   TTS_LANGUAGES,
   requestArticleTtsPlan,
@@ -13,10 +14,13 @@ import {
 export default function ArticleTtsPlayer({
   text,
   disabled = false,
-  isDark = false,
   highlightLines = [],
   onActiveLineIndex,
 }) {
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const isDark = theme.mode === 'dark';
+
   const [language, setLanguage] = useState('english');
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
@@ -119,10 +123,10 @@ export default function ArticleTtsPlayer({
 
   if (!listenText) return null;
 
-  const border = isDark ? '#334155' : '#e5e7eb';
-  const bg = isDark ? '#1e293b' : '#f8fafc';
-  const textPrimary = isDark ? '#f1f5f9' : '#0f172a';
-  const textSecondary = isDark ? '#94a3b8' : '#64748b';
+  const border = colors.border;
+  const bg = colors.backgroundSecondary;
+  const textPrimary = colors.textPrimary;
+  const textSecondary = colors.textSecondary;
   const isActive = status === 'loading' || status === 'playing';
   const progressPct =
     progress.total > 0 ? Math.min(100, (progress.current / progress.total) * 100) : null;
@@ -165,7 +169,7 @@ export default function ArticleTtsPlayer({
                     padding: '6px 12px',
                     borderRadius: 8,
                     border: `1px solid ${active ? textPrimary : border}`,
-                    background: active ? (isDark ? 'rgba(241,245,249,0.12)' : '#f1f5f9') : 'transparent',
+                    background: active ? (isDark ? 'rgba(255,255,255,0.08)' : colors.surfaceHover) : 'transparent',
                     color: active ? textPrimary : textSecondary,
                     fontSize: 12,
                     fontWeight: 600,
@@ -192,8 +196,8 @@ export default function ArticleTtsPlayer({
               borderRadius: 8,
               border: 'none',
               flexShrink: 0,
-              background: isDark ? (isActive ? '#475569' : '#1e293b') : (isActive ? '#334155' : '#0f172a'),
-              color: '#fff',
+              background: colors.primary,
+              color: colors.textOnPrimary || '#fff',
               fontSize: 14,
               fontWeight: 600,
               cursor: disabled ? 'not-allowed' : 'pointer',
@@ -203,7 +207,7 @@ export default function ArticleTtsPlayer({
             {status === 'loading' ? (
               <Loader2 size={18} style={{ animation: 'trak-tts-spin 1s linear infinite' }} />
             ) : status === 'playing' ? (
-              <Square size={18} fill="#fff" />
+              <Square size={18} fill="currentColor" />
             ) : (
               <Volume2 size={18} />
             )}
@@ -231,7 +235,7 @@ export default function ArticleTtsPlayer({
                     width: '35%',
                     height: '100%',
                     borderRadius: 3,
-                    backgroundColor: isDark ? '#94a3b8' : '#0f172a',
+                    backgroundColor: colors.textSecondary,
                     animation: 'trak-tts-indet 1.1s ease-in-out infinite',
                   }}
                 />
@@ -241,7 +245,7 @@ export default function ArticleTtsPlayer({
                     width: `${progressPct}%`,
                     height: '100%',
                     borderRadius: 3,
-                    backgroundColor: isDark ? '#94a3b8' : '#0f172a',
+                    backgroundColor: colors.textSecondary,
                     transition: 'width 0.2s ease',
                   }}
                 />
@@ -251,7 +255,7 @@ export default function ArticleTtsPlayer({
         </div>
 
         {error ? (
-          <p style={{ margin: '8px 0 0', fontSize: 12, color: '#ef4444' }}>{error}</p>
+          <p style={{ margin: '8px 0 0', fontSize: 12, color: colors.error }}>{error}</p>
         ) : null}
       </div>
     </>

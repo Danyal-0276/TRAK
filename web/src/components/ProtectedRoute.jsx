@@ -11,7 +11,7 @@ const ProtectedRoute = ({ children, requireAdmin = false }) => {
 
     if (loading) {
         return (
-            <div style={{ minHeight: '100vh', backgroundColor: isDark ? theme.colors?.background || '#0F172A' : '#ffffff' }}>
+            <div style={{ minHeight: '100vh', backgroundColor: isDark ? theme.colors.background : '#ffffff' }}>
                 <SkeletonPageBlocks isDark={isDark} colors={theme.colors} minHeight="100vh" />
             </div>
         );

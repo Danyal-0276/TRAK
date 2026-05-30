@@ -79,11 +79,11 @@ const KeywordSelectionScreen = () => {
         });
     };
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
+    const backgroundColor = colors.background;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
+    const cardBackground = colors.surface;
 
     return (
         <div style={{
@@ -168,7 +168,7 @@ const KeywordSelectionScreen = () => {
                             }}
                             onFocus={(e) => {
                                 e.target.style.backgroundColor = cardBackground;
-                                e.target.style.borderColor = isDark ? colors.primary || '#3b82f6' : '#000000';
+                                e.target.style.borderColor = isDark ? colors.primary : '#000000';
                                 e.target.style.boxShadow = `0 0 0 3px ${isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(0, 0, 0, 0.05)'}`;
                             }}
                             onBlur={(e) => {
@@ -182,7 +182,7 @@ const KeywordSelectionScreen = () => {
                             onClick={handleKeywordSubmit}
                             style={{
                                 padding: '12px 20px',
-                                backgroundColor: isDark ? colors.primary || '#3b82f6' : '#000000',
+                                backgroundColor: isDark ? colors.primary : '#000000',
                                 color: '#ffffff',
                                 border: 'none',
                                 borderRadius: '8px',
@@ -195,10 +195,10 @@ const KeywordSelectionScreen = () => {
                                 transition: 'all 0.2s ease',
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = isDark ? '#2563eb' : '#1a1a1a';
+                                e.currentTarget.style.backgroundColor = colors.primary;
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.primary || '#3b82f6' : '#000000';
+                                e.currentTarget.style.backgroundColor = isDark ? colors.primary : '#000000';
                             }}
                         >
                             <Plus size={16} />
@@ -211,7 +211,7 @@ const KeywordSelectionScreen = () => {
                 {selectedKeywords.length > 0 && (
                     <div style={{
                         padding: '8px 14px',
-                        backgroundColor: isDark ? colors.surface || '#1E293B' : '#f3f4f6',
+                        backgroundColor: colors.backgroundSecondary,
                         borderRadius: '8px',
                         marginBottom: '16px',
                         display: 'inline-flex',
@@ -244,7 +244,7 @@ const KeywordSelectionScreen = () => {
                             padding: '40px 20px',
                             border: `2px dashed ${borderColor}`,
                             borderRadius: '10px',
-                            backgroundColor: isDark ? colors.surface || '#1E293B' : '#f9fafb',
+                            backgroundColor: colors.surfaceHover,
                         }}>
                             <span style={{
                                 fontSize: '32px',
@@ -275,7 +275,7 @@ const KeywordSelectionScreen = () => {
                                         alignItems: 'center',
                                         gap: '8px',
                                         padding: '8px 14px',
-                                        backgroundColor: isDark ? colors.surface || '#1E293B' : '#f3f4f6',
+                                        backgroundColor: colors.backgroundSecondary,
                                         borderRadius: '16px',
                                         border: `1px solid ${borderColor}`,
                                         width: 'auto',
@@ -297,7 +297,7 @@ const KeywordSelectionScreen = () => {
                                             height: '18px',
                                             borderRadius: '50%',
                                             border: 'none',
-                                            backgroundColor: isDark ? colors.border || '#475569' : '#d1d5db',
+                                            backgroundColor: isDark ? colors.border : '#d1d5db',
                                             color: textPrimary,
                                             cursor: 'pointer',
                                             display: 'flex',
@@ -311,7 +311,7 @@ const KeywordSelectionScreen = () => {
                                             e.currentTarget.style.backgroundColor = isDark ? '#64748b' : '#9ca3af';
                                         }}
                                         onMouseLeave={(e) => {
-                                            e.currentTarget.style.backgroundColor = isDark ? colors.border || '#475569' : '#d1d5db';
+                                            e.currentTarget.style.backgroundColor = isDark ? colors.border : '#d1d5db';
                                         }}
                                     >
                                         <X size={10} />
@@ -335,7 +335,7 @@ const KeywordSelectionScreen = () => {
                         style={{
                             flex: 1,
                             padding: '14px 24px',
-                            backgroundColor: isDark ? colors.primary || '#3b82f6' : '#000000',
+                            backgroundColor: isDark ? colors.primary : '#000000',
                             color: '#ffffff',
                             border: 'none',
                             borderRadius: '10px',
@@ -352,7 +352,7 @@ const KeywordSelectionScreen = () => {
                             e.currentTarget.style.backgroundColor = isDark ? '#2563eb' : '#1a1a1a';
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = isDark ? colors.primary || '#3b82f6' : '#000000';
+                            e.currentTarget.style.backgroundColor = isDark ? colors.primary : '#000000';
                         }}
                     >
                         {fromSettings ? 'Save & Back' : 'Continue to Feed'}
@@ -372,8 +372,8 @@ const KeywordSelectionScreen = () => {
                             transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
-                            e.currentTarget.style.borderColor = isDark ? colors.border || '#475569' : '#d1d5db';
+                            e.currentTarget.style.backgroundColor = colors.surfaceHover;
+                            e.currentTarget.style.borderColor = isDark ? colors.border : '#d1d5db';
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = cardBackground;

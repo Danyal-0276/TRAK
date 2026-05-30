@@ -234,7 +234,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
             {/* Enhanced gradient background */}
             <LinearGradient
                 colors={theme.mode === 'dark' 
-                    ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
+                    ? [colors.background, colors.backgroundSecondary, colors.background]
                     : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
                 }
                 start={{ x: 0, y: 0 }}

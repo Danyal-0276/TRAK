@@ -15,12 +15,12 @@ const AboutScreen = () => {
   const isDark = theme.mode === 'dark';
   const { isMobile } = useResponsive();
 
-  const backgroundColor = isDark ? colors.background || '#0F172A' : '#f8fafc';
-  const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-  const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-  const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-  const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
-  const accent = isDark ? colors.primary || '#818CF8' : '#0f172a';
+  const backgroundColor = colors.background;
+  const cardBackground = colors.surface;
+  const textPrimary = colors.textPrimary;
+  const textSecondary = colors.textSecondary;
+  const borderColor = colors.border;
+  const accent = colors.primary;
   const accentSoft = isDark ? 'rgba(129, 140, 248, 0.14)' : '#eff6ff';
 
   return (
@@ -48,7 +48,7 @@ const AboutScreen = () => {
             borderRadius: 20,
             border: `1px solid ${borderColor}`,
             background: isDark
-              ? `linear-gradient(145deg, ${colors.surface || '#1E293B'} 0%, ${colors.background || '#0F172A'} 100%)`
+              ? `linear-gradient(145deg, ${colors.surface} 0%, ${colors.background} 100%)`
               : 'linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%)',
             position: 'relative',
             overflow: 'hidden',
@@ -183,7 +183,7 @@ const AboutScreen = () => {
                   transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#94a3b8';
+                  e.currentTarget.style.borderColor = colors.primary;
                   e.currentTarget.style.boxShadow = isDark
                     ? '0 8px 24px rgba(0,0,0,0.25)'
                     : '0 8px 24px rgba(15, 23, 42, 0.06)';
@@ -261,7 +261,7 @@ const AboutScreen = () => {
             padding: 24,
             borderRadius: 16,
             border: `1px solid ${borderColor}`,
-            background: isDark ? colors.surfaceElevated || '#334155' : '#ffffff',
+            background: isDark ? colors.surfaceElevated : '#ffffff',
             textAlign: 'center',
           }}
         >

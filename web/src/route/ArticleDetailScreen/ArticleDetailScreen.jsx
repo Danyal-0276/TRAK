@@ -22,9 +22,12 @@ import { normalizeArticleForDetail, getArticleListenText } from '../../utils/art
 import { buildHighlightLinesFromContent } from '../../utils/ttsHighlight';
 import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
 import ArticleTtsPlayer from '../../components/ArticleTtsPlayer';
+import { useTheme } from '../../theme/ThemeContext';
 
 const ArticleDetailScreen = () => {
     const navigate = useNavigate();
+    const { theme } = useTheme();
+    const { colors } = theme;
     const location = useLocation();
     const { id: routeArticleId } = useParams();
 
@@ -187,7 +190,7 @@ const ArticleDetailScreen = () => {
     return (
         <div style={{
             minHeight: '100vh',
-            backgroundColor: '#ffffff',
+            backgroundColor: colors.background,
             paddingTop: '64px',
         }}>
             {/* Header */}
@@ -196,8 +199,8 @@ const ArticleDetailScreen = () => {
                 top: 0,
                 left: 0,
                 right: 0,
-                backgroundColor: '#ffffff',
-                borderBottom: '1px solid #e5e7eb',
+                backgroundColor: colors.background,
+                borderBottom: `1px solid ${colors.border}`,
                 zIndex: 1000,
                 padding: '12px 24px',
                 boxShadow: scrollY > 10 ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
@@ -225,17 +228,17 @@ const ArticleDetailScreen = () => {
                             transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f9fafb';
+                            e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = 'transparent';
                         }}
                     >
-                        <ArrowLeft size={18} color="#0f172a" />
+                        <ArrowLeft size={18} color={colors.textPrimary} />
                         <span style={{
                             fontSize: '14px',
                             fontWeight: '500',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                         }}>
                             Back
                         </span>
@@ -250,13 +253,13 @@ const ArticleDetailScreen = () => {
                             transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f9fafb';
+                            e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = 'transparent';
                         }}
                     >
-                        <MoreHorizontal size={18} color="#64748b" />
+                        <MoreHorizontal size={18} color={colors.textSecondary} />
                     </button>
                 </div>
             </header>
@@ -281,12 +284,12 @@ const ArticleDetailScreen = () => {
                         display: 'flex',
                         justifyContent: 'center',
                         alignItems: 'center',
-                        backgroundColor: '#0f172a',
+                        backgroundColor: colors.primary,
                     }}>
                         <span style={{
                             fontSize: '14px',
                             fontWeight: '700',
-                            color: '#ffffff',
+                            color: colors.textOnPrimary || '#ffffff',
                             letterSpacing: '0.5px',
                         }}>
                             {article.source?.substring(0, 2).toUpperCase() || 'N'}
@@ -301,7 +304,7 @@ const ArticleDetailScreen = () => {
                             <span style={{
                                 fontSize: '14px',
                                 fontWeight: '600',
-                                color: '#0f172a',
+                                color: colors.textPrimary,
                             }}>
                                 {article.source || 'Source'}
                             </span>
@@ -319,19 +322,19 @@ const ArticleDetailScreen = () => {
                             gap: '6px',
                             marginTop: '2px',
                         }}>
-                            <Clock size={12} color="#9ca3af" />
+                            <Clock size={12} color={colors.textTertiary} />
                             <span style={{
                                 fontSize: '12px',
-                                color: '#9ca3af',
+                                color: colors.textTertiary,
                             }}>
                                 {article.time || '2h ago'}
                             </span>
                             {article.readTime && (
                                 <>
-                                    <span style={{ color: '#9ca3af', margin: '0 4px' }}>•</span>
+                                    <span style={{ color: colors.textTertiary, margin: '0 4px' }}>•</span>
                                     <span style={{
                                         fontSize: '12px',
-                                        color: '#9ca3af',
+                                        color: colors.textTertiary,
                                     }}>
                                         {article.readTime} min read
                                     </span>
@@ -349,11 +352,11 @@ const ArticleDetailScreen = () => {
                         <span style={{
                             fontSize: '10px',
                             fontWeight: '600',
-                            color: '#6b7280',
+                            color: colors.textSecondary,
                             textTransform: 'uppercase',
                             letterSpacing: '0.5px',
                             padding: '4px 10px',
-                            backgroundColor: '#f3f4f6',
+                            backgroundColor: colors.backgroundSecondary,
                             borderRadius: '4px',
                             display: 'inline-block',
                         }}>
@@ -367,7 +370,7 @@ const ArticleDetailScreen = () => {
                     fontSize: '32px',
                     fontWeight: '700',
                     lineHeight: '1.3',
-                    color: '#0f172a',
+                    color: colors.textPrimary,
                     margin: '0 0 20px 0',
                     letterSpacing: '-0.5px',
                 }}>
@@ -385,11 +388,11 @@ const ArticleDetailScreen = () => {
                 <div style={{
                     fontSize: '17px',
                     lineHeight: '1.8',
-                    color: '#374151',
+                    color: colors.textSecondary,
                     marginBottom: '40px',
                 }}>
                     {detailLoading ? (
-                        <p style={{ color: '#6b7280' }}>Loading article…</p>
+                        <p style={{ color: colors.textTertiary }}>Loading article…</p>
                     ) : fetchError ? (
                         <div style={{
                             padding: '16px',
@@ -408,11 +411,11 @@ const ArticleDetailScreen = () => {
                             </p>
                         </div>
                     ) : showPlaceholder ? (
-                        <p style={{ color: '#6b7280' }}>No article body available.</p>
+                        <p style={{ color: colors.textTertiary }}>No article body available.</p>
                     ) : (
                         <ArticleBodyParagraphs
                             content={content}
-                            paragraphStyle={{ fontSize: '17px', lineHeight: '1.8', color: '#374151' }}
+                            paragraphStyle={{ fontSize: '17px', lineHeight: '1.8', color: colors.textSecondary }}
                             highlightLines={ttsHighlightLines}
                             activeLineIndex={activeTtsLineIndex}
                         />
@@ -422,7 +425,7 @@ const ArticleDetailScreen = () => {
                 {/* Divider */}
                 <div style={{
                     height: '1px',
-                    backgroundColor: '#e5e7eb',
+                    backgroundColor: colors.border,
                     margin: '40px 0',
                 }} />
             </article>
@@ -433,8 +436,8 @@ const ArticleDetailScreen = () => {
                 bottom: 0,
                 left: 0,
                 right: 0,
-                backgroundColor: '#ffffff',
-                borderTop: '1px solid #e5e7eb',
+                backgroundColor: colors.background,
+                borderTop: `1px solid ${colors.border}`,
                 padding: '16px 24px',
                 zIndex: 1000,
             }}>
@@ -451,7 +454,7 @@ const ArticleDetailScreen = () => {
                         alignItems: 'center',
                         gap: '8px',
                         padding: '4px',
-                        backgroundColor: '#f9fafb',
+                        backgroundColor: colors.backgroundSecondary,
                         borderRadius: '10px',
                     }}>
                         <button
@@ -463,7 +466,7 @@ const ArticleDetailScreen = () => {
                                 gap: '6px',
                                 padding: '6px 12px',
                                 border: 'none',
-                                background: reaction === 'up' ? '#ffffff' : 'transparent',
+                                background: reaction === 'up' ? colors.surface : 'transparent',
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
@@ -472,7 +475,7 @@ const ArticleDetailScreen = () => {
                             }}
                             onMouseEnter={(e) => {
                                 if (reaction !== 'up') {
-                                    e.currentTarget.style.backgroundColor = '#ffffff';
+                                    e.currentTarget.style.backgroundColor = colors.surface;
                                 }
                             }}
                             onMouseLeave={(e) => {
@@ -483,13 +486,13 @@ const ArticleDetailScreen = () => {
                         >
                             <ChevronUp 
                                 size={16} 
-                                color={reaction === 'up' ? '#3b82f6' : '#64748b'} 
+                                color={reaction === 'up' ? colors.primary : colors.textSecondary} 
                                 strokeWidth={reaction === 'up' ? 2.5 : 2}
                             />
                             <span style={{
                                 fontSize: '13px',
                                 fontWeight: '600',
-                                color: reaction === 'up' ? '#3b82f6' : '#64748b',
+                                color: reaction === 'up' ? colors.primary : colors.textSecondary,
                             }}>
                                 {likeCount}
                             </span>
@@ -498,7 +501,7 @@ const ArticleDetailScreen = () => {
                         <div style={{
                             width: '1px',
                             height: '20px',
-                            backgroundColor: '#e5e7eb',
+                            backgroundColor: colors.border,
                         }} />
 
                         <button
@@ -510,7 +513,7 @@ const ArticleDetailScreen = () => {
                                 gap: '6px',
                                 padding: '6px 12px',
                                 border: 'none',
-                                background: reaction === 'down' ? '#ffffff' : 'transparent',
+                                background: reaction === 'down' ? colors.surface : 'transparent',
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
@@ -519,7 +522,7 @@ const ArticleDetailScreen = () => {
                             }}
                             onMouseEnter={(e) => {
                                 if (reaction !== 'down') {
-                                    e.currentTarget.style.backgroundColor = '#ffffff';
+                                    e.currentTarget.style.backgroundColor = colors.surface;
                                 }
                             }}
                             onMouseLeave={(e) => {
@@ -530,13 +533,13 @@ const ArticleDetailScreen = () => {
                         >
                             <ChevronDown 
                                 size={16} 
-                                color={reaction === 'down' ? '#ef4444' : '#64748b'} 
+                                color={reaction === 'down' ? colors.error : colors.textSecondary} 
                                 strokeWidth={reaction === 'down' ? 2.5 : 2}
                             />
                             <span style={{
                                 fontSize: '13px',
                                 fontWeight: '600',
-                                color: reaction === 'down' ? '#ef4444' : '#64748b',
+                                color: reaction === 'down' ? colors.error : colors.textSecondary,
                             }}>
                                 {dislikeCount}
                             </span>
@@ -561,7 +564,7 @@ const ArticleDetailScreen = () => {
                             }}
                             onMouseEnter={(e) => {
                                 if (!isBookmarked) {
-                                    e.currentTarget.style.backgroundColor = '#f9fafb';
+                                    e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
                                 }
                             }}
                             onMouseLeave={(e) => {
@@ -572,7 +575,7 @@ const ArticleDetailScreen = () => {
                         >
                             <Bookmark 
                                 size={18} 
-                                color={isBookmarked ? '#f59e0b' : '#9ca3af'} 
+                                color={isBookmarked ? colors.warning || '#f59e0b' : colors.textTertiary} 
                                 fill={isBookmarked ? '#f59e0b' : 'none'}
                                 strokeWidth={2}
                             />
@@ -589,13 +592,13 @@ const ArticleDetailScreen = () => {
                                 transition: 'all 0.2s ease',
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#f9fafb';
+                                e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.backgroundColor = 'transparent';
                             }}
                         >
-                            <Share2 size={18} color="#9ca3af" strokeWidth={2} />
+                            <Share2 size={18} color={colors.textTertiary} strokeWidth={2} />
                         </button>
                     </div>
                 </div>

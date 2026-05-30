@@ -98,7 +98,7 @@ const Header = () => {
                     borderRadius: '10px',
                     border: 'none',
                     backgroundColor: location.pathname === '/notifications'
-                        ? (isDark ? colors.surface || '#1E293B' : '#f3f4f6')
+                        ? (isDark ? colors.surface : '#f3f4f6')
                         : 'transparent',
                     cursor: 'pointer',
                     display: 'flex',
@@ -109,7 +109,7 @@ const Header = () => {
                 }}
                 onMouseEnter={(e) => {
                     if (location.pathname !== '/notifications') {
-                        e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                        e.currentTarget.style.backgroundColor = isDark ? colors.surface : '#f9fafb';
                     }
                 }}
                 onMouseLeave={(e) => {
@@ -119,8 +119,8 @@ const Header = () => {
                 }}
             >
                 <Bell size={20} color={location.pathname === '/notifications'
-                    ? (isDark ? colors.primary || '#818CF8' : '#000000')
-                    : (isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280')} />
+                    ? (isDark ? colors.primary : '#000000')
+                    : (isDark ? colors.textSecondary : '#6b7280')} />
                 <div style={{
                     position: 'absolute',
                     top: '8px',
@@ -129,7 +129,7 @@ const Header = () => {
                     height: '8px',
                     borderRadius: '50%',
                     backgroundColor: '#ef4444',
-                    border: `2px solid ${isDark ? colors.background || '#0F172A' : '#ffffff'}`,
+                    border: `2px solid ${isDark ? colors.background : '#ffffff'}`,
                 }} />
             </button>
 
@@ -140,7 +140,7 @@ const Header = () => {
                     height: '40px',
                     borderRadius: '50%',
                     border: `2px solid ${isDark ? colors.border || '#334155' : '#e5e7eb'}`,
-                    backgroundColor: isDark ? colors.surface || '#1E293B' : '#ffffff',
+                    backgroundColor: isDark ? colors.surface : '#ffffff',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -148,13 +148,13 @@ const Header = () => {
                     transition: 'all 0.2s ease',
                 }}
                 onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#000000';
-                    e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
+                    e.currentTarget.style.borderColor = isDark ? colors.primary : '#000000';
+                    e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated : '#f9fafb';
                 }}
                 onMouseLeave={(e) => {
                     if (!showUserMenu) {
                         e.currentTarget.style.borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
-                        e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#ffffff';
+                        e.currentTarget.style.backgroundColor = isDark ? colors.surface : '#ffffff';
                     }
                 }}
             >
@@ -164,7 +164,7 @@ const Header = () => {
                     <Text variant="body" style={{
                         fontSize: '16px',
                         fontWeight: '600',
-                        color: isDark ? colors.textPrimary || '#F1F5F9' : '#000000',
+                        color: isDark ? colors.textPrimary : '#000000',
                     }}>
                         {profileInitial}
                     </Text>
@@ -179,7 +179,7 @@ const Header = () => {
             top: 0,
             left: 0,
             right: 0,
-            backgroundColor: isDark ? colors.background || '#0F172A' : '#ffffff',
+            backgroundColor: isDark ? colors.background : '#ffffff',
             borderBottom: `1px solid ${isDark ? colors.border || '#334155' : '#e5e7eb'}`,
             zIndex: 1000,
             boxShadow: isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
@@ -227,7 +227,7 @@ const Header = () => {
                         <div style={{
                             width: isMobile ? '32px' : '36px',
                             height: isMobile ? '32px' : '36px',
-                            backgroundColor: isDark ? colors.primary || '#818CF8' : '#000000',
+                            backgroundColor: isDark ? colors.primary : '#000000',
                             borderRadius: '8px',
                             display: 'flex',
                             alignItems: 'center',
@@ -246,7 +246,7 @@ const Header = () => {
                             <Text variant="title" style={{
                                 fontSize: isTablet ? '20px' : '24px',
                                 fontWeight: '800',
-                                color: isDark ? colors.textPrimary || '#F1F5F9' : '#000000',
+                                color: isDark ? colors.textPrimary : '#000000',
                                 letterSpacing: '-0.5px',
                             }}>
                                 TRAK
@@ -273,22 +273,22 @@ const Header = () => {
                                         fontSize: '15px',
                                         fontWeight: location.pathname === link.path ? 600 : 500,
                                         color: location.pathname === link.path
-                                            ? (isDark ? colors.primary || '#818CF8' : '#000000')
-                                            : (isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280'),
+                                            ? (isDark ? colors.primary : '#000000')
+                                            : (isDark ? colors.textSecondary : '#6b7280'),
                                         borderBottom: location.pathname === link.path
-                                            ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#000000'}`
+                                            ? `2px solid ${isDark ? colors.primary : '#000000'}`
                                             : '2px solid transparent',
                                         transition: 'all 0.2s ease',
                                         whiteSpace: 'nowrap',
                                     }}
                                     onMouseEnter={(e) => {
                                         if (location.pathname !== link.path) {
-                                            e.currentTarget.style.color = isDark ? colors.primary || '#818CF8' : '#000000';
+                                            e.currentTarget.style.color = isDark ? colors.primary : '#000000';
                                         }
                                     }}
                                     onMouseLeave={(e) => {
                                         if (location.pathname !== link.path) {
-                                            e.currentTarget.style.color = isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280';
+                                            e.currentTarget.style.color = isDark ? colors.textSecondary : '#6b7280';
                                         }
                                     }}
                                 >
@@ -319,21 +319,21 @@ const Header = () => {
                                     fontSize: isTablet ? '14px' : '15px',
                                     fontWeight: location.pathname === link.path ? 600 : 500,
                                     color: location.pathname === link.path
-                                        ? (isDark ? colors.primary || '#818CF8' : '#000000')
-                                        : (isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280'),
+                                        ? (isDark ? colors.primary : '#000000')
+                                        : (isDark ? colors.textSecondary : '#6b7280'),
                                     borderBottom: location.pathname === link.path
-                                        ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#000000'}`
+                                        ? `2px solid ${isDark ? colors.primary : '#000000'}`
                                         : '2px solid transparent',
                                     transition: 'all 0.2s ease',
                                 }}
                                 onMouseEnter={(e) => {
                                     if (location.pathname !== link.path) {
-                                        e.currentTarget.style.color = isDark ? colors.primary || '#818CF8' : '#000000';
+                                        e.currentTarget.style.color = isDark ? colors.primary : '#000000';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
                                     if (location.pathname !== link.path) {
-                                        e.currentTarget.style.color = isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280';
+                                        e.currentTarget.style.color = isDark ? colors.textSecondary : '#6b7280';
                                     }
                                 }}
                             >
@@ -369,23 +369,23 @@ const Header = () => {
                                 style={{
                                     width: '100%',
                                     padding: '10px 16px 10px 44px',
-                                    backgroundColor: isDark ? colors.surface || '#1E293B' : '#f9fafb',
+                                    backgroundColor: isDark ? colors.surface : '#f9fafb',
                                     border: `1px solid ${isDark ? colors.border || '#334155' : '#e5e7eb'}`,
                                     borderRadius: '10px',
                                     fontSize: '14px',
                                     outline: 'none',
                                     transition: 'all 0.2s ease',
-                                    color: isDark ? colors.textPrimary || '#F1F5F9' : '#111827',
+                                    color: isDark ? colors.textPrimary : '#111827',
                                 }}
                                 onFocus={(e) => {
                                     e.target.style.backgroundColor = isDark ? colors.backgroundElevated || '#334155' : '#ffffff';
-                                    e.target.style.borderColor = isDark ? colors.primary || '#818CF8' : '#000000';
+                                    e.target.style.borderColor = isDark ? colors.primary : '#000000';
                                     e.target.style.boxShadow = isDark
                                         ? '0 0 0 3px rgba(129, 140, 248, 0.2)'
                                         : '0 0 0 3px rgba(0, 0, 0, 0.1)';
                                 }}
                                 onBlur={(e) => {
-                                    e.target.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                                    e.target.style.backgroundColor = isDark ? colors.surface : '#f9fafb';
                                     e.target.style.borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
                                     e.target.style.boxShadow = 'none';
                                 }}
@@ -410,13 +410,13 @@ const Header = () => {
                             transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                            e.currentTarget.style.backgroundColor = isDark ? colors.surface : '#f9fafb';
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = 'transparent';
                         }}
                     >
-                        <Search size={20} color={isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280'} />
+                        <Search size={20} color={isDark ? colors.textSecondary : '#6b7280'} />
                     </button>
                 )}
 
@@ -429,7 +429,7 @@ const Header = () => {
                             borderRadius: '10px',
                             border: 'none',
                             backgroundColor: showMobileMenu
-                                ? (isDark ? colors.surface || '#1E293B' : '#f3f4f6')
+                                ? (isDark ? colors.surface : '#f3f4f6')
                                 : 'transparent',
                             cursor: 'pointer',
                             display: 'flex',
@@ -439,9 +439,9 @@ const Header = () => {
                         }}
                     >
                         {showMobileMenu ? (
-                            <X size={20} color={isDark ? colors.textPrimary || '#F1F5F9' : '#000000'} />
+                            <X size={20} color={isDark ? colors.textPrimary : '#000000'} />
                         ) : (
-                            <Menu size={20} color={isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280'} />
+                            <Menu size={20} color={isDark ? colors.textSecondary : '#6b7280'} />
                         )}
                     </button>
                 )}
@@ -455,7 +455,7 @@ const Header = () => {
                     top: '64px',
                     left: 0,
                     right: 0,
-                    backgroundColor: isDark ? colors.background || '#0F172A' : '#ffffff',
+                    backgroundColor: isDark ? colors.background : '#ffffff',
                     borderBottom: `1px solid ${isDark ? colors.border || '#334155' : '#e5e7eb'}`,
                     boxShadow: isDark ? '0 4px 6px rgba(0, 0, 0, 0.3)' : '0 4px 6px rgba(0, 0, 0, 0.1)',
                     zIndex: 999,
@@ -474,15 +474,15 @@ const Header = () => {
                                     padding: '12px 16px',
                                     border: 'none',
                                     background: location.pathname === link.path
-                                        ? (isDark ? colors.surface || '#1E293B' : '#f3f4f6')
+                                        ? (isDark ? colors.surface : '#f3f4f6')
                                         : 'transparent',
                                     borderRadius: '8px',
                                     cursor: 'pointer',
                                     fontSize: '15px',
                                     fontWeight: location.pathname === link.path ? 600 : 500,
                                     color: location.pathname === link.path
-                                        ? (isDark ? colors.primary || '#818CF8' : '#000000')
-                                        : (isDark ? colors.textSecondary || '#CBD5E1' : '#6b7280'),
+                                        ? (isDark ? colors.primary : '#000000')
+                                        : (isDark ? colors.textSecondary : '#6b7280'),
                                     textAlign: 'left',
                                     transition: 'all 0.2s ease',
                                 }}

@@ -30,14 +30,14 @@ const Input = ({ label, value, onChange, placeholder, type = 'text', style, erro
           style={{
             width: '100%',
             backgroundColor: colors.backgroundSecondary || '#f8fafc',
-            color: colors.textPrimary || '#0f172a',
-            border: `2px solid ${error ? '#ef4444' : (focused ? '#3b82f6' : '#e2e8f0')}`,
+            color: colors.textPrimary,
+            border: `2px solid ${error ? colors.error : (focused ? colors.borderFocus : colors.border)}`,
             padding: '14px 16px',
             borderRadius: '12px',
             fontSize: '15px',
             outline: 'none',
             transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            boxShadow: focused ? '0 0 0 3px rgba(59, 130, 246, 0.1)' : 'none',
+            boxShadow: focused ? `0 0 0 3px ${colors.border}55` : 'none',
             fontWeight: 400,
           }}
           {...props}

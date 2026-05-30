@@ -411,11 +411,11 @@ const SearchScreen = () => {
         }
     };
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
 
     return (
         <div style={{
@@ -486,7 +486,7 @@ const SearchScreen = () => {
                                     height: 44,
                                     borderRadius: 10,
                                     border: `1px solid ${borderColor}`,
-                                    background: isDark ? colors.surface || '#1E293B' : '#ffffff',
+                                    background: colors.surface,
                                     cursor: 'pointer',
                                     display: 'flex',
                                     alignItems: 'center',
@@ -578,10 +578,10 @@ const SearchScreen = () => {
                                 style={{
                                     padding: '10px 16px',
                                     border: 'none',
-                                    background: activeTab === tab ? '#f3f4f6' : 'transparent',
+                                    background: activeTab === tab ? colors.backgroundSecondary : 'transparent',
                                     cursor: 'pointer',
                                     transition: 'all 0.2s ease',
-                                    borderBottom: activeTab === tab ? '3px solid #0f172a' : '2px solid transparent',
+                                    borderBottom: activeTab === tab ? `3px solid ${colors.primary}` : '2px solid transparent',
                                     marginBottom: activeTab === tab ? '-2px' : '-1px',
                                     borderRadius: '0',
                                     whiteSpace: 'nowrap',
@@ -594,21 +594,21 @@ const SearchScreen = () => {
                                 }}
                                 onMouseEnter={(e) => {
                                     if (activeTab !== tab) {
-                                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                                        e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
                                     }
                                 }}
                                 onMouseLeave={(e) => {
                                     if (activeTab !== tab) {
                                         e.currentTarget.style.backgroundColor = 'transparent';
                                     } else {
-                                        e.currentTarget.style.backgroundColor = '#f9fafb';
+                                        e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
                                     }
                                 }}
                             >
                                 <span style={{
                                     fontSize: '14px',
                                     fontWeight: activeTab === tab ? '700' : '500',
-                                    color: activeTab === tab ? '#0f172a' : '#64748b',
+                                    color: activeTab === tab ? colors.textPrimary : colors.textSecondary,
                                     letterSpacing: activeTab === tab ? '-0.2px' : '0',
                                 }}>
                                     {tab}
@@ -616,8 +616,8 @@ const SearchScreen = () => {
                                 <span style={{
                                     fontSize: '11px',
                                     fontWeight: '600',
-                                    color: activeTab === tab ? '#0f172a' : '#9ca3af',
-                                    backgroundColor: activeTab === tab ? '#e5e7eb' : '#f3f4f6',
+                                    color: activeTab === tab ? colors.textPrimary : colors.textTertiary,
+                                    backgroundColor: activeTab === tab ? colors.border : colors.backgroundSecondary,
                                     padding: '3px 8px',
                                     borderRadius: '12px',
                                     minWidth: '28px',
@@ -661,8 +661,8 @@ const SearchScreen = () => {
                                 padding: '10px 20px',
                                 border: 'none',
                                 borderRadius: 8,
-                                background: '#0f172a',
-                                color: '#fff',
+                                background: colors.primary,
+                                color: colors.textOnPrimary || '#fff',
                                 fontSize: 14,
                                 fontWeight: 600,
                                 cursor: 'pointer',
@@ -683,14 +683,14 @@ const SearchScreen = () => {
                         <h3 style={{
                             fontSize: '18px',
                             fontWeight: '600',
-                            color: '#0f172a',
+                            color: colors.textPrimary,
                             margin: '0 0 8px 0',
                         }}>
                             No articles found
                         </h3>
                         <p style={{
                             fontSize: '14px',
-                            color: '#64748b',
+                            color: colors.textSecondary,
                             margin: '0 0 24px 0',
                             textAlign: 'center',
                         }}>
@@ -727,14 +727,14 @@ const SearchScreen = () => {
                                             <span style={{
                                                 fontSize: '12px',
                                                 fontWeight: '600',
-                                                color: '#0f172a',
+                                                color: colors.textPrimary,
                                             }}>
                                                 Search:
                                             </span>
                                             <span style={{
                                                 fontSize: '13px',
                                                 fontWeight: '700',
-                                                color: '#0f172a',
+                                                color: colors.textPrimary,
                                                 padding: '4px 10px',
                                                 backgroundColor: '#ffffff',
                                                 borderRadius: '6px',
@@ -757,14 +757,14 @@ const SearchScreen = () => {
                                             <span style={{
                                                 fontSize: '12px',
                                                 fontWeight: '600',
-                                                color: '#0f172a',
+                                                color: colors.textPrimary,
                                             }}>
                                                 Category:
                                             </span>
                                             <span style={{
                                                 fontSize: '13px',
                                                 fontWeight: '700',
-                                                color: '#0f172a',
+                                                color: colors.textPrimary,
                                                 padding: '4px 10px',
                                                 backgroundColor: '#ffffff',
                                                 borderRadius: '6px',
@@ -786,11 +786,11 @@ const SearchScreen = () => {
                                     cursor: 'pointer',
                                     fontSize: '14px',
                                     fontWeight: '600',
-                                    color: '#0f172a',
+                                    color: colors.textPrimary,
                                     transition: 'all 0.2s ease',
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = '#0f172a';
+                                    e.currentTarget.style.borderColor = colors.primary;
                                     e.currentTarget.style.backgroundColor = '#f9fafb';
                                 }}
                                 onMouseLeave={(e) => {

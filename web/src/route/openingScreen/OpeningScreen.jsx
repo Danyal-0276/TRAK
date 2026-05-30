@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme } from '../../theme/ThemeContext';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import Text from '../../components/ui/Text';
 import { useAuth } from '../../context/AuthContext';
 
 const OpeningScreen = () => {
+    const { theme } = useTheme();
+    const { colors } = theme;
     const navigate = useNavigate();
     const { user, loading, isAdmin } = useAuth();
 
@@ -152,7 +155,7 @@ const OpeningScreen = () => {
             <div style={{
                 borderTopLeftRadius: '40px',
                 borderTopRightRadius: '40px',
-                backgroundColor: '#ffffff',
+                backgroundColor: colors.background,
                 padding: '60px',
                 paddingBottom: '80px',
                 position: 'relative',
@@ -233,7 +236,7 @@ const OpeningScreen = () => {
                             style={{
                                 width: '100%',
                                 padding: '18px 32px',
-                                backgroundColor: '#ffffff',
+                                backgroundColor: colors.background,
                                 color: '#000000',
                                 border: '2px solid #000000',
                                 borderRadius: '12px',
@@ -247,7 +250,7 @@ const OpeningScreen = () => {
                                 e.currentTarget.style.transform = 'translateY(-2px)';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = '#ffffff';
+                                e.currentTarget.style.backgroundColor = colors.surface;
                                 e.currentTarget.style.transform = 'translateY(0)';
                             }}
                         >

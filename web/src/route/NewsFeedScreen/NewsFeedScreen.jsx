@@ -326,10 +326,10 @@ const NewsFeedScreen = () => {
         }
     };
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const backgroundColor = colors.background;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
 
     const visibleNews = useMemo(() => {
         if (activeTab === 'Bookmarks') {
@@ -409,7 +409,7 @@ const NewsFeedScreen = () => {
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
                                 borderBottom: activeTab === tab
-                                    ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`
+                                    ? `2px solid ${colors.primary}`
                                     : '2px solid transparent',
                                 marginBottom: '-1px',
                                 borderRadius: '0',
@@ -421,7 +421,7 @@ const NewsFeedScreen = () => {
                                 fontSize: '14px',
                                 fontWeight: activeTab === tab ? '600' : '500',
                                 color: activeTab === tab
-                                    ? (isDark ? colors.primary || '#818CF8' : '#0f172a')
+                                    ? (colors.primary)
                                     : textSecondary,
                             }}>
                                 {tab}
@@ -459,7 +459,7 @@ const NewsFeedScreen = () => {
                                     onClick={() => loadNews({ force: true })}
                                     style={{
                                         padding: '12px 20px',
-                                        backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',
+                                        backgroundColor: colors.primary,
                                         color: '#ffffff',
                                         border: 'none',
                                         borderRadius: '8px',
@@ -484,7 +484,7 @@ const NewsFeedScreen = () => {
                                     onClick={() => navigate('/tag-selection', { state: { fromSettings: true } })}
                                     style={{
                                         padding: '12px 20px',
-                                        backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',
+                                        backgroundColor: colors.primary,
                                         color: '#ffffff',
                                         border: 'none',
                                         borderRadius: '8px',
