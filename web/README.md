@@ -9,12 +9,13 @@ npm run dev
 
 ## API configuration
 
-[src/config/api.js](src/config/api.js) uses `import.meta.env.VITE_API_URL` when set; otherwise `http://127.0.0.1:8000`.
+[src/config/api.js](src/config/api.js) uses `VITE_API_URL` from `.env` when set; otherwise the Render API (`https://trak-backend-upip.onrender.com`). Production builds use [`.env.production`](.env.production).
 
-Create `.env` in this folder:
+Create `.env` in this folder (see [`.env.example`](.env.example)):
 
 ```env
-VITE_API_URL=http://127.0.0.1:8000
+VITE_API_URL=https://trak-backend-upip.onrender.com
+# Local Django: VITE_API_URL=http://127.0.0.1:8000
 # Production: omit or set false — mock feed is disabled when not in dev unless you set:
 # VITE_ALLOW_MOCK_FEED=true
 ```
