@@ -1,9 +1,15 @@
 import React from 'react';
+import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import { useNavigate, Link } from 'react-router-dom';
 import { CheckCircle, ArrowRight } from 'lucide-react';
 import Text from '../../components/ui/Text';
 
 const PasswordChangedScreen = () => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
     const navigate = useNavigate();
 
     return (
@@ -12,7 +18,7 @@ const PasswordChangedScreen = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            backgroundColor: '#ffffff',
+            backgroundColor: colors.background,
             padding: '24px',
         }}>
             <div style={{
@@ -52,7 +58,7 @@ const PasswordChangedScreen = () => {
                 <h1 style={{
                     fontSize: '30px',
                     fontWeight: '600',
-                    color: '#0f172a',
+                    color: colors.textPrimary,
                     margin: '0 0 12px 0',
                     letterSpacing: '-0.5px',
                     lineHeight: '1.2',
@@ -61,7 +67,7 @@ const PasswordChangedScreen = () => {
                 </h1>
                 <p style={{
                     fontSize: '15px',
-                    color: '#64748b',
+                    color: colors.textSecondary,
                     margin: '0 0 40px 0',
                     lineHeight: '1.5',
                 }}>
@@ -73,8 +79,8 @@ const PasswordChangedScreen = () => {
                     style={{
                         width: '100%',
                         padding: '12px 20px',
-                        backgroundColor: '#0f172a',
-                        color: '#ffffff',
+                        backgroundColor: action.background,
+                        color: action.foreground,
                         border: 'none',
                         borderRadius: '6px',
                         fontSize: '15px',
@@ -88,10 +94,10 @@ const PasswordChangedScreen = () => {
                         fontFamily: 'inherit',
                     }}
                     onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = '#1e293b';
+                        e.currentTarget.style.backgroundColor = colors.primaryDark;
                     }}
                     onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = '#0f172a';
+                        e.currentTarget.style.backgroundColor = colors.primary;
                     }}
                 >
                     Back to login

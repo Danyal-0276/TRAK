@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { Volume2, Square } from 'lucide-react-native';
+import { Volume2, Square, ChevronDown, ChevronUp } from 'lucide-react-native';
 import Text from './ui/Text';
+import { useTheme } from '../theme/ThemeContext';
 import {
   TTS_LANGUAGES,
   requestArticleTtsPlan,
@@ -19,11 +20,15 @@ export default function ArticleTtsPlayer({
   disabled = false,
   highlightLines = [],
   onActiveLineIndex,
+  defaultCollapsed = true,
 }) {
+  const { theme } = useTheme();
+  const isDark = theme.mode === 'dark';
   const [language, setLanguage] = useState('english');
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
   const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const [expanded, setExpanded] = useState(!defaultCollapsed);
   const playbackRef = useRef(null);
   const cancelledRef = useRef(false);
   const audioStartedRef = useRef(false);
@@ -32,11 +37,18 @@ export default function ArticleTtsPlayer({
   statusRef.current = status;
 
   const listenText = String(text || '').trim();
-  const primary = colors?.primary || '#3b82f6';
-  const border = colors?.border || '#e5e7eb';
-  const bg = colors?.surfaceElevated || colors?.backgroundSecondary || '#f8fafc';
-  const textPrimary = colors?.textPrimary || '#0f172a';
-  const textSecondary = colors?.textSecondary || '#64748b';
+  const palette = colors || theme.colors;
+  const border = palette.border || '#e5e7eb';
+  const bg = palette.surfaceElevated || palette.backgroundSecondary || '#f8fafc';
+  const textPrimary = palette.textPrimary || '#0f172a';
+  const textSecondary = palette.textSecondary || '#64748b';
+  const isActive = status === 'loading' || status === 'playing';
+  const btnBg = isActive ? palette.textTertiary || '#737373' : isDark ? palette.textPrimary : palette.primary;
+  const btnFg = isDark ? palette.background || '#0a0a0a' : palette.textOnPrimary || '#ffffff';
+
+  useEffect(() => {
+    if (isActive) setExpanded(true);
+  }, [isActive]);
 
   const clearLineHighlights = useCallback(() => {
     cancelLineHighlightRef.current?.();
@@ -104,7 +116,6 @@ export default function ArticleTtsPlayer({
       });
 
       playbackRef.current = session;
-
       await session.promise;
 
       if (cancelledRef.current) return;
@@ -144,82 +155,123 @@ export default function ArticleTtsPlayer({
 
   if (!listenText) return null;
 
-  const isActive = status === 'loading' || status === 'playing';
   const progressPct =
     progress.total > 0 ? Math.min(100, (progress.current / progress.total) * 100) : null;
 
+  const playButton = (compact = false) => (
+    <TouchableOpacity
+      style={[
+        compact ? styles.playBtnCompact : styles.playBtn,
+        { backgroundColor: btnBg },
+      ]}
+      onPress={handlePlay}
+      disabled={disabled}
+      activeOpacity={0.85}
+      accessibilityLabel={isActive ? 'Stop listening' : 'Play article audio'}
+    >
+      {status === 'loading' ? (
+        <ActivityIndicator color={btnFg} size="small" />
+      ) : status === 'playing' ? (
+        <Square size={16} color={btnFg} fill={btnFg} />
+      ) : (
+        <Volume2 size={16} color={btnFg} />
+      )}
+      {!compact ? (
+        <Text style={[styles.playLabel, { color: btnFg }]}>{isActive ? 'Stop' : 'Play'}</Text>
+      ) : null}
+    </TouchableOpacity>
+  );
+
   return (
     <View style={[styles.wrap, { borderColor: border, backgroundColor: bg }]}>
-      <Text variant="caption" color={textPrimary} style={styles.heading}>
-        Listen to article
-      </Text>
-
-      <View style={styles.langRow}>
-        {TTS_LANGUAGES.map((lang) => {
-          const active = language === lang.id;
-          return (
-            <TouchableOpacity
-              key={lang.id}
-              disabled={isActive || disabled}
-              onPress={() => {
-                if (language !== lang.id) {
-                  stopPlayback();
-                  setLanguage(lang.id);
-                }
-              }}
-              style={[
-                styles.langChip,
-                {
-                  borderColor: active ? primary : border,
-                  backgroundColor: active ? `${primary}18` : 'transparent',
-                },
-              ]}
-            >
-              <Text
-                variant="caption"
-                style={{ color: active ? primary : textSecondary, fontWeight: '700', fontSize: 12 }}
-              >
-                {lang.label}
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
-      </View>
-
-      <View style={styles.playRow}>
+      <View style={styles.summaryRow}>
         <TouchableOpacity
-          style={[styles.playBtn, { backgroundColor: isActive ? '#64748b' : primary }]}
-          onPress={handlePlay}
-          disabled={disabled}
-          activeOpacity={0.85}
+          style={styles.summaryTap}
+          onPress={() => setExpanded((v) => !v)}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
         >
-          {status === 'loading' ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : status === 'playing' ? (
-            <Square size={18} color="#fff" fill="#fff" />
-          ) : (
-            <Volume2 size={18} color="#fff" />
-          )}
-          <Text style={styles.playLabel}>{isActive ? 'Stop' : 'Play'}</Text>
+          <Volume2 size={18} color={textSecondary} />
+          <Text variant="caption" color={textPrimary} style={styles.summaryLabel}>
+            Listen to article
+          </Text>
         </TouchableOpacity>
-
-        {isActive ? (
-          <View style={[styles.progressTrack, { backgroundColor: border }]}>
-            {progressPct == null ? (
-              <View style={[styles.progressIndeterminate, { backgroundColor: primary }]} />
+        <View style={styles.summaryActions}>
+          {!expanded ? playButton(true) : null}
+          <TouchableOpacity
+            onPress={() => setExpanded((v) => !v)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel={expanded ? 'Collapse listen options' : 'Expand listen options'}
+          >
+            {expanded ? (
+              <ChevronUp size={18} color={textSecondary} />
             ) : (
-              <View
-                style={[
-                  styles.progressFill,
-                  { backgroundColor: primary, width: `${progressPct}%` },
-                ]}
-              />
+              <ChevronDown size={18} color={textSecondary} />
             )}
-          </View>
-        ) : null}
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {error ? (
+      {expanded ? (
+        <View style={styles.expandedBody}>
+          <View style={styles.langRow}>
+            {TTS_LANGUAGES.map((lang) => {
+              const active = language === lang.id;
+              return (
+                <TouchableOpacity
+                  key={lang.id}
+                  disabled={isActive || disabled}
+                  onPress={() => {
+                    if (language !== lang.id) {
+                      stopPlayback();
+                      setLanguage(lang.id);
+                    }
+                  }}
+                  style={[
+                    styles.langChip,
+                    {
+                      borderColor: active ? textPrimary : border,
+                      backgroundColor: active ? `${textPrimary}18` : 'transparent',
+                    },
+                  ]}
+                >
+                  <Text
+                    variant="caption"
+                    style={{ color: active ? textPrimary : textSecondary, fontWeight: '700', fontSize: 12 }}
+                  >
+                    {lang.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <View style={styles.playRow}>
+            {playButton(false)}
+            {isActive ? (
+              <View style={[styles.progressTrack, { backgroundColor: border }]}>
+                {progressPct == null ? (
+                  <View style={[styles.progressIndeterminate, { backgroundColor: textSecondary }]} />
+                ) : (
+                  <View
+                    style={[
+                      styles.progressFill,
+                      { backgroundColor: textSecondary, width: `${progressPct}%` },
+                    ]}
+                  />
+                )}
+              </View>
+            ) : null}
+          </View>
+
+          {error ? (
+            <Text variant="caption" style={{ color: colors?.error || '#ef4444', marginTop: 8 }}>
+              {error}
+            </Text>
+          ) : null}
+        </View>
+      ) : error && isActive ? (
         <Text variant="caption" style={{ color: colors?.error || '#ef4444', marginTop: 8 }}>
           {error}
         </Text>
@@ -230,13 +282,40 @@ export default function ArticleTtsPlayer({
 
 const styles = StyleSheet.create({
   wrap: {
-    marginBottom: 20,
-    padding: 14,
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 10,
     borderWidth: 1,
   },
-  heading: { fontWeight: '700', fontSize: 13, marginBottom: 10 },
-  langRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  summaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 36,
+  },
+  summaryTap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  summaryLabel: {
+    flex: 1,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  summaryActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  expandedBody: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(128,128,128,0.25)',
+  },
+  langRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
   langChip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
@@ -253,12 +332,20 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexShrink: 0,
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 8,
   },
-  playLabel: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  playBtnCompact: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  playLabel: { fontWeight: '700', fontSize: 13 },
   progressTrack: {
     flex: 1,
     height: 6,

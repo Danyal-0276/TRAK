@@ -120,7 +120,7 @@ const NotificationsScreen = () => {
     const getNotificationIcon = (type) => {
         switch (type) {
             case 'mention':
-                return <MessageCircle size={20} color="#3b82f6" />;
+                return <MessageCircle size={20} color={colors.primary} />;
             case 'like':
                 return <Heart size={20} color="#ef4444" />;
             case 'comment':
@@ -131,7 +131,7 @@ const NotificationsScreen = () => {
             case 'keyword_match':
                 return <Hash size={20} color="#f59e0b" />;
             case 'welcome_back':
-                return <Bell size={20} color="#3b82f6" />;
+                return <Bell size={20} color={colors.primary} />;
             default:
                 return <Bell size={20} color="#64748b" />;
         }
@@ -140,7 +140,7 @@ const NotificationsScreen = () => {
     const getNotificationColor = (type) => {
         switch (type) {
             case 'mention':
-                return '#3b82f6';
+                return colors.primary;
             case 'like':
                 return '#ef4444';
             case 'comment':
@@ -157,11 +157,11 @@ const NotificationsScreen = () => {
     const unreadCount = notifications.filter(n => !n.read).length;
     const importantCount = notifications.filter(n => n.important).length;
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
 
     return (
         <div style={{
@@ -223,8 +223,8 @@ const NotificationsScreen = () => {
                                 gap: '8px',
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
-                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
+                                e.currentTarget.style.borderColor = colors.primary;
+                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated : '#f9fafb';
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.borderColor = borderColor;
@@ -268,12 +268,12 @@ const NotificationsScreen = () => {
                                 padding: '10px 16px',
                                 border: 'none',
                                 background: activeTab === tab.id 
-                                    ? (isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6')
+                                    ? (isDark ? colors.surfaceElevated : '#f3f4f6')
                                     : 'transparent',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
                                 borderBottom: activeTab === tab.id 
-                                    ? `3px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`
+                                    ? `3px solid ${colors.primary}`
                                     : '2px solid transparent',
                                 marginBottom: activeTab === tab.id ? '-2px' : '-1px',
                                 borderRadius: '0',
@@ -284,7 +284,7 @@ const NotificationsScreen = () => {
                             }}
                             onMouseEnter={(e) => {
                                 if (activeTab !== tab.id) {
-                                    e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                                    e.currentTarget.style.backgroundColor = colors.surfaceHover;
                                 }
                             }}
                             onMouseLeave={(e) => {
@@ -297,7 +297,7 @@ const NotificationsScreen = () => {
                                 fontSize: '14px',
                                 fontWeight: activeTab === tab.id ? '700' : '500',
                                 color: activeTab === tab.id 
-                                    ? (isDark ? colors.primary || '#818CF8' : '#0f172a')
+                                    ? (colors.primary)
                                     : textSecondary,
                             }}>
                                 {tab.label}
@@ -306,11 +306,11 @@ const NotificationsScreen = () => {
                                 fontSize: '11px',
                                 fontWeight: '600',
                                 color: activeTab === tab.id 
-                                    ? (isDark ? colors.primary || '#818CF8' : '#0f172a')
+                                    ? (colors.primary)
                                     : textSecondary,
                                 backgroundColor: activeTab === tab.id 
                                     ? (isDark ? colors.primary + '20' || 'rgba(129, 140, 248, 0.2)' : '#e5e7eb')
-                                    : (isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6'),
+                                    : (isDark ? colors.surfaceElevated : '#f3f4f6'),
                                 padding: '3px 8px',
                                 borderRadius: '12px',
                                 minWidth: '28px',
@@ -348,7 +348,7 @@ const NotificationsScreen = () => {
                                     transition: 'all 0.2s ease',
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                                    e.currentTarget.style.backgroundColor = colors.surfaceHover;
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.backgroundColor = 'transparent';
@@ -444,7 +444,7 @@ const NotificationsScreen = () => {
                                     textTransform: 'uppercase',
                                     letterSpacing: '0.5px',
                                     padding: '4px 10px',
-                                    backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6',
+                                    backgroundColor: isDark ? colors.surfaceElevated : '#f3f4f6',
                                     borderRadius: '4px',
                                     display: 'inline-block',
                                 }}>
@@ -456,9 +456,9 @@ const NotificationsScreen = () => {
                         <div style={{
                             fontSize: '15px',
                             lineHeight: '1.7',
-                            color: isDark ? colors.textSecondary || '#CBD5E1' : '#374151',
+                            color: isDark ? colors.textSecondary : '#374151',
                             padding: '16px',
-                            backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f9fafb',
+                            backgroundColor: isDark ? colors.surfaceElevated : '#f9fafb',
                             borderRadius: '8px',
                             border: `1px solid ${borderColor}`,
                         }}>
@@ -516,7 +516,7 @@ const NotificationsScreen = () => {
                                     borderRadius: '8px',
                                     backgroundColor: notification.read 
                                         ? cardBackground 
-                                        : (isDark ? colors.surfaceElevated || '#334155' : '#f9fafb'),
+                                        : (isDark ? colors.surfaceElevated : '#f9fafb'),
                                     cursor: 'pointer',
                                     transition: 'all 0.2s ease',
                                     position: 'relative',
@@ -525,13 +525,13 @@ const NotificationsScreen = () => {
                                         : `4px solid ${getNotificationColor(notification.type)}`,
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
-                                    e.currentTarget.style.borderColor = isDark ? colors.borderLight || '#475569' : '#d1d5db';
+                                    e.currentTarget.style.backgroundColor = colors.surfaceHover;
+                                    e.currentTarget.style.borderColor = isDark ? colors.borderLight : '#d1d5db';
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.backgroundColor = notification.read 
                                         ? cardBackground 
-                                        : (isDark ? colors.surfaceElevated || '#334155' : '#f9fafb');
+                                        : (isDark ? colors.surfaceElevated : '#f9fafb');
                                     e.currentTarget.style.borderColor = borderColor;
                                 }}
                             >
@@ -587,7 +587,7 @@ const NotificationsScreen = () => {
                                                     fontWeight: '600',
                                                     color: textSecondary,
                                                     padding: '2px 8px',
-                                                    backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6',
+                                                    backgroundColor: isDark ? colors.surfaceElevated : '#f3f4f6',
                                                     borderRadius: '4px',
                                                 }}>
                                                     #{notification.keyword}

@@ -43,20 +43,14 @@ export const ThemeProvider = ({ initialMode = 'light', children }) => {
   });
 
   // Save theme to localStorage whenever it changes
+  const palette = mode === 'dark' ? darkColors : lightColors;
+
   useEffect(() => {
     localStorage.setItem('theme', mode);
-    // Apply theme class to document body for global styling
     document.documentElement.setAttribute('data-theme', mode);
-    if (mode === 'dark') {
-      document.body.style.backgroundColor = '#0F172A';
-      document.body.style.color = '#F1F5F9';
-    } else {
-      document.body.style.backgroundColor = '#FFFFFF';
-      document.body.style.color = '#0F172A';
-    }
-  }, [mode]);
-
-  const palette = mode === 'dark' ? darkColors : lightColors;
+    document.body.style.backgroundColor = palette.background;
+    document.body.style.color = palette.textPrimary;
+  }, [mode, palette.background, palette.textPrimary]);
 
   const theme = useMemo(() => ({
     mode,

@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Settings as SettingsIcon, Plus, Trash2, X } from 'lucide-react-native';
-import { useTheme } from '../../../theme/ThemeContext';
+import { useAdminTheme } from '../useAdminTheme';
 import ToggleSwitch from '../components/ToggleSwitch';
 import SettingRow from '../components/SettingRow';
 import Text from '../../../components/ui/Text';
@@ -41,42 +41,41 @@ const SettingsTab = ({
   onDeleteAllConnections,
   onLogout,
 }) => {
-  const { theme } = useTheme();
+  const { palette } = useAdminTheme();
   const { confirm } = useFeedback();
-  const { colors } = theme;
 
   const listColors = {
-    textPrimary: colors.textPrimary,
-    textSecondary: colors.textSecondary,
-    border: colors.border,
-    panelBg: colors.backgroundSecondary,
-    error: colors.error,
-    surface: colors.surface,
+    textPrimary: palette.textPrimary,
+    textSecondary: palette.textSecondary,
+    border: palette.border,
+    panelBg: palette.inputBg,
+    error: palette.error,
+    surface: palette.card,
   };
 
   const pickerColors = {
     ...listColors,
-    inputBg: colors.backgroundSecondary,
-    card: colors.surface,
-    primary: colors.primary,
-    textTertiary: colors.textTertiary,
+    inputBg: palette.inputBg,
+    card: palette.card,
+    primary: palette.primary,
+    textTertiary: palette.textTertiary,
   };
 
   return (
     <View style={styles.managementSection}>
       <View style={styles.managementHeader}>
         <View style={styles.headerLeft}>
-          <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-            <SettingsIcon size={20} color={colors.primary} />
+          <View style={[styles.iconContainer, { backgroundColor: `${palette.primary}15` }]}>
+            <SettingsIcon size={20} color={palette.primary} />
           </View>
-          <Text variant="title" color={colors.textPrimary} style={styles.sectionTitle}>
+          <Text variant="title" color={palette.textPrimary} style={styles.sectionTitle}>
             Settings
           </Text>
         </View>
       </View>
 
-      <View style={[styles.settingsSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Text variant="subtitle" color={colors.textPrimary} style={styles.settingsSectionTitle}>
+      <View style={[styles.settingsSection, { backgroundColor: palette.card, borderColor: palette.border }]}>
+        <Text variant="subtitle" color={palette.textPrimary} style={styles.settingsSectionTitle}>
           Notification Setting
         </Text>
         <SettingRow label="Push Notification">
@@ -99,13 +98,13 @@ const SettingsTab = ({
         </SettingRow>
       </View>
 
-      <View style={[styles.settingsSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-        <Text variant="subtitle" color={colors.textPrimary} style={styles.settingsSectionTitle}>
+      <View style={[styles.settingsSection, { backgroundColor: palette.card, borderColor: palette.border }]}>
+        <Text variant="subtitle" color={palette.textPrimary} style={styles.settingsSectionTitle}>
           Language & Region
         </Text>
         <SettingRow label="Language">
           <TouchableOpacity
-            style={[styles.settingValueButton, { backgroundColor: colors.primary }]}
+            style={[styles.settingValueButton, { backgroundColor: palette.primary }]}
             onPress={() => {
               Alert.alert('Language', 'Select language', [
                 ...LANGUAGE_OPTIONS.map((lang) => ({
@@ -117,14 +116,14 @@ const SettingsTab = ({
             }}
             activeOpacity={0.85}
           >
-            <Text variant="caption" color={colors.surface} style={styles.settingValueText}>
+            <Text variant="caption" color="#ffffff" style={styles.settingValueText}>
               {settings.language || 'English'}
             </Text>
           </TouchableOpacity>
         </SettingRow>
         <SettingRow label="Timezone">
           <TouchableOpacity
-            style={[styles.settingValueButton, { backgroundColor: colors.primary }]}
+            style={[styles.settingValueButton, { backgroundColor: palette.primary }]}
             onPress={() => {
               Alert.alert('Timezone', 'Select timezone', [
                 ...TIMEZONE_OPTIONS.map((tz) => ({
@@ -136,27 +135,27 @@ const SettingsTab = ({
             }}
             activeOpacity={0.85}
           >
-            <Text variant="caption" color={colors.surface} style={styles.settingValueText}>
+            <Text variant="caption" color="#ffffff" style={styles.settingValueText}>
               {settings.timezone || 'UTC'}
             </Text>
           </TouchableOpacity>
         </SettingRow>
       </View>
 
-      <View style={[styles.settingsSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={[styles.settingsSection, { backgroundColor: palette.card, borderColor: palette.border }]}>
         <View style={styles.settingsSectionHeader}>
-          <Text variant="subtitle" color={colors.textPrimary} style={[styles.settingsSectionTitle, { marginBottom: 0 }]}>
+          <Text variant="subtitle" color={palette.textPrimary} style={[styles.settingsSectionTitle, { marginBottom: 0 }]}>
             Manage Category
           </Text>
           <TouchableOpacity
             style={[
               styles.listButton,
-              { backgroundColor: listPanel === 'category' ? colors.textSecondary : colors.primary },
+              { backgroundColor: listPanel === 'category' ? palette.textSecondary : palette.primary },
             ]}
             onPress={() => onToggleListPanel('category')}
             activeOpacity={0.8}
           >
-            <Text variant="caption" color={colors.surface} style={styles.listButtonText}>
+            <Text variant="caption" color="#ffffff" style={styles.listButtonText}>
               {listPanel === 'category' ? 'Hide list' : 'List'}
             </Text>
           </TouchableOpacity>
@@ -178,30 +177,30 @@ const SettingsTab = ({
             style={[
               styles.settingInput,
               {
-                backgroundColor: colors.backgroundSecondary,
-                borderColor: colors.border,
-                color: colors.textPrimary,
+                backgroundColor: palette.inputBg,
+                borderColor: palette.border,
+                color: palette.textPrimary,
               },
             ]}
             placeholder="Enter Category"
             value={categoryInput}
             onChangeText={setCategoryInput}
-            placeholderTextColor={colors.textTertiary}
-            cursorColor={colors.primary}
+            placeholderTextColor={palette.textTertiary}
+            cursorColor={palette.primary}
             onSubmitEditing={onAddCategory}
           />
           <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.primary }]}
+            style={[styles.addBtn, { backgroundColor: palette.primary }]}
             onPress={onAddCategory}
             activeOpacity={0.8}
           >
-            <Plus size={18} color={colors.surface} />
+            <Plus size={18} color="#ffffff" />
           </TouchableOpacity>
         </View>
 
         {categories.length > 0 ? (
           <>
-            <Text variant="caption" color={colors.textSecondary} style={styles.fieldLabel}>
+            <Text variant="caption" color={palette.textSecondary} style={styles.fieldLabel}>
               Select category
             </Text>
             <AdminCategoryPicker
@@ -215,23 +214,23 @@ const SettingsTab = ({
               <View
                 style={[
                   styles.subcategoryCard,
-                  { borderColor: colors.border, backgroundColor: colors.backgroundSecondary },
+                  { borderColor: palette.border, backgroundColor: palette.inputBg },
                 ]}
               >
                 <View style={styles.subcategoryHeader}>
-                  <Text variant="body" color={colors.textPrimary} style={{ fontWeight: '700', flex: 1 }}>
+                  <Text variant="body" color={palette.textPrimary} style={{ fontWeight: '700', flex: 1 }}>
                     {selectedCategory.name}
                   </Text>
                   <TouchableOpacity
-                    style={[styles.removeBtn, { backgroundColor: `${colors.error}15` }]}
+                    style={[styles.removeBtn, { backgroundColor: `${palette.error}15` }]}
                     onPress={() => onRemoveCategory(selectedCategory.slug)}
                     activeOpacity={0.8}
                   >
-                    <Trash2 size={18} color={colors.error} />
+                    <Trash2 size={18} color={palette.error} />
                   </TouchableOpacity>
                 </View>
 
-                <Text variant="caption" color={colors.textSecondary} style={{ marginBottom: 8 }}>
+                <Text variant="caption" color={palette.textSecondary} style={{ marginBottom: 8 }}>
                   Subcategories
                 </Text>
                 <View style={styles.chipWrap}>
@@ -239,21 +238,21 @@ const SettingsTab = ({
                     selectedCategory.subcategories.map((sub) => (
                       <View
                         key={sub.id || sub.slug}
-                        style={[styles.chip, { borderColor: colors.border, backgroundColor: colors.surface }]}
+                        style={[styles.chip, { borderColor: palette.border, backgroundColor: palette.card }]}
                       >
-                        <Text variant="caption" color={colors.textPrimary}>
+                        <Text variant="caption" color={palette.textPrimary}>
                           {sub.name}
                         </Text>
                         <TouchableOpacity
                           onPress={() => onRemoveSubcategory(selectedCategory.slug, sub.slug)}
                           hitSlop={6}
                         >
-                          <X size={14} color={colors.textSecondary} />
+                          <X size={14} color={palette.textSecondary} />
                         </TouchableOpacity>
                       </View>
                     ))
                   ) : (
-                    <Text variant="caption" color={colors.textSecondary}>
+                    <Text variant="caption" color={palette.textSecondary}>
                       No subcategories yet.
                     </Text>
                   )}
@@ -264,9 +263,9 @@ const SettingsTab = ({
                     style={[
                       styles.settingInput,
                       {
-                        backgroundColor: colors.surface,
-                        borderColor: colors.border,
-                        color: colors.textPrimary,
+                        backgroundColor: palette.card,
+                        borderColor: palette.border,
+                        color: palette.textPrimary,
                         fontSize: 14,
                       },
                     ]}
@@ -275,47 +274,47 @@ const SettingsTab = ({
                     onChangeText={(text) =>
                       setSubInputs((prev) => ({ ...prev, [selectedCategory.slug]: text }))
                     }
-                    placeholderTextColor={colors.textTertiary}
-                    cursorColor={colors.primary}
+                    placeholderTextColor={palette.textTertiary}
+                    cursorColor={palette.primary}
                     onSubmitEditing={() => onAddSubcategory(selectedCategory.slug)}
                   />
                   <TouchableOpacity
-                    style={[styles.addBtn, { backgroundColor: colors.primary, width: 44, height: 44, borderRadius: 12 }]}
+                    style={[styles.addBtn, { backgroundColor: palette.primary, width: 44, height: 44, borderRadius: 12 }]}
                     onPress={() => onAddSubcategory(selectedCategory.slug)}
                     activeOpacity={0.8}
                   >
-                    <Plus size={16} color={colors.surface} />
+                    <Plus size={16} color="#ffffff" />
                   </TouchableOpacity>
                 </View>
               </View>
             ) : null}
           </>
         ) : (
-          <Text variant="body" color={colors.textSecondary} style={{ marginTop: 4 }}>
+          <Text variant="body" color={palette.textSecondary} style={{ marginTop: 4 }}>
             No categories yet. Add one above.
           </Text>
         )}
       </View>
 
-      <View style={[styles.settingsSection, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+      <View style={[styles.settingsSection, { backgroundColor: palette.card, borderColor: palette.border }]}>
         <View style={styles.settingsSectionHeader}>
           <View style={{ flex: 1, marginRight: 12 }}>
-            <Text variant="subtitle" color={colors.textPrimary} style={[styles.settingsSectionTitle, { marginBottom: 0 }]}>
+            <Text variant="subtitle" color={palette.textPrimary} style={[styles.settingsSectionTitle, { marginBottom: 0 }]}>
               Manage Connection
             </Text>
-            <Text variant="caption" color={colors.textSecondary} style={{ marginTop: 6, lineHeight: 18 }}>
+            <Text variant="caption" color={palette.textSecondary} style={{ marginTop: 6, lineHeight: 18 }}>
               News scrape sources (RSS feeds and built-in sites). Used when running the RSS scraper.
             </Text>
           </View>
           <TouchableOpacity
             style={[
               styles.listButton,
-              { backgroundColor: listPanel === 'connection' ? colors.textSecondary : colors.primary },
+              { backgroundColor: listPanel === 'connection' ? palette.textSecondary : palette.primary },
             ]}
             onPress={() => onToggleListPanel('connection')}
             activeOpacity={0.8}
           >
-            <Text variant="caption" color={colors.surface} style={styles.listButtonText}>
+            <Text variant="caption" color="#ffffff" style={styles.listButtonText}>
               {listPanel === 'connection' ? 'Hide list' : 'List'}
             </Text>
           </TouchableOpacity>
@@ -337,16 +336,16 @@ const SettingsTab = ({
             style={[
               styles.settingInput,
               {
-                backgroundColor: colors.backgroundSecondary,
-                borderColor: colors.border,
-                color: colors.textPrimary,
+                backgroundColor: palette.inputBg,
+                borderColor: palette.border,
+                color: palette.textPrimary,
               },
             ]}
             placeholder="Connection name"
             value={connectionInput}
             onChangeText={setConnectionInput}
-            placeholderTextColor={colors.textTertiary}
-            cursorColor={colors.primary}
+            placeholderTextColor={palette.textTertiary}
+            cursorColor={palette.primary}
           />
         </View>
         <View style={styles.inputRow}>
@@ -354,37 +353,37 @@ const SettingsTab = ({
             style={[
               styles.settingInput,
               {
-                backgroundColor: colors.backgroundSecondary,
-                borderColor: colors.border,
-                color: colors.textPrimary,
+                backgroundColor: palette.inputBg,
+                borderColor: palette.border,
+                color: palette.textPrimary,
               },
             ]}
             placeholder="RSS / feed URL (required)"
             value={connectionUrlInput}
             onChangeText={setConnectionUrlInput}
-            placeholderTextColor={colors.textTertiary}
-            cursorColor={colors.primary}
+            placeholderTextColor={palette.textTertiary}
+            cursorColor={palette.primary}
             autoCapitalize="none"
             onSubmitEditing={onAddConnection}
           />
           <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: colors.primary }]}
+            style={[styles.addBtn, { backgroundColor: palette.primary }]}
             onPress={onAddConnection}
             activeOpacity={0.8}
           >
-            <Plus size={18} color={colors.surface} />
+            <Plus size={18} color="#ffffff" />
           </TouchableOpacity>
         </View>
 
         {connections.length === 0 && listPanel !== 'connection' ? (
-          <Text variant="body" color={colors.textSecondary} style={{ marginTop: 4 }}>
+          <Text variant="body" color={palette.textSecondary} style={{ marginTop: 4 }}>
             No sources yet. Open List or add an RSS feed above.
           </Text>
         ) : null}
       </View>
 
       <TouchableOpacity
-        style={[styles.logoutButton, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
+        style={[styles.logoutButton, { backgroundColor: palette.inputBg, borderColor: palette.border }]}
         onPress={async () => {
           const accepted = await confirm({
             title: 'Logout',
@@ -396,7 +395,7 @@ const SettingsTab = ({
         }}
         activeOpacity={0.8}
       >
-        <Text variant="body" color={colors.error} style={styles.logoutButtonText}>
+        <Text variant="body" color={palette.error} style={styles.logoutButtonText}>
           LOGOUT
         </Text>
       </TouchableOpacity>

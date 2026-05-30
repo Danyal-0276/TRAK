@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, StyleSheet, StatusBar, ScrollView, Platform, Animated, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 import { Header } from './components/Header';
 import { LoginForm } from './components/LoginForm';
 import { Footer } from './components/Footer';
@@ -131,18 +130,7 @@ const LoginScreen = ({ navigation }) => {
         <SafeAreaView style={[styles.safeContainer, { backgroundColor: colors.background }]}>
             <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
             
-            {/* Enhanced gradient background */}
-            <LinearGradient
-                colors={theme.mode === 'dark' 
-                    ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
-                    : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
-                }
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.gradientBackground}
-            />
-            
-            {/* Animated decorative circles with glow */}
+            {/* Animated decorative circles */}
             <Animated.View 
                 style={[
                     styles.accentCircle1, 
@@ -200,7 +188,7 @@ const LoginScreen = ({ navigation }) => {
                 style={[
                     styles.glowEffect,
                     {
-                        backgroundColor: theme.mode === 'dark' ? 'rgba(129, 140, 248, 0.15)' : 'rgba(0, 0, 0, 0.05)',
+                        backgroundColor: theme.mode === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
                         opacity: glowAnim.interpolate({
                             inputRange: [0, 1],
                             outputRange: [0.3, 0.6],

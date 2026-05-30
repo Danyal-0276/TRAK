@@ -11,11 +11,14 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import { CommonActions } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import TextComponent from '../../components/ui/Text';
 
 const PasswordChangedScreen = ({ navigation }) => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.8)).current;
 
@@ -77,11 +80,11 @@ const PasswordChangedScreen = ({ navigation }) => {
                             }
                         ]}
                     >
-                        <View style={[styles.checkmarkContainer, { 
-                            backgroundColor: colors.primary,
-                            shadowColor: colors.primary
+                        <View style={[styles.checkmarkContainer, {
+                            backgroundColor: action.background,
+                            shadowColor: action.background,
                         }]}>
-                            <Text style={[styles.checkmark, { color: colors.textInverse }]}>✓</Text>
+                            <Text style={[styles.checkmark, { color: action.foreground }]}>✓</Text>
                         </View>
 
                         <TextComponent variant="title" color={colors.textPrimary} style={styles.title}>Password changed</TextComponent>
@@ -92,13 +95,13 @@ const PasswordChangedScreen = ({ navigation }) => {
 
                     <View style={styles.buttonContainer}>
                         <TouchableOpacity
-                            style={[styles.primaryButton, { 
-                                backgroundColor: colors.primary,
-                                shadowColor: colors.primary
+                            style={[styles.primaryButton, {
+                                backgroundColor: action.background,
+                                shadowColor: action.background,
                             }]}
                             onPress={handleBackToLogin}
                         >
-                            <TextComponent variant="button" color={colors.textInverse} style={styles.primaryButtonText}>Back to login</TextComponent>
+                            <TextComponent variant="button" color={action.foreground} style={styles.primaryButtonText}>Back to login</TextComponent>
                         </TouchableOpacity>
                     </View>
                 </View>

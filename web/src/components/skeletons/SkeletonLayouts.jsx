@@ -21,7 +21,7 @@ export function GlobalSkeletonStyles() {
 /** Shared theme tokens for masonry / feed skeletons. */
 export function getSkeletonFeedProps(isDark, colors = {}) {
     return {
-        cardBackground: isDark ? colors.surface || '#1E293B' : '#ffffff',
+        cardBackground: isDark ? colors.surface : '#ffffff',
         borderColor: isDark ? colors.border || '#334155' : '#e5e7eb',
         bar1: isDark ? '#334155' : '#e5e7eb',
         bar2: isDark ? '#475569' : '#f1f5f9',
@@ -31,7 +31,7 @@ export function getSkeletonFeedProps(isDark, colors = {}) {
 
 /** Category browse grid placeholder (Categories page). */
 export function SkeletonCategoryGrid({ count = 8, isDark, colors = {} }) {
-    const cardBg = isDark ? colors.surface || '#1E293B' : '#ffffff';
+    const cardBg = isDark ? colors.surface : '#ffffff';
     const border = isDark ? colors.border || '#334155' : '#e5e7eb';
     const bar = isDark ? '#334155' : '#e5e7eb';
     const bar2 = isDark ? '#475569' : '#f1f5f9';
@@ -91,7 +91,7 @@ export function SkeletonFeedCard({ cardBg, border, bar1, bar2 }) {
  * @param {{ count?: number, gap?: number, columns?: string, isDark?: boolean, colors?: Record<string, string> }} props
  */
 export function SkeletonFeedGrid({ count = 6, gap = 24, columns = 'repeat(auto-fill, minmax(320px, 1fr))', isDark, colors = {} }) {
-    const cardBg = isDark ? colors.surface || '#1E293B' : '#ffffff';
+    const cardBg = isDark ? colors.surface : '#ffffff';
     const border = isDark ? colors.border || '#334155' : '#e5e7eb';
     const bar1 = isDark ? '#334155' : '#e5e7eb';
     const bar2 = isDark ? '#475569' : '#f1f5f9';
@@ -105,7 +105,7 @@ export function SkeletonFeedGrid({ count = 6, gap = 24, columns = 'repeat(auto-f
 }
 
 export function SkeletonTableRows({ rows = 8, isDark, colors = {} }) {
-    const rowBg = isDark ? colors.surface || '#1E293B' : '#ffffff';
+    const rowBg = isDark ? colors.surface : '#ffffff';
     const border = isDark ? colors.border || '#334155' : '#e5e7eb';
     const cell = isDark ? '#334155' : '#e5e7eb';
     return (
@@ -132,7 +132,7 @@ export function SkeletonTableRows({ rows = 8, isDark, colors = {} }) {
 
 export function SkeletonStatCards({ count = 4, isDark, colors = {} }) {
     const border = isDark ? colors.border || '#334155' : '#e5e7eb';
-    const bg = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+    const bg = isDark ? colors.surface : '#f9fafb';
     const bar = isDark ? '#334155' : '#e5e7eb';
     return (
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fill, minmax(200px, 1fr))`, gap: 16 }}>

@@ -1,20 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Shield, Search, Trash2, Plus, Mail, Calendar } from 'lucide-react';
-import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
-import { useResponsive } from '../../hooks/useResponsive';
-import { getResponsivePadding, getResponsiveMaxWidth, getResponsiveFontSize } from '../../utils/responsiveStyles';
+import { useAdminTheme } from './useAdminTheme';
+import AdminPageLayout from './components/AdminPageLayout';
+import AdminPageHeader from './components/AdminPageHeader';
+import { useAdminPageMeta } from './adminPageMeta';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { deleteAdminUser, getAdminUsers, postAdminCreate } from '../../api/adminApi';
 import { SkeletonTableRows } from '../../components/skeletons/SkeletonLayouts';
 
 export default function AdminAdminsScreen() {
-  const navigate = useNavigate();
-  const { theme } = useTheme();
-  const { colors } = theme;
-  const isDark = theme.mode === 'dark';
-  const { isMobile, isTablet } = useResponsive();
+  const { palette, isDark, colors } = useAdminTheme();
   const { isSuperAdmin } = useAuth();
   const { confirm, success, error: notifyError } = useUIFeedback();
   const [admins, setAdmins] = useState([]);
@@ -25,11 +21,10 @@ export default function AdminAdminsScreen() {
   const [newPassword, setNewPassword] = useState('');
   const [creating, setCreating] = useState(false);
 
-  const backgroundColor = colors.background;
-  const cardBackground = colors.surface;
-  const textPrimary = colors.textPrimary;
-  const textSecondary = colors.textSecondary;
-  const borderColor = colors.border;
+  const cardBackground = palette.card;
+  const textPrimary = palette.textPrimary;
+  const textSecondary = palette.textSecondary;
+  const borderColor = palette.border;
 
   const loadAdmins = useCallback(async () => {
     try {
@@ -89,45 +84,35 @@ export default function AdminAdminsScreen() {
     }
   };
 
-  return (
-    <div style={{ minHeight: '100vh', backgroundColor }}>
-      <div
-        style={{
-          maxWidth: getResponsiveMaxWidth(isMobile, isTablet, '1200px'),
-          margin: '0 auto',
-          padding: getResponsivePadding(isMobile, isTablet),
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16, marginBottom: 24, flexWrap: 'wrap' }}>
-          <div>
-            <h1 style={{ fontSize: getResponsiveFontSize(isMobile, isTablet, 28), fontWeight: 700, color: textPrimary, margin: '0 0 8px' }}>
-              Administrators
-            </h1>
-            <p style={{ color: textSecondary, margin: 0 }}>Admin accounts only</p>
-          </div>
-          {isSuperAdmin ? (
-            <button
-              type="button"
-              onClick={() => setShowCreate(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '12px 18px',
-                borderRadius: 10,
-                border: 'none',
-                background: colors.primary || '#3b82f6',
-                color: '#fff',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              <Plus size={18} />
-              Create admin
-            </button>
-          ) : null}
-        </div>
+  const { title, description } = useAdminPageMeta();
 
+  const createAdminAction = isSuperAdmin ? (
+    <button
+      type="button"
+      onClick={() => setShowCreate(true)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '12px 18px',
+        borderRadius: 10,
+        border: 'none',
+        background: palette.primary,
+        color: '#fff',
+        fontWeight: 600,
+        cursor: 'pointer',
+      }}
+    >
+      <Plus size={18} />
+      Create admin
+    </button>
+  ) : null;
+
+  return (
+    <>
+      <AdminPageLayout maxWidth="1200px">
+        <AdminPageHeader title={title} description={description} actions={createAdminAction} />
+        <div className="admin-page-body">
         <div style={{ position: 'relative', marginBottom: 20 }}>
           <Search size={18} color={textSecondary} style={{ position: 'absolute', left: 14, top: '50%', transform: 'translateY(-50%)' }} />
           <input
@@ -174,13 +159,13 @@ export default function AdminAdminsScreen() {
                   width: 48,
                   height: 48,
                   borderRadius: 24,
-                  backgroundColor: `${colors.primary || '#3b82f6'}20`,
+                  backgroundColor: `${palette.primary}20`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Shield size={22} color={colors.primary} />
+                <Shield size={22} color={palette.primary} />
               </div>
               <div style={{ flex: 1, minWidth: 180 }}>
                 <div style={{ fontWeight: 700, color: textPrimary }}>{admin.email}</div>
@@ -196,7 +181,7 @@ export default function AdminAdminsScreen() {
                   ) : null}
                 </div>
                 {admin.is_super_admin ? (
-                  <span style={{ fontSize: 12, color: colors.primary, fontWeight: 600, marginTop: 4, display: 'inline-block' }}>
+                  <span style={{ fontSize: 12, color: palette.primary, fontWeight: 600, marginTop: 4, display: 'inline-block' }}>
                     Super Admin
                   </span>
                 ) : null}
@@ -208,9 +193,9 @@ export default function AdminAdminsScreen() {
                   style={{
                     padding: '8px 12px',
                     borderRadius: 8,
-                    border: `1px solid ${colors.error || '#ef4444'}`,
+                    border: `1px solid ${palette.error}`,
                     background: 'transparent',
-                    color: colors.error || '#ef4444',
+                    color: palette.error,
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -223,7 +208,8 @@ export default function AdminAdminsScreen() {
               ) : null}
             </div>
           ))}
-      </div>
+        </div>
+      </AdminPageLayout>
 
       {showCreate ? (
         <div
@@ -277,13 +263,13 @@ export default function AdminAdminsScreen() {
               <button type="button" onClick={() => setShowCreate(false)} disabled={creating}>
                 Cancel
               </button>
-              <button type="submit" disabled={creating} style={{ padding: '10px 16px', background: colors.primary, color: '#fff', border: 'none', borderRadius: 8 }}>
+              <button type="submit" disabled={creating} style={{ padding: '10px 16px', background: palette.primary, color: '#fff', border: 'none', borderRadius: 8 }}>
                 {creating ? 'Creating…' : 'Create'}
               </button>
             </div>
           </form>
         </div>
       ) : null}
-    </div>
+    </>
   );
 }

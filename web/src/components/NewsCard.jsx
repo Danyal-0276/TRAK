@@ -28,9 +28,9 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const cardSummary = getCardSummaryText(item);
     const credMeta = getFeedItemCredibilityMeta(item);
 
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
+    const cardBackground = isDark ? colors.surface : '#ffffff';
+    const textPrimary = colors.textPrimary;
+    const textSecondary = isDark ? colors.textSecondary : '#64748b';
     const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
 
     return (
@@ -61,7 +61,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                 e.currentTarget.style.boxShadow = isDark 
                     ? '0 4px 12px rgba(0, 0, 0, 0.3)' 
                     : '0 4px 12px rgba(0, 0, 0, 0.08)';
-                e.currentTarget.style.borderColor = isDark ? colors.borderLight || '#475569' : '#d1d5db';
+                e.currentTarget.style.borderColor = isDark ? colors.borderLight : '#d1d5db';
             }}
             onMouseLeave={(e) => {
                 e.currentTarget.style.boxShadow = 'none';
@@ -96,7 +96,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                 alignItems: 'center',
                                 gap: '4px',
                                 padding: '4px 8px',
-                                backgroundColor: isDark ? colors.surface || '#1E293B' : '#ffffff',
+                                backgroundColor: isDark ? colors.surface : '#ffffff',
                                 borderRadius: '4px',
                                 boxShadow: isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.1)',
                             }}>
@@ -140,7 +140,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                 display: 'flex',
                                 justifyContent: 'center',
                                 alignItems: 'center',
-                                backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',
+                                backgroundColor: colors.primary,
                             }}>
                                 <span style={{
                                     fontSize: '12px',
@@ -215,7 +215,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                 transition: 'all 0.2s ease',
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6';
+                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated : '#f3f4f6';
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.backgroundColor = 'transparent';
@@ -237,7 +237,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                 textTransform: 'uppercase',
                                 letterSpacing: '0.5px',
                                 padding: '3px 8px',
-                                backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6',
+                                backgroundColor: isDark ? colors.surfaceElevated : '#f3f4f6',
                                 borderRadius: '4px',
                                 display: 'inline-block',
                             }}>
@@ -307,7 +307,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                 }}
                                 onMouseEnter={(e) => {
                                     if (voteType !== 'up') {
-                                        e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
+                                        e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated : '#f9fafb';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
@@ -318,13 +318,13 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             >
                                 <ChevronUp 
                                     size={14} 
-                                    color={voteType === 'up' ? '#3b82f6' : textSecondary} 
+                                    color={voteType === 'up' ? colors.primary : textSecondary} 
                                     strokeWidth={voteType === 'up' ? 2.5 : 2}
                                 />
                                 <span style={{
                                     fontSize: '12px',
                                     fontWeight: '600',
-                                    color: voteType === 'up' ? '#3b82f6' : textSecondary,
+                                    color: voteType === 'up' ? colors.primary : textSecondary,
                                 }}>
                                     {likeCount}
                                 </span>
@@ -351,7 +351,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                 }}
                                 onMouseEnter={(e) => {
                                     if (voteType !== 'down') {
-                                        e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
+                                        e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated : '#f9fafb';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
@@ -392,7 +392,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                 }}
                                 onMouseEnter={(e) => {
                                     if (!isBookmarked) {
-                                        e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
+                                        e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated : '#f9fafb';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
@@ -433,7 +433,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                     transition: 'all 0.2s ease',
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
+                                    e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated : '#f9fafb';
                                 }}
                                 onMouseLeave={(e) => {
                                     e.currentTarget.style.backgroundColor = 'transparent';
@@ -454,7 +454,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                 gap: '4px',
                                 padding: '6px 12px',
                                 border: `1px solid ${borderColor}`,
-                                background: isDark ? colors.surfaceElevated || '#334155' : '#ffffff',
+                                background: isDark ? colors.surfaceElevated : '#ffffff',
                                 borderRadius: '6px',
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
@@ -463,12 +463,12 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                 color: textPrimary,
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
-                                e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                                e.currentTarget.style.borderColor = colors.primary;
+                                e.currentTarget.style.backgroundColor = isDark ? colors.surface : '#f9fafb';
                             }}
                             onMouseLeave={(e) => {
                                 e.currentTarget.style.borderColor = borderColor;
-                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#ffffff';
+                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated : '#ffffff';
                             }}
                         >
                             Read

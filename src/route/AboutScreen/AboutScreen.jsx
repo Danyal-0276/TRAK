@@ -17,7 +17,7 @@ const AboutScreen = () => {
   const insets = useSafeAreaInsets();
   const isDark = theme.mode === 'dark';
 
-  const accent = colors.primary || (isDark ? '#818CF8' : '#0f172a');
+  const accent = colors.primary;
   const accentSoft = colors.primary ? `${colors.primary}18` : isDark ? 'rgba(129,140,248,0.14)' : '#eff6ff';
 
   return (

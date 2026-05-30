@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Settings as SettingsIcon, Plus, Trash2, X } from 'lucide-react';
-import { useTheme } from '../../theme/ThemeContext';
+import { Plus, Trash2, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
-import { useResponsive } from '../../hooks/useResponsive';
-import { getResponsivePadding, getResponsiveMaxWidth } from '../../utils/responsiveStyles';
+import { useAdminTheme } from './useAdminTheme';
+import AdminPageLayout from './components/AdminPageLayout';
+import AdminPageHeader from './components/AdminPageHeader';
+import { useAdminPageMeta } from './adminPageMeta';
 import { getAdminSettings, patchAdminSettings, createAdminCategory, deleteAdminCategory, addAdminSubcategory, deleteAdminSubcategory, createAdminConnection, deleteAdminConnection } from '../../api/adminApi';
 import { normAdminCategories, normAdminConnections } from '../../utils/adminLists';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
@@ -21,10 +22,7 @@ const REGION_SELECT_WIDTH = 240;
 const regionSelectWrapStyle = { width: REGION_SELECT_WIDTH, maxWidth: '100%', flexShrink: 0 };
 
 const AdminSettingsScreen = () => {
-  const { theme } = useTheme();
-  const { colors } = theme;
-  const isDark = theme.mode === 'dark';
-  const { isMobile, isTablet } = useResponsive();
+  const { palette, isDark, colors } = useAdminTheme();
   const navigate = useNavigate();
   const { logout } = useAuth();
   const { success, error: showError, confirm } = useUIFeedback();
@@ -46,14 +44,13 @@ const AdminSettingsScreen = () => {
   const [loading, setLoading] = useState(true);
   const [listPanel, setListPanel] = useState(null);
 
-  const backgroundColor = isDark ? colors.background || '#0F172A' : '#f9fafb';
-  const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-  const inputBg = isDark ? colors.backgroundSecondary || '#334155' : '#f8fafc';
-  const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-  const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-  const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
-  const primary = colors.primary || '#3b82f6';
-  const errorColor = colors.error || '#ef4444';
+  const cardBackground = palette.card;
+  const inputBg = palette.inputBg;
+  const textPrimary = palette.textPrimary;
+  const textSecondary = palette.textSecondary;
+  const borderColor = palette.border;
+  const primary = palette.primary;
+  const errorColor = palette.error;
 
   const applySettingsFromApi = (updated) => {
     setSettings({
@@ -278,32 +275,12 @@ const AdminSettingsScreen = () => {
     flexShrink: 0,
   });
 
-  return (
-    <div style={{ minHeight: '100vh', backgroundColor }}>
-      <div
-        style={{
-          maxWidth: getResponsiveMaxWidth(isMobile, isTablet, '720px'),
-          margin: '0 auto',
-          padding: getResponsivePadding(isMobile, isTablet),
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
-          <div
-            style={{
-              width: 40,
-              height: 40,
-              borderRadius: 20,
-              backgroundColor: `${primary}15`,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <SettingsIcon size={20} color={primary} />
-          </div>
-          <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: textPrimary }}>Settings</h1>
-        </div>
+  const { title, description } = useAdminPageMeta();
 
+  return (
+    <AdminPageLayout maxWidth="720px">
+      <AdminPageHeader title={title} description={description} />
+      <div className="admin-page-body">
         {loading ? (
           <SkeletonPageBlocks isDark={isDark} colors={colors} minHeight="480px" />
         ) : (
@@ -376,7 +353,7 @@ const AdminSettingsScreen = () => {
                   type="button"
                   style={{
                     ...pillButtonStyle,
-                    background: listPanel === 'category' ? (isDark ? '#334155' : '#64748b') : primary,
+                    background: listPanel === 'category' ? palette.textTertiary : primary,
                   }}
                   onClick={() => toggleListPanel('category')}
                 >
@@ -520,7 +497,7 @@ const AdminSettingsScreen = () => {
                   type="button"
                   style={{
                     ...pillButtonStyle,
-                    background: listPanel === 'connection' ? (isDark ? '#334155' : '#64748b') : primary,
+                    background: listPanel === 'connection' ? palette.textTertiary : primary,
                   }}
                   onClick={() => toggleListPanel('connection')}
                 >
@@ -590,8 +567,7 @@ const AdminSettingsScreen = () => {
           </>
         )}
       </div>
-
-    </div>
+    </AdminPageLayout>
   );
 };
 

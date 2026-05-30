@@ -14,7 +14,7 @@ export const Footer = ({ onSignUpPress }) => {
                 onPress={onSignUpPress}
                 activeOpacity={0.7}
             >
-                <Text variant="caption" color={colors.primary} style={styles.linkText}>Sign up</Text>
+                <Text variant="caption" color={colors.textLink || colors.textPrimary} style={styles.linkText}>Sign up</Text>
             </TouchableOpacity>
         </View>
     );

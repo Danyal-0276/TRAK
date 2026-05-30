@@ -111,11 +111,11 @@ const TagSelectionScreen = () => {
         navigate('/keyword-selection', { state: { selectedTags, fromSettings } });
     };
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
+    const backgroundColor = colors.background;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
+    const cardBackground = colors.surface;
 
     return (
         <div style={{
@@ -207,7 +207,7 @@ const TagSelectionScreen = () => {
                         }}
                         onFocus={(e) => {
                             e.target.style.backgroundColor = cardBackground;
-                            e.target.style.borderColor = isDark ? colors.primary || '#3b82f6' : '#000000';
+                            e.target.style.borderColor = isDark ? colors.primary : '#000000';
                             e.target.style.boxShadow = `0 0 0 3px ${isDark ? 'rgba(59, 130, 246, 0.1)' : 'rgba(0, 0, 0, 0.05)'}`;
                         }}
                         onBlur={(e) => {
@@ -222,7 +222,7 @@ const TagSelectionScreen = () => {
                 {selectedTags.length > 0 && (
                     <div style={{
                         padding: '8px 14px',
-                        backgroundColor: isDark ? colors.surface || '#1E293B' : '#f3f4f6',
+                        backgroundColor: colors.backgroundSecondary,
                         borderRadius: '8px',
                         marginBottom: '20px',
                         display: 'inline-flex',
@@ -259,9 +259,9 @@ const TagSelectionScreen = () => {
                                     style={{
                                         width: '100%',
                                         padding: '12px 16px',
-                                        border: isSelected ? `2px solid ${isDark ? colors.primary || '#3b82f6' : '#000000'}` : `1px solid ${borderColor}`,
+                                        border: isSelected ? `2px solid ${isDark ? colors.primary : '#000000'}` : `1px solid ${borderColor}`,
                                         borderRadius: '8px',
-                                        backgroundColor: isSelected ? (isDark ? colors.surface || '#1E293B' : '#f9fafb') : cardBackground,
+                                        backgroundColor: isSelected ? (colors.surfaceHover) : cardBackground,
                                         cursor: 'pointer',
                                         textAlign: 'left',
                                         transition: 'all 0.15s ease',
@@ -274,8 +274,8 @@ const TagSelectionScreen = () => {
                                     }}
                                     onMouseEnter={(e) => {
                                         if (!isSelected) {
-                                            e.currentTarget.style.borderColor = isDark ? colors.border || '#475569' : '#d1d5db';
-                                            e.currentTarget.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                                            e.currentTarget.style.borderColor = isDark ? colors.border : '#d1d5db';
+                                            e.currentTarget.style.backgroundColor = colors.surfaceHover;
                                         }
                                     }}
                                     onMouseLeave={(e) => {
@@ -291,7 +291,7 @@ const TagSelectionScreen = () => {
                                             width: '18px',
                                             height: '18px',
                                             borderRadius: '4px',
-                                            backgroundColor: isDark ? colors.primary || '#3b82f6' : '#000000',
+                                            backgroundColor: isDark ? colors.primary : '#000000',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
@@ -321,9 +321,9 @@ const TagSelectionScreen = () => {
                                                     }}
                                                     style={{
                                                         padding: '6px 12px',
-                                                        border: isSubSelected ? `1px solid ${isDark ? colors.primary || '#3b82f6' : '#000000'}` : `1px solid ${borderColor}`,
+                                                        border: isSubSelected ? `1px solid ${isDark ? colors.primary : '#000000'}` : `1px solid ${borderColor}`,
                                                         borderRadius: '12px',
-                                                        backgroundColor: isSubSelected ? (isDark ? colors.surface || '#1E293B' : '#f9fafb') : cardBackground,
+                                                        backgroundColor: isSubSelected ? (colors.surfaceHover) : cardBackground,
                                                         cursor: 'pointer',
                                                         fontSize: '12px',
                                                         fontWeight: isSubSelected ? 600 : 500,
@@ -332,7 +332,7 @@ const TagSelectionScreen = () => {
                                                     }}
                                                     onMouseEnter={(e) => {
                                                         if (!isSubSelected) {
-                                                            e.currentTarget.style.borderColor = isDark ? colors.border || '#475569' : '#d1d5db';
+                                                            e.currentTarget.style.borderColor = isDark ? colors.border : '#d1d5db';
                                                         }
                                                     }}
                                                     onMouseLeave={(e) => {
@@ -364,7 +364,7 @@ const TagSelectionScreen = () => {
                         style={{
                             width: '100%',
                             padding: '14px 24px',
-                            backgroundColor: selectedTags.length > 0 ? (isDark ? colors.primary || '#3b82f6' : '#000000') : (isDark ? '#475569' : '#d1d5db'),
+                            backgroundColor: selectedTags.length > 0 ? (isDark ? colors.primary : '#000000') : (isDark ? '#475569' : '#d1d5db'),
                             color: '#ffffff',
                             border: 'none',
                             borderRadius: '10px',
@@ -375,12 +375,12 @@ const TagSelectionScreen = () => {
                         }}
                         onMouseEnter={(e) => {
                             if (selectedTags.length > 0) {
-                                e.currentTarget.style.backgroundColor = isDark ? '#2563eb' : '#1a1a1a';
+                                e.currentTarget.style.backgroundColor = colors.primary;
                             }
                         }}
                         onMouseLeave={(e) => {
                             if (selectedTags.length > 0) {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.primary || '#3b82f6' : '#000000';
+                                e.currentTarget.style.backgroundColor = isDark ? colors.primary : '#000000';
                             }
                         }}
                     >

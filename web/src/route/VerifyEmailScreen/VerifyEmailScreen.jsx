@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
@@ -6,6 +8,8 @@ import { useAuth } from '../../context/AuthContext';
 import { resendEmailVerification } from '../../api/authEmailApi';
 
 const VerifyEmailScreen = () => {
+    const { theme } = useTheme();
+    const { colors } = theme;
   const navigate = useNavigate();
   const location = useLocation();
   const { user, verifyEmail, isAuthenticated } = useAuth();
@@ -68,7 +72,7 @@ const VerifyEmailScreen = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.background,
         padding: '24px',
         position: 'relative',
         overflow: 'hidden',
@@ -86,7 +90,7 @@ const VerifyEmailScreen = () => {
             padding: 0,
             border: 'none',
             background: 'transparent',
-            color: '#64748b',
+            color: colors.textSecondary,
             fontSize: '14px',
             fontWeight: 500,
             cursor: 'pointer',
@@ -103,17 +107,17 @@ const VerifyEmailScreen = () => {
             alt="TRAK"
             style={{ width: 32, height: 32, filter: 'invert(1)', marginBottom: 24 }}
           />
-          <h1 style={{ fontSize: 28, fontWeight: 600, color: '#0f172a', margin: '0 0 8px' }}>
+          <h1 style={{ fontSize: 28, fontWeight: 600, color: colors.textPrimary, margin: '0 0 8px' }}>
             Verify your email
           </h1>
-          <p style={{ fontSize: 15, color: '#64748b', margin: 0, lineHeight: 1.5 }}>
+          <p style={{ fontSize: 15, color: colors.textSecondary, margin: 0, lineHeight: 1.5 }}>
             We sent a 6-digit code to{' '}
-            <strong style={{ color: '#0f172a' }}>{email || 'your email'}</strong>.
+            <strong style={{ color: colors.textPrimary }}>{email || 'your email'}</strong>.
           </p>
         </div>
 
         <form onSubmit={handleVerify}>
-          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: '#0f172a', marginBottom: 8 }}>
+          <label style={{ display: 'block', fontSize: 14, fontWeight: 500, color: colors.textPrimary, marginBottom: 8 }}>
             Verification code
           </label>
           <input
@@ -144,8 +148,8 @@ const VerifyEmailScreen = () => {
             style={{
               width: '100%',
               padding: '12px 20px',
-              backgroundColor: '#0f172a',
-              color: '#fff',
+              backgroundColor: action.background,
+              color: action.foreground,
               border: 'none',
               borderRadius: 6,
               fontSize: 15,
@@ -168,7 +172,7 @@ const VerifyEmailScreen = () => {
             padding: '10px',
             border: 'none',
             background: 'transparent',
-            color: '#0f172a',
+            color: colors.textPrimary,
             fontSize: 14,
             cursor: timer > 0 || resendLoading ? 'not-allowed' : 'pointer',
             opacity: timer > 0 ? 0.5 : 1,
@@ -182,18 +186,18 @@ const VerifyEmailScreen = () => {
               : 'Resend code'}
         </button>
 
-        <p style={{ textAlign: 'center', fontSize: 14, color: '#64748b' }}>
+        <p style={{ textAlign: 'center', fontSize: 14, color: colors.textSecondary }}>
           <button
             type="button"
             onClick={() => navigate('/tag-selection', { state: { fromSignup: true } })}
-            style={{ border: 'none', background: 'none', color: '#0f172a', cursor: 'pointer', fontWeight: 500 }}
+            style={{ border: 'none', background: 'none', color: colors.textPrimary, cursor: 'pointer', fontWeight: 500 }}
           >
             Skip for now
           </button>
         </p>
 
-        <p style={{ textAlign: 'center', marginTop: 24, fontSize: 15, color: '#64748b' }}>
-          <Link to="/login" style={{ color: '#0f172a', textDecoration: 'none', fontWeight: 500 }}>
+        <p style={{ textAlign: 'center', marginTop: 24, fontSize: 15, color: colors.textSecondary }}>
+          <Link to="/login" style={{ color: colors.textPrimary, textDecoration: 'none', fontWeight: 500 }}>
             Sign in
           </Link>
         </p>

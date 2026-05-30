@@ -17,6 +17,7 @@ export const LoginForm = ({
 }) => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const isDark = theme.mode === 'dark';
     const passwordRef = useRef(null);
     const [showPassword, setShowPassword] = useState(false);
 
@@ -118,7 +119,7 @@ export const LoginForm = ({
                         cursor: 'pointer',
                     }}
                 >
-                    <Text variant="body" color="#000000" style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }}>
+                    <Text variant="body" color={colors.textLink || colors.textPrimary} style={{ fontSize: 15, fontWeight: '600', letterSpacing: -0.2 }}>
                         Forgot password?
                     </Text>
                 </button>
@@ -128,7 +129,6 @@ export const LoginForm = ({
                 <Button
                     title="Sign in"
                     variant="primary"
-                    primaryColors={[colors.primary, colors.primary]}
                     onPress={onLoginPress}
                     disabled={!email || !password}
                     style={{

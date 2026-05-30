@@ -144,12 +144,12 @@ const CategoriesScreen = () => {
         }
     };
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
-    const accentColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
+    const accentColor = colors.primary;
 
     // Pre-compute articles per category once (memoized)
     const articlesByCategory = useMemo(() => {
@@ -271,7 +271,7 @@ const CategoriesScreen = () => {
                                             </span>
                                             <span style={{
                                                 fontSize: 12, fontWeight: 700, color: textSecondary,
-                                                background: isDark ? colors.background || '#0F172A' : '#e2e8f0',
+                                                background: colors.backgroundSecondary,
                                                 padding: '3px 10px', borderRadius: 999, marginRight: 8,
                                             }}>
                                                 {category.count} {category.count === 1 ? 'article' : 'articles'}

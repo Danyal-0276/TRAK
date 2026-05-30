@@ -1,10 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
 import { requestPasswordReset, verifyPasswordResetOtp } from '../../api/authPasswordApi';
 
 const ForgotPasswordCodeScreen = () => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
   const navigate = useNavigate();
   const location = useLocation();
   const email = (location.state?.email || '').trim().toLowerCase();
@@ -60,7 +66,7 @@ const ForgotPasswordCodeScreen = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        backgroundColor: '#ffffff',
+        backgroundColor: colors.background,
         padding: '24px',
         position: 'relative',
         overflow: 'hidden',
@@ -85,7 +91,7 @@ const ForgotPasswordCodeScreen = () => {
             padding: '0',
             border: 'none',
             background: 'transparent',
-            color: '#64748b',
+            color: colors.textSecondary,
             fontSize: '14px',
             fontWeight: '500',
             cursor: 'pointer',
@@ -111,7 +117,7 @@ const ForgotPasswordCodeScreen = () => {
             style={{
               fontSize: '28px',
               fontWeight: '600',
-              color: '#0f172a',
+              color: colors.textPrimary,
               margin: '0 0 8px 0',
               letterSpacing: '-0.5px',
               lineHeight: '1.2',
@@ -122,7 +128,7 @@ const ForgotPasswordCodeScreen = () => {
           <p
             style={{
               fontSize: '15px',
-              color: '#64748b',
+              color: colors.textSecondary,
               margin: '0',
               lineHeight: '1.5',
             }}
@@ -130,7 +136,7 @@ const ForgotPasswordCodeScreen = () => {
             {emailSent
               ? 'We sent a 6-digit code to '
               : 'If your account exists, a code was sent to '}
-            <span style={{ fontWeight: '600', color: '#0f172a' }}>{email || 'your email'}</span>.
+            <span style={{ fontWeight: '600', color: colors.textPrimary }}>{email || 'your email'}</span>.
             {emailSent
               ? ' Your email may take up to a minute to arrive — check inbox and spam.'
               : ''}
@@ -143,7 +149,7 @@ const ForgotPasswordCodeScreen = () => {
               display: 'block',
               fontSize: '14px',
               fontWeight: '500',
-              color: '#0f172a',
+              color: colors.textPrimary,
               marginBottom: '8px',
             }}
           >
@@ -180,8 +186,8 @@ const ForgotPasswordCodeScreen = () => {
             style={{
               width: '100%',
               padding: '12px 20px',
-              backgroundColor: '#0f172a',
-              color: '#ffffff',
+              backgroundColor: action.background,
+              color: action.foreground,
               border: 'none',
               borderRadius: '6px',
               fontSize: '15px',
@@ -230,7 +236,7 @@ const ForgotPasswordCodeScreen = () => {
             <span
               style={{
                 fontSize: '15px',
-                color: timer > 0 ? '#94a3b8' : '#0f172a',
+                color: timer > 0 ? colors.textTertiary : colors.textPrimary,
                 fontWeight: '500',
               }}
             >
@@ -244,9 +250,9 @@ const ForgotPasswordCodeScreen = () => {
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <span style={{ fontSize: '15px', color: '#64748b' }}>
+          <span style={{ fontSize: '15px', color: colors.textSecondary }}>
             Remember password?{' '}
-            <Link to="/login" style={{ color: '#0f172a', fontWeight: 500, textDecoration: 'none' }}>
+            <Link to="/login" style={{ color: colors.textPrimary, fontWeight: 500, textDecoration: 'none' }}>
               Log in
             </Link>
           </span>

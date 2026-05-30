@@ -1,13 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
-import {
-  getResponsivePadding,
-  getResponsiveMaxWidth,
-  getResponsiveGap,
-  getResponsiveFontSize,
-} from '../../utils/responsiveStyles';
+import { useAdminTheme } from './useAdminTheme';
+import { getResponsiveGap } from '../../utils/responsiveStyles';
+import { useAdminPageMeta } from './adminPageMeta';
+import AdminPageLayout from './components/AdminPageLayout';
+import AdminPageHeader from './components/AdminPageHeader';
 import {
   FileText,
   BarChart3,
@@ -23,7 +21,7 @@ import {
 import { postAdminPipelineRun } from '../../api/adminApi';
 import { loadAdminOverview, buildOverviewStatCards } from './loadAdminOverview';
 import { emptyAnalyticsSnapshot, enrichAnalyticsSnapshot, isAnalyticsPayload } from './dashboardChartUtils';
-import { getAdminDashboardPalette, DASHBOARD_POLL_INTERVAL_MS } from './adminTheme';
+import { DASHBOARD_POLL_INTERVAL_MS } from './adminTheme';
 import { isDashboardPath } from './hooks/useAdminTabActive';
 import AdminDashboardCharts from './components/AdminDashboardCharts';
 import AdminScrapeSourcesPanel from './components/AdminScrapeSourcesPanel';
@@ -45,9 +43,7 @@ const STAT_ICONS = {
 };
 
 const AdminDashboardScreen = () => {
-  const { theme } = useTheme();
-  const { colors } = theme;
-  const isDark = theme.mode === 'dark';
+  const { palette, isDark, colors } = useAdminTheme();
   const { isMobile, isTablet } = useResponsive();
   const navigate = useNavigate();
   const location = useLocation();
@@ -63,9 +59,9 @@ const AdminDashboardScreen = () => {
   const [liveUpdatedAt, setLiveUpdatedAt] = useState(null);
   const hasSnapshotRef = useRef(false);
 
-  const palette = useMemo(() => getAdminDashboardPalette(colors, isDark), [colors, isDark]);
   const chartData = snapshot || emptyAnalyticsSnapshot();
   const showInitialSkeleton = loading && !snapshot;
+  const { title, description } = useAdminPageMeta();
 
   useEffect(() => {
     hasSnapshotRef.current = Boolean(snapshot);
@@ -204,118 +200,81 @@ const AdminDashboardScreen = () => {
       ? 'repeat(2, minmax(0, 1fr))'
       : 'repeat(4, minmax(0, 1fr))';
 
-  return (
-    <div style={{ minHeight: '100vh', backgroundColor: palette.page, paddingTop: 0 }}>
-      <div
+  const refreshButton = (
+    <button
+      type="button"
+      onClick={handleRefresh}
+      disabled={refreshing}
+      aria-busy={refreshing}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '10px 16px',
+        borderRadius: 10,
+        border: `1px solid ${refreshing ? palette.primary : palette.border}`,
+        background: refreshing ? palette.infoBg : palette.card,
+        color: palette.textPrimary,
+        fontWeight: 600,
+        fontSize: 13,
+        cursor: refreshing ? 'wait' : 'pointer',
+        opacity: refreshing ? 0.9 : 1,
+        boxShadow: `0 1px 2px ${palette.shadowLight}`,
+      }}
+    >
+      <RefreshCw
+        size={16}
+        color={palette.primary}
         style={{
-          maxWidth: getResponsiveMaxWidth(isMobile, isTablet, '1400px'),
-          margin: '0 auto',
-          width: '100%',
-          padding: getResponsivePadding(isMobile, isTablet),
+          animation: refreshing ? 'spin 0.85s linear infinite' : 'none',
         }}
-      >
-        <header
-          style={{
-            marginBottom: isMobile ? 20 : 28,
-            display: 'flex',
-            flexWrap: 'wrap',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            gap: 16,
-          }}
-        >
-          <div>
-            <p
-              style={{
-                margin: '0 0 6px',
-                fontSize: 12,
-                fontWeight: 600,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                color: palette.textTertiary,
-              }}
-            >
-              Admin
-            </p>
-            <h1
-              style={{
-                fontSize: getResponsiveFontSize(isMobile, isTablet, 28),
-                fontWeight: 800,
-                color: palette.textPrimary,
-                margin: '0 0 6px',
-                letterSpacing: '-0.03em',
-              }}
-            >
-              Dashboard
-            </h1>
-            <p style={{ fontSize: 14, color: palette.textSecondary, margin: 0, maxWidth: 520, lineHeight: 1.5 }}>
-              Live scrape, pipeline, and credibility metrics
-              {updatedLabel ? ` · Updated ${updatedLabel}` : ''}
-            </p>
-            {dashboardActive ? (
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  marginTop: 10,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: palette.textTertiary,
-                }}
-              >
-                <span
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: '50%',
-                    backgroundColor: palette.primary,
-                    opacity: refreshing ? 0.45 : 1,
-                    boxShadow: refreshing ? 'none' : `0 0 0 3px ${palette.border}`,
-                  }}
-                />
-                {refreshing ? 'Updating…' : 'Live · refreshes every 20s'}
-              </div>
-            ) : null}
-          </div>
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing}
-            aria-busy={refreshing}
+      />
+      {refreshing ? 'Refreshing…' : 'Refresh'}
+    </button>
+  );
+
+  return (
+    <AdminPageLayout maxWidth="1400px">
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
+      <AdminPageHeader title={title} description={description} actions={refreshButton}>
+        {updatedLabel ? (
+          <p style={{ fontSize: 13, color: palette.textSecondary, margin: '8px 0 0' }}>
+            Last updated {updatedLabel}
+          </p>
+        ) : null}
+        {dashboardActive ? (
+          <div
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 8,
-              padding: '10px 16px',
-              borderRadius: 10,
-              border: `1px solid ${refreshing ? palette.primary : palette.border}`,
-              background: refreshing ? palette.infoBg : palette.card,
-              color: palette.textPrimary,
+              marginTop: 10,
+              fontSize: 12,
               fontWeight: 600,
-              fontSize: 13,
-              cursor: refreshing ? 'wait' : 'pointer',
-              opacity: refreshing ? 0.9 : 1,
-              boxShadow: `0 1px 2px ${palette.shadowLight}`,
+              color: palette.textTertiary,
             }}
           >
-            <RefreshCw
-              size={16}
-              color={palette.primary}
+            <span
               style={{
-                animation: refreshing ? 'spin 0.85s linear infinite' : 'none',
+                width: 8,
+                height: 8,
+                borderRadius: '50%',
+                backgroundColor: palette.primary,
+                opacity: refreshing ? 0.45 : 1,
+                boxShadow: refreshing ? 'none' : `0 0 0 3px ${palette.border}`,
               }}
             />
-            {refreshing ? 'Refreshing…' : 'Refresh'}
-          </button>
-          <style>{`
-            @keyframes spin {
-              from { transform: rotate(0deg); }
-              to { transform: rotate(360deg); }
-            }
-          `}</style>
-        </header>
+            {refreshing ? 'Updating…' : 'Live · refreshes every 20s'}
+          </div>
+        ) : null}
+      </AdminPageHeader>
 
+      <div className="admin-page-body">
         {showInitialSkeleton ? (
           <SkeletonStatCards count={8} isDark={isDark} colors={colors} />
         ) : (
@@ -478,7 +437,7 @@ const AdminDashboardScreen = () => {
           </>
         )}
       </div>
-    </div>
+    </AdminPageLayout>
   );
 };
 

@@ -4,6 +4,7 @@ import { NewsCard } from "../../components/NewsCard";
 import { MasonryFeed, MasonryFeedSkeleton } from "../../components/MasonryFeed";
 import { getSkeletonFeedProps } from "../../components/skeletons/SkeletonLayouts";
 import { useTheme } from "../../theme/ThemeContext";
+import { filledActionColors } from "../../theme/buttonContrast";
 import { useResponsive } from "../../hooks/useResponsive";
 import {
     Edit,
@@ -252,13 +253,14 @@ const UserProfileScreen = () => {
         { label: 'Saved', value: userStats.saved, icon: BookOpen, onClick: () => navigate('/bookmarks') },
     ];
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
-    const accent = isDark ? colors.primary || '#818CF8' : '#0f172a';
-    const accentSoft = isDark ? 'rgba(129, 140, 248, 0.14)' : '#eff6ff';
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
+    const accent = colors.primary;
+    const accentSoft = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
+    const action = filledActionColors(colors, isDark);
     const joinedLabel = formatJoined(profile?.date_joined);
     const isAdmin = profile?.role === 'admin';
     const emailVerified = isAdmin ? true : Boolean(profile?.email_verified);
@@ -321,7 +323,7 @@ const UserProfileScreen = () => {
     };
 
     if (!pageReady && !profile) {
-        const sk = isDark ? colors.surfaceElevated || '#334155' : '#e5e7eb';
+        const sk = isDark ? colors.surfaceElevated : '#e5e7eb';
         return (
             <div style={{ minHeight: '100vh', backgroundColor: backgroundColor, paddingTop: 0 }}>
                 <div style={{ maxWidth: '1000px', margin: '0 auto', width: '100%', padding: `0 ${horizontalPad}px 24px` }}>
@@ -352,9 +354,11 @@ const UserProfileScreen = () => {
     const profileVars = {
         '--profile-border': borderColor,
         '--profile-surface': cardBackground,
-        '--profile-bg-secondary': isDark ? colors.surfaceElevated || '#334155' : '#f8fafc',
+        '--profile-bg-secondary': isDark ? colors.surfaceElevated : '#f8fafc',
         '--profile-accent': accent,
         '--profile-accent-soft': accentSoft,
+        '--profile-avatar-bg': action.background,
+        '--profile-avatar-fg': action.foreground,
     };
 
     const ActionRow = ({ icon: Icon, label, subtitle, onClick, danger }) => (
@@ -403,7 +407,7 @@ const UserProfileScreen = () => {
                         </div>
                         {(profile?.email_verified || profile?.phone_verified) && (
                             <div className="trak-profile-verified-dot">
-                                <CheckCircle size={16} color="#2563eb" fill="#2563eb" />
+                                <CheckCircle size={16} color={colors.primary} fill={colors.primary} />
                             </div>
                         )}
                         {showAvatarMenu ? (
@@ -475,7 +479,7 @@ const UserProfileScreen = () => {
                                     className={item.onClick ? 'trak-profile-stat trak-profile-stat-clickable' : 'trak-profile-stat'}
                                     style={{
                                         padding: '16px',
-                                        backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f8fafc',
+                                        backgroundColor: isDark ? colors.surfaceElevated : '#f8fafc',
                                         borderRadius: '14px',
                                         border: `1px solid ${borderColor}`,
                                         textAlign: 'center',
@@ -530,9 +534,9 @@ const UserProfileScreen = () => {
                                 Your email address has not been verified yet. Enter your email below to receive a verification code.
                             </p>
                             <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                                <button type="button" onClick={() => setVerificationChannel("email")} style={{ padding: '7px 12px', borderRadius: '8px', border: `1px solid ${verificationChannel === "email" ? (isDark ? colors.primary || '#818CF8' : '#0f172a') : borderColor}`, background: verificationChannel === "email" ? (isDark ? 'rgba(129,140,248,0.15)' : '#eef2ff') : 'transparent', cursor: 'pointer', color: textPrimary, fontSize: '12px', fontWeight: 600 }}>Email</button>
-                                <button type="button" onClick={() => setVerificationChannel("phone")} style={{ padding: '7px 12px', borderRadius: '8px', border: `1px solid ${verificationChannel === "phone" ? (isDark ? colors.primary || '#818CF8' : '#0f172a') : borderColor}`, background: verificationChannel === "phone" ? (isDark ? 'rgba(129,140,248,0.15)' : '#eef2ff') : 'transparent', cursor: 'pointer', color: textPrimary, fontSize: '12px', fontWeight: 600 }}>Phone</button>
-                                <button type="button" onClick={sendVerificationCode} disabled={sendingCode} style={{ padding: '7px 12px', borderRadius: '8px', border: 'none', background: isDark ? colors.primary || '#818CF8' : '#0f172a', color: '#fff', cursor: sendingCode ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600 }}>
+                                <button type="button" onClick={() => setVerificationChannel("email")} style={{ padding: '7px 12px', borderRadius: '8px', border: `1px solid ${verificationChannel === "email" ? colors.textSecondary : borderColor}`, background: verificationChannel === "email" ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : 'transparent', cursor: 'pointer', color: textPrimary, fontSize: '12px', fontWeight: 600 }}>Email</button>
+                                <button type="button" onClick={() => setVerificationChannel("phone")} style={{ padding: '7px 12px', borderRadius: '8px', border: `1px solid ${verificationChannel === "phone" ? colors.textSecondary : borderColor}`, background: verificationChannel === "phone" ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : 'transparent', cursor: 'pointer', color: textPrimary, fontSize: '12px', fontWeight: 600 }}>Phone</button>
+                                <button type="button" onClick={sendVerificationCode} disabled={sendingCode} style={{ padding: '7px 12px', borderRadius: '8px', border: 'none', background: action.background, color: action.foreground, cursor: sendingCode ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600 }}>
                                     {sendingCode ? <Loader2 size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> : null}
                                     {sendingCode ? "Sending..." : "Send Code"}
                                 </button>
@@ -561,7 +565,7 @@ const UserProfileScreen = () => {
                                 </div>
                             ) : null}
                             {devCodeHint ? (
-                                <div style={{ marginTop: '6px', fontSize: '12px', color: isDark ? '#c7d2fe' : '#3730a3' }}>
+                                <div style={{ marginTop: '6px', fontSize: '12px', color: colors.textSecondary }}>
                                     Test code: <strong>{devCodeHint}</strong>
                                 </div>
                             ) : null}

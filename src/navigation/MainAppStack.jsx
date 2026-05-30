@@ -19,7 +19,15 @@ const Stack = createNativeStackNavigator();
 const MainAppStack = () => (
     <Stack.Navigator screenOptions={defaultStackScreenOptions}>
         <Stack.Screen name="MainTabs" component={TabNavigator} />
-        <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} />
+        <Stack.Screen
+            name="ArticleDetail"
+            component={ArticleDetailScreen}
+            options={{
+                gestureEnabled: true,
+                fullScreenGestureEnabled: true,
+                animation: 'slide_from_right',
+            }}
+        />
         <Stack.Screen name="Trending" component={TrendingScreen} />
         <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
         <Stack.Screen name="Recent" component={RecentScreen} />

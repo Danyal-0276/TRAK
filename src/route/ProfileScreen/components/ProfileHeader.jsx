@@ -32,8 +32,8 @@ const ProfileHeader = ({
   const { theme } = useTheme();
   const { colors } = theme;
   const isDark = theme.mode === 'dark';
-  const accent = colors.primary || (isDark ? '#818CF8' : '#0f172a');
-  const accentSoft = colors.primary ? `${colors.primary}18` : isDark ? 'rgba(129,140,248,0.14)' : '#eff6ff';
+  const accent = colors.primary;
+  const accentSoft = isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)';
   const joined = formatJoined(dateJoined);
 
   const statItems = [
@@ -62,7 +62,7 @@ const ProfileHeader = ({
         />
         {verified ? (
           <View style={[styles.verifiedBadge, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
-            <CheckCircle2 size={16} color="#2563EB" fill="#2563EB" />
+            <CheckCircle2 size={16} color={colors.success || '#16a34a'} fill={colors.success || '#16a34a'} />
           </View>
         ) : null}
       </TouchableOpacity>

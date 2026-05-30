@@ -93,12 +93,12 @@ const HelpScreen = () => {
     const isDark = theme.mode === 'dark';
     const [openFaq, setOpenFaq] = useState(null);
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
-    const accent = isDark ? colors.primary || '#818CF8' : '#0f172a';
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
+    const accent = colors.primary;
 
     return (
         <div style={{ minHeight: '100vh', backgroundColor, marginTop: 0, paddingTop: 0 }}>
@@ -110,7 +110,7 @@ const HelpScreen = () => {
                                 width: '44px',
                                 height: '44px',
                                 borderRadius: '10px',
-                                backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f1f5f9',
+                                backgroundColor: isDark ? colors.surfaceElevated : '#f1f5f9',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
@@ -168,7 +168,7 @@ const HelpScreen = () => {
                                             width: '40px',
                                             height: '40px',
                                             borderRadius: '8px',
-                                            backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f8fafc',
+                                            backgroundColor: isDark ? colors.surfaceElevated : '#f8fafc',
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
@@ -233,7 +233,7 @@ const HelpScreen = () => {
                                             border: 'none',
                                             background: open
                                                 ? isDark
-                                                    ? colors.surfaceElevated || '#334155'
+                                                    ? colors.surfaceElevated
                                                     : '#f8fafc'
                                                 : 'transparent',
                                             cursor: 'pointer',
@@ -276,7 +276,7 @@ const HelpScreen = () => {
                         padding: '20px',
                         borderRadius: '12px',
                         border: `1px solid ${borderColor}`,
-                        backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f8fafc',
+                        backgroundColor: isDark ? colors.surfaceElevated : '#f8fafc',
                     }}
                 >
                     <h3 style={{ fontSize: '15px', fontWeight: 700, color: textPrimary, margin: '0 0 10px 0' }}>More resources</h3>

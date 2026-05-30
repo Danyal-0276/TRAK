@@ -2,7 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
-import BlackLogo from '../../assets/images/blackLogo.svg';
+import TrakLogo from '../TrakLogo';
 import Text from './Text';
 
 /**
@@ -36,9 +36,7 @@ export default function PageScreenHeader({
       ]}
     >
       <View style={styles.titleRow}>
-        <View style={[styles.logoContainer, { backgroundColor: colors.backgroundSecondary }]}>
-          <BlackLogo width={compact ? 28 : 32} height={compact ? 28 : 32} />
-        </View>
+        <TrakLogo size={compact ? 28 : 32} showContainer style={{ marginRight: 12 }} />
         <Text
           variant="title"
           numberOfLines={1}
@@ -91,16 +89,8 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: '100%',
   },
-  logoContainer: {
-    width: 44,
-    height: 44,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 12,
-    flexShrink: 0,
-  },
   title: {
+    marginLeft: 12,
     flex: 1,
     flexShrink: 1,
     minWidth: 0,

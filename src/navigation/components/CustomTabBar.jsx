@@ -48,13 +48,18 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
         }).start();
     }, [activePillX, state.index, tabWidth]);
 
+    const isDark = theme.mode === 'dark';
+
     const renderTabIcon = (routeName, isFocused) => {
         const IconComponent = iconMap[routeName] || iconMap.Home;
+        // Light theme: active pill is white — icon must be dark, not white.
+        const activeIconColor = isDark ? colors.textPrimary : (colors.primary || '#0a0a0a');
+        const inactiveIconColor = isDark ? colors.textTertiary : 'rgba(255,255,255,0.55)';
         return (
             <IconComponent
                 size={isFocused ? 24 : 22}
-                color={isFocused ? colors.textPrimary : colors.textSecondary}
-                strokeWidth={2}
+                color={isFocused ? activeIconColor : inactiveIconColor}
+                strokeWidth={isFocused ? 2.25 : 2}
             />
         );
     };
@@ -70,21 +75,17 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
         },
         tabBarBackground: {
             width: '100%',
-            backgroundColor: theme.mode === 'dark' 
-                ? 'rgba(15, 23, 42, 0.8)' 
-                : 'rgba(0, 0, 0, 0.8)',
+            backgroundColor: isDark ? 'rgba(20, 20, 20, 0.96)' : 'rgba(10, 10, 10, 0.9)',
             borderRadius: radius.pill,
             paddingVertical: spacing.sm,
             paddingHorizontal: spacing.md,
-            shadowColor: colors.shadow || '#000',
+            shadowColor: colors.shadowDark || '#000',
             shadowOffset: { width: 0, height: 6 },
-            shadowOpacity: 0.3,
+            shadowOpacity: isDark ? 0.45 : 0.3,
             shadowRadius: 12,
             elevation: 10,
             borderWidth: 1,
-            borderColor: theme.mode === 'dark' 
-                ? 'rgba(255, 255, 255, 0.1)' 
-                : 'rgba(255, 255, 255, 0.1)',
+            borderColor: isDark ? colors.border : 'rgba(255, 255, 255, 0.08)',
         },
         tabBarContent: {
             position: 'relative',
@@ -98,7 +99,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             bottom: 0,
             left: 0,
             borderRadius: radius.pill,
-            backgroundColor: colors.surface,
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.14)' : '#ffffff',
         },
         tabItem: {
             flex: 1,

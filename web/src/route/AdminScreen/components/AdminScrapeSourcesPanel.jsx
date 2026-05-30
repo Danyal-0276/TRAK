@@ -7,6 +7,14 @@ export default function AdminScrapeSourcesPanel({ connections, palette }) {
   const sources = connections?.sources || [];
   const active = connections?.active ?? 0;
   const total = connections?.total ?? 0;
+  const ingest = connections?.ingest || {};
+  const rssFromIngest = ingest.rss_feeds_used_by_scraper;
+  const rssFromKind = sources.filter((s) => s.kind === 'rss').length;
+  const rssUsed =
+    typeof rssFromIngest === 'number' && rssFromIngest > 0
+      ? rssFromIngest
+      : rssFromKind || ingest.rss_catalog_feeds || 0;
+  const truncated = connections?.sources_truncated;
 
   return (
     <section
@@ -34,8 +42,13 @@ export default function AdminScrapeSourcesPanel({ connections, palette }) {
         <div>
           <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.textPrimary }}>Scrape sources</h3>
           <p style={{ margin: '4px 0 0', fontSize: 12, color: palette.textSecondary }}>
-            {active} of {total} connections active
+            {active} of {total} in Admin · RSS scraper uses {rssUsed} feeds (catalog + connections)
           </p>
+          {total < rssUsed ? (
+            <p style={{ margin: '4px 0 0', fontSize: 11, color: palette.textTertiary }}>
+              Fewer rows here than feeds at scrape time — open Manage to sync catalog, or redeploy after code updates.
+            </p>
+          ) : null}
         </div>
         <button
           type="button"
@@ -63,13 +76,22 @@ export default function AdminScrapeSourcesPanel({ connections, palette }) {
         {sources.length === 0 ? (
           <p style={{ fontSize: 13, color: palette.textSecondary, margin: 0 }}>No scrape sources configured.</p>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: 10 }}>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+              gap: 10,
+              maxHeight: 480,
+              overflowY: 'auto',
+              paddingRight: 4,
+            }}
+          >
             {sources.map((s) => {
               const Icon = s.kind === 'rss' ? Rss : Globe;
               const on = s.active !== false;
               return (
                 <div
-                  key={s.slug || s.name}
+                  key={`${s.slug}-${s.url || s.name}`}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -122,6 +144,11 @@ export default function AdminScrapeSourcesPanel({ connections, palette }) {
             })}
           </div>
         )}
+        {truncated ? (
+          <p style={{ margin: '12px 0 0', fontSize: 12, color: palette.textTertiary }}>
+            Showing first {sources.length} of {total}. Open Manage for the full list.
+          </p>
+        ) : null}
       </div>
     </section>
   );

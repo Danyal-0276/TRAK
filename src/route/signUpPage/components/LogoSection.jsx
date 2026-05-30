@@ -1,30 +1,29 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import WhiteLogo from '../../../assets/images/whiteLogo.svg';
+import { useTheme } from '../../../theme/ThemeContext';
+import TrakLogo from '../../../components/TrakLogo';
 
-export const LogoSection = () => (
-    <View style={styles.logoSection}>
-        <View style={styles.logoContainer}>
-            <WhiteLogo width={80} height={80} />
-            <Text style={styles.brandName}>TRAK</Text>
+export const LogoSection = () => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+
+    return (
+        <View style={styles.logoSection}>
+            <TrakLogo size={72} />
+            <Text style={[styles.brandName, { color: colors.textPrimary }]}>TRAK</Text>
         </View>
-    </View>
-);
+    );
+};
 
 const styles = StyleSheet.create({
     logoSection: {
-        flex: 1,
-        justifyContent: 'center',
         alignItems: 'center',
-    },
-    logoContainer: {
-        alignItems: 'center',
+        marginBottom: 8,
     },
     brandName: {
-        fontSize: 20,
-        fontWeight: 'bold',
-        color: '#fff',
-        letterSpacing: 3,
+        fontSize: 22,
+        fontWeight: '700',
+        letterSpacing: 4,
         marginTop: 8,
     },
 });

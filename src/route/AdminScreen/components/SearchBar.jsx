@@ -1,31 +1,31 @@
 import React, { useRef } from 'react';
 import { View, TextInput, StyleSheet, Animated } from 'react-native';
 import { Search } from 'lucide-react-native';
-import { useTheme } from '../../../theme/ThemeContext';
+import { useAdminTheme } from '../useAdminTheme';
 
-const SearchBar = ({ value, onChangeText, placeholder = 'Search...' }) => {
-  const { theme } = useTheme();
-  const { colors } = theme;
+const SearchBar = ({ value, onChangeText, placeholder = 'Search...', palette: paletteProp }) => {
+  const { palette: themePalette } = useAdminTheme();
+  const palette = paletteProp || themePalette;
   const borderColorAnim = useRef(new Animated.Value(0)).current;
 
   const borderColor = borderColorAnim.interpolate({
     inputRange: [0, 1],
-    outputRange: [colors.border, colors.primary],
+    outputRange: [palette.border, palette.primary],
   });
 
   return (
     <Animated.View style={[styles.searchBar, {
-      backgroundColor: colors.surface,
+      backgroundColor: palette.card,
       borderColor,
     }]}>
-      <Search size={18} color={colors.textSecondary} />
+      <Search size={18} color={palette.textSecondary} />
       <TextInput
-        style={[styles.searchInput, { color: colors.textPrimary }]}
+        style={[styles.searchInput, { color: palette.textPrimary }]}
         placeholder={placeholder}
         value={value}
         onChangeText={onChangeText}
-        placeholderTextColor={colors.textTertiary}
-        cursorColor={colors.primary}
+        placeholderTextColor={palette.textTertiary}
+        cursorColor={palette.primary}
         onFocus={() => {
           Animated.timing(borderColorAnim, {
             toValue: 1,

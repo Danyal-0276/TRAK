@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, TextInput, Modal, ActivityIndicator } from 'react-native';
 import { Shield, Plus, Trash2 } from 'lucide-react-native';
-import { useTheme } from '../../../theme/ThemeContext';
+import { useAdminTheme } from '../useAdminTheme';
 import { useAuth } from '../../../context/AuthContext';
 import SearchBar from '../components/SearchBar';
 import Text from '../../../components/ui/Text';
@@ -52,24 +52,24 @@ const AdminsTab = ({
     <View style={styles.managementSection}>
       <View style={styles.managementHeader}>
         <View style={styles.headerLeft}>
-          <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-            <Shield size={20} color={colors.primary} />
+          <View style={[styles.iconContainer, { backgroundColor: `${palette.primary}15` }]}>
+            <Shield size={20} color={palette.primary} />
           </View>
-          <Text variant="title" color={colors.textPrimary} style={styles.sectionTitle}>
+          <Text variant="title" color={palette.textPrimary} style={styles.sectionTitle}>
             Administrators
           </Text>
         </View>
         {isSuperAdmin ? (
           <TouchableOpacity
             onPress={() => setShowCreate(true)}
-            style={[styles.addBtn, { backgroundColor: colors.primary }]}
+            style={[styles.addBtn, { backgroundColor: palette.primary }]}
           >
             <Plus size={18} color="#fff" />
           </TouchableOpacity>
         ) : null}
       </View>
 
-      <SearchBar value={searchQuery} onChangeText={onSearchChange} placeholder="Search admins..." />
+      <SearchBar value={searchQuery} onChangeText={onSearchChange} placeholder="Search admins..." palette={palette} />
 
       {admins.length === 0 ? (
         <EmptyState icon={Shield} title="No admins found" subtitle="No administrator accounts" />
@@ -77,20 +77,20 @@ const AdminsTab = ({
         admins.map((admin) => (
           <View
             key={admin.id}
-            style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}
           >
             <View style={{ flex: 1 }}>
-              <Text variant="body" color={colors.textPrimary} style={{ fontWeight: '600' }}>
+              <Text variant="body" color={palette.textPrimary} style={{ fontWeight: '600' }}>
                 {admin.email}
               </Text>
-              <Text variant="caption" color={colors.textSecondary} style={{ marginTop: 4 }}>
+              <Text variant="caption" color={palette.textSecondary} style={{ marginTop: 4 }}>
                 {admin.is_active ? 'Active' : 'Inactive'}
                 {admin.is_super_admin ? ' · Super Admin' : ''}
               </Text>
             </View>
             {isSuperAdmin && !admin.is_super_admin ? (
               <TouchableOpacity onPress={() => handleDelete(admin)} style={styles.deleteBtn}>
-                <Trash2 size={18} color={colors.error || '#ef4444'} />
+                <Trash2 size={18} color={palette.error || '#ef4444'} />
               </TouchableOpacity>
             ) : null}
           </View>
@@ -99,37 +99,37 @@ const AdminsTab = ({
 
       <Modal visible={showCreate} transparent animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <Text variant="subtitle" color={colors.textPrimary} style={{ marginBottom: 16 }}>
+          <View style={[styles.modalCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
+            <Text variant="subtitle" color={palette.textPrimary} style={{ marginBottom: 16 }}>
               Create admin
             </Text>
             <TextInput
               placeholder="Email"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={palette.textSecondary}
               value={email}
               onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
-              style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
+              style={[styles.input, { borderColor: palette.border, color: palette.textPrimary }]}
             />
             <TextInput
               placeholder="Password"
-              placeholderTextColor={colors.textSecondary}
+              placeholderTextColor={palette.textSecondary}
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              style={[styles.input, { borderColor: colors.border, color: colors.textPrimary }]}
+              style={[styles.input, { borderColor: palette.border, color: palette.textPrimary }]}
             />
             <View style={styles.modalActions}>
               <TouchableOpacity onPress={() => setShowCreate(false)} disabled={creating}>
-                <Text variant="body" color={colors.textSecondary}>
+                <Text variant="body" color={palette.textSecondary}>
                   Cancel
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleCreate}
                 disabled={creating || !email.trim() || password.length < 6}
-                style={[styles.createBtn, { backgroundColor: colors.primary }]}
+                style={[styles.createBtn, { backgroundColor: palette.primary }]}
               >
                 {creating ? (
                   <ActivityIndicator color="#fff" />

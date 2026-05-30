@@ -1,7 +1,9 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Bot, MessageCircle, Send, Sparkles, Trash2, X } from 'lucide-react';
+import { Bot, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { chatWithBot, clearChatHistory, getChatHistory } from '../utils/Service/api';
 import { useAuth } from '../context/AuthContext';
+import { useTheme } from '../theme/ThemeContext';
+import { filledActionColors } from '../theme/buttonContrast';
 
 const QUICK_PROMPTS = [
   'Top tech headlines',
@@ -11,6 +13,11 @@ const QUICK_PROMPTS = [
 
 const ChatBotWidget = () => {
   const { user } = useAuth();
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const isDark = theme.mode === 'dark';
+  const action = filledActionColors(colors, isDark);
+
   const [open, setOpen] = useState(false);
   const [renderPanel, setRenderPanel] = useState(false);
   const [input, setInput] = useState('');
@@ -22,7 +29,10 @@ const ChatBotWidget = () => {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const scrollRef = useRef(null);
-  const glow = useMemo(() => ({ boxShadow: '0 12px 40px rgba(15,23,42,0.28)' }), []);
+  const glow = useMemo(
+    () => ({ boxShadow: isDark ? '0 12px 40px rgba(0,0,0,0.45)' : '0 12px 40px rgba(0,0,0,0.18)' }),
+    [isDark],
+  );
 
   useEffect(() => {
     if (open) setRenderPanel(true);
@@ -113,38 +123,105 @@ const ChatBotWidget = () => {
         }
       `}</style>
       {renderPanel ? (
-        <div style={{ width: 360, height: 520, background: '#fff', border: '1px solid #dbe4f0', borderRadius: 16, display: 'flex', flexDirection: 'column', overflow: 'hidden', ...glow, opacity: open ? 1 : 0, transform: `translateY(${open ? 0 : 12}px) scale(${open ? 1 : 0.98})`, transition: 'all 180ms ease' }}>
-          <div style={{ padding: '12px 14px', background: 'linear-gradient(135deg, #0f172a, #334155)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#fff' }}>
+        <div
+          style={{
+            width: 360,
+            height: 520,
+            background: colors.surface,
+            border: `1px solid ${colors.border}`,
+            borderRadius: 16,
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden',
+            ...glow,
+            opacity: open ? 1 : 0,
+            transform: `translateY(${open ? 0 : 12}px) scale(${open ? 1 : 0.98})`,
+            transition: 'all 180ms ease',
+          }}
+        >
+          <div
+            style={{
+              padding: '12px 14px',
+              background: colors.backgroundSecondary,
+              borderBottom: `1px solid ${colors.border}`,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: colors.textPrimary }}>
               <Sparkles size={14} />
               <strong style={{ fontSize: 14 }}>TRAK AI Assistant</strong>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <button
+                type="button"
                 onClick={() => setConfirmClear(true)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#fff' }}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textSecondary }}
                 title="Clear chat history"
               >
                 <Trash2 size={15} />
               </button>
-              <button onClick={() => setOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}><X size={16} /></button>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textSecondary }}
+              >
+                <X size={16} />
+              </button>
             </div>
           </div>
-          <div ref={scrollRef} style={{ flex: 1, overflowY: 'auto', padding: 12, background: 'radial-gradient(circle at top right, #f8fafc 0%, #ffffff 55%)' }}>
+          <div
+            ref={scrollRef}
+            style={{ flex: 1, overflowY: 'auto', padding: 12, background: colors.background }}
+          >
             {messages.map((m, i) => (
-              <div key={i} style={{ marginBottom: 8, textAlign: m.role === 'user' ? 'right' : 'left', animation: `chatMsgIn 220ms ease ${Math.min(i * 20, 120)}ms both` }}>
-                <span style={{ display: 'inline-block', fontSize: 13, padding: '10px 12px', borderRadius: 14, background: m.role === 'user' ? 'linear-gradient(135deg, #0f172a, #1e293b)' : 'linear-gradient(135deg, #eef2ff, #f8fafc)', color: m.role === 'user' ? '#fff' : '#0f172a', maxWidth: '88%', lineHeight: 1.5, border: m.role === 'user' ? 'none' : '1px solid #dbe4f0' }}>
+              <div
+                key={i}
+                style={{
+                  marginBottom: 8,
+                  textAlign: m.role === 'user' ? 'right' : 'left',
+                  animation: `chatMsgIn 220ms ease ${Math.min(i * 20, 120)}ms both`,
+                }}
+              >
+                <span
+                  style={{
+                    display: 'inline-block',
+                    fontSize: 13,
+                    padding: '10px 12px',
+                    borderRadius: 14,
+                    background: m.role === 'user' ? action.background : colors.backgroundSecondary,
+                    color: m.role === 'user' ? action.foreground : colors.textPrimary,
+                    maxWidth: '88%',
+                    lineHeight: 1.5,
+                    border: m.role === 'user' ? 'none' : `1px solid ${colors.border}`,
+                  }}
+                >
                   {m.text}
                 </span>
                 {m.articleUrl && (
                   <div style={{ marginTop: 7, display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                    <button onClick={() => window.open(m.articleUrl, '_blank', 'noopener,noreferrer')} style={{ border: '1px solid #dbe4f0', borderRadius: 10, padding: 0, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', cursor: 'pointer', maxWidth: 250, textAlign: 'left' }}>
+                    <button
+                      type="button"
+                      onClick={() => window.open(m.articleUrl, '_blank', 'noopener,noreferrer')}
+                      style={{
+                        border: `1px solid ${colors.border}`,
+                        borderRadius: 10,
+                        padding: 0,
+                        background: colors.backgroundSecondary,
+                        cursor: 'pointer',
+                        maxWidth: 250,
+                        textAlign: 'left',
+                      }}
+                    >
                       <div style={{ padding: '8px 10px' }}>
-                        <div style={{ fontSize: 10, color: '#64748b', marginBottom: 4 }}>{m.source || 'TRAK Source'}</div>
-                        <div style={{ fontSize: 12, color: '#0f172a', fontWeight: 600, lineHeight: 1.4 }}>
+                        <div style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 4 }}>
+                          {m.source || 'TRAK Source'}
+                        </div>
+                        <div style={{ fontSize: 12, color: colors.textPrimary, fontWeight: 600, lineHeight: 1.4 }}>
                           {m.articleTitle || 'Open related article'}
                         </div>
-                        <div style={{ marginTop: 6, fontSize: 11, color: '#334155' }}>View article</div>
+                        <div style={{ marginTop: 6, fontSize: 11, color: colors.textSecondary }}>View article</div>
                       </div>
                     </button>
                   </div>
@@ -153,7 +230,7 @@ const ChatBotWidget = () => {
             ))}
             {loading && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12, color: '#64748b' }}>TRAK AI is typing</span>
+                <span style={{ fontSize: 12, color: colors.textSecondary }}>TRAK AI is typing</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
                   {[0, 1, 2].map((i) => (
                     <span
@@ -162,7 +239,7 @@ const ChatBotWidget = () => {
                         width: 6,
                         height: 6,
                         borderRadius: '50%',
-                        background: '#64748b',
+                        background: colors.textTertiary,
                         animation: `typingBounce 1s ${i * 0.16}s infinite`,
                       }}
                     />
@@ -171,53 +248,177 @@ const ChatBotWidget = () => {
               </div>
             )}
             {!loading && historyLoaded && messages.length === 0 && (
-              <div style={{ fontSize: 12, color: '#64748b' }}>No chat history yet.</div>
+              <div style={{ fontSize: 12, color: colors.textSecondary }}>No chat history yet.</div>
             )}
           </div>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', padding: '8px 10px', borderTop: '1px solid #e2e8f0' }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 6,
+              flexWrap: 'wrap',
+              padding: '8px 10px',
+              borderTop: `1px solid ${colors.border}`,
+            }}
+          >
             {QUICK_PROMPTS.map((p) => (
               <button
                 key={p}
+                type="button"
                 onClick={() => sendMessage(p)}
-                style={{ fontSize: 11, border: '1px solid #cbd5e1', borderRadius: 999, background: '#fff', color: '#334155', padding: '5px 9px', cursor: 'pointer' }}
+                style={{
+                  fontSize: 11,
+                  border: `1px solid ${colors.border}`,
+                  borderRadius: 999,
+                  background: colors.surface,
+                  color: colors.textSecondary,
+                  padding: '5px 9px',
+                  cursor: 'pointer',
+                }}
               >
                 {p}
               </button>
             ))}
           </div>
-          <div style={{ borderTop: '1px solid #e2e8f0', padding: 10, display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div
+            style={{
+              borderTop: `1px solid ${colors.border}`,
+              padding: 10,
+              display: 'flex',
+              gap: 8,
+              alignItems: 'center',
+            }}
+          >
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
               placeholder="Ask anything about news..."
-              style={{ flex: 1, border: '1px solid #cbd5e1', borderRadius: 10, padding: '9px 11px' }}
+              style={{
+                flex: 1,
+                border: `1px solid ${colors.border}`,
+                borderRadius: 10,
+                padding: '9px 11px',
+                background: colors.backgroundSecondary,
+                color: colors.textPrimary,
+              }}
             />
-            <button onClick={() => sendMessage()} disabled={loading} style={{ width: 36, height: 36, border: 'none', background: '#0f172a', color: '#fff', borderRadius: 10, cursor: 'pointer', display: 'grid', placeItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => sendMessage()}
+              disabled={loading}
+              style={{
+                width: 36,
+                height: 36,
+                border: 'none',
+                background: action.background,
+                color: action.foreground,
+                borderRadius: 10,
+                cursor: 'pointer',
+                display: 'grid',
+                placeItems: 'center',
+              }}
+            >
               <Send size={14} />
             </button>
           </div>
         </div>
       ) : (
-        <button onClick={() => { setOpen(true); setHasUnread(false); }} style={{ width: 58, height: 58, borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg, #0f172a, #334155)', color: '#fff', cursor: 'pointer', boxShadow: '0 12px 30px rgba(15,23,42,0.35)', display: 'grid', placeItems: 'center', position: 'relative', transform: 'translateZ(0)', transition: 'transform 160ms ease' }}>
-          {hasUnread && <span style={{ position: 'absolute', top: 6, right: 6, width: 10, height: 10, borderRadius: '50%', background: '#ef4444', border: '2px solid #fff' }} />}
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(true);
+            setHasUnread(false);
+          }}
+          style={{
+            width: 58,
+            height: 58,
+            borderRadius: '50%',
+            border: 'none',
+            background: action.background,
+            color: action.foreground,
+            cursor: 'pointer',
+            boxShadow: isDark ? '0 12px 30px rgba(0,0,0,0.5)' : '0 12px 30px rgba(0,0,0,0.25)',
+            display: 'grid',
+            placeItems: 'center',
+            position: 'relative',
+            transform: 'translateZ(0)',
+            transition: 'transform 160ms ease',
+          }}
+        >
+          {hasUnread && (
+            <span
+              style={{
+                position: 'absolute',
+                top: 6,
+                right: 6,
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: colors.error || '#ef4444',
+                border: `2px solid ${action.background}`,
+              }}
+            />
+          )}
           <Bot size={22} />
         </button>
       )}
       {confirmClear && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.35)', display: 'grid', placeItems: 'center', zIndex: 1001 }}>
-          <div style={{ width: 320, background: '#fff', borderRadius: 14, border: '1px solid #dbe4f0', padding: 16, boxShadow: '0 16px 42px rgba(15,23,42,0.26)' }}>
-            <div style={{ fontSize: 15, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>Clear chat history?</div>
-            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 14 }}>This action cannot be undone.</div>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.35)',
+            display: 'grid',
+            placeItems: 'center',
+            zIndex: 1001,
+          }}
+        >
+          <div
+            style={{
+              width: 320,
+              background: colors.surface,
+              borderRadius: 14,
+              border: `1px solid ${colors.border}`,
+              padding: 16,
+              boxShadow: glow.boxShadow,
+            }}
+          >
+            <div style={{ fontSize: 15, fontWeight: 700, color: colors.textPrimary, marginBottom: 8 }}>
+              Clear chat history?
+            </div>
+            <div style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 14 }}>
+              This action cannot be undone.
+            </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={() => setConfirmClear(false)} style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 8, padding: '7px 12px', cursor: 'pointer' }}>Cancel</button>
               <button
+                type="button"
+                onClick={() => setConfirmClear(false)}
+                style={{
+                  border: `1px solid ${colors.border}`,
+                  background: colors.surface,
+                  color: colors.textPrimary,
+                  borderRadius: 8,
+                  padding: '7px 12px',
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
                 onClick={async () => {
                   await clearChatHistory();
                   setMessages([{ role: 'bot', text: 'History cleared. Ask me anything new.' }]);
                   setConfirmClear(false);
                 }}
-                style={{ border: 'none', background: '#dc2626', color: '#fff', borderRadius: 8, padding: '7px 12px', cursor: 'pointer' }}
+                style={{
+                  border: 'none',
+                  background: colors.error || '#dc2626',
+                  color: '#fff',
+                  borderRadius: 8,
+                  padding: '7px 12px',
+                  cursor: 'pointer',
+                }}
               >
                 Clear
               </button>

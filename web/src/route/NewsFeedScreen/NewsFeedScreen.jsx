@@ -326,10 +326,10 @@ const NewsFeedScreen = () => {
         }
     };
 
-    const backgroundColor = isDark ? colors.background || '#0F172A' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const backgroundColor = colors.background;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const borderColor = colors.border;
 
     const visibleNews = useMemo(() => {
         if (activeTab === 'Bookmarks') {
@@ -409,7 +409,7 @@ const NewsFeedScreen = () => {
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
                                 borderBottom: activeTab === tab
-                                    ? `2px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`
+                                    ? `2px solid ${colors.primary}`
                                     : '2px solid transparent',
                                 marginBottom: '-1px',
                                 borderRadius: '0',
@@ -421,7 +421,7 @@ const NewsFeedScreen = () => {
                                 fontSize: '14px',
                                 fontWeight: activeTab === tab ? '600' : '500',
                                 color: activeTab === tab
-                                    ? (isDark ? colors.primary || '#818CF8' : '#0f172a')
+                                    ? (colors.primary)
                                     : textSecondary,
                             }}>
                                 {tab}
@@ -452,14 +452,14 @@ const NewsFeedScreen = () => {
                                     {feedError}
                                 </p>
                                 <p style={{ fontSize: '13px', color: textSecondary, lineHeight: 1.5, marginBottom: '20px' }}>
-                                    Log in, ensure Django is running at {import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}, and that processed articles exist in MongoDB. To match Netlify data locally, use the Render URL in <code style={{ fontSize: '12px' }}>TRAK/web/.env</code>.
+                                    Log in and ensure the API is reachable at {import.meta.env.VITE_API_URL || 'https://trak-backend-upip.onrender.com'}. Processed articles must exist in MongoDB (run the pipeline on Render or locally).
                                 </p>
                                 <button
                                     type="button"
                                     onClick={() => loadNews({ force: true })}
                                     style={{
                                         padding: '12px 20px',
-                                        backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',
+                                        backgroundColor: colors.primary,
                                         color: '#ffffff',
                                         border: 'none',
                                         borderRadius: '8px',
@@ -484,7 +484,7 @@ const NewsFeedScreen = () => {
                                     onClick={() => navigate('/tag-selection', { state: { fromSettings: true } })}
                                     style={{
                                         padding: '12px 20px',
-                                        backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',
+                                        backgroundColor: colors.primary,
                                         color: '#ffffff',
                                         border: 'none',
                                         borderRadius: '8px',

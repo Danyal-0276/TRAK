@@ -1,4 +1,6 @@
 const API_TIMEOUT_MS = 90000;
+/** Admin pipeline batch (HF Spaces per article) can take several minutes. */
+export const PIPELINE_RUN_TIMEOUT_MS = 600000;
 export const TTS_PLAN_TIMEOUT_MS = 120000;
 export const TTS_CHUNK_TIMEOUT_MS = 360000;
 
