@@ -11,7 +11,7 @@ const DEV_LAN_HOST = '192.168.1.13';
  * true  = real Android phone/tablet (USB or Wi-Fi)
  * false = Android Studio emulator (uses 10.0.2.2 → host)
  */
-const ANDROID_PHYSICAL_DEVICE = true;
+const ANDROID_PHYSICAL_DEVICE = false;
 
 const RENDER_API_BASE = 'https://trak-backend-upip.onrender.com';
 
