@@ -98,7 +98,7 @@ const AboutScreen = () => {
                   style={{
                     fontSize: 12,
                     fontWeight: 700,
-                    color: isDark ? colors.primary || '#A5B4FC' : '#2563eb',
+                    color: colors.primary,
                     background: isDark ? 'rgba(129, 140, 248, 0.2)' : '#dbeafe',
                     border: `1px solid ${isDark ? 'rgba(129, 140, 248, 0.35)' : '#bfdbfe'}`,
                     padding: '4px 10px',

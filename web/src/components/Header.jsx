@@ -227,14 +227,14 @@ const Header = () => {
                         <div style={{
                             width: isMobile ? '32px' : '36px',
                             height: isMobile ? '32px' : '36px',
-                            backgroundColor: isDark ? colors.primary : '#000000',
+                            backgroundColor: colors.backgroundSecondary,
                             borderRadius: '8px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                         }}>
                             <img
-                                src="/images/whiteLogo.svg"
+                                src={isDark ? '/images/whiteLogo.svg' : '/images/blackLogo.svg'}
                                 alt="TRAK Logo"
                                 style={{
                                     width: isMobile ? '20px' : '24px',

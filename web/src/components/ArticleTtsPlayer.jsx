@@ -135,7 +135,11 @@ export default function ArticleTtsPlayer({
   const progressPct =
     progress.total > 0 ? Math.min(100, (progress.current / progress.total) * 100) : null;
 
-  const playButton = (
+  const isDark = theme.mode === 'dark';
+  const btnBg = isActive ? colors.textTertiary : isDark ? colors.textPrimary : colors.primary;
+  const btnFg = isDark ? colors.background : colors.textOnPrimary || '#ffffff';
+
+  const playButton = (compact = false) => (
     <button
       type="button"
       onClick={(e) => {
@@ -143,16 +147,20 @@ export default function ArticleTtsPlayer({
         handlePlay();
       }}
       disabled={disabled}
+      aria-label={isActive ? 'Stop listening' : 'Play article audio'}
       style={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 6,
-        padding: '8px 14px',
-        borderRadius: 8,
+        justifyContent: 'center',
+        gap: compact ? 0 : 6,
+        width: compact ? 36 : 'auto',
+        height: compact ? 36 : 'auto',
+        padding: compact ? 0 : '8px 14px',
+        borderRadius: compact ? 18 : 8,
         border: 'none',
         flexShrink: 0,
-        background: colors.primary,
-        color: colors.textOnPrimary || '#fff',
+        background: btnBg,
+        color: btnFg,
         fontSize: 13,
         fontWeight: 600,
         cursor: disabled ? 'not-allowed' : 'pointer',
@@ -166,7 +174,7 @@ export default function ArticleTtsPlayer({
       ) : (
         <Volume2 size={16} />
       )}
-      {isActive ? 'Stop' : 'Play'}
+      {!compact ? (isActive ? 'Stop' : 'Play') : null}
     </button>
   );
 
@@ -209,7 +217,7 @@ export default function ArticleTtsPlayer({
             Listen to article
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            {!expanded ? playButton : null}
+            {!expanded ? playButton(true) : null}
             {expanded ? <ChevronUp size={18} color={textSecondary} /> : <ChevronDown size={18} color={textSecondary} />}
           </span>
         </button>
@@ -254,7 +262,7 @@ export default function ArticleTtsPlayer({
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, minHeight: 40 }}>
-              {playButton}
+              {playButton(false)}
               {isActive ? (
                 <div
                   role="progressbar"

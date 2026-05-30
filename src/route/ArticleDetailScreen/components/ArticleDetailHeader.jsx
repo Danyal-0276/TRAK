@@ -2,7 +2,7 @@ import React from 'react';
 import { View, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { ChevronLeft, MoreHorizontal } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
-import Text from '../../../components/ui/Text';
+import TrakLogo from '../../../components/TrakLogo';
 
 export const ArticleDetailHeader = ({ onBackPress, onMorePress }) => {
     const { theme } = useTheme();
@@ -29,13 +29,9 @@ export const ArticleDetailHeader = ({ onBackPress, onMorePress }) => {
                 <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.25} />
             </TouchableOpacity>
 
-            <Text
-                variant="caption"
-                numberOfLines={1}
-                style={[styles.title, { color: colors.textSecondary }]}
-            >
-                Article
-            </Text>
+            <View style={styles.logoCenter} pointerEvents="none">
+                <TrakLogo size={28} />
+            </View>
 
             <TouchableOpacity
                 style={[styles.iconButton, { backgroundColor: colors.backgroundSecondary }]}
@@ -69,12 +65,12 @@ const styles = StyleSheet.create({
             },
         }),
     },
-    title: {
-        flex: 1,
-        textAlign: 'center',
-        fontWeight: '600',
-        fontSize: 13,
-        marginHorizontal: 8,
+    logoCenter: {
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     iconButton: {
         width: 40,
@@ -82,5 +78,6 @@ const styles = StyleSheet.create({
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
+        zIndex: 1,
     },
 });

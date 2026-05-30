@@ -2,16 +2,18 @@ import React from 'react';
 import { Settings } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../theme/ThemeContext';
+import TrakLogo from '../../../components/TrakLogo';
 import Text from '../../../components/ui/Text';
 
 export const FeedHeader = () => {
     const { theme } = useTheme();
+    const { colors } = theme;
     const navigate = useNavigate();
 
     return (
         <div style={{
-            backgroundColor: '#ffffff',
-            borderBottom: '1px solid #e2e8f0',
+            backgroundColor: colors.surface,
+            borderBottom: `1px solid ${colors.border}`,
         }}>
             <div style={{
                 display: 'flex',
@@ -28,58 +30,45 @@ export const FeedHeader = () => {
                     gap: '12px',
                 }}>
                     <div style={{
-                        width: 36,
-                        height: 36,
+                        width: 40,
+                        height: 40,
+                        borderRadius: 8,
                         display: 'flex',
-                        justifyContent: 'center',
                         alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: colors.backgroundSecondary,
                     }}>
-                        <div style={{
-                            width: 36,
-                            height: 36,
-                            backgroundColor: '#000000',
-                            borderRadius: '8px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                        }}>
-                            <img src="/images/whiteLogo.svg" alt="TRAK" style={{ width: 24, height: 24 }} />
-                        </div>
+                        <TrakLogo size={24} />
                     </div>
                     <Text variant="body" style={{
                         fontSize: '18px',
-                        fontWeight: '400',
-                        color: '#374151',
+                        fontWeight: '600',
+                        color: colors.textPrimary,
                         letterSpacing: '0.2px',
                     }}>
                         Newsfeed
                     </Text>
                 </div>
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                }}>
-                    <button
-                        onClick={() => navigate('/settings')}
-                        style={{
-                            padding: '10px',
-                            borderRadius: '12px',
-                            backgroundColor: 'transparent',
-                            border: 'none',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f1f5f9';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                    >
-                        <Settings size={20} color="#64748b" strokeWidth={2} />
-                    </button>
-                </div>
+                <button
+                    type="button"
+                    onClick={() => navigate('/settings')}
+                    style={{
+                        padding: '10px',
+                        borderRadius: '12px',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                        e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
+                    }}
+                    onMouseLeave={(e) => {
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
+                >
+                    <Settings size={20} color={colors.textSecondary} strokeWidth={2} />
+                </button>
             </div>
         </div>
     );

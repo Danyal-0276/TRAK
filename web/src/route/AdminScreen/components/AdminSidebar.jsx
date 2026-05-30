@@ -10,11 +10,11 @@ import {
   UserCircle,
   LogOut,
   Newspaper,
-  ShieldCheck,
   Moon,
   Sun,
 } from 'lucide-react';
 import { useTheme } from '../../../theme/ThemeContext';
+import TrakLogo from '../../../components/TrakLogo';
 import './adminShell.css';
 
 const MAIN_NAV = [
@@ -78,8 +78,8 @@ export default function AdminSidebar({
       aria-label="Admin navigation"
     >
       <div className="admin-sidebar__brand">
-        <div className="admin-sidebar__brand-icon">
-          <ShieldCheck size={22} strokeWidth={2.5} />
+        <div className="admin-sidebar__brand-icon admin-sidebar__brand-icon--logo">
+          <TrakLogo size={34} />
         </div>
         <div style={{ minWidth: 0 }}>
           <h2 className="admin-sidebar__brand-title">TRAK Admin</h2>

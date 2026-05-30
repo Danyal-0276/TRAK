@@ -22,6 +22,7 @@ import { normalizeArticleForDetail, getArticleListenText } from '../../utils/art
 import { buildHighlightLinesFromContent } from '../../utils/ttsHighlight';
 import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
 import ArticleTtsPlayer from '../../components/ArticleTtsPlayer';
+import TrakLogo from '../../components/TrakLogo';
 import { useTheme } from '../../theme/ThemeContext';
 
 const ArticleDetailScreen = () => {
@@ -229,7 +230,7 @@ const ArticleDetailScreen = () => {
                 top: 0,
                 left: 0,
                 right: 0,
-                backgroundColor: colors.background,
+                backgroundColor: colors.surface,
                 borderBottom: `1px solid ${colors.border}`,
                 zIndex: 1000,
                 padding: '12px 24px',
@@ -243,8 +244,10 @@ const ArticleDetailScreen = () => {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
+                    position: 'relative',
                 }}>
                     <button
+                        type="button"
                         onClick={() => navigate(-1)}
                         style={{
                             display: 'flex',
@@ -273,6 +276,18 @@ const ArticleDetailScreen = () => {
                             Back
                         </span>
                     </button>
+                    <div
+                        style={{
+                            position: 'absolute',
+                            left: '50%',
+                            top: '50%',
+                            transform: 'translate(-50%, -50%)',
+                            pointerEvents: 'none',
+                        }}
+                        aria-hidden
+                    >
+                        <TrakLogo size={28} />
+                    </div>
                     <div style={{ position: 'relative' }}>
                         <button
                             type="button"

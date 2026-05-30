@@ -278,7 +278,7 @@ const DataScreen = () => {
                         gap: '12px',
                         marginBottom: '24px',
                     }}>
-                        <HardDrive size={24} color={isDark ? '#818CF8' : '#0f172a'} />
+                        <HardDrive size={24} color={colors.primary} />
                         <h2 style={{
                             fontSize: '20px',
                             fontWeight: '700',

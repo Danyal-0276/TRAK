@@ -61,6 +61,16 @@
   flex-shrink: 0;
 }
 
+.admin-sidebar__brand-icon--logo {
+  width: auto;
+  height: auto;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
 .admin-sidebar__brand-title {
   margin: 0;
   font-size: 17px;

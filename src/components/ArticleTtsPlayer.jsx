@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Volume2, Square, ChevronDown, ChevronUp } from 'lucide-react-native';
 import Text from './ui/Text';
+import { useTheme } from '../theme/ThemeContext';
 import {
   TTS_LANGUAGES,
   requestArticleTtsPlan,
@@ -21,6 +22,8 @@ export default function ArticleTtsPlayer({
   onActiveLineIndex,
   defaultCollapsed = true,
 }) {
+  const { theme } = useTheme();
+  const isDark = theme.mode === 'dark';
   const [language, setLanguage] = useState('english');
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
@@ -34,13 +37,14 @@ export default function ArticleTtsPlayer({
   statusRef.current = status;
 
   const listenText = String(text || '').trim();
-  const primary = colors?.primary || '#0a0a0a';
-  const border = colors?.border || '#e5e7eb';
-  const bg = colors?.surfaceElevated || colors?.backgroundSecondary || '#f8fafc';
-  const textPrimary = colors?.textPrimary || '#0f172a';
-  const textSecondary = colors?.textSecondary || '#64748b';
-
+  const palette = colors || theme.colors;
+  const border = palette.border || '#e5e7eb';
+  const bg = palette.surfaceElevated || palette.backgroundSecondary || '#f8fafc';
+  const textPrimary = palette.textPrimary || '#0f172a';
+  const textSecondary = palette.textSecondary || '#64748b';
   const isActive = status === 'loading' || status === 'playing';
+  const btnBg = isActive ? palette.textTertiary || '#737373' : isDark ? palette.textPrimary : palette.primary;
+  const btnFg = isDark ? palette.background || '#0a0a0a' : palette.textOnPrimary || '#ffffff';
 
   useEffect(() => {
     if (isActive) setExpanded(true);
@@ -154,21 +158,27 @@ export default function ArticleTtsPlayer({
   const progressPct =
     progress.total > 0 ? Math.min(100, (progress.current / progress.total) * 100) : null;
 
-  const playButton = (
+  const playButton = (compact = false) => (
     <TouchableOpacity
-      style={[styles.playBtn, { backgroundColor: isActive ? '#64748b' : primary }]}
+      style={[
+        compact ? styles.playBtnCompact : styles.playBtn,
+        { backgroundColor: btnBg },
+      ]}
       onPress={handlePlay}
       disabled={disabled}
       activeOpacity={0.85}
+      accessibilityLabel={isActive ? 'Stop listening' : 'Play article audio'}
     >
       {status === 'loading' ? (
-        <ActivityIndicator color="#fff" size="small" />
+        <ActivityIndicator color={btnFg} size="small" />
       ) : status === 'playing' ? (
-        <Square size={16} color="#fff" fill="#fff" />
+        <Square size={16} color={btnFg} fill={btnFg} />
       ) : (
-        <Volume2 size={16} color="#fff" />
+        <Volume2 size={16} color={btnFg} />
       )}
-      <Text style={styles.playLabel}>{isActive ? 'Stop' : 'Play'}</Text>
+      {!compact ? (
+        <Text style={[styles.playLabel, { color: btnFg }]}>{isActive ? 'Stop' : 'Play'}</Text>
+      ) : null}
     </TouchableOpacity>
   );
 
@@ -188,7 +198,7 @@ export default function ArticleTtsPlayer({
           </Text>
         </TouchableOpacity>
         <View style={styles.summaryActions}>
-          {!expanded ? playButton : null}
+          {!expanded ? playButton(true) : null}
           <TouchableOpacity
             onPress={() => setExpanded((v) => !v)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -221,14 +231,14 @@ export default function ArticleTtsPlayer({
                   style={[
                     styles.langChip,
                     {
-                      borderColor: active ? primary : border,
-                      backgroundColor: active ? `${primary}18` : 'transparent',
+                      borderColor: active ? textPrimary : border,
+                      backgroundColor: active ? `${textPrimary}18` : 'transparent',
                     },
                   ]}
                 >
                   <Text
                     variant="caption"
-                    style={{ color: active ? primary : textSecondary, fontWeight: '700', fontSize: 12 }}
+                    style={{ color: active ? textPrimary : textSecondary, fontWeight: '700', fontSize: 12 }}
                   >
                     {lang.label}
                   </Text>
@@ -238,16 +248,16 @@ export default function ArticleTtsPlayer({
           </View>
 
           <View style={styles.playRow}>
-            {playButton}
+            {playButton(false)}
             {isActive ? (
               <View style={[styles.progressTrack, { backgroundColor: border }]}>
                 {progressPct == null ? (
-                  <View style={[styles.progressIndeterminate, { backgroundColor: primary }]} />
+                  <View style={[styles.progressIndeterminate, { backgroundColor: textSecondary }]} />
                 ) : (
                   <View
                     style={[
                       styles.progressFill,
-                      { backgroundColor: primary, width: `${progressPct}%` },
+                      { backgroundColor: textSecondary, width: `${progressPct}%` },
                     ]}
                   />
                 )}
@@ -327,7 +337,15 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
   },
-  playLabel: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  playBtnCompact: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  playLabel: { fontWeight: '700', fontSize: 13 },
   progressTrack: {
     flex: 1,
     height: 6,
