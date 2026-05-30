@@ -11,7 +11,7 @@ export const Footer = ({ onSignInPress }) => {
         <View style={styles.footer}>
             <UIText variant="caption" color={colors.textSecondary} style={styles.footerText}>Already have an account? </UIText>
             <TouchableOpacity onPress={onSignInPress}>
-                <UIText variant="caption" color={colors.primary} style={styles.linkText}>Sign in</UIText>
+                <UIText variant="caption" color={colors.textLink || colors.textPrimary} style={styles.linkText}>Sign in</UIText>
             </TouchableOpacity>
         </View>
     );

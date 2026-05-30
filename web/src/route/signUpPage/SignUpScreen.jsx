@@ -6,12 +6,15 @@ import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
 import { startSocialOAuth } from '../../utils/Service/api';
 import { getPostAuthPath, getPostAuthState } from '../../utils/authNavigation';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
+import TrakLogo from '../../components/TrakLogo';
 
 const SignUpScreen = () => {
     const navigate = useNavigate();
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
     const { register, loginWithGoogle } = useAuth();
     const [fullName, setFullName] = useState('');
     const [phone, setPhone] = useState('');
@@ -135,16 +138,9 @@ const SignUpScreen = () => {
             }}>
                 {/* Logo */}
                 <div style={{ marginBottom: '48px', textAlign: 'left' }}>
-                    <img 
-                        src="/images/whiteLogo.svg" 
-                        alt="TRAK" 
-                        style={{ 
-                            width: '32px', 
-                            height: '32px',
-                            filter: isDark ? 'none' : 'invert(1)',
-                            marginBottom: '40px',
-                        }} 
-                    />
+                    <div style={{ marginBottom: '40px' }}>
+                        <TrakLogo size={36} />
+                    </div>
                     <h1 style={{
                         fontSize: '30px',
                         fontWeight: '600',
@@ -186,7 +182,7 @@ const SignUpScreen = () => {
                                 width: '100%',
                                 padding: '11px 14px',
                                 fontSize: '15px',
-                                border: errors.fullName ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                border: errors.fullName ? '1px solid #ef4444' : `1px solid ${colors.border}`,
                                 borderRadius: '6px',
                                 outline: 'none',
                                 transition: 'all 0.2s',
@@ -201,7 +197,7 @@ const SignUpScreen = () => {
                             }}
                             onBlur={(e) => {
                                 if (!errors.fullName) {
-                                    e.target.style.borderColor = '#cbd5e1';
+                                    e.target.style.borderColor = colors.border;
                                     e.target.style.boxShadow = 'none';
                                 }
                             }}
@@ -237,7 +233,7 @@ const SignUpScreen = () => {
                                 width: '100%',
                                 padding: '11px 14px',
                                 fontSize: '15px',
-                                border: errors.email ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                border: errors.email ? '1px solid #ef4444' : `1px solid ${colors.border}`,
                                 borderRadius: '6px',
                                 outline: 'none',
                                 transition: 'all 0.2s',
@@ -252,7 +248,7 @@ const SignUpScreen = () => {
                             }}
                             onBlur={(e) => {
                                 if (!errors.email) {
-                                    e.target.style.borderColor = '#cbd5e1';
+                                    e.target.style.borderColor = colors.border;
                                     e.target.style.boxShadow = 'none';
                                 }
                             }}
@@ -288,7 +284,7 @@ const SignUpScreen = () => {
                                 width: '100%',
                                 padding: '11px 14px',
                                 fontSize: '15px',
-                                border: errors.phone ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                border: errors.phone ? '1px solid #ef4444' : `1px solid ${colors.border}`,
                                 borderRadius: '6px',
                                 outline: 'none',
                                 transition: 'all 0.2s',
@@ -333,7 +329,7 @@ const SignUpScreen = () => {
                                             width: '100%',
                                             padding: '11px 45px 11px 14px',
                                             fontSize: '15px',
-                                            border: errors.password ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                            border: errors.password ? '1px solid #ef4444' : `1px solid ${colors.border}`,
                                             borderRadius: '6px',
                                             outline: 'none',
                                             transition: 'all 0.2s',
@@ -348,7 +344,7 @@ const SignUpScreen = () => {
                                     }}
                                     onBlur={(e) => {
                                         if (!errors.password) {
-                                            e.target.style.borderColor = '#cbd5e1';
+                                            e.target.style.borderColor = colors.border;
                                             e.target.style.boxShadow = 'none';
                                         }
                                     }}
@@ -404,7 +400,7 @@ const SignUpScreen = () => {
                                             width: '100%',
                                             padding: '11px 45px 11px 14px',
                                             fontSize: '15px',
-                                            border: errors.confirmPassword ? '1px solid #ef4444' : '1px solid #cbd5e1',
+                                            border: errors.confirmPassword ? '1px solid #ef4444' : `1px solid ${colors.border}`,
                                             borderRadius: '6px',
                                             outline: 'none',
                                             transition: 'all 0.2s',
@@ -419,7 +415,7 @@ const SignUpScreen = () => {
                                     }}
                                     onBlur={(e) => {
                                         if (!errors.confirmPassword) {
-                                            e.target.style.borderColor = '#cbd5e1';
+                                            e.target.style.borderColor = colors.border;
                                             e.target.style.boxShadow = 'none';
                                         }
                                     }}
@@ -552,8 +548,8 @@ const SignUpScreen = () => {
                         style={{
                             width: '100%',
                             padding: '12px 20px',
-                            backgroundColor: colors.primary,
-                            color: '#ffffff',
+                            backgroundColor: action.background,
+                            color: action.foreground,
                             border: 'none',
                             borderRadius: '6px',
                             fontSize: '15px',
@@ -569,14 +565,10 @@ const SignUpScreen = () => {
                             fontFamily: 'inherit',
                         }}
                         onMouseEnter={(e) => {
-                            if (!loading) {
-                                e.currentTarget.style.backgroundColor = colors.primaryDark;
-                            }
+                            if (!loading) e.currentTarget.style.opacity = '0.92';
                         }}
                         onMouseLeave={(e) => {
-                            if (!loading) {
-                                e.currentTarget.style.backgroundColor = colors.primary;
-                            }
+                            if (!loading) e.currentTarget.style.opacity = '1';
                         }}
                     >
                         {loading ? 'Creating account...' : (
@@ -594,7 +586,7 @@ const SignUpScreen = () => {
                     alignItems: 'center',
                     margin: '32px 0',
                 }}>
-                    <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
+                    <div style={{ flex: 1, height: '1px', backgroundColor: colors.border }} />
                     <span style={{ 
                         padding: '0 16px', 
                         fontSize: '14px', 
@@ -602,7 +594,7 @@ const SignUpScreen = () => {
                     }}>
                         Or continue with
                     </span>
-                    <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }} />
+                    <div style={{ flex: 1, height: '1px', backgroundColor: colors.border }} />
                 </div>
 
                 {/* Social Buttons */}
@@ -677,7 +669,7 @@ const SignUpScreen = () => {
                                 style={{
                                     flex: 1,
                                     padding: '11px 16px',
-                                    border: '1px solid #e2e8f0',
+                                    border: `1px solid ${colors.border}`,
                                     borderRadius: '6px',
                                     backgroundColor: colors.background,
                                     cursor: socialLoading !== null ? 'not-allowed' : 'pointer',
@@ -694,14 +686,14 @@ const SignUpScreen = () => {
                                 }}
                                 onMouseEnter={(e) => {
                                     if (socialLoading === null) {
-                                        e.currentTarget.style.borderColor = '#cbd5e1';
+                                        e.currentTarget.style.borderColor = colors.textTertiary;
                                         e.currentTarget.style.backgroundColor = '#f8fafc';
                                     }
                                 }}
                                 onMouseLeave={(e) => {
                                     if (socialLoading === null) {
-                                        e.currentTarget.style.borderColor = '#e2e8f0';
-                                        e.currentTarget.style.backgroundColor = '#ffffff';
+                                        e.currentTarget.style.borderColor = colors.border;
+                                        e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
                                     }
                                 }}
                             >
@@ -709,7 +701,7 @@ const SignUpScreen = () => {
                                     <div style={{
                                         width: '16px',
                                         height: '16px',
-                                        border: '2px solid #e2e8f0',
+                                        border: `2px solid ${colors.border}`,
                                         borderTop: `2px solid ${colors.textPrimary}`,
                                         borderRadius: '50%',
                                         animation: 'spin 0.8s linear infinite',

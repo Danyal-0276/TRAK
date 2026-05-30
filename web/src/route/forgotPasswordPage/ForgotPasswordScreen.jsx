@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import { useNavigate, Link } from 'react-router-dom';
 import { Mail, ArrowRight, ArrowLeft } from 'lucide-react';
 import Text from '../../components/ui/Text';
@@ -9,6 +10,8 @@ import { requestPasswordReset } from '../../api/authPasswordApi';
 const ForgotPasswordScreen = () => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
@@ -174,8 +177,8 @@ const ForgotPasswordScreen = () => {
                         style={{
                             width: '100%',
                             padding: '12px 20px',
-                            backgroundColor: colors.primary,
-                            color: '#ffffff',
+                            backgroundColor: action.background,
+                            color: action.foreground,
                             border: 'none',
                             borderRadius: '6px',
                             fontSize: '15px',

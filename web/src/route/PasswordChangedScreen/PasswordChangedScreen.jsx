@@ -1,5 +1,6 @@
 import React from 'react';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import { useNavigate, Link } from 'react-router-dom';
 import { CheckCircle, ArrowRight } from 'lucide-react';
 import Text from '../../components/ui/Text';
@@ -7,6 +8,8 @@ import Text from '../../components/ui/Text';
 const PasswordChangedScreen = () => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
     const navigate = useNavigate();
 
     return (
@@ -76,8 +79,8 @@ const PasswordChangedScreen = () => {
                     style={{
                         width: '100%',
                         padding: '12px 20px',
-                        backgroundColor: colors.primary,
-                        color: '#ffffff',
+                        backgroundColor: action.background,
+                        color: action.foreground,
                         border: 'none',
                         borderRadius: '6px',
                         fontSize: '15px',

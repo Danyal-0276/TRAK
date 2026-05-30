@@ -11,6 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mail } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import { useAuth } from '../../context/AuthContext';
 import Text from '../../components/ui/Text';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
@@ -19,6 +20,8 @@ import { resendEmailVerification } from '../../api/authEmailApi';
 const VerifyEmailScreen = ({ navigation, route }) => {
   const { theme } = useTheme();
   const { colors } = theme;
+  const isDark = theme.mode === 'dark';
+  const action = filledActionColors(colors, isDark);
   const { user, verifyEmail } = useAuth();
   const { success, error: showError } = useFeedback();
   const email = (route.params?.email || user?.email || '').trim().toLowerCase();
@@ -92,17 +95,17 @@ const VerifyEmailScreen = ({ navigation, route }) => {
             styles.codeInput,
             {
               borderColor: colors.border,
-              color: colors.text,
+              color: colors.textPrimary,
               backgroundColor: colors.surface,
             },
           ]}
         />
         <TouchableOpacity
-          style={[styles.primaryBtn, { backgroundColor: colors.primary }]}
+          style={[styles.primaryBtn, { backgroundColor: action.background }]}
           onPress={onVerify}
           disabled={loading}
         >
-          <Text variant="button" color={colors.textInverse}>
+          <Text variant="button" color={action.foreground}>
             {loading ? 'Verifying…' : 'Verify email'}
           </Text>
         </TouchableOpacity>

@@ -218,7 +218,6 @@ export const SignUpForm = ({
             <Button
                 title={loading ? 'Creating account...' : 'Create account'}
                 variant="primary"
-                primaryColors={[colors.primary, colors.primary]}
                 onPress={onSignUpPress}
                 disabled={loading}
                 style={{

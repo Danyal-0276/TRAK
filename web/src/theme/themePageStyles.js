@@ -1,5 +1,7 @@
 /** Shared inline page styles for themed full-screen routes. */
 
+import { filledActionColors } from './buttonContrast';
+
 export function themedPageRoot(colors) {
   return {
     minHeight: '100vh',
@@ -16,10 +18,11 @@ export function themedInputStyle(colors) {
   };
 }
 
-export function themedPrimaryButton(colors) {
+export function themedPrimaryButton(colors, isDark = false) {
+  const action = filledActionColors(colors, isDark);
   return {
-    backgroundColor: colors.primary,
-    color: '#ffffff',
+    backgroundColor: action.background,
+    color: action.foreground,
     border: 'none',
   };
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
@@ -147,8 +148,8 @@ const VerifyEmailScreen = () => {
             style={{
               width: '100%',
               padding: '12px 20px',
-              backgroundColor: colors.primary,
-              color: '#fff',
+              backgroundColor: action.background,
+              color: action.foreground,
               border: 'none',
               borderRadius: 6,
               fontSize: 15,

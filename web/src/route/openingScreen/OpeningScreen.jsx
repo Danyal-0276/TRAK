@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
+import TrakLogo from '../../components/TrakLogo';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import Text from '../../components/ui/Text';
@@ -8,6 +10,8 @@ import { useAuth } from '../../context/AuthContext';
 const OpeningScreen = () => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
     const navigate = useNavigate();
     const { user, loading, isAdmin } = useAuth();
 
@@ -121,14 +125,7 @@ const OpeningScreen = () => {
                         marginBottom: '32px',
                         filter: 'drop-shadow(0 8px 24px rgba(255, 255, 255, 0.1))',
                     }}>
-                        <img 
-                            src="/images/whiteLogo.svg" 
-                            alt="TRAK Logo" 
-                            style={{ 
-                                width: '140px', 
-                                height: '140px',
-                            }} 
-                        />
+                        <TrakLogo size={140} />
                     </div>
 
                     {/* Brand Name Animation */}
@@ -176,14 +173,14 @@ const OpeningScreen = () => {
                     }}>
                         <Text variant="body" style={{
                             fontSize: '18px',
-                            color: '#374151',
+                            color: colors.textPrimary,
                             lineHeight: '1.7',
                             fontWeight: '400',
                             letterSpacing: '0.2px',
                             display: 'block',
                         }}>
                             Welcome to a world of exceptional news{'\n'}
-                            <span style={{ color: '#6b7280' }}>
+                            <span style={{ color: colors.textSecondary }}>
                                 curated by TRAK at its core.
                             </span>
                         </Text>
@@ -203,8 +200,8 @@ const OpeningScreen = () => {
                             style={{
                                 width: '100%',
                                 padding: '18px 32px',
-                                backgroundColor: '#000000',
-                                color: '#ffffff',
+                                backgroundColor: action.background,
+                                color: action.foreground,
                                 border: 'none',
                                 borderRadius: '12px',
                                 fontSize: '17px',
@@ -218,14 +215,12 @@ const OpeningScreen = () => {
                                 boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#1a1a1a';
+                                e.currentTarget.style.opacity = '0.92';
                                 e.currentTarget.style.transform = 'translateY(-2px)';
-                                e.currentTarget.style.boxShadow = '0 8px 24px rgba(0, 0, 0, 0.2)';
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = '#000000';
+                                e.currentTarget.style.opacity = '1';
                                 e.currentTarget.style.transform = 'translateY(0)';
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
                             }}
                         >
                             Create Account
@@ -236,9 +231,9 @@ const OpeningScreen = () => {
                             style={{
                                 width: '100%',
                                 padding: '18px 32px',
-                                backgroundColor: colors.background,
-                                color: '#000000',
-                                border: '2px solid #000000',
+                                backgroundColor: colors.surface,
+                                color: colors.textPrimary,
+                                border: `2px solid ${colors.border}`,
                                 borderRadius: '12px',
                                 fontSize: '17px',
                                 fontWeight: '600',
@@ -246,7 +241,7 @@ const OpeningScreen = () => {
                                 transition: 'all 0.3s ease',
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = '#f9fafb';
+                                e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
                                 e.currentTarget.style.transform = 'translateY(-2px)';
                             }}
                             onMouseLeave={(e) => {

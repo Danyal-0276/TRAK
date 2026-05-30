@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import Text from '../../components/ui/Text';
@@ -9,6 +10,8 @@ import { confirmPasswordReset, confirmPasswordResetWithOtp } from '../../api/aut
 const ResetPasswordScreen = () => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
     const navigate = useNavigate();
     const location = useLocation();
     const [searchParams] = useSearchParams();
@@ -455,8 +458,8 @@ const ResetPasswordScreen = () => {
                         style={{
                             width: '100%',
                             padding: '12px 20px',
-                            backgroundColor: colors.primary,
-                            color: '#ffffff',
+                            backgroundColor: action.background,
+                            color: action.foreground,
                             border: 'none',
                             borderRadius: '6px',
                             fontSize: '15px',

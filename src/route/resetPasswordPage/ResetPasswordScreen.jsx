@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { Eye, EyeOff, Lock } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import TextComponent from '../../components/ui/Text';
 import { confirmPasswordReset, confirmPasswordResetWithOtp } from '../../api/authPasswordApi';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
@@ -27,6 +28,8 @@ const ResetPasswordScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
     const { error: showError } = useFeedback();
     const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
     const otpEmail = (route.params?.email || '').trim().toLowerCase();
     const resetToken = route.params?.resetToken || '';
     const fromOtp = Boolean(route.params?.fromOtp && otpEmail && resetToken);
@@ -377,8 +380,8 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                                                     ? !newPassword || !confirmPassword
                                                     : !uid.trim() || !token.trim() || !newPassword || !confirmPassword) || loading
                                             )
-                                                ? colors.textTertiary 
-                                                : colors.primary,
+                                                ? colors.textTertiary
+                                                : action.background,
                                             shadowColor: colors.shadowDark,
                                             opacity: (
                                                 (fromOtp
@@ -399,15 +402,15 @@ const ResetPasswordScreen = ({ navigation, route }) => {
                                         <View style={styles.loadingContainer}>
                                             <ActivityIndicator 
                                                 size="small" 
-                                                color={colors.textInverse}
+                                                color={action.foreground}
                                                 style={styles.spinner}
                                             />
-                                            <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
+                                            <Text style={[styles.primaryButtonText, { color: action.foreground }]}>
                                                 Resetting...
                                             </Text>
                                         </View>
                                     ) : (
-                                        <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
+                                        <Text style={[styles.primaryButtonText, { color: action.foreground }]}>
                                             Reset password
                                         </Text>
                                     )}

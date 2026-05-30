@@ -2,8 +2,7 @@ import React, { useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Eye, EyeOff } from 'lucide-react-native';
 import { SocialButtons } from './SocialButtons';
-import { useTheme } from '../../../theme/ThemeContext';
-import colors from '../../../utils/colors';
+import { useAuthFormStyles } from '../../../theme/useAuthFormStyles';
 
 export const SignUpForm = ({
     fullName,
@@ -20,17 +19,17 @@ export const SignUpForm = ({
     loadingProvider,
     errors
 }) => {
-    const { theme } = useTheme();
-    const { colors: themeColors } = theme;
+    const { colors, action, styles } = useAuthFormStyles();
     const emailRef = useRef(null);
     const passwordRef = useRef(null);
     const confirmPasswordRef = useRef(null);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const disabled = !fullName || !email || !password || !confirmPassword || loading;
 
     return (
-        <View style={styles.formContainer}>
-            <View style={styles.inputGroup}>
+        <View style={localStyles.formContainer}>
+            <View style={localStyles.inputGroup}>
                 <Text style={styles.label}>Full Name</Text>
                 <TextInput
                     style={[styles.input, errors.fullName && styles.inputError]}
@@ -43,10 +42,10 @@ export const SignUpForm = ({
                     onSubmitEditing={() => emailRef.current?.focus()}
                     blurOnSubmit={false}
                 />
-                {errors.fullName && <Text style={styles.errorText}>{errors.fullName}</Text>}
+                {errors.fullName ? <Text style={styles.errorText}>{errors.fullName}</Text> : null}
             </View>
 
-            <View style={styles.inputGroup}>
+            <View style={localStyles.inputGroup}>
                 <Text style={styles.label}>Email address</Text>
                 <TextInput
                     ref={emailRef}
@@ -61,10 +60,10 @@ export const SignUpForm = ({
                     onSubmitEditing={() => passwordRef.current?.focus()}
                     blurOnSubmit={false}
                 />
-                {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+                {errors.email ? <Text style={styles.errorText}>{errors.email}</Text> : null}
             </View>
 
-            <View style={styles.inputGroup}>
+            <View style={localStyles.inputGroup}>
                 <Text style={styles.label}>Password</Text>
                 <View style={[styles.inputContainer, errors.password && styles.inputError]}>
                     <TextInput
@@ -90,10 +89,10 @@ export const SignUpForm = ({
                         )}
                     </TouchableOpacity>
                 </View>
-                {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+                {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
             </View>
 
-            <View style={styles.inputGroup}>
+            <View style={localStyles.inputGroup}>
                 <Text style={styles.label}>Confirm Password</Text>
                 <View style={[styles.inputContainer, errors.confirmPassword && styles.inputError]}>
                     <TextInput
@@ -119,39 +118,22 @@ export const SignUpForm = ({
                         )}
                     </TouchableOpacity>
                 </View>
-                {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword}</Text>}
+                {errors.confirmPassword ? <Text style={styles.errorText}>{errors.confirmPassword}</Text> : null}
             </View>
 
             <TouchableOpacity
-                style={[
-                    styles.primaryButton,
-                    {
-                        backgroundColor: (!fullName || !email || !password || !confirmPassword || loading) 
-                            ? themeColors.textTertiary 
-                            : themeColors.primary,
-                        shadowColor: themeColors.shadowDark || '#000',
-                        opacity: (!fullName || !email || !password || !confirmPassword || loading) ? 0.7 : 1,
-                    },
-                ]}
+                style={[styles.primaryButton, localStyles.signUpButton, disabled && styles.primaryButtonDisabled]}
                 onPress={onSignUpPress}
-                disabled={!fullName || !email || !password || !confirmPassword || loading}
+                disabled={disabled}
                 activeOpacity={0.8}
             >
                 {loading ? (
                     <View style={styles.loadingContainer}>
-                        <ActivityIndicator 
-                            size="small" 
-                            color={themeColors.textInverse || colors.surface}
-                            style={styles.spinner}
-                        />
-                        <Text style={[styles.primaryButtonText, { color: themeColors.textInverse || colors.surface }]}>
-                            Creating account...
-                        </Text>
+                        <ActivityIndicator size="small" color={action.foreground} style={styles.spinner} />
+                        <Text style={styles.primaryButtonText}>Creating account...</Text>
                     </View>
                 ) : (
-                    <Text style={[styles.primaryButtonText, { color: themeColors.textInverse || colors.surface }]}>
-                        Create account
-                    </Text>
+                    <Text style={styles.primaryButtonText}>Create account</Text>
                 )}
             </TouchableOpacity>
 
@@ -163,84 +145,15 @@ export const SignUpForm = ({
     );
 };
 
-const styles = StyleSheet.create({
+const localStyles = StyleSheet.create({
     formContainer: {
         width: '100%',
     },
     inputGroup: {
         marginBottom: 18,
     },
-    label: {
-        fontSize: 15,
-        color: colors.textPrimary,
-        marginBottom: 10,
-        fontWeight: '600',
-        letterSpacing: -0.3,
-    },
-    input: {
-        borderWidth: 1.5,
-        borderColor: colors.border,
-        borderRadius: 14,
-        paddingHorizontal: 18,
-        paddingVertical: 16,
-        fontSize: 16,
-        color: colors.textPrimary,
-        backgroundColor: colors.backgroundSecondary,
-    },
-    inputContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderWidth: 1.5,
-        borderColor: colors.border,
-        borderRadius: 14,
-        backgroundColor: colors.backgroundSecondary,
-        paddingHorizontal: 18,
-        paddingVertical: 14,
-    },
-    inputField: {
-        flex: 1,
-        fontSize: 16,
-        color: colors.textPrimary,
-        padding: 0,
-    },
-    inputError: {
-        borderColor: colors.error,
-    },
-    eyeIcon: {
-        padding: 4,
-        marginLeft: 8,
-    },
-    errorText: {
-        color: colors.error,
-        fontSize: 12,
-        marginTop: 6,
-        fontWeight: '500',
-    },
-    primaryButton: {
-        paddingVertical: 16,
-        borderRadius: 16,
-        alignItems: 'center',
+    signUpButton: {
         marginTop: 4,
         marginBottom: 20,
-        shadowOffset: {
-            width: 0,
-            height: 6,
-        },
-        shadowOpacity: 0.25,
-        shadowRadius: 12,
-        elevation: 8,
-    },
-    primaryButtonText: {
-        fontSize: 17,
-        fontWeight: '700',
-        letterSpacing: 0.2,
-    },
-    loadingContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    spinner: {
-        marginRight: 10,
     },
 });

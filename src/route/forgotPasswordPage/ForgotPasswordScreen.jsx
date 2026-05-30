@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import LinearGradient from 'react-native-linear-gradient';
 import { Mail } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import { requestPasswordReset } from '../../api/authPasswordApi';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 
@@ -25,6 +26,8 @@ const ForgotPasswordScreen = ({ navigation }) => {
     const { theme } = useTheme();
     const { error: showError } = useFeedback();
     const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
     const [email, setEmail] = useState('');
     const [loading, setLoading] = useState(false);
     
@@ -274,9 +277,9 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                 style={[
                                     styles.primaryButton, 
                                     { 
-                                        backgroundColor: (!email || !email.includes('@') || loading) 
-                                            ? colors.textTertiary 
-                                            : colors.primary,
+                                        backgroundColor: (!email || !email.includes('@') || loading)
+                                            ? colors.textTertiary
+                                            : action.background,
                                         shadowColor: colors.shadowDark,
                                         opacity: (!email || !email.includes('@') || loading) ? 0.6 : 1,
                                     }
@@ -310,15 +313,15 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                     <View style={styles.loadingContainer}>
                                         <ActivityIndicator 
                                             size="small" 
-                                            color={colors.textInverse}
+                                            color={action.foreground}
                                             style={styles.spinner}
                                         />
-                                        <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
+                                        <Text style={[styles.primaryButtonText, { color: action.foreground }]}>
                                             Sending...
                                         </Text>
                                     </View>
                                 ) : (
-                                    <Text style={[styles.primaryButtonText, { color: colors.textInverse }]}>
+                                    <Text style={[styles.primaryButtonText, { color: action.foreground }]}>
                                         Send reset link
                                     </Text>
                                 )}

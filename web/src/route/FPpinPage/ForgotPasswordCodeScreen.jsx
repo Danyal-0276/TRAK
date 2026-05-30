@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight } from 'lucide-react';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
@@ -8,6 +9,8 @@ import { requestPasswordReset, verifyPasswordResetOtp } from '../../api/authPass
 const ForgotPasswordCodeScreen = () => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
   const navigate = useNavigate();
   const location = useLocation();
   const email = (location.state?.email || '').trim().toLowerCase();
@@ -183,8 +186,8 @@ const ForgotPasswordCodeScreen = () => {
             style={{
               width: '100%',
               padding: '12px 20px',
-              backgroundColor: colors.primary,
-              color: '#ffffff',
+              backgroundColor: action.background,
+              color: action.foreground,
               border: 'none',
               borderRadius: '6px',
               fontSize: '15px',
@@ -233,7 +236,7 @@ const ForgotPasswordCodeScreen = () => {
             <span
               style={{
                 fontSize: '15px',
-                color: timer > 0 ? '#94a3b8' : '#0f172a',
+                color: timer > 0 ? colors.textTertiary : colors.textPrimary,
                 fontWeight: '500',
               }}
             >
