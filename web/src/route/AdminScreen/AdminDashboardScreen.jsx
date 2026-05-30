@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
+import { useAdminTheme } from './useAdminTheme';
 import { getResponsiveGap } from '../../utils/responsiveStyles';
 import { useAdminPageMeta } from './adminPageMeta';
 import AdminPageLayout from './components/AdminPageLayout';
@@ -21,7 +21,7 @@ import {
 import { postAdminPipelineRun } from '../../api/adminApi';
 import { loadAdminOverview, buildOverviewStatCards } from './loadAdminOverview';
 import { emptyAnalyticsSnapshot, enrichAnalyticsSnapshot, isAnalyticsPayload } from './dashboardChartUtils';
-import { getAdminDashboardPalette, DASHBOARD_POLL_INTERVAL_MS } from './adminTheme';
+import { DASHBOARD_POLL_INTERVAL_MS } from './adminTheme';
 import { isDashboardPath } from './hooks/useAdminTabActive';
 import AdminDashboardCharts from './components/AdminDashboardCharts';
 import AdminScrapeSourcesPanel from './components/AdminScrapeSourcesPanel';
@@ -43,9 +43,7 @@ const STAT_ICONS = {
 };
 
 const AdminDashboardScreen = () => {
-  const { theme } = useTheme();
-  const { colors } = theme;
-  const isDark = theme.mode === 'dark';
+  const { palette, isDark, colors } = useAdminTheme();
   const { isMobile, isTablet } = useResponsive();
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,7 +59,6 @@ const AdminDashboardScreen = () => {
   const [liveUpdatedAt, setLiveUpdatedAt] = useState(null);
   const hasSnapshotRef = useRef(false);
 
-  const palette = useMemo(() => getAdminDashboardPalette(colors, isDark), [colors, isDark]);
   const chartData = snapshot || emptyAnalyticsSnapshot();
   const showInitialSkeleton = loading && !snapshot;
   const { title, description } = useAdminPageMeta();

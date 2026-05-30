@@ -1,24 +1,23 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Users } from 'lucide-react-native';
-import { useTheme } from '../../../theme/ThemeContext';
+import { useAdminTheme } from '../useAdminTheme';
 import SearchBar from '../components/SearchBar';
 import UserCard from '../components/UserCard';
 import Text from '../../../components/ui/Text';
 import EmptyState from '../components/EmptyState';
 
 const UsersTab = ({ users, searchQuery, onSearchChange, onEdit, onDelete }) => {
-  const { theme } = useTheme();
-  const { colors } = theme;
+  const { palette } = useAdminTheme();
 
   return (
     <View style={styles.managementSection}>
       <View style={styles.managementHeader}>
         <View style={styles.headerLeft}>
-          <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-            <Users size={20} color={colors.primary} />
+          <View style={[styles.iconContainer, { backgroundColor: `${palette.primary}15` }]}>
+            <Users size={20} color={palette.primary} />
           </View>
-          <Text variant="title" color={colors.textPrimary} style={styles.sectionTitle}>
+          <Text variant="title" color={palette.textPrimary} style={styles.sectionTitle}>
             Users Management
           </Text>
         </View>
@@ -28,6 +27,7 @@ const UsersTab = ({ users, searchQuery, onSearchChange, onEdit, onDelete }) => {
         value={searchQuery}
         onChangeText={onSearchChange}
         placeholder="Search users..."
+        palette={palette}
       />
 
       {users.length === 0 ? (
@@ -42,7 +42,8 @@ const UsersTab = ({ users, searchQuery, onSearchChange, onEdit, onDelete }) => {
             key={user.id}
             user={user}
             onEdit={onEdit}
-            onDelete={user.isAdmin ? null : onDelete}
+            onDelete={onDelete}
+            palette={palette}
           />
         ))
       )}
@@ -59,22 +60,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 12,
   },
   iconContainer: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
+    borderRadius: 12,
     alignItems: 'center',
-    marginRight: 12,
+    justifyContent: 'center',
   },
   sectionTitle: {
-    fontSize: 20,
     fontWeight: '700',
   },
 });

@@ -12,8 +12,8 @@ import {
 } from 'react-native';
 import { TabView } from 'react-native-tab-view';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import LinearGradient from 'react-native-linear-gradient';
 import { useTheme } from '../../theme/ThemeContext';
+import { useAdminTheme } from './useAdminTheme';
 import { useAuth } from '../../context/AuthContext';
 import {
   deleteAdminUser,
@@ -34,7 +34,7 @@ import {
   deleteAdminConnection,
 } from '../../api/adminApi';
 import { loadAdminOverview } from './loadAdminOverview';
-import { getAdminDashboardPalette, DASHBOARD_POLL_INTERVAL_MS } from './adminTheme';
+import { DASHBOARD_POLL_INTERVAL_MS } from './adminTheme';
 import {
   buildDashboardStatCards,
   KPI_TAB_NAV,
@@ -105,9 +105,8 @@ function mapAdminArticleRow(doc) {
 const AdminScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { user, isAdmin, isSuperAdmin, bootstrapped, logout } = useAuth();
-  const { colors } = theme;
+  const { palette: adminPalette } = useAdminTheme();
   const isDark = theme.mode === 'dark';
-  const adminPalette = useMemo(() => getAdminDashboardPalette(colors, isDark), [colors, isDark]);
   const insets = useSafeAreaInsets();
   const { confirm, error: showError, success: showSuccess } = useFeedback();
   const layout = useWindowDimensions();
@@ -151,10 +150,6 @@ const AdminScreen = ({ navigation }) => {
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
-  const circle1Anim = useRef(new Animated.Value(0)).current;
-  const circle2Anim = useRef(new Animated.Value(0)).current;
-  const circle3Anim = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -166,24 +161,6 @@ const AdminScreen = ({ navigation }) => {
         toValue: 0,
         friction: 8,
         tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.timing(circle1Anim, {
-        toValue: 1,
-        duration: 1000,
-        delay: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(circle2Anim, {
-        toValue: 1,
-        duration: 1000,
-        delay: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(circle3Anim, {
-        toValue: 1,
-        duration: 1000,
-        delay: 600,
         useNativeDriver: true,
       }),
     ]).start();
@@ -831,74 +808,10 @@ const AdminScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
-      <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
-      
-      {/* Gradient background */}
-      <LinearGradient
-        colors={theme.mode === 'dark' 
-          ? ['#0F172A', '#1E293B', '#334155', '#1E293B', '#0F172A']
-          : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
-        }
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientBackground}
-      />
-      
-      {/* Animated decorative circles */}
-      <Animated.View 
-        style={[
-          styles.accentCircle1, 
-          { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.12' : '0.05'})`,
-            opacity: circle1Anim,
-            transform: [
-              {
-                scale: circle1Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-            ],
-          }
-        ]}
-        pointerEvents="none"
-      />
-      <Animated.View 
-        style={[
-          styles.accentCircle2, 
-          { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.10' : '0.04'})`,
-            opacity: circle2Anim,
-            transform: [
-              {
-                scale: circle2Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-            ],
-          }
-        ]}
-        pointerEvents="none"
-      />
-      <Animated.View 
-        style={[
-          styles.accentCircle3, 
-          { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.08' : '0.03'})`,
-            opacity: circle3Anim,
-            transform: [
-              {
-                scale: circle3Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-            ],
-          }
-        ]}
-        pointerEvents="none"
+    <SafeAreaView style={[styles.container, { backgroundColor: adminPalette.page }]} edges={['top']}>
+      <StatusBar
+        barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'}
+        backgroundColor={adminPalette.page}
       />
 
       <Header />

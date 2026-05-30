@@ -1,24 +1,22 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Shield, Settings, LogOut } from 'lucide-react';
-import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
+import { useAdminTheme } from './useAdminTheme';
 import AdminPageLayout from './components/AdminPageLayout';
 import AdminPageHeader from './components/AdminPageHeader';
 import { useAdminPageMeta } from './adminPageMeta';
 
 export default function AdminProfileScreen() {
-  const { theme } = useTheme();
-  const { colors } = theme;
-  const isDark = theme.mode === 'dark';
+  const { palette } = useAdminTheme();
   const navigate = useNavigate();
   const { user, isSuperAdmin, logout } = useAuth();
 
-  const cardBackground = colors.surface;
+  const cardBackground = palette.card;
   const { title, description } = useAdminPageMeta();
-  const textPrimary = colors.textPrimary;
-  const textSecondary = colors.textSecondary;
-  const borderColor = colors.border;
+  const textPrimary = palette.textPrimary;
+  const textSecondary = palette.textSecondary;
+  const borderColor = palette.border;
 
   const handleLogout = async () => {
     await logout();
@@ -48,7 +46,7 @@ export default function AdminProfileScreen() {
                 width: 64,
                 height: 64,
                 borderRadius: 32,
-                backgroundColor: colors.primary || '#3b82f6',
+                backgroundColor: palette.primary,
                 color: '#fff',
                 display: 'flex',
                 alignItems: 'center',
@@ -62,7 +60,7 @@ export default function AdminProfileScreen() {
             <div>
               <div style={{ fontSize: 18, fontWeight: 700, color: textPrimary }}>{user?.email}</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
-                <Shield size={14} color={colors.primary} />
+                <Shield size={14} color={palette.primary} />
                 <span style={{ fontSize: 13, color: textSecondary }}>
                   {isSuperAdmin ? 'Super Admin' : 'Administrator'}
                 </span>
@@ -111,7 +109,7 @@ export default function AdminProfileScreen() {
             borderRadius: 12,
             border: `1px solid ${borderColor}`,
             background: cardBackground,
-            color: colors.error || '#ef4444',
+            color: palette.error,
             cursor: 'pointer',
             fontSize: 15,
             fontWeight: 600,

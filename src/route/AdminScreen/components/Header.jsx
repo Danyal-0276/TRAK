@@ -2,12 +2,11 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Shield } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../../../theme/ThemeContext';
+import { useAdminTheme } from '../useAdminTheme';
 import Text from '../../../components/ui/Text';
 
 const Header = () => {
-  const { theme } = useTheme();
-  const { colors } = theme;
+  const { palette } = useAdminTheme();
   const insets = useSafeAreaInsets();
 
   return (
@@ -15,17 +14,17 @@ const Header = () => {
       style={[
         styles.header,
         {
-          backgroundColor: colors.surface,
-          borderBottomColor: colors.border,
+          backgroundColor: palette.card,
+          borderBottomColor: palette.border,
           paddingTop: Math.max(insets.top, 12),
         },
       ]}
     >
       <View style={styles.headerContent}>
-        <View style={[styles.iconContainer, { backgroundColor: `${colors.primary}15` }]}>
-          <Shield size={24} color={colors.primary} strokeWidth={2.5} />
+        <View style={[styles.iconContainer, { backgroundColor: `${palette.primary}15` }]}>
+          <Shield size={24} color={palette.primary} strokeWidth={2.5} />
         </View>
-        <Text variant="title" style={[styles.headerTitle, { color: colors.textPrimary }]}>
+        <Text variant="title" style={[styles.headerTitle, { color: palette.textPrimary }]}>
           Admin Panel
         </Text>
       </View>

@@ -29,6 +29,10 @@ const PAGE_META = {
     title: 'Profile',
     description: 'Your administrator account',
   },
+  '/admin/analytics': {
+    title: 'Analytics',
+    description: 'MongoDB counts and model metrics from the admin API',
+  },
 };
 
 export function getAdminPageMeta(pathname) {

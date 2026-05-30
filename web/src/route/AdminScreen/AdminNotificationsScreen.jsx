@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useTheme } from '../../theme/ThemeContext';
 import { Bell } from 'lucide-react';
+import { useAdminTheme } from './useAdminTheme';
 import AdminPageLayout from './components/AdminPageLayout';
 import AdminPageHeader from './components/AdminPageHeader';
 import { useAdminPageMeta } from './adminPageMeta';
@@ -9,9 +9,7 @@ import { openAdminNotificationsSocket } from '../../api/adminNotificationsRealti
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 
 const AdminNotificationsScreen = () => {
-    const { theme } = useTheme();
-    const { colors } = theme;
-    const isDark = theme.mode === 'dark';
+    const { palette, isDark, colors } = useAdminTheme();
     const { title, description } = useAdminPageMeta();
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -19,10 +17,10 @@ const AdminNotificationsScreen = () => {
     const socketRef = React.useRef(null);
     const reconnectRef = React.useRef(null);
 
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const cardBackground = palette.card;
+    const textPrimary = palette.textPrimary;
+    const textSecondary = palette.textSecondary;
+    const borderColor = palette.border;
 
     const loadRows = async () => {
         try {
@@ -99,9 +97,9 @@ const AdminNotificationsScreen = () => {
                             style={{
                                 padding: '8px 14px',
                                 borderRadius: 8,
-                                border: `1px solid ${activeTab === tab ? colors.primary || '#3b82f6' : borderColor}`,
-                                background: activeTab === tab ? `${colors.primary || '#3b82f6'}18` : cardBackground,
-                                color: activeTab === tab ? colors.primary || '#3b82f6' : textSecondary,
+                                border: `1px solid ${activeTab === tab ? palette.primary : borderColor}`,
+                                background: activeTab === tab ? `${palette.primary}18` : cardBackground,
+                                color: activeTab === tab ? palette.primary : textSecondary,
                                 fontWeight: 600,
                                 cursor: 'pointer',
                             }}

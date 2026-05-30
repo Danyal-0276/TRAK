@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useTheme } from '../../theme/ThemeContext';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
+import { useAdminTheme } from './useAdminTheme';
 import { useResponsive } from '../../hooks/useResponsive';
 import { getResponsiveGridColumns, getResponsiveGap } from '../../utils/responsiveStyles';
 import {
@@ -29,9 +29,7 @@ import ArticleInsightBadges, {
 } from './components/ArticleInsightBadges';
 
 const AdminArticlesScreen = () => {
-    const { theme } = useTheme();
-    const { colors } = theme;
-    const isDark = theme.mode === 'dark';
+    const { palette, isDark, colors } = useAdminTheme();
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -43,10 +41,10 @@ const AdminArticlesScreen = () => {
     const [pipelineFilter, setPipelineFilter] = useState(initialRoute.pipelineFilter);
     const [statusById, setStatusById] = useState({});
 
-    const cardBackground = isDark ? colors.surface || '#1E293B' : '#ffffff';
-    const textPrimary = isDark ? colors.textPrimary || '#F1F5F9' : '#0f172a';
-    const textSecondary = isDark ? colors.textSecondary || '#CBD5E1' : '#64748b';
-    const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const cardBackground = palette.card;
+    const textPrimary = palette.textPrimary;
+    const textSecondary = palette.textSecondary;
+    const borderColor = palette.border;
 
     const apiScope = useMemo(() => getArticlesApiScope(pipelineFilter), [pipelineFilter]);
 
@@ -191,10 +189,10 @@ const AdminArticlesScreen = () => {
                                         style={{
                                             padding: '6px 12px',
                                             borderRadius: '8px',
-                                            border: `1px solid ${active ? (isDark ? colors.primary || '#818CF8' : '#64748b') : borderColor}`,
+                                            border: `1px solid ${active ? (palette.primary) : borderColor}`,
                                             background: active
                                                 ? (isDark ? 'rgba(129, 140, 248, 0.12)' : '#f1f5f9')
-                                                : (isDark ? colors.backgroundSecondary || '#1e293b' : '#f8fafc'),
+                                                : (palette.inputBg),
                                             color: active ? textPrimary : textSecondary,
                                             cursor: 'pointer',
                                             fontWeight: active ? 600 : 500,
@@ -226,7 +224,7 @@ const AdminArticlesScreen = () => {
                             style={{
                                 width: '100%',
                                 padding: '12px 16px 12px 44px',
-                                backgroundColor: isDark ? colors.surface || '#1E293B' : '#f9fafb',
+                                backgroundColor: palette.inputBg,
                                 border: `1px solid ${borderColor}`,
                                 borderRadius: '8px',
                                 fontSize: '14px',
@@ -235,14 +233,14 @@ const AdminArticlesScreen = () => {
                                 color: textPrimary,
                             }}
                             onFocus={(e) => {
-                                e.target.style.backgroundColor = isDark ? colors.backgroundElevated || '#334155' : '#ffffff';
-                                e.target.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
+                                e.target.style.backgroundColor = palette.card;
+                                e.target.style.borderColor = palette.textPrimary;
                                 e.target.style.boxShadow = isDark 
                                     ? '0 0 0 3px rgba(129, 140, 248, 0.2)' 
                                     : '0 0 0 3px rgba(0, 0, 0, 0.1)';
                             }}
                             onBlur={(e) => {
-                                e.target.style.backgroundColor = isDark ? colors.surface || '#1E293B' : '#f9fafb';
+                                e.target.style.backgroundColor = palette.inputBg;
                                 e.target.style.borderColor = borderColor;
                                 e.target.style.boxShadow = 'none';
                             }}
@@ -260,7 +258,7 @@ const AdminArticlesScreen = () => {
                         alignItems: 'center',
                         justifyContent: 'center',
                         padding: '80px 20px',
-                        backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f9fafb',
+                        backgroundColor: palette.pageAlt,
                         borderRadius: '12px',
                         border: `1px solid ${borderColor}`,
                     }}>
@@ -300,7 +298,7 @@ const AdminArticlesScreen = () => {
                                     boxShadow: isDark ? '0 1px 3px rgba(0, 0, 0, 0.2)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
+                                    e.currentTarget.style.borderColor = palette.textPrimary;
                                     e.currentTarget.style.boxShadow = isDark 
                                         ? '0 4px 12px rgba(129, 140, 248, 0.3)' 
                                         : '0 4px 12px rgba(0, 0, 0, 0.1)';
@@ -329,7 +327,7 @@ const AdminArticlesScreen = () => {
                                                 width: '32px',
                                                 height: '32px',
                                                 borderRadius: '6px',
-                                                backgroundColor: isDark ? colors.primary || '#818CF8' : '#0f172a',
+                                                backgroundColor: palette.textPrimary,
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
@@ -376,7 +374,7 @@ const AdminArticlesScreen = () => {
                                             textTransform: 'uppercase',
                                             letterSpacing: '0.5px',
                                             padding: '3px 8px',
-                                            backgroundColor: isDark ? colors.surfaceElevated || '#334155' : '#f3f4f6',
+                                            backgroundColor: palette.pageAlt,
                                             borderRadius: '4px',
                                             display: 'inline-flex',
                                             alignItems: 'center',
@@ -448,7 +446,7 @@ const AdminArticlesScreen = () => {
                                             }}
                                             style={{
                                                 padding: '8px 12px',
-                                                border: `1px solid ${isDark ? colors.primary || '#818CF8' : '#0f172a'}`,
+                                                border: `1px solid ${palette.textPrimary}`,
                                                 background: isDark ? 'rgba(129,140,248,0.12)' : '#f8fafc',
                                                 borderRadius: '6px',
                                                 cursor: 'pointer',
@@ -461,8 +459,8 @@ const AdminArticlesScreen = () => {
                                                 color: textPrimary,
                                             }}
                                             onMouseEnter={(e) => {
-                                                e.currentTarget.style.backgroundColor = isDark ? colors.surfaceElevated || '#334155' : '#f9fafb';
-                                                e.currentTarget.style.borderColor = isDark ? colors.primary || '#818CF8' : '#0f172a';
+                                                e.currentTarget.style.backgroundColor = palette.pageAlt;
+                                                e.currentTarget.style.borderColor = palette.textPrimary;
                                             }}
                                             onMouseLeave={(e) => {
                                                 e.currentTarget.style.backgroundColor = 'transparent';
@@ -505,7 +503,7 @@ const AdminArticlesScreen = () => {
                                                     fontWeight: '600',
                                                     color: textPrimary,
                                                     textDecoration: 'none',
-                                                    background: isDark ? colors.surfaceElevated || '#334155' : '#ffffff',
+                                                    background: palette.card,
                                                 }}
                                             >
                                                 Source URL

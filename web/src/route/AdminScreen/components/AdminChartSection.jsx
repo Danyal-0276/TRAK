@@ -23,10 +23,10 @@ export default function AdminChartSection({
   yAxisSuffix = '',
   colors = {},
 }) {
-  const textPrimary = colors.textPrimary || '#0f172a';
-  const textSecondary = colors.textSecondary || '#64748b';
-  const gridColor = colors.grid || '#f0f0f0';
-  const cardBg = colors.cardBackground || '#ffffff';
+  const textPrimary = colors.textPrimary || '#0a0a0a';
+  const textSecondary = colors.textSecondary || '#525252';
+  const gridColor = colors.grid || colors.borderLight || '#f0f0f0';
+  const cardBg = colors.cardBackground || colors.card || '#ffffff';
 
   const formatY = (v) => {
     const n = Number(v);

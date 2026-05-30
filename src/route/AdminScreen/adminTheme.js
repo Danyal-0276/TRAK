@@ -39,7 +39,12 @@ const LIGHT = {
   cardHover: '#fafafa',
   page: '#f5f5f5',
   pageAlt: '#ebebeb',
+  sidebar: '#ffffff',
+  inputBg: '#f8fafc',
   primary: '#2563eb',
+  navHover: '#f4f4f5',
+  navActiveBg: BLUE[50],
+  navActiveText: BLUE[700],
   shadow: 'rgba(0, 0, 0, 0.08)',
   shadowLight: 'rgba(0, 0, 0, 0.04)',
   success: SEMANTIC.green,
@@ -102,7 +107,12 @@ const DARK = {
   cardHover: '#1a1a1a',
   page: '#0a0a0a',
   pageAlt: '#171717',
+  sidebar: '#111111',
+  inputBg: '#1a1a1a',
   primary: BLUE[400],
+  navHover: 'rgba(255, 255, 255, 0.06)',
+  navActiveBg: '#1e3a8a33',
+  navActiveText: BLUE[300],
   shadow: 'rgba(0, 0, 0, 0.45)',
   shadowLight: 'rgba(0, 0, 0, 0.25)',
   success: SEMANTIC.greenDark,
@@ -156,7 +166,7 @@ const DARK = {
 };
 
 export function getAdminDashboardPalette(_colors, isDark = false) {
-  return isDark ? { ...DARK } : { ...LIGHT };
+  return isDark ? { ...DARK, isDark: true } : { ...LIGHT, isDark: false };
 }
 
 export function pipelineColor(palette, status) {

@@ -5,12 +5,10 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 import { BarChart3, Users, Shield, FileText, Bell, Settings as SettingsIcon } from 'lucide-react-native';
-import { useTheme } from '../../../theme/ThemeContext';
-import LinearGradient from 'react-native-linear-gradient';
+import { useAdminTheme } from '../useAdminTheme';
 
 const TabNavigation = ({ activeTab, onTabChange }) => {
-  const { theme } = useTheme();
-  const { colors } = theme;
+  const { palette } = useAdminTheme();
   
   const tabs = [
     { id: 'overview', icon: BarChart3 },
@@ -23,8 +21,8 @@ const TabNavigation = ({ activeTab, onTabChange }) => {
 
   return (
     <View style={[styles.tabNav, { 
-      backgroundColor: colors.surface,
-      borderBottomColor: colors.border,
+      backgroundColor: palette.card,
+      borderBottomColor: palette.border,
     }]}>
       <ScrollView 
         horizontal 
@@ -37,7 +35,7 @@ const TabNavigation = ({ activeTab, onTabChange }) => {
             <TouchableOpacity
               key={id}
               style={[styles.tabButton, isActive && { 
-                backgroundColor: `${colors.primary}15`,
+                backgroundColor: `${palette.primary}15`,
               }]}
               onPress={() => {
                 LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -46,17 +44,12 @@ const TabNavigation = ({ activeTab, onTabChange }) => {
               activeOpacity={0.7}
             >
               {isActive ? (
-                <LinearGradient
-                  colors={[colors.primary, colors.primary]}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.tabButtonGradient}
-                >
-                  <Icon size={20} color={colors.surface} />
-                </LinearGradient>
+                <View style={[styles.tabButtonGradient, { backgroundColor: palette.primary }]}>
+                  <Icon size={20} color="#ffffff" />
+                </View>
               ) : (
-                <View style={[styles.tabButtonInner, { backgroundColor: colors.backgroundSecondary }]}>
-                  <Icon size={20} color={colors.textSecondary} />
+                <View style={[styles.tabButtonInner, { backgroundColor: palette.pageAlt }]}>
+                  <Icon size={20} color={palette.textSecondary} />
                 </View>
               )}
             </TouchableOpacity>

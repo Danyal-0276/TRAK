@@ -1,19 +1,17 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
-import { useTheme } from '../../../theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
+import { useAdminTheme } from '../useAdminTheme';
 import AdminSidebar from './AdminSidebar';
 import AdminKeepAliveOutlet from './AdminKeepAliveOutlet';
 import './adminShell.css';
 
 export default function AdminShell() {
-  const { theme } = useTheme();
-  const { colors } = theme;
+  const { palette, isDark, cssVars } = useAdminTheme();
   const { user, isAdmin, isSuperAdmin, loading, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const isDark = theme.mode === 'dark';
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
@@ -36,27 +34,16 @@ export default function AdminShell() {
     return () => mq.removeEventListener('change', onChange);
   }, []);
 
-  const shellVars = useMemo(
-    () => ({
-      '--admin-border': colors.border,
-      '--admin-sidebar-bg': isDark ? '#0f172a' : '#ffffff',
-      '--admin-topbar-bg': isDark ? 'rgba(15, 23, 42, 0.92)' : 'rgba(255, 255, 255, 0.92)',
-      '--admin-card': isDark ? '#1e293b' : '#ffffff',
-      '--admin-text-primary': colors.textPrimary,
-      '--admin-text-secondary': colors.textSecondary,
-      '--admin-text-tertiary': isDark ? '#94a3b8' : '#64748b',
-      '--admin-primary': colors.primary || '#2563eb',
-      '--admin-brand-icon-bg': isDark ? 'rgba(59, 130, 246, 0.15)' : '#eff6ff',
-      '--admin-nav-hover': isDark ? 'rgba(148, 163, 184, 0.08)' : '#f4f4f5',
-      '--admin-nav-active-bg': isDark ? 'rgba(59, 130, 246, 0.12)' : '#eff6ff',
-      '--admin-nav-active-text': isDark ? '#93c5fd' : '#1d4ed8',
-      '--admin-error': '#ef4444',
-      '--admin-error-bg': isDark ? 'rgba(239, 68, 68, 0.12)' : '#fef2f2',
-      '--admin-page-bg': isDark ? '#0a0a0a' : '#f5f5f5',
-      '--admin-shadow-light': isDark ? 'rgba(0, 0, 0, 0.25)' : 'rgba(0, 0, 0, 0.04)',
-    }),
-    [colors, isDark]
-  );
+  useEffect(() => {
+    const prevBg = document.body.style.backgroundColor;
+    const prevColor = document.body.style.color;
+    document.body.style.backgroundColor = palette.page;
+    document.body.style.color = palette.textPrimary;
+    return () => {
+      document.body.style.backgroundColor = prevBg;
+      document.body.style.color = prevColor;
+    };
+  }, [palette.page, palette.textPrimary]);
 
   if (loading) {
     return (
@@ -66,10 +53,10 @@ export default function AdminShell() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: isDark ? colors.background : '#f5f5f5',
+          backgroundColor: palette.page,
         }}
       >
-        <p style={{ color: colors.textSecondary }}>Loading admin panel…</p>
+        <p style={{ color: palette.textSecondary }}>Loading admin panel…</p>
       </div>
     );
   }
@@ -88,7 +75,7 @@ export default function AdminShell() {
   };
 
   return (
-    <div className="admin-shell" style={shellVars}>
+    <div className="admin-shell" style={cssVars}>
       {sidebarOpen ? (
         <button
           type="button"

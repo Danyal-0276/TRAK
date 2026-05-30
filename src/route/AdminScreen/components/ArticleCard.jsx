@@ -10,10 +10,10 @@ import ArticleInsightBadges, {
 const ArticleCard = ({ article, onEdit, onDelete, onView, palette }) => {
   const cardBg = palette?.card || '#fff';
   const border = palette?.border || '#e5e7eb';
-  const textPrimary = palette?.textPrimary || '#0f172a';
-  const textSecondary = palette?.textSecondary || '#64748b';
-  const textTertiary = palette?.textTertiary || '#94a3b8';
-  const primary = palette?.primary || '#0f172a';
+  const textPrimary = palette?.textPrimary || '#0a0a0a';
+  const textSecondary = palette?.textSecondary || '#525252';
+  const textTertiary = palette?.textTertiary || '#737373';
+  const primary = palette?.primary || '#2563eb';
   const isDark = palette?.isDark;
   const sourceLabel = article.source || article.source_key || 'Source';
   const initials = String(sourceLabel).substring(0, 2).toUpperCase() || 'N';
