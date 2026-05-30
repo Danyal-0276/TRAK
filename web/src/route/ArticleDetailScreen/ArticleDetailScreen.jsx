@@ -13,7 +13,7 @@ import {
     ArrowLeft
 } from 'lucide-react';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
-import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, setReaction, submitArticleReport } from '../../utils/Service/api';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { mapApiItem } from '../../utils/loadFeed';
@@ -42,7 +42,8 @@ const ArticleDetailScreen = () => {
 
     const articleKey = String(article.id || routeArticleId || '').trim();
     const credMeta = getFeedItemCredibilityMeta(article);
-    const { success } = useUIFeedback();
+    const { success, error: notifyError, confirm } = useUIFeedback();
+    const [showMoreMenu, setShowMoreMenu] = useState(false);
 
     const [reaction, setReactionState] = useState(null);
     const [isBookmarked, setIsBookmarked] = useState(false);
@@ -97,15 +98,44 @@ const ArticleDetailScreen = () => {
     };
 
     const handleShare = () => {
+        const url = article.canonical_url || article.url || window.location.href;
         if (navigator.share) {
             navigator.share({
                 title: article.title,
                 text: article.excerpt || article.description,
-                url: window.location.href,
-            });
+                url,
+            }).catch(() => {});
         } else {
-            navigator.clipboard.writeText(window.location.href);
+            navigator.clipboard.writeText(url);
             success('Link copied to clipboard!');
+        }
+        setShowMoreMenu(false);
+    };
+
+    const handleOpenOriginal = () => {
+        const url = article.canonical_url || article.url;
+        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+        setShowMoreMenu(false);
+    };
+
+    const handleReport = async () => {
+        setShowMoreMenu(false);
+        const ok = await confirm({
+            title: 'Report this article?',
+            message: 'Our team will review this content.',
+            confirmText: 'Report',
+            danger: true,
+        });
+        if (!ok) return;
+        try {
+            await submitArticleReport({
+                article_id: articleKey,
+                url: article.canonical_url || article.url || '',
+                reason: 'user_report',
+            });
+            success('Report submitted. Thank you.');
+        } catch (e) {
+            notifyError(e?.message || 'Could not submit report.');
         }
     };
 
@@ -243,24 +273,85 @@ const ArticleDetailScreen = () => {
                             Back
                         </span>
                     </button>
-                    <button
-                        style={{
-                            padding: '8px',
-                            border: 'none',
-                            background: 'transparent',
-                            cursor: 'pointer',
-                            borderRadius: '6px',
-                            transition: 'all 0.2s ease',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = 'transparent';
-                        }}
-                    >
-                        <MoreHorizontal size={18} color={colors.textSecondary} />
-                    </button>
+                    <div style={{ position: 'relative' }}>
+                        <button
+                            type="button"
+                            aria-label="More options"
+                            aria-expanded={showMoreMenu}
+                            onClick={() => setShowMoreMenu((v) => !v)}
+                            style={{
+                                padding: '8px',
+                                border: 'none',
+                                background: showMoreMenu ? colors.backgroundSecondary : 'transparent',
+                                cursor: 'pointer',
+                                borderRadius: '6px',
+                                transition: 'all 0.2s ease',
+                            }}
+                        >
+                            <MoreHorizontal size={18} color={colors.textSecondary} />
+                        </button>
+                        {showMoreMenu ? (
+                            <>
+                                <button
+                                    type="button"
+                                    aria-label="Close menu"
+                                    onClick={() => setShowMoreMenu(false)}
+                                    style={{
+                                        position: 'fixed',
+                                        inset: 0,
+                                        zIndex: 1099,
+                                        border: 'none',
+                                        background: 'transparent',
+                                        cursor: 'default',
+                                    }}
+                                />
+                                <div
+                                    role="menu"
+                                    style={{
+                                        position: 'absolute',
+                                        right: 0,
+                                        top: 'calc(100% + 6px)',
+                                        zIndex: 1100,
+                                        minWidth: 180,
+                                        background: colors.surface,
+                                        border: `1px solid ${colors.border}`,
+                                        borderRadius: 10,
+                                        boxShadow: colors.shadowDark ? `0 8px 24px ${colors.shadowDark}` : '0 8px 24px rgba(0,0,0,0.12)',
+                                        overflow: 'hidden',
+                                    }}
+                                >
+                                    {[
+                                        { label: 'Share', onClick: handleShare },
+                                        ...(article.canonical_url || article.url
+                                            ? [{ label: 'Open original', onClick: handleOpenOriginal }]
+                                            : []),
+                                        { label: 'Report article', onClick: handleReport, danger: true },
+                                    ].map((item) => (
+                                        <button
+                                            key={item.label}
+                                            type="button"
+                                            role="menuitem"
+                                            onClick={item.onClick}
+                                            style={{
+                                                display: 'block',
+                                                width: '100%',
+                                                padding: '12px 14px',
+                                                border: 'none',
+                                                background: 'transparent',
+                                                textAlign: 'left',
+                                                fontSize: 14,
+                                                fontWeight: 500,
+                                                color: item.danger ? colors.error : colors.textPrimary,
+                                                cursor: 'pointer',
+                                            }}
+                                        >
+                                            {item.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </>
+                        ) : null}
+                    </div>
                 </div>
             </header>
 

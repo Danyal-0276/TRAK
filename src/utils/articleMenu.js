@@ -1,4 +1,4 @@
-import { Platform, Share } from 'react-native';
+import { Linking, Platform, Share } from 'react-native';
 import { submitArticleReport } from '../api/newsApi';
 
 export async function shareArticle(item) {
@@ -29,10 +29,25 @@ export function openArticleMenu(item, feedback) {
         label: 'Share',
         onPress: () => shareArticle(item),
       },
+      ...(url
+        ? [
+            {
+              label: 'Open original',
+              onPress: () => Linking.openURL(url).catch(() => {}),
+            },
+          ]
+        : []),
       {
         label: 'Report article',
         destructive: true,
         onPress: async () => {
+          const ok = await feedback.confirm({
+            title: 'Report this article?',
+            message: 'Our team will review this content.',
+            confirmText: 'Report',
+            danger: true,
+          });
+          if (!ok) return;
           await submitArticleReport({
             article_id: id,
             url,
