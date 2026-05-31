@@ -93,6 +93,7 @@ const RouterContent = () => {
           <Route path="profile" />
           <Route path="articles" />
           <Route path="notifications" />
+          <Route path="feedback" />
           <Route path="settings" />
           <Route path="analytics" element={<Navigate to="/admin/dashboard" replace />} />
         </Route>

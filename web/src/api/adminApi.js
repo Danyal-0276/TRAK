@@ -113,6 +113,39 @@ export async function getAdminNotifications() {
   return parseJson(res);
 }
 
+export async function markAdminNotificationRead(notificationId) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/notifications/${encodeURIComponent(notificationId)}/mark-read/`,
+    { method: 'POST' }
+  );
+  return parseJson(res);
+}
+
+export async function getAdminFeedback({ status = '', type = '', category = '', limit = 50, skip = 0 } = {}) {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (type) params.set('type', type);
+  if (category) params.set('category', category);
+  params.set('limit', String(limit));
+  params.set('skip', String(skip));
+  const res = await apiFetch(`${ADMIN_PREFIX}/feedback/?${params}`);
+  return parseJson(res);
+}
+
+export async function getAdminFeedbackDetail(feedbackId) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/feedback/${encodeURIComponent(feedbackId)}/`);
+  return parseJson(res);
+}
+
+export async function patchAdminFeedback(feedbackId, payload) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/feedback/${encodeURIComponent(feedbackId)}/`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  return parseJson(res);
+}
+
 export async function createAdminCategory(name, subcategories = []) {
   const res = await apiFetch(`${ADMIN_PREFIX}/settings/categories/`, {
     method: 'POST',

@@ -90,7 +90,7 @@ const NotificationCard = ({ item, index, onMarkAsRead, onNotificationPress }) =>
     
     // Always navigate to detail screen
     if (onNotificationPress) {
-      onNotificationPress(item.id);
+      onNotificationPress(item);
     } else {
       navigation.navigate('NotificationDetail', { notificationId: item.id });
     }

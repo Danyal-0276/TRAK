@@ -6,7 +6,8 @@ import {
     Lock, 
     Tag, 
     Database, 
-    Info, 
+    Info,
+    MessageSquare,
     LogOut, 
     Moon,
     Sun,
@@ -24,6 +25,7 @@ import { useAuth } from "../../context/AuthContext";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
 import { getNotificationPreferences, patchNotificationPreferences } from "../../utils/Service/api";
 import { SkeletonPageBlocks } from "../../components/skeletons/SkeletonLayouts";
+import FeedbackModal from "../../components/FeedbackModal";
 
 export default function SettingsScreen() {
     const { theme, toggleTheme } = useTheme();
@@ -55,6 +57,7 @@ export default function SettingsScreen() {
     const [showSaveSuccess, setShowSaveSuccess] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [prefsLoading, setPrefsLoading] = useState(true);
+    const [appFeedbackOpen, setAppFeedbackOpen] = useState(false);
 
     // Save settings to localStorage whenever they change
     useEffect(() => {
@@ -566,6 +569,12 @@ export default function SettingsScreen() {
                 {/* About */}
                 <SettingsSection title="About">
                     <SettingsRow
+                        icon={<MessageSquare size={20} color={colors.textPrimary} />}
+                        label="Send feedback"
+                        description="Tell us about bugs, ideas, or app issues"
+                        onPress={() => setAppFeedbackOpen(true)}
+                    />
+                    <SettingsRow
                         icon={<Info size={20} color={colors.textPrimary} />}
                         label="About TRAK"
                         description="Learn more about the app"
@@ -586,6 +595,12 @@ export default function SettingsScreen() {
                 </>
                 )}
             </div>
+            <FeedbackModal
+                open={appFeedbackOpen}
+                onClose={() => setAppFeedbackOpen(false)}
+                type="app_feedback"
+                title="Send app feedback"
+            />
         </div>
     );
 }

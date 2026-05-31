@@ -103,6 +103,35 @@ export async function getAdminNotifications() {
   return parseJson(res);
 }
 
+export async function markAdminNotificationRead(notificationId) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/notifications/${encodeURIComponent(notificationId)}/mark-read/`,
+    { method: 'POST' },
+    API_BASE
+  );
+  return parseJson(res);
+}
+
+export async function getAdminFeedback({ status = '', type = '', category = '', limit = 50, skip = 0 } = {}) {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (type) params.set('type', type);
+  if (category) params.set('category', category);
+  params.set('limit', String(limit));
+  params.set('skip', String(skip));
+  const res = await apiFetch(`${ADMIN_PREFIX}/feedback/?${params}`, {}, API_BASE);
+  return parseJson(res);
+}
+
+export async function patchAdminFeedback(feedbackId, payload) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/feedback/${encodeURIComponent(feedbackId)}/`,
+    { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) },
+    API_BASE
+  );
+  return parseJson(res);
+}
+
 export async function patchAdminArticle(scope, articleId, payload) {
   const res = await apiFetch(
     `${ADMIN_PREFIX}/articles/${encodeURIComponent(scope)}/${encodeURIComponent(articleId)}/`,

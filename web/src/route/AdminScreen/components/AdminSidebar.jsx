@@ -12,6 +12,7 @@ import {
   Newspaper,
   Moon,
   Sun,
+  MessageSquare,
 } from 'lucide-react';
 import { useTheme } from '../../../theme/ThemeContext';
 import TrakLogo from '../../../components/TrakLogo';
@@ -23,6 +24,7 @@ const MAIN_NAV = [
   { path: '/admin/articles', icon: FileText, label: 'Articles' },
   { path: '/admin/users', icon: Users, label: 'Users' },
   { path: '/admin/admins', icon: Shield, label: 'Admins' },
+  { path: '/admin/feedback', icon: MessageSquare, label: 'User feedback' },
   { path: '/admin/notifications', icon: Bell, label: 'Notifications' },
 ];
 

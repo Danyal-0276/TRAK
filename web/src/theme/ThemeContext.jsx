@@ -48,6 +48,7 @@ export const ThemeProvider = ({ initialMode = 'light', children }) => {
   useEffect(() => {
     localStorage.setItem('theme', mode);
     document.documentElement.setAttribute('data-theme', mode);
+    document.documentElement.style.colorScheme = mode;
     document.body.style.backgroundColor = palette.background;
     document.body.style.color = palette.textPrimary;
   }, [mode, palette.background, palette.textPrimary]);

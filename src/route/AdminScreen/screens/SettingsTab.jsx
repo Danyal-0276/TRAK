@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Settings as SettingsIcon, Plus, Trash2, X } from 'lucide-react-native';
+import { Settings as SettingsIcon, Plus, Trash2, X, Newspaper, Moon, Sun } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
 import ToggleSwitch from '../components/ToggleSwitch';
 import SettingRow from '../components/SettingRow';
@@ -41,6 +41,9 @@ const SettingsTab = ({
   onDeleteAllCategories,
   onDeleteAllConnections,
   onLogout,
+  onViewNewsApp,
+  darkTheme,
+  onToggleTheme,
 }) => {
   const { palette } = useAdminTheme();
   const { confirm } = useFeedback();
@@ -383,6 +386,32 @@ const SettingsTab = ({
         ) : null}
       </View>
 
+      <View style={[styles.sectionCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
+        <Text variant="title" color={palette.textPrimary} style={styles.sectionTitle}>
+          Appearance & preview
+        </Text>
+        <TouchableOpacity
+          style={[styles.previewBtn, { borderColor: palette.border, backgroundColor: palette.inputBg }]}
+          onPress={onToggleTheme}
+          activeOpacity={0.8}
+        >
+          {darkTheme ? <Sun size={18} color={palette.primary} /> : <Moon size={18} color={palette.primary} />}
+          <Text variant="body" color={palette.textPrimary} style={{ fontWeight: '600', marginLeft: 10 }}>
+            {darkTheme ? 'Switch to light mode' : 'Switch to dark mode'}
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.previewBtn, { borderColor: palette.border, backgroundColor: palette.inputBg, marginTop: 10 }]}
+          onPress={onViewNewsApp}
+          activeOpacity={0.8}
+        >
+          <Newspaper size={18} color={palette.primary} />
+          <Text variant="body" color={palette.textPrimary} style={{ fontWeight: '600', marginLeft: 10 }}>
+            View news app
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <TouchableOpacity
         style={[styles.logoutButton, { backgroundColor: palette.inputBg, borderColor: palette.border }]}
         onPress={async () => {
@@ -475,6 +504,16 @@ const styles = StyleSheet.create({
   },
   logoutButton: { paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 24, borderWidth: 1.5 },
   logoutButtonText: { fontSize: 15, fontWeight: '700' },
+  sectionCard: { borderRadius: 14, borderWidth: 1, padding: 16, marginTop: 20 },
+  sectionTitle: { fontWeight: '700', marginBottom: 12 },
+  previewBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
 });
 
 export default SettingsTab;

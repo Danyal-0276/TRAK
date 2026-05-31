@@ -2,12 +2,17 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAdminTheme } from '../useAdminTheme';
+import { useAuth } from '../../../context/AuthContext';
 import Text from '../../../components/ui/Text';
 import TrakLogo from '../../../components/TrakLogo';
 
 const Header = () => {
   const { palette } = useAdminTheme();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const email = user?.email || '';
+  const roleLabel = user?.is_super_admin ? 'Super Admin' : 'Administrator';
+  const initial = email ? email.charAt(0).toUpperCase() : 'A';
 
   return (
     <View
@@ -30,6 +35,23 @@ const Header = () => {
             News operations
           </Text>
         </View>
+        {email ? (
+          <View style={styles.userBlock}>
+            <View style={[styles.avatar, { backgroundColor: `${palette.primary}20` }]}>
+              <Text variant="caption" color={palette.primary} style={{ fontWeight: '800' }}>
+                {initial}
+              </Text>
+            </View>
+            <View style={styles.userText}>
+              <Text variant="caption" color={palette.textPrimary} style={{ fontWeight: '600' }} numberOfLines={1}>
+                {email}
+              </Text>
+              <Text variant="caption" color={palette.textTertiary}>
+                {roleLabel}
+              </Text>
+            </View>
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -48,13 +70,30 @@ const styles = StyleSheet.create({
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     paddingHorizontal: 20,
     paddingBottom: 16,
     gap: 12,
   },
   titleBlock: {
+    flex: 1,
     alignItems: 'flex-start',
+  },
+  userBlock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    maxWidth: '42%',
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userText: {
+    flex: 1,
+    minWidth: 0,
   },
 });
 

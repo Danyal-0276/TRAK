@@ -17,7 +17,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import { Mail } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import { filledActionColors } from '../../theme/buttonContrast';
-import { requestPasswordReset } from '../../api/authPasswordApi';
+import { checkPasswordResetEmail, requestPasswordReset } from '../../api/authPasswordApi';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 
 const { width, height } = Dimensions.get('window');
@@ -295,6 +295,11 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                     }
                                     setLoading(true);
                                     try {
+                                        const check = await checkPasswordResetEmail(email.trim());
+                                        if (!check?.exists) {
+                                            showError('No account found with this email address.');
+                                            return;
+                                        }
                                         const res = await requestPasswordReset(email.trim());
                                         navigation.navigate('ForgotPasswordCode', {
                                             email: email.trim().toLowerCase(),

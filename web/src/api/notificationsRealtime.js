@@ -7,7 +7,7 @@ function wsBase() {
 }
 
 export function isNotificationsWsEnabled() {
-  return import.meta.env.VITE_ENABLE_NOTIFICATIONS_WS === 'true';
+  return import.meta.env.VITE_ENABLE_NOTIFICATIONS_WS !== 'false';
 }
 
 /** Live push needs ASGI (e.g. daphne). Off unless VITE_ENABLE_NOTIFICATIONS_WS=true. */

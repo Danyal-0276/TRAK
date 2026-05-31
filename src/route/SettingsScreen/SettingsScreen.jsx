@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { ScrollView, StyleSheet, StatusBar, Animated, Dimensions, View, Platform } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
-import { User, Bell, Lock, Tag, Database, Info, LogOut, Moon, FileText, Mail } from "lucide-react-native";
+import { User, Bell, Lock, Tag, Database, Info, LogOut, Moon, FileText, Mail, MessageSquare } from "lucide-react-native";
 import { getNotificationPreferences, patchNotificationPreferences } from "../../api/notificationsApi";
 
 import SettingsHeader from "./components/SettingsHeader";
@@ -17,6 +17,7 @@ import Card from "../../components/ui/Card";
 import Text from "../../components/ui/Text";
 import { resetTabBarVisibility } from "../../navigation/tabBarVisibility";
 import { useCollapsibleHeader } from "../../hooks/useCollapsibleHeader";
+import FeedbackModal from "../../components/FeedbackModal";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -25,6 +26,7 @@ export default function SettingsScreen({ navigation }) {
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [keywordAlerts, setKeywordAlerts] = useState(true);
   const [quietHours, setQuietHours] = useState(false);
+  const [appFeedbackOpen, setAppFeedbackOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
   const { colors } = theme;
   const { logout } = useAuth();
@@ -321,6 +323,11 @@ export default function SettingsScreen({ navigation }) {
 
         <SettingsSection>
           <SettingsRow
+            icon={<MessageSquare size={22} color={colors.primary} />}
+            label="Send feedback"
+            onPress={() => setAppFeedbackOpen(true)}
+          />
+          <SettingsRow
             icon={<Info size={22} color={colors.primary} />}
             label="About"
             onPress={() => navigation.navigate("AboutScreen")}
@@ -351,6 +358,12 @@ export default function SettingsScreen({ navigation }) {
           />
         </SettingsSection>
       </Animated.ScrollView>
+      <FeedbackModal
+        visible={appFeedbackOpen}
+        onClose={() => setAppFeedbackOpen(false)}
+        type="app_feedback"
+        title="Send app feedback"
+      />
     </SafeAreaView>
   );
 }

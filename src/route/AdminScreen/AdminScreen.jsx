@@ -51,6 +51,7 @@ import UsersTab from './screens/UsersTab';
 import AdminsTab from './screens/AdminsTab';
 import ArticlesTab from './screens/ArticlesTab';
 import NotificationsTab from './screens/NotificationsTab';
+import FeedbackTab from './screens/FeedbackTab';
 import SettingsTab from './screens/SettingsTab';
 import EditModal from './components/EditModal';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
@@ -103,7 +104,7 @@ function mapAdminArticleRow(doc) {
 }
 
 const AdminScreen = ({ navigation }) => {
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const { user, isAdmin, isSuperAdmin, bootstrapped, logout } = useAuth();
   const { palette: adminPalette } = useAdminTheme();
   const isDark = theme.mode === 'dark';
@@ -139,6 +140,8 @@ const AdminScreen = ({ navigation }) => {
   const [settings, setSettings] = useState({});
   const [categories, setCategories] = useState([]);
   const [connections, setConnections] = useState([]);
+  const connectionsRef = useRef([]);
+  const hasBootstrappedRef = useRef(false);
   const [categoryInput, setCategoryInput] = useState('');
   const [connectionInput, setConnectionInput] = useState('');
   const [subInputs, setSubInputs] = useState({});
@@ -215,6 +218,23 @@ const AdminScreen = ({ navigation }) => {
   }, [bootstrapped, user, isAdmin, navigation]);
 
   useEffect(() => {
+    connectionsRef.current = connections;
+  }, [connections]);
+
+  const updateConnectionsIfChanged = useCallback((next) => {
+    const normalized = normAdminConnections(next || []);
+    setConnections((prev) => {
+      if (
+        prev.length === normalized.length &&
+        prev.every((row, i) => row.slug === normalized[i]?.slug && row.url === normalized[i]?.url)
+      ) {
+        return prev;
+      }
+      return normalized;
+    });
+  }, []);
+
+  useEffect(() => {
     hasSnapshotRef.current = Boolean(serverAnalytics);
   }, [serverAnalytics]);
 
@@ -233,13 +253,13 @@ const AdminScreen = ({ navigation }) => {
       const mapped = (data.articles || []).map(mapAdminArticleRow);
       const enriched = enrichAnalyticsSnapshot(data.serverAnalytics, mapped, {
         users: data.users,
-        connections: data.connections?.length ? data.connections : connections,
+        connections: data.connections?.length ? data.connections : connectionsRef.current,
       });
       const hasKpis =
         isAnalyticsPayload(data.serverAnalytics) ||
         mapped.length > 0 ||
         (data.users?.length ?? 0) > 0 ||
-        (data.connections?.length ?? connections.length) > 0;
+        (data.connections?.length ?? connectionsRef.current.length) > 0;
       if (hasKpis) {
         setServerAnalytics({ ...enriched, _refreshedAt: Date.now() });
         setAnalyticsError(
@@ -250,7 +270,7 @@ const AdminScreen = ({ navigation }) => {
         if (manual || !silent) setServerAnalytics(null);
       }
       if (data.modelMetrics) setModelMetrics(data.modelMetrics);
-      if (data.connections?.length) setConnections(data.connections);
+      if (data.connections?.length) updateConnectionsIfChanged(data.connections);
       setLiveUpdatedAt(new Date());
     } catch (e) {
       setAnalyticsError(e?.message || 'Failed to load analytics.');
@@ -259,7 +279,7 @@ const AdminScreen = ({ navigation }) => {
       if (!silent) setRefreshing(false);
       setOverviewLoading(false);
     }
-  }, [connections]);
+  }, [updateConnectionsIfChanged]);
 
   const loadArticles = useCallback(async () => {
     const apiScope = getArticlesApiScope(articlePipelineFilter);
@@ -303,9 +323,21 @@ const AdminScreen = ({ navigation }) => {
       }));
       const notificationsData = (notificationsRes.results || []).map((n) => ({
         id: n.id,
+        type: n.type,
         title: n.type,
+        source: n.type?.replace(/_/g, ' ') || 'Alert',
         message: n.text,
+        details: n.details || '',
         status: n.read ? 'read' : 'unread',
+        read: !!n.read,
+        important: !!n.important,
+        meta: n.meta || {},
+        time: n.created_at
+          ? (typeof n.created_at === 'string'
+            ? n.created_at.slice(0, 16).replace('T', ' ')
+            : new Date(n.created_at).toLocaleString())
+          : '',
+        created_at: n.created_at,
       }));
       const settingsData = {
         notifications: !!settingsRes.notifications_enabled_default,
@@ -324,21 +356,18 @@ const AdminScreen = ({ navigation }) => {
       setNotifications(notificationsData);
       setSettings(settingsData);
       setCategories(categoriesData);
-      setConnections(connectionsData);
+      updateConnectionsIfChanged(connectionsData);
     } catch (e) {
       showError(e?.message || 'Could not load admin lists.');
     } finally {
       setListsLoading(false);
     }
-  }, [activeTab, searchQuery, showError]);
+  }, [activeTab, searchQuery, showError, updateConnectionsIfChanged]);
 
   const loadData = useCallback(async () => {
     await loadOverview({ silent: true });
     await loadLists();
-    if (activeTab === 'articles') {
-      await loadArticles();
-    }
-  }, [loadOverview, loadLists, loadArticles, activeTab]);
+  }, [loadOverview, loadLists]);
 
   const handleCreateAdmin = async (email, password) => {
     await postAdminCreate(email, password);
@@ -346,19 +375,15 @@ const AdminScreen = ({ navigation }) => {
   };
 
   useEffect(() => {
-    if (!bootstrapped || !isAdmin) return;
+    if (!bootstrapped || !isAdmin || hasBootstrappedRef.current) return;
+    hasBootstrappedRef.current = true;
     loadData();
   }, [bootstrapped, isAdmin, loadData]);
 
   useEffect(() => {
-    if (!bootstrapped || !isAdmin) return;
-    loadArticles();
-  }, [articlePipelineFilter, bootstrapped, isAdmin, loadArticles]);
-
-  useEffect(() => {
     if (!bootstrapped || !isAdmin || activeTab !== 'articles') return;
     loadArticles();
-  }, [activeTab, bootstrapped, isAdmin, loadArticles]);
+  }, [activeTab, articlePipelineFilter, bootstrapped, isAdmin, loadArticles]);
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || (activeTab !== 'users' && activeTab !== 'admins')) return;
@@ -547,14 +572,14 @@ const AdminScreen = ({ navigation }) => {
       applySettingsFromApi(settingsRes);
       const cats = normAdminCategories(settingsRes.categories || []);
       setCategories(cats);
-      setConnections(normAdminConnections(settingsRes.connections || []));
+      updateConnectionsIfChanged(settingsRes.connections || []);
       setSelectedCategorySlug((prev) => (prev && cats.some((c) => c.slug === prev) ? prev : ''));
       return cats;
     } catch (e) {
       showError(e?.message || 'Could not load settings from server.');
       return [];
     }
-  }, [showError]);
+  }, [showError, updateConnectionsIfChanged]);
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || activeTab !== 'settings') return;
@@ -770,8 +795,16 @@ const AdminScreen = ({ navigation }) => {
             palette={adminPalette}
           />
         );
+      case 'feedback':
+        return scroll(<FeedbackTab navigation={navigation} />);
       case 'notifications':
-        return scroll(<NotificationsTab notifications={notifications} />);
+        return scroll(
+          <NotificationsTab
+            notifications={notifications}
+            onSwitchTab={setActiveTab}
+            loading={listsLoading}
+          />
+        );
       case 'settings':
         return scroll(
           <SettingsTab
@@ -802,6 +835,9 @@ const AdminScreen = ({ navigation }) => {
             onDeleteAllCategories={handleDeleteAllCategories}
             onDeleteAllConnections={handleDeleteAllConnections}
             onLogout={handleLogout}
+            onViewNewsApp={() => navigation.navigate('NewsFeedPreview')}
+            darkTheme={theme.mode === 'dark'}
+            onToggleTheme={toggleTheme}
           />
         );
       default:

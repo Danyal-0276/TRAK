@@ -46,9 +46,9 @@ export async function fetchArticle(articleId) {
     return res.json();
 }
 
-export async function submitArticleReport(payload) {
+export async function submitUserFeedback(payload) {
     const res = await apiFetch(
-        `${USER_PREFIX}/reports/`,
+        `${USER_PREFIX}/feedback/`,
         {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -58,9 +58,13 @@ export async function submitArticleReport(payload) {
     );
     if (!res.ok) {
         const t = await res.text();
-        throw new Error(t || `Report ${res.status}`);
+        throw new Error(t || `Feedback ${res.status}`);
     }
     return res.json();
+}
+
+export async function submitArticleReport(payload) {
+    return submitUserFeedback({ ...payload, type: payload.type || 'article_report' });
 }
 
 export async function fetchPlatformCategories() {

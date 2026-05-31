@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { 
     Bell, 
@@ -16,6 +17,7 @@ import { openNotificationsSocket } from '../../api/notificationsRealtime';
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 
 const NotificationsScreen = () => {
+    const navigate = useNavigate();
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
@@ -109,6 +111,11 @@ const NotificationsScreen = () => {
     const handleNotificationClick = (notification) => {
         if (!notification.read) {
             markAsRead(notification.id);
+        }
+        const articleId = notification.meta?.article_id;
+        if (articleId && (notification.type === 'keyword_match' || notification.type === 'keyword')) {
+            navigate(`/article/${encodeURIComponent(String(articleId))}`);
+            return;
         }
         setSelectedNotification(notification);
     };

@@ -4,17 +4,19 @@ import { Bell } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
 import Text from '../../../components/ui/Text';
 
-const NotificationCard = ({ notification, palette: paletteProp }) => {
+const NotificationCard = ({ notification, palette: paletteProp, onPress }) => {
   const { palette: themePalette } = useAdminTheme();
   const palette = paletteProp || themePalette;
 
   return (
-    <View
+    <TouchableOpacity
+      activeOpacity={onPress ? 0.7 : 1}
+      onPress={onPress}
       style={[
         styles.notificationCard,
         {
           backgroundColor: palette.card,
-          borderColor: palette.border,
+          borderColor: notification.important ? palette.primary : palette.border,
           borderWidth: 1,
         },
       ]}
@@ -24,19 +26,22 @@ const NotificationCard = ({ notification, palette: paletteProp }) => {
       </View>
       <View style={styles.notificationContent}>
         <Text variant="body" color={palette.textPrimary} style={{ fontWeight: '600', marginBottom: 4 }}>
-          {notification.source}
+          {notification.source || notification.type || 'Alert'}
         </Text>
         <Text variant="caption" color={palette.textSecondary} style={{ marginBottom: 4 }}>
           {notification.message}
         </Text>
+        {notification.details ? (
+          <Text variant="caption" color={palette.textTertiary} style={{ marginBottom: 4 }} numberOfLines={2}>
+            {notification.details}
+          </Text>
+        ) : null}
         <Text variant="caption" color={palette.textTertiary}>
-          {notification.time}
+          {notification.time || ''}
+          {notification.read ? ' · Read' : ' · Unread'}
         </Text>
       </View>
-      <TouchableOpacity style={styles.notificationAction}>
-        <Text variant="body" color={palette.textTertiary}>•••</Text>
-      </TouchableOpacity>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -46,7 +51,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
     marginBottom: 12,
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   notificationIcon: {
     width: 40,
@@ -58,9 +63,6 @@ const styles = StyleSheet.create({
   },
   notificationContent: {
     flex: 1,
-  },
-  notificationAction: {
-    padding: 8,
   },
 });
 

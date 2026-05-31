@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { shareArticle, openArticleMenu } from '../../utils/articleMenu';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
+import FeedbackModal from '../../components/FeedbackModal';
 import { FeedSkeleton } from '../../components/FeedSkeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -54,6 +55,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     const [fetchError, setFetchError] = useState('');
     const articleId = String(route.params?.articleId || initialArticle.id || '');
     const [activeTtsLineIndex, setActiveTtsLineIndex] = useState(-1);
+    const [feedbackOpen, setFeedbackOpen] = useState(false);
 
     const articleBody =
         article.fullContent || article.content || article.full_content || '';
@@ -228,7 +230,9 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     };
 
     const handleMoreMenu = () => {
-        openArticleMenu({ ...article, id: articleId }, feedback);
+        openArticleMenu({ ...article, id: articleId }, feedback, {
+            onOpenFeedback: () => setFeedbackOpen(true),
+        });
     };
 
     const handleBack = () => {
@@ -250,6 +254,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     );
 
     return (
+        <>
         <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
             <StatusBar 
                 barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} 
@@ -444,6 +449,13 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 </Animated.View>
             </SafeAreaView>
         </View>
+        <FeedbackModal
+            visible={feedbackOpen}
+            onClose={() => setFeedbackOpen(false)}
+            item={{ ...article, id: articleId }}
+            type="article_report"
+        />
+        </>
     );
 };
 

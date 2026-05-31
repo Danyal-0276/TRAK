@@ -19,7 +19,11 @@ const PAGE_META = {
   },
   '/admin/notifications': {
     title: 'Notifications',
-    description: 'Pipeline errors and system alerts',
+    description: 'Pipeline errors, system alerts, and user reports',
+  },
+  '/admin/feedback': {
+    title: 'User feedback',
+    description: 'Review reports and feedback from users',
   },
   '/admin/settings': {
     title: 'Settings',

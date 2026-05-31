@@ -10,6 +10,7 @@ const allowMockFallback = import.meta.env.VITE_ALLOW_MOCK_FEED === 'true';
 export function mapApiItem(a) {
   const cred = a.credibility || {};
   const label = cred.label || cred.label_code;
+  const labelStr = String(label ?? '').toLowerCase();
   const likes = Number(a.like_count ?? a.upvotes ?? 0);
   const dislikes = Number(a.dislike_count ?? 0);
   const summaryText = getCardSummaryText({
@@ -22,6 +23,8 @@ export function mapApiItem(a) {
   return {
     id: a.id,
     source: a.source || a.source_key || '',
+    canonical_url: a.canonical_url || a.url || '',
+    url: a.url || a.canonical_url || '',
     time: a.published_at ? String(a.published_at).slice(0, 16) : '',
     title: a.title || '',
     excerpt: a.excerpt || a.summary || summaryText,
@@ -31,9 +34,15 @@ export function mapApiItem(a) {
     fullContent: a.full_content || a.content || '',
     categories: label ? [String(label)] : ['News'],
     category: (a.topic_keywords?.[0] || 'News').toString().toUpperCase(),
-    trending: cred.label_code === 2 || cred.label === 'suspicious',
+    trending: cred.label_code === 2 || cred.label === 'suspicious' || labelStr === 'suspicious',
     votes: likes,
     credibility: a.credibility,
+    credibilityLabel: labelStr || null,
+    isFake: labelStr === 'fake' || Number(cred.label_code) === 1,
+    isLowCredibility:
+      labelStr === 'fake' ||
+      labelStr === 'suspicious' ||
+      (typeof cred.max_prob === 'number' && cred.max_prob < 0.6),
     like_count: likes,
     dislike_count: dislikes,
     upvotes: likes,

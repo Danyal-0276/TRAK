@@ -6,6 +6,7 @@ import AdminAdminsScreen from '../AdminAdminsScreen';
 import AdminProfileScreen from '../AdminProfileScreen';
 import AdminArticlesScreen from '../AdminArticlesScreen';
 import AdminNotificationsScreen from '../AdminNotificationsScreen';
+import AdminFeedbackScreen from '../AdminFeedbackScreen';
 import AdminSettingsScreen from '../AdminSettingsScreen';
 import AdminUserDetailScreen from '../AdminUserDetailScreen';
 import { isDashboardPath, isArticlesPath } from '../hooks/useAdminTabActive';
@@ -18,6 +19,7 @@ const PAGES = [
   { id: 'profile', match: (p) => p === '/admin/profile', Component: AdminProfileScreen },
   { id: 'articles', match: isArticlesPath, Component: AdminArticlesScreen },
   { id: 'notifications', match: (p) => p === '/admin/notifications', Component: AdminNotificationsScreen },
+  { id: 'feedback', match: (p) => p === '/admin/feedback', Component: AdminFeedbackScreen },
   { id: 'settings', match: (p) => p === '/admin/settings' || p.startsWith('/admin/settings'), Component: AdminSettingsScreen },
 ];
 

@@ -14,6 +14,7 @@ import {
     KeywordSelectionScreen,
     CategoriesScreen,
     AdminScreen,
+    NewsFeedScreen,
 } from './config/screenImports';
 
 const Stack = createNativeStackNavigator();
@@ -29,6 +30,7 @@ function AdminAppStack() {
     return (
         <Stack.Navigator screenOptions={defaultStackScreenOptions}>
             <Stack.Screen name="AdminHome" component={AdminScreen} />
+            <Stack.Screen name="NewsFeedPreview" component={NewsFeedScreen} options={{ title: 'News app' }} />
             <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} options={articleDetailOptions} />
         </Stack.Navigator>
     );

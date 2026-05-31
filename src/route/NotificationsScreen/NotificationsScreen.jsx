@@ -157,11 +157,18 @@ const NotificationsScreen = () => {
     }
   };
 
-  const handleNotificationPress = (notificationId) => {
-    // Navigate to detail screen and pass the markAsRead function
-    navigation.navigate('NotificationDetail', { 
-      notificationId,
-      onMarkAsRead: markAsRead 
+  const handleNotificationPress = (notification) => {
+    const articleId = notification?.meta?.article_id;
+    if (articleId && (notification.type === 'keyword_match' || notification.type === 'keyword')) {
+      if (!notification.read) {
+        markAsRead(notification.id);
+      }
+      navigation.navigate('ArticleDetail', { articleId: String(articleId) });
+      return;
+    }
+    navigation.navigate('NotificationDetail', {
+      notificationId: notification.id,
+      onMarkAsRead: markAsRead,
     });
   };
 

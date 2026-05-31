@@ -1,16 +1,17 @@
 import React from 'react';
 import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
-import { BarChart3, Users, Shield, FileText, Bell, Settings as SettingsIcon } from 'lucide-react-native';
+import { BarChart3, Users, Shield, FileText, Bell, Settings as SettingsIcon, MessageSquare } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
 
 const TabNavigation = ({ activeTab, onTabChange }) => {
-  const { palette } = useAdminTheme();
+  const { palette, isDark } = useAdminTheme();
   
   const tabs = [
     { id: 'overview', icon: BarChart3 },
     { id: 'users', icon: Users },
     { id: 'admins', icon: Shield },
     { id: 'articles', icon: FileText },
+    { id: 'feedback', icon: MessageSquare },
     { id: 'notifications', icon: Bell },
     { id: 'settings', icon: SettingsIcon },
   ];
@@ -27,22 +28,37 @@ const TabNavigation = ({ activeTab, onTabChange }) => {
       >
         {tabs.map(({ id, icon: Icon }) => {
           const isActive = activeTab === id;
+          const activeBg = isDark ? palette.primary : palette.primary;
+          const activeIconColor = isDark ? palette.textInverse : '#ffffff';
+          const inactiveBg = isDark ? palette.navHover : palette.pageAlt;
+          const inactiveBorder = isDark ? palette.border : palette.borderLight;
+          const inactiveIconColor = isDark ? palette.textPrimary : palette.textSecondary;
+
           return (
             <TouchableOpacity
               key={id}
               style={[styles.tabButton, isActive && { 
-                backgroundColor: `${palette.primary}15`,
+                backgroundColor: isDark ? palette.navActiveBg : `${palette.primary}15`,
               }]}
               onPress={() => onTabChange(id)}
               activeOpacity={0.7}
             >
               {isActive ? (
-                <View style={[styles.tabButtonGradient, { backgroundColor: palette.primary }]}>
-                  <Icon size={20} color="#ffffff" />
+                <View style={[styles.tabButtonGradient, { backgroundColor: activeBg }]}>
+                  <Icon size={20} color={activeIconColor} strokeWidth={2.5} />
                 </View>
               ) : (
-                <View style={[styles.tabButtonInner, { backgroundColor: palette.pageAlt }]}>
-                  <Icon size={20} color={palette.textSecondary} />
+                <View
+                  style={[
+                    styles.tabButtonInner,
+                    {
+                      backgroundColor: inactiveBg,
+                      borderWidth: isDark ? 1 : 0,
+                      borderColor: inactiveBorder,
+                    },
+                  ]}
+                >
+                  <Icon size={20} color={inactiveIconColor} strokeWidth={2} />
                 </View>
               )}
             </TouchableOpacity>

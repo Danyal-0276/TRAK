@@ -3,6 +3,7 @@ export const ADMIN_TAB_IDS = [
   'users',
   'admins',
   'articles',
+  'feedback',
   'notifications',
   'settings',
 ];

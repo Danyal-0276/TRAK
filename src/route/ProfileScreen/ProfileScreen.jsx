@@ -7,7 +7,6 @@ import { useFocusEffect } from "@react-navigation/native";
 import ProfileHeader from "./components/ProfileHeader";
 import ProfileActions from "./components/ProfileActions";
 import BookmarkList from "./components/BookmarkList";
-import VerificationCard from "./components/VerificationCard";
 import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
@@ -328,21 +327,6 @@ const UserProfileScreen = ({ navigation }) => {
             if (profile?.avatar_image) setAvatarPreviewOpen(true);
           }}
         />
-
-        {!isAdmin && (!emailVerified || !phoneVerified) ? (
-          <VerificationCard
-            channel={verificationChannel}
-            onChannelChange={setVerificationChannel}
-            code={verificationCode}
-            onCodeChange={setVerificationCode}
-            onSend={sendVerificationCode}
-            onConfirm={confirmVerificationCode}
-            sending={sendingCode}
-            verifying={verifyingCode}
-            message={verifyMessage}
-            devHint={devCodeHint}
-          />
-        ) : null}
 
         <ProfileActions navigation={navigation} onLogout={handleLogout} />
         <BookmarkList
