@@ -15,6 +15,8 @@ import {
   Legend,
 } from 'recharts';
 import {
+  feedbackStatusPieData,
+  feedbackCategoryBarData,
   activityAreaData,
   credibilityPieData,
   factCheckBarData,
@@ -111,6 +113,8 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
   const factCheck = factCheckBarData(snapshot, palette);
   const sourcesRaw = sourceBarData(snapshot, 'raw_by_source_key');
   const sourcesProc = sourceBarData(snapshot, 'processed_by_source_key');
+  const feedbackStatus = feedbackStatusPieData(snapshot, palette);
+  const feedbackCategories = feedbackCategoryBarData(snapshot);
   const ps = snapshot?.pipeline_summary || {};
 
   const tip = {
@@ -388,6 +392,40 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
                 <YAxis tick={axisTick} width={32} axisLine={false} tickLine={false} />
                 <Tooltip contentStyle={tip} cursor={{ fill: palette.pageAlt }} />
                 <Bar dataKey="count" name="Articles" fill={palette.chart.procBar} radius={[6, 6, 0, 0]} maxBarSize={36} />
+              </BarChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+
+        <ChartCard title="User feedback" subtitle="By review status" palette={palette}>
+          {feedbackStatus.length === 0 ? (
+            <EmptyChart palette={palette} message="No feedback yet" />
+          ) : (
+            <ResponsiveContainer width="100%" height={CHART_HEIGHT - 20}>
+              <PieChart>
+                <Pie data={feedbackStatus} dataKey="value" nameKey="name" innerRadius={52} outerRadius={78} paddingAngle={2}>
+                  {feedbackStatus.map((entry) => (
+                    <Cell key={entry.name} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={tip} />
+                <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+        </ChartCard>
+
+        <ChartCard title="Feedback by category" subtitle="Top report categories" palette={palette}>
+          {feedbackCategories.length === 0 ? (
+            <EmptyChart palette={palette} message="No category breakdown" />
+          ) : (
+            <ResponsiveContainer width="100%" height={CHART_HEIGHT - 20}>
+              <BarChart data={feedbackCategories} layout="vertical" margin={{ left: 4, right: 12, top: 4, bottom: 4 }}>
+                <CartesianGrid stroke={gridStroke} horizontal={false} strokeDasharray="4 4" />
+                <XAxis type="number" tick={axisTick} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" width={96} tick={{ ...axisTick, fontSize: 10 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={tip} cursor={{ fill: palette.pageAlt }} />
+                <Bar dataKey="count" name="Reports" fill={palette.chart.info} radius={[0, 6, 6, 0]} barSize={14} />
               </BarChart>
             </ResponsiveContainer>
           )}

@@ -77,6 +77,25 @@ export function activityAreaData(snapshot) {
   }));
 }
 
+export function feedbackStatusPieData(snapshot, palette) {
+  const stats = snapshot?.feedback_stats;
+  if (!stats || !palette) return [];
+  const items = [
+    { name: 'Pending', value: Number(stats.pending) || 0, fill: palette.warning },
+    { name: 'Reviewed', value: Number(stats.reviewed) || 0, fill: palette.success },
+    { name: 'Dismissed', value: Number(stats.dismissed) || 0, fill: palette.textTertiary },
+  ];
+  return items.filter((d) => d.value > 0);
+}
+
+export function feedbackCategoryBarData(snapshot, limit = 8) {
+  const byCat = snapshot?.feedback_stats?.by_category || {};
+  return Object.entries(byCat)
+    .map(([name, count]) => ({ name: name.replace(/_/g, ' '), count: Number(count) || 0 }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+}
+
 /** Fallback when analytics API fails so KPI cards still render with correct links. */
 export function emptyAnalyticsSnapshot() {
   return {
@@ -247,6 +266,14 @@ export function buildDashboardStatCards(snapshot, palette) {
       path: '/admin/articles?pipeline=done',
       accent: a.credibility,
       hint: 'Review credibility on processed articles',
+    },
+    {
+      key: 'feedback',
+      label: 'Pending feedback',
+      value: String(data.feedback_stats?.pending ?? 0),
+      path: '/admin/feedback',
+      accent: palette.warning,
+      hint: `${data.feedback_stats?.total ?? 0} total submissions`,
     },
   ];
 }

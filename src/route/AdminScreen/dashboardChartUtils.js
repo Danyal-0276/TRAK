@@ -273,6 +273,24 @@ export function activityAreaData(snapshot) {
   }));
 }
 
+export function feedbackStatusPieData(snapshot, palette) {
+  const stats = snapshot?.feedback_stats;
+  if (!stats || !palette) return [];
+  return [
+    { name: 'Pending', value: Number(stats.pending) || 0, fill: palette.warning },
+    { name: 'Reviewed', value: Number(stats.reviewed) || 0, fill: palette.success },
+    { name: 'Dismissed', value: Number(stats.dismissed) || 0, fill: palette.textTertiary },
+  ].filter((d) => d.value > 0);
+}
+
+export function feedbackCategoryBarData(snapshot, limit = 8) {
+  const byCat = snapshot?.feedback_stats?.by_category || {};
+  return Object.entries(byCat)
+    .map(([name, count]) => ({ name: name.replace(/_/g, ' '), count: Number(count) || 0 }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+}
+
 export function emptyAnalyticsSnapshot() {
   return {
     raw_total: 0,
@@ -313,6 +331,7 @@ export function buildDashboardStatCards(snapshot, palette) {
     { key: 'sources', label: 'Sources', value: `${conn.active ?? 0}/${conn.total ?? 0}`, accent: a.sources, hint: 'Manage scrape connections' },
     { key: 'users', label: 'Users', value: String(data.users_active ?? 0), accent: a.users, hint: `${data.users_total ?? 0} accounts total` },
     { key: 'credibility', label: 'Processed feed', value: String(data.processed_total ?? 0), accent: a.credibility, hint: 'Review credibility on processed articles' },
+    { key: 'feedback', label: 'Pending feedback', value: String(data.feedback_stats?.pending ?? 0), accent: palette.warning, hint: `${data.feedback_stats?.total ?? 0} total submissions` },
   ];
 }
 
@@ -325,4 +344,5 @@ export const KPI_TAB_NAV = {
   sources: { tab: 'dashboard', pipeline: '', scrollKey: 'sources' },
   users: { tab: 'users', pipeline: '' },
   credibility: { tab: 'articles', pipeline: 'done' },
+  feedback: { tab: 'feedback', pipeline: '' },
 };

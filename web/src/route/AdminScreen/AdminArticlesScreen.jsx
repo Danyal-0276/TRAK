@@ -31,6 +31,7 @@ import { enableAdminAppPreview } from '../../utils/adminAppPreview';
 import { normalizeArticleForDetail } from '../../utils/articleNavigation';
 import { subscribeAdminOverviewRefresh } from '../../utils/adminOverviewEvents';
 import { isArticlesPath } from './hooks/useAdminTabActive';
+import AdminArticleReviewModal from './components/AdminArticleReviewModal';
 
 const AdminArticlesScreen = () => {
     const { palette, isDark, colors } = useAdminTheme();
@@ -46,6 +47,7 @@ const AdminArticlesScreen = () => {
     const initialRoute = parseArticleRouteParams(searchParams);
     const [pipelineFilter, setPipelineFilter] = useState(initialRoute.pipelineFilter);
     const [statusById, setStatusById] = useState({});
+    const [reviewArticle, setReviewArticle] = useState(null);
 
     const cardBackground = palette.card;
     const textPrimary = palette.textPrimary;
@@ -91,6 +93,9 @@ const AdminArticlesScreen = () => {
             pipeline_status: doc.pipeline_status,
             moderation_status: doc.moderation_status || 'review',
             canonical_url: doc.canonical_url,
+            content: doc.content || doc.description || doc.summary || '',
+            image_url: doc.image_url,
+            fact_check_provider: doc.fact_check_provider,
         };
     };
 
@@ -310,6 +315,15 @@ const AdminArticlesScreen = () => {
                         {filteredArticles.map((article) => (
                             <div
                                 key={article.id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setReviewArticle(article)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        setReviewArticle(article);
+                                    }
+                                }}
                                 style={{
                                     backgroundColor: cardBackground,
                                     borderRadius: '12px',
@@ -317,6 +331,7 @@ const AdminArticlesScreen = () => {
                                     padding: '20px',
                                     transition: 'all 0.2s ease',
                                     boxShadow: isDark ? '0 1px 3px rgba(0, 0, 0, 0.2)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
+                                    cursor: 'pointer',
                                 }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.borderColor = palette.textPrimary;
@@ -348,11 +363,11 @@ const AdminArticlesScreen = () => {
                                                 width: '32px',
                                                 height: '32px',
                                                 borderRadius: '6px',
-                                                backgroundColor: palette.textPrimary,
+                                                backgroundColor: isDark ? (palette.statAccent?.sources || palette.info) : palette.textPrimary,
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                color: '#ffffff',
+                                                color: isDark ? palette.textInverse : '#ffffff',
                                                 fontSize: '12px',
                                                 fontWeight: '700',
                                             }}>
@@ -461,7 +476,8 @@ const AdminArticlesScreen = () => {
                                     }}>
                                         <button
                                             type="button"
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                                e.stopPropagation();
                                                 enableAdminAppPreview();
                                                 const normalized = normalizeArticleForDetail(article);
                                                 if (article.id) {
@@ -500,7 +516,10 @@ const AdminArticlesScreen = () => {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => handleDelete(article.id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDelete(article.id);
+                                            }}
                                             style={{
                                                 padding: '8px 12px',
                                                 border: `1px solid #ef4444`,
@@ -547,6 +566,7 @@ const AdminArticlesScreen = () => {
                                         <select
                                             value={statusById[article.id] || (article.moderation_status || article.pipeline_status || 'review')}
                                             onChange={(e) => handleStatusChange(article.id, e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
                                             style={{ fontSize: '12px', padding: '8px 10px', borderRadius: '8px', border: `1px solid ${borderColor}`, background: cardBackground, color: textPrimary, minWidth: '120px' }}
                                         >
                                             <option value="review">review</option>
@@ -561,6 +581,27 @@ const AdminArticlesScreen = () => {
                 )}
                 </div>
             </AdminPageLayout>
+
+            <AdminArticleReviewModal
+                open={Boolean(reviewArticle)}
+                article={reviewArticle}
+                onClose={() => setReviewArticle(null)}
+                onSaved={(updated) => {
+                    setArticles((prev) =>
+                        prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row))
+                    );
+                    setStatusById((prev) => ({ ...prev, [updated.id]: updated.moderation_status }));
+                }}
+                onOpenInApp={(article) => {
+                    enableAdminAppPreview();
+                    const normalized = normalizeArticleForDetail(article);
+                    if (article.id) {
+                        navigate(`/article/${article.id}`, {
+                            state: { article: normalized, adminPreview: true },
+                        });
+                    }
+                }}
+            />
         </>
     );
 };

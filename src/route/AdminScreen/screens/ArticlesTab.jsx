@@ -24,6 +24,7 @@ const ArticlesTab = ({
   searchQuery,
   onSearchChange,
   onViewArticle,
+  onReviewArticle,
   onDelete,
   pipelineFilter = '',
   onPipelineFilterChange,
@@ -100,6 +101,7 @@ const ArticlesTab = ({
             article={article}
             palette={palette}
             onView={onViewArticle}
+            onReview={onReviewArticle}
             onDelete={onDelete}
           />
         ))

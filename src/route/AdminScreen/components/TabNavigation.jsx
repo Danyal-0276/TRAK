@@ -2,65 +2,51 @@ import React from 'react';
 import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { BarChart3, Users, Shield, FileText, Bell, Settings as SettingsIcon, MessageSquare } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
+import Text from '../../../components/ui/Text';
+
+const TABS = [
+  { id: 'overview', icon: BarChart3, label: 'Overview' },
+  { id: 'users', icon: Users, label: 'Users' },
+  { id: 'admins', icon: Shield, label: 'Admins' },
+  { id: 'articles', icon: FileText, label: 'Articles' },
+  { id: 'feedback', icon: MessageSquare, label: 'Feedback' },
+  { id: 'notifications', icon: Bell, label: 'Alerts' },
+  { id: 'settings', icon: SettingsIcon, label: 'Settings', system: true },
+];
 
 const TabNavigation = ({ activeTab, onTabChange }) => {
   const { palette, isDark } = useAdminTheme();
-  
-  const tabs = [
-    { id: 'overview', icon: BarChart3 },
-    { id: 'users', icon: Users },
-    { id: 'admins', icon: Shield },
-    { id: 'articles', icon: FileText },
-    { id: 'feedback', icon: MessageSquare },
-    { id: 'notifications', icon: Bell },
-    { id: 'settings', icon: SettingsIcon },
-  ];
 
   return (
-    <View style={[styles.tabNav, { 
-      backgroundColor: palette.card,
-      borderBottomColor: palette.border,
-    }]}>
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.tabNavContent}
-      >
-        {tabs.map(({ id, icon: Icon }) => {
+    <View style={[styles.tabNav, { backgroundColor: palette.card, borderBottomColor: palette.border }]}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabNavContent}>
+        {TABS.map(({ id, icon: Icon, label, system }) => {
           const isActive = activeTab === id;
-          const activeBg = isDark ? palette.primary : palette.primary;
-          const activeIconColor = isDark ? palette.textInverse : '#ffffff';
-          const inactiveBg = isDark ? palette.navHover : palette.pageAlt;
-          const inactiveBorder = isDark ? palette.border : palette.borderLight;
+          const activeBg = isDark ? palette.navActiveBg : `${palette.primary}12`;
+          const activeIconColor = isDark ? palette.navActiveText : palette.primary;
           const inactiveIconColor = isDark ? palette.textPrimary : palette.textSecondary;
 
           return (
             <TouchableOpacity
               key={id}
-              style={[styles.tabButton, isActive && { 
-                backgroundColor: isDark ? palette.navActiveBg : `${palette.primary}15`,
-              }]}
+              style={[
+                styles.tabButton,
+                system && styles.systemTab,
+                isActive && { backgroundColor: activeBg, borderColor: isDark ? palette.border : palette.primary },
+                !isActive && { borderColor: palette.border, backgroundColor: palette.navHover },
+              ]}
               onPress={() => onTabChange(id)}
               activeOpacity={0.7}
             >
-              {isActive ? (
-                <View style={[styles.tabButtonGradient, { backgroundColor: activeBg }]}>
-                  <Icon size={20} color={activeIconColor} strokeWidth={2.5} />
-                </View>
-              ) : (
-                <View
-                  style={[
-                    styles.tabButtonInner,
-                    {
-                      backgroundColor: inactiveBg,
-                      borderWidth: isDark ? 1 : 0,
-                      borderColor: inactiveBorder,
-                    },
-                  ]}
-                >
-                  <Icon size={20} color={inactiveIconColor} strokeWidth={2} />
-                </View>
-              )}
+              <Icon size={18} color={isActive ? activeIconColor : inactiveIconColor} strokeWidth={isActive ? 2.5 : 2} />
+              <Text
+                variant="caption"
+                color={isActive ? activeIconColor : palette.textSecondary}
+                style={[styles.tabLabel, isActive && { fontWeight: '700' }]}
+                numberOfLines={1}
+              >
+                {label}
+              </Text>
             </TouchableOpacity>
           );
         })}
@@ -73,35 +59,30 @@ const styles = StyleSheet.create({
   tabNav: {
     borderBottomWidth: 1,
     zIndex: 5,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
     elevation: 2,
   },
   tabNavContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
     gap: 8,
   },
   tabButton: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginRight: 8,
-  },
-  tabButtonGradient: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
     alignItems: 'center',
-  },
-  tabButtonInner: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
     justifyContent: 'center',
-    alignItems: 'center',
+    minWidth: 72,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginRight: 4,
+  },
+  systemTab: {
+    marginLeft: 4,
+  },
+  tabLabel: {
+    marginTop: 4,
+    fontSize: 10,
+    textAlign: 'center',
   },
 });
 

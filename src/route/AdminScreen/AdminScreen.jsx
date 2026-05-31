@@ -53,6 +53,7 @@ import ArticlesTab from './screens/ArticlesTab';
 import NotificationsTab from './screens/NotificationsTab';
 import FeedbackTab from './screens/FeedbackTab';
 import SettingsTab from './screens/SettingsTab';
+import AdminArticleReviewModal from './components/AdminArticleReviewModal';
 import EditModal from './components/EditModal';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { buildArticleDetailParams } from '../../utils/articleNavigation';
@@ -98,6 +99,11 @@ function mapAdminArticleRow(doc) {
     fake_detection_label: doc.fake_detection_label,
     fact_check_verdict: doc.fact_check_verdict,
     fact_check_hits: doc.fact_check_hits,
+    fact_check_provider: doc.fact_check_provider,
+    credibility_confidence_pct: doc.credibility_confidence_pct,
+    credibility_prob_breakdown: doc.credibility_prob_breakdown,
+    credibility_label_prob: doc.credibility_label_prob,
+    image_url: doc.image_url,
     source_key: doc.source_key,
     topic_keywords: doc.topic_keywords || [],
   };
@@ -151,6 +157,7 @@ const AdminScreen = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const [reviewArticle, setReviewArticle] = useState(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -785,6 +792,7 @@ const AdminScreen = ({ navigation }) => {
             articles={filteredArticles}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            onReviewArticle={setReviewArticle}
             onViewArticle={(article) =>
               navigation.navigate('ArticleDetail', buildArticleDetailParams(article))
             }
@@ -863,13 +871,13 @@ const AdminScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: adminPalette.page }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: adminPalette.page }]} edges={[]}>
       <StatusBar
         barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'}
         backgroundColor={adminPalette.page}
       />
 
-      <Header />
+      <Header activeTab={activeTab} />
       <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
 
       <Animated.View
@@ -909,6 +917,21 @@ const AdminScreen = ({ navigation }) => {
         onFormChange={handleFormChange}
         fields={activeTab === 'users' ? userFields : articleFields}
         onSave={handleSave}
+      />
+
+      <AdminArticleReviewModal
+        visible={Boolean(reviewArticle)}
+        article={reviewArticle}
+        onClose={() => setReviewArticle(null)}
+        onSaved={(updated) => {
+          setApiArticles((prev) =>
+            prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row))
+          );
+        }}
+        onOpenInApp={(article) => {
+          setReviewArticle(null);
+          navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
+        }}
       />
 
     </SafeAreaView>
