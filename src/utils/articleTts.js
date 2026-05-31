@@ -227,7 +227,7 @@ export function playArticleTtsStreaming(
             ttsSessionId: sessionId,
             voice: pinnedVoice,
           });
-          if (payload?.voice_id && !pinnedVoice) pinnedVoice = payload.voice_id;
+          if (payload?.voice_id) pinnedVoice = payload.voice_id;
           cache.set(cacheKey(index, language, pinnedVoice), payload);
           return payload;
         } catch (err) {
@@ -282,6 +282,7 @@ export function playArticleTtsStreaming(
       if (!halted && !isCancelled?.()) {
         const playPromise = playBase64AudioAndWait(payload.audio, payload.format || 'mp3', {
           isAborted: () => halted || isCancelled?.(),
+          isPaused: () => paused,
         });
 
         let wasPaused = false;

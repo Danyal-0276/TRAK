@@ -7,6 +7,7 @@ import CustomSplashScreen from './src/components/SplashScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from './src/theme/ThemeContext';
 import { AuthProvider } from './src/context/AuthContext';
+import { NotificationUnreadProvider } from './src/context/NotificationUnreadContext';
 import { FeedbackProvider } from './src/components/ui/FeedbackProvider';
 
 const App = () => {
@@ -66,7 +67,9 @@ const App = () => {
             <FeedbackProvider>
                 <SafeAreaProvider>
                     <AuthProvider>
+                        <NotificationUnreadProvider>
                         <AppNavigation />
+                        </NotificationUnreadProvider>
                     </AuthProvider>
                 </SafeAreaProvider>
             </FeedbackProvider>

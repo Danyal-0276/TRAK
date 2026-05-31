@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { MessageSquare, ExternalLink } from 'lucide-react';
-import { useAdminTheme } from '../useAdminTheme';
+import { useAdminTheme } from './useAdminTheme';
 import AdminPageLayout from './components/AdminPageLayout';
 import AdminPageHeader from './components/AdminPageHeader';
 import AdminFeedbackCard from './components/AdminFeedbackCard';

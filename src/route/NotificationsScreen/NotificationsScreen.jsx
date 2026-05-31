@@ -7,6 +7,11 @@ import LinearGradient from "react-native-linear-gradient";
 import NotificationTabs from "./components/NotificationTabs";
 import * as notificationsApi from "../../api/notificationsApi";
 import { openNotificationsSocket, NOTIFICATIONS_POLL_FALLBACK_MS } from "../../api/notificationsRealtime";
+import {
+  dispatchNotificationRead,
+  dispatchAllNotificationsRead,
+  dispatchNotificationsRefresh,
+} from "../../utils/userNotificationsEvents";
 import { useTheme } from "../../theme/ThemeContext";
 import Text from "../../components/ui/Text";
 import AccentTabHeader from "../../components/ui/AccentTabHeader";
@@ -118,6 +123,7 @@ const NotificationsScreen = () => {
       if (!silent) setLoading(true);
       const data = await notificationsApi.getNotifications();
       setNotifications(data);
+      dispatchNotificationsRefresh();
     } catch (error) {
       console.error("Error loading notifications:", error);
     } finally {
@@ -134,6 +140,7 @@ const NotificationsScreen = () => {
           : notification
       );
       setNotifications(updatedNotifications);
+      dispatchNotificationRead(notificationId);
     } catch (error) {
       console.error("Error marking as read:", error);
     }
@@ -161,6 +168,7 @@ const NotificationsScreen = () => {
         read: true
       }));
       setNotifications(updatedNotifications);
+      dispatchAllNotificationsRead();
     } catch (error) {
       console.error("Error marking all as read:", error);
     }

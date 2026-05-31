@@ -5,6 +5,8 @@ import { useTheme } from '../theme/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
 import Text from './ui/Text';
+import NotificationBadge from './NotificationBadge';
+import { useNotificationUnread } from '../context/NotificationUnreadContext';
 import { getProfile } from '../utils/Service/api';
 
 const Header = () => {
@@ -20,6 +22,7 @@ const Header = () => {
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [profileInitial, setProfileInitial] = useState('U');
     const [avatarPreview, setAvatarPreview] = useState('');
+    const { unreadCount } = useNotificationUnread();
 
     useEffect(() => {
         (async () => {
@@ -121,16 +124,7 @@ const Header = () => {
                 <Bell size={20} color={location.pathname === '/notifications'
                     ? (isDark ? colors.primary : '#000000')
                     : (isDark ? colors.textSecondary : '#6b7280')} />
-                <div style={{
-                    position: 'absolute',
-                    top: '8px',
-                    right: '8px',
-                    width: '8px',
-                    height: '8px',
-                    borderRadius: '50%',
-                    backgroundColor: '#ef4444',
-                    border: `2px solid ${isDark ? colors.background : '#ffffff'}`,
-                }} />
+                <NotificationBadge count={unreadCount} />
             </button>
 
             <button

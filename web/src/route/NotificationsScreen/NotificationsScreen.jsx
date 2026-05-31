@@ -14,6 +14,11 @@ import {
 } from 'lucide-react';
 import * as notificationsApi from '../../api/notificationsApi';
 import { openNotificationsSocket, isNotificationsWsEnabled, NOTIFICATIONS_POLL_FALLBACK_MS } from '../../api/notificationsRealtime';
+import {
+  dispatchNotificationRead,
+  dispatchAllNotificationsRead,
+  dispatchNotificationsRefresh,
+} from '../../utils/userNotificationsEvents';
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 
 const NotificationsScreen = () => {
@@ -68,6 +73,7 @@ const NotificationsScreen = () => {
             const data = await notificationsApi.getNotifications();
             setNotifications(data);
             setFilteredNotifications(data);
+            dispatchNotificationsRefresh();
         } catch (error) {
             console.error("Error loading notifications:", error);
         } finally {
@@ -97,6 +103,7 @@ const NotificationsScreen = () => {
             setNotifications(prev => 
                 prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
             );
+            dispatchNotificationRead(notificationId);
         } catch (error) {
             console.error("Error marking as read:", error);
         }
@@ -106,6 +113,7 @@ const NotificationsScreen = () => {
         try {
             await notificationsApi.markAllAsRead();
             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+            dispatchAllNotificationsRead();
         } catch (error) {
             console.error("Error marking all as read:", error);
         }

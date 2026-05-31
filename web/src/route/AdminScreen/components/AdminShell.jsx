@@ -11,6 +11,7 @@ import {
   dispatchAdminNotification,
   dispatchAdminFeedbackRefresh,
   isFeedbackNotificationType,
+  subscribeAdminNotificationSync,
 } from '../../../utils/adminNotificationsEvents';
 import { isDashboardPath } from '../hooks/useAdminTabActive';
 import { getAdminNotifications } from '../../../api/adminApi';
@@ -85,6 +86,18 @@ export default function AdminShell() {
       refreshUnreadCount();
     }
   }, [location.pathname, refreshUnreadCount]);
+
+  useEffect(() => {
+    return subscribeAdminNotificationSync((evt) => {
+      if (evt.type === 'read') {
+        setUnreadAlerts((prev) => Math.max(0, prev - 1));
+      } else if (evt.type === 'readAll') {
+        setUnreadAlerts(0);
+      } else if (evt.type === 'refresh') {
+        refreshUnreadCount();
+      }
+    });
+  }, [refreshUnreadCount]);
 
   useEffect(() => {
     setSidebarOpen(false);

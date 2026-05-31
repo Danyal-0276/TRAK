@@ -9,6 +9,7 @@ import {
   playArticleTtsStreaming,
   stopNativePlayback,
   createTtsSessionId,
+  getNativePlaybackPosition,
 } from '../utils/articleTts';
 import {
   lineIndicesForSegment,
@@ -36,6 +37,7 @@ export default function ArticleTtsPlayer({
   const audioStartedRef = useRef(false);
   const statusRef = useRef(status);
   const cancelLineHighlightRef = useRef(null);
+  const highlightControllerRef = useRef(null);
   const highlightCheckpointRef = useRef({ segmentIndex: 0, lineOffset: 0, elapsedMs: 0, durationMs: 0 });
   const segmentsRef = useRef([]);
   const sessionOptsRef = useRef({ ttsSessionId: null, voice: null, startSegmentIndex: 0 });
@@ -60,14 +62,18 @@ export default function ArticleTtsPlayer({
       if (state === 'background' && statusRef.current === 'playing') {
         playbackRef.current?.pause?.();
         setStatus('paused');
-        cancelLineHighlightRef.current?.();
+        highlightControllerRef.current?.pause?.();
+        getNativePlaybackPosition().then((sec) => {
+          highlightCheckpointRef.current.elapsedMs = Math.round((sec || 0) * 1000);
+        });
       }
     });
     return () => sub.remove();
   }, []);
 
   const clearLineHighlights = useCallback(() => {
-    cancelLineHighlightRef.current?.();
+    highlightControllerRef.current?.cancel?.();
+    highlightControllerRef.current = null;
     cancelLineHighlightRef.current = null;
     onActiveLineIndex?.(-1);
   }, [onActiveLineIndex]);
@@ -96,7 +102,7 @@ export default function ArticleTtsPlayer({
         ? highlightCheckpointRef.current.lineOffset
         : 0;
       highlightCheckpointRef.current = { segmentIndex, lineOffset: 0, elapsedMs, durationMs };
-      cancelLineHighlightRef.current = scheduleLineHighlights(
+      const controller = scheduleLineHighlights(
         indices,
         highlightLines,
         durationMs,
@@ -107,6 +113,8 @@ export default function ArticleTtsPlayer({
         () => cancelledRef.current,
         { startLineOffset: lineOffset, elapsedMs }
       );
+      highlightControllerRef.current = controller;
+      cancelLineHighlightRef.current = () => controller?.cancel?.();
     },
     [highlightLines, onActiveLineIndex]
   );
@@ -132,6 +140,8 @@ export default function ArticleTtsPlayer({
       },
       onSegmentStart: (segmentIndex, { durationMs, offsetSec }) => {
         if (cancelledRef.current) return;
+        const cp = playbackRef.current?.getCheckpoint?.();
+        if (cp?.voice) sessionOptsRef.current.voice = cp.voice;
         startHighlightForSegment(segmentIndex, durationMs, offsetSec);
       },
       onProgress: (current, total) => {
@@ -166,7 +176,14 @@ export default function ArticleTtsPlayer({
       setStatus('playing');
       const cp = playbackRef.current?.getCheckpoint?.();
       if (cp) {
-        startHighlightForSegment(cp.segmentIndex, highlightCheckpointRef.current.durationMs, cp.offsetSec);
+        if (cp.voice) sessionOptsRef.current.voice = cp.voice;
+        const offsetSec =
+          (highlightCheckpointRef.current.elapsedMs || 0) / 1000 || cp.offsetSec || 0;
+        startHighlightForSegment(
+          cp.segmentIndex,
+          highlightCheckpointRef.current.durationMs,
+          offsetSec
+        );
       }
       return;
     }
@@ -174,7 +191,10 @@ export default function ArticleTtsPlayer({
     if (statusRef.current === 'playing' || statusRef.current === 'loading') {
       playbackRef.current?.pause?.();
       setStatus('paused');
-      cancelLineHighlightRef.current?.();
+      highlightControllerRef.current?.pause?.();
+      getNativePlaybackPosition().then((sec) => {
+        highlightCheckpointRef.current.elapsedMs = Math.round((sec || 0) * 1000);
+      });
       return;
     }
 

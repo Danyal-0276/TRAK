@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Search, Bell, User, Settings, Bookmark } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import Text from './ui/Text';
+import NotificationBadge from './NotificationBadge';
+import { useNotificationUnread } from '../context/NotificationUnreadContext';
 
 const Sidebar = () => {
     const { theme } = useTheme();
@@ -10,6 +12,7 @@ const Sidebar = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 1024);
+    const { unreadCount } = useNotificationUnread();
 
     useEffect(() => {
         const handleResize = () => {
@@ -121,11 +124,16 @@ const Sidebar = () => {
                                 }
                             }}
                         >
-                            <Icon 
-                                size={22} 
-                                color={active ? '#3b82f6' : '#64748b'}
-                                strokeWidth={active ? 2.5 : 2}
-                            />
+                            <span style={{ position: 'relative', display: 'inline-flex' }}>
+                              <Icon 
+                                  size={22} 
+                                  color={active ? '#3b82f6' : '#64748b'}
+                                  strokeWidth={active ? 2.5 : 2}
+                              />
+                              {item.path === '/notifications' ? (
+                                <NotificationBadge count={unreadCount} size="sm" style={{ top: -4, right: -8 }} />
+                              ) : null}
+                            </span>
                             <Text variant="body" style={{
                                 fontSize: '15px',
                                 fontWeight: active ? 600 : 500,

@@ -36,3 +36,32 @@ export function subscribeAdminFeedbackRefresh(handler) {
   feedbackRefreshListeners.add(handler);
   return () => feedbackRefreshListeners.delete(handler);
 }
+
+const notificationSyncListeners = new Set();
+
+export function dispatchAdminNotificationSync(detail = {}) {
+  notificationSyncListeners.forEach((fn) => {
+    try {
+      fn(detail);
+    } catch {
+      /* ignore */
+    }
+  });
+}
+
+export function subscribeAdminNotificationSync(handler) {
+  notificationSyncListeners.add(handler);
+  return () => notificationSyncListeners.delete(handler);
+}
+
+export function dispatchAdminNotificationRead(notificationId) {
+  dispatchAdminNotificationSync({ type: 'read', id: notificationId });
+}
+
+export function dispatchAllAdminNotificationsRead() {
+  dispatchAdminNotificationSync({ type: 'readAll' });
+}
+
+export function dispatchAdminNotificationsRefresh() {
+  dispatchAdminNotificationSync({ type: 'refresh' });
+}

@@ -184,7 +184,7 @@ export async function getNativePlaybackPosition() {
   return activeAudio?.currentTime || 0;
 }
 
-function playBlobAndWait(blob, { startAt = 0, isAborted } = {}) {
+function playBlobAndWait(blob, { startAt = 0, isAborted, isPaused } = {}) {
   cleanupActiveAudio();
   const url = URL.createObjectURL(blob);
   activeBlobUrl = url;
@@ -198,15 +198,26 @@ function playBlobAndWait(blob, { startAt = 0, isAborted } = {}) {
       else resolve();
     };
 
-    audio.addEventListener('ended', () => finish());
+    audio.addEventListener('ended', () => {
+      if (isPaused?.()) return;
+      finish();
+    });
     audio.addEventListener('error', () => finish(new Error('Audio playback failed')));
 
     const poll = setInterval(() => {
       if (isAborted?.()) {
         clearInterval(poll);
         finish();
+        return;
       }
-    }, 150);
+      if (isPaused?.()) return;
+      const dur = Number(audio.duration) || 0;
+      const cur = Number(audio.currentTime) || 0;
+      if (dur > 0 && cur >= dur - 0.15) {
+        clearInterval(poll);
+        finish();
+      }
+    }, 250);
 
     audio.addEventListener('loadedmetadata', () => {
       if (startAt > 0) audio.currentTime = startAt;
@@ -290,7 +301,7 @@ export function playArticleTtsStreaming(
           ttsSessionId: sessionId,
           voice: pinnedVoice,
         });
-        if (payload?.voice_id && !pinnedVoice) pinnedVoice = payload.voice_id;
+        if (payload?.voice_id) pinnedVoice = payload.voice_id;
         const blob = base64ToBlob(payload.audio, payload.format || 'mp3');
         const entry = { blob, urdu: payload.urdu_text, payload };
         cache.set(cacheKey(index, language, pinnedVoice), entry);
@@ -338,6 +349,7 @@ export function playArticleTtsStreaming(
         const playPromise = playBlobAndWait(entry.blob, {
           startAt,
           isAborted: () => halted || isCancelled?.(),
+          isPaused: () => paused,
         });
 
         let wasPaused = false;

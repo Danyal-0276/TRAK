@@ -102,8 +102,8 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3', { isAborted,
     let settled = false;
     const subs = [];
     let maxTimer;
-    let durationTimer;
-    let positionTimer;
+    let progressTimer;
+    let pollAbort;
     const startedAt = Date.now();
 
     const session = {
@@ -118,8 +118,8 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3', { isAborted,
       if (settled) return;
       settled = true;
       clearTimeout(maxTimer);
-      clearTimeout(durationTimer);
-      clearInterval(positionTimer);
+      clearInterval(progressTimer);
+      clearInterval(pollAbort);
       subs.forEach((s) => {
         try {
           s?.remove?.();
@@ -140,6 +140,8 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3', { isAborted,
     session.cleanup = () => finish();
 
     let playbackStarted = false;
+    let trackDuration = 0;
+
     const onReadyPlay = () => {
       if (playbackStarted) return;
       playbackStarted = true;
@@ -152,22 +154,28 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3', { isAborted,
           }
         }
         Sound.play();
-        durationTimer = setTimeout(() => finish(), estimateDurationMs(clean.length));
         Sound.getInfo()
           .then((info) => {
-            if (info?.duration > 0) {
-              clearTimeout(durationTimer);
-              durationTimer = setTimeout(
-                () => finish(),
-                Math.min((info.duration + 1.5) * 1000, 180000)
-              );
-            }
+            if (info?.duration > 0) trackDuration = info.duration;
           })
           .catch(() => {});
-        positionTimer = setInterval(() => {
-          if (session.paused) return;
-          session.elapsedSec = (Date.now() - startedAt) / 1000;
-        }, 400);
+        progressTimer = setInterval(async () => {
+          if (session.aborted || isAborted?.()) {
+            finish();
+            return;
+          }
+          if (session.paused || isPaused?.()) return;
+          try {
+            const info = await Sound.getInfo();
+            const dur = Number(info?.duration) || trackDuration;
+            const cur = Number(info?.currentTime) || 0;
+            if (dur > 0) trackDuration = dur;
+            session.elapsedSec = cur;
+            if (dur > 0 && cur >= dur - 0.2) finish();
+          } catch {
+            session.elapsedSec = (Date.now() - startedAt) / 1000;
+          }
+        }, 250);
       } catch (e) {
         finish(e);
       }
@@ -175,7 +183,10 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3', { isAborted,
 
     const attachListeners = () => {
       try {
-        subs.push(Sound.addEventListener('FinishedPlaying', () => finish()));
+        subs.push(Sound.addEventListener('FinishedPlaying', () => {
+          if (session.paused || isPaused?.()) return;
+          finish();
+        }));
         subs.push(
           Sound.addEventListener('OnSetupError', (data) =>
             finish(new Error(data?.message || 'Audio setup failed'))
@@ -198,12 +209,13 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3', { isAborted,
     attachListeners();
     maxTimer = setTimeout(() => finish(new Error('Audio playback timed out')), 180000);
 
-    const pollAbort = setInterval(() => {
+    const pollAbortInterval = setInterval(() => {
       if (isAborted?.() || session.aborted) {
-        clearInterval(pollAbort);
+        clearInterval(pollAbortInterval);
         finish();
       }
     }, 200);
+    pollAbort = pollAbortInterval;
 
     const path = `${Blob.fs.dirs.CacheDir}/trak-tts-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const uri = fileUri(path);
@@ -212,7 +224,7 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3', { isAborted,
       .writeFile(path, clean, 'base64')
       .then(() => {
         if (isAborted?.() || session.aborted) {
-          clearInterval(pollAbort);
+          clearInterval(pollAbortInterval);
           finish();
           return;
         }
@@ -221,15 +233,14 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3', { isAborted,
         } catch {
           try {
             Sound.playUrl(uri);
-            durationTimer = setTimeout(() => finish(), estimateDurationMs(clean.length));
           } catch (playErr) {
-            clearInterval(pollAbort);
+            clearInterval(pollAbortInterval);
             finish(playErr);
           }
         }
       })
       .catch((err) => {
-        clearInterval(pollAbort);
+        clearInterval(pollAbortInterval);
         finish(err);
       });
   });

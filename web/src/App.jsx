@@ -1,6 +1,7 @@
 import React from 'react';
 import { ThemeProvider } from './theme/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
+import { NotificationUnreadProvider } from './context/NotificationUnreadContext';
 import { UserKeywordsProvider } from './context/UserKeywordsContext';
 import { FeedCacheProvider } from './context/FeedCacheContext';
 import AppRouter from './navigation/AppRouter';
@@ -15,6 +16,7 @@ const App = () => {
       <GlobalSkeletonStyles />
       <UIFeedbackProvider>
         <AuthProvider>
+          <NotificationUnreadProvider>
           <UserKeywordsProvider>
           <FeedCacheProvider>
           <div style={{ 
@@ -28,6 +30,7 @@ const App = () => {
           </div>
           </FeedCacheProvider>
           </UserKeywordsProvider>
+          </NotificationUnreadProvider>
         </AuthProvider>
       </UIFeedbackProvider>
     </ThemeProvider>

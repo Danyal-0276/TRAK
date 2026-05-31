@@ -853,6 +853,11 @@ const AdminScreen = ({ navigation }) => {
             notifications={notifications}
             onSwitchTab={setActiveTab}
             loading={listsLoading}
+            onNotificationRead={(id) => {
+              setNotifications((prev) =>
+                prev.map((n) => (String(n.id) === String(id) ? { ...n, read: true, status: 'read' } : n))
+              );
+            }}
           />
         );
       case 'settings':
