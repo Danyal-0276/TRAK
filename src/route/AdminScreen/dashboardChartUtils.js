@@ -331,7 +331,6 @@ export function buildDashboardStatCards(snapshot, palette) {
     { key: 'sources', label: 'Sources', value: `${conn.active ?? 0}/${conn.total ?? 0}`, accent: a.sources, hint: 'Manage scrape connections' },
     { key: 'users', label: 'Users', value: String(data.users_active ?? 0), accent: a.users, hint: `${data.users_total ?? 0} accounts total` },
     { key: 'credibility', label: 'Processed feed', value: String(data.processed_total ?? 0), accent: a.credibility, hint: 'Review credibility on processed articles' },
-    { key: 'feedback', label: 'Pending feedback', value: String(data.feedback_stats?.pending ?? 0), accent: palette.warning, hint: `${data.feedback_stats?.total ?? 0} total submissions` },
   ];
 }
 
@@ -344,5 +343,4 @@ export const KPI_TAB_NAV = {
   sources: { tab: 'dashboard', pipeline: '', scrollKey: 'sources' },
   users: { tab: 'users', pipeline: '' },
   credibility: { tab: 'articles', pipeline: 'done' },
-  feedback: { tab: 'feedback', pipeline: '' },
 };

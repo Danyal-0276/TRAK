@@ -267,13 +267,5 @@ export function buildDashboardStatCards(snapshot, palette) {
       accent: a.credibility,
       hint: 'Review credibility on processed articles',
     },
-    {
-      key: 'feedback',
-      label: 'Pending feedback',
-      value: String(data.feedback_stats?.pending ?? 0),
-      path: '/admin/feedback',
-      accent: palette.warning,
-      hint: `${data.feedback_stats?.total ?? 0} total submissions`,
-    },
   ];
 }
