@@ -21,8 +21,7 @@ import {
 import { postAdminPipelineRun } from '../../api/adminApi';
 import { loadAdminOverview, buildOverviewStatCards } from './loadAdminOverview';
 import { emptyAnalyticsSnapshot, enrichAnalyticsSnapshot, isAnalyticsPayload } from './dashboardChartUtils';
-import { DASHBOARD_POLL_INTERVAL_MS } from './adminTheme';
-import { isDashboardPath } from './hooks/useAdminTabActive';
+import { subscribeAdminOverviewRefresh, dispatchAdminOverviewRefresh } from '../../utils/adminOverviewEvents';
 import AdminDashboardCharts from './components/AdminDashboardCharts';
 import AdminScrapeSourcesPanel from './components/AdminScrapeSourcesPanel';
 import AdminStatKpiCard from './components/AdminStatKpiCard';
@@ -30,6 +29,14 @@ import AdminPipelineProgressBar from './components/AdminPipelineProgressBar';
 import { SkeletonStatCards } from '../../components/skeletons/SkeletonLayouts';
 
 const PIPELINE_BATCH_SIZE = 15;
+
+function scrollToAdminSection(hash) {
+  const id = String(hash || '').replace(/^#/, '');
+  if (!id) return;
+  window.requestAnimationFrame(() => {
+    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
 
 const STAT_ICONS = {
   raw: FileText,
@@ -47,7 +54,6 @@ const AdminDashboardScreen = () => {
   const { isMobile, isTablet } = useResponsive();
   const navigate = useNavigate();
   const location = useLocation();
-  const dashboardActive = isDashboardPath(location.pathname);
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -116,22 +122,38 @@ const AdminDashboardScreen = () => {
   }, [loadStats]);
 
   useEffect(() => {
-    if (!dashboardActive) return undefined;
+    return subscribeAdminOverviewRefresh((detail) => {
+      loadStats(detail);
+    });
+  }, [loadStats]);
 
-    const poll = () => {
-      if (document.visibilityState === 'visible') loadStats({ silent: true });
-    };
+  useEffect(() => {
+    if (!location.hash) return;
+    scrollToAdminSection(location.hash);
+  }, [location.hash, loading, snapshot]);
 
-    const id = window.setInterval(poll, DASHBOARD_POLL_INTERVAL_MS);
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') loadStats({ silent: true });
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      window.clearInterval(id);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
-  }, [dashboardActive, loadStats]);
+  const handleKpiNavigate = useCallback(
+    (path) => {
+      const hashIndex = path.indexOf('#');
+      const pathname = hashIndex >= 0 ? path.slice(0, hashIndex) : path;
+      const hash = hashIndex >= 0 ? path.slice(hashIndex) : '';
+      const onDashboard =
+        location.pathname === '/admin/dashboard' ||
+        location.pathname === '/admin' ||
+        location.pathname === '/admin/analytics';
+
+      if (hash && (pathname === '/admin/dashboard' || pathname === '/admin')) {
+        if (onDashboard) {
+          scrollToAdminSection(hash);
+          return;
+        }
+        navigate(`/admin/dashboard${hash}`);
+        return;
+      }
+      navigate(path);
+    },
+    [location.pathname, navigate]
+  );
 
   const statCards = buildOverviewStatCards({
     serverAnalytics: chartData,
@@ -172,6 +194,7 @@ const AdminDashboardScreen = () => {
       setPipelineProgress(100);
       setPipelineRunPhase('success');
       setPipelineRunLabel(`Done · ${ok} processed${err ? ` · ${err} errors` : ''}`);
+      dispatchAdminOverviewRefresh({ silent: true });
       await loadStats({ silent: true });
       window.setTimeout(resetPipelineRunUi, 2200);
     } catch (e) {
@@ -247,31 +270,29 @@ const AdminDashboardScreen = () => {
             Last updated {updatedLabel}
           </p>
         ) : null}
-        {dashboardActive ? (
-          <div
+        <div
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            marginTop: 10,
+            fontSize: 12,
+            fontWeight: 600,
+            color: palette.textTertiary,
+          }}
+        >
+          <span
             style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              marginTop: 10,
-              fontSize: 12,
-              fontWeight: 600,
-              color: palette.textTertiary,
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              backgroundColor: palette.primary,
+              opacity: refreshing ? 0.45 : 1,
+              boxShadow: refreshing ? 'none' : `0 0 0 3px ${palette.border}`,
             }}
-          >
-            <span
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: '50%',
-                backgroundColor: palette.primary,
-                opacity: refreshing ? 0.45 : 1,
-                boxShadow: refreshing ? 'none' : `0 0 0 3px ${palette.border}`,
-              }}
-            />
-            {refreshing ? 'Updating…' : 'Live · refreshes every 20s'}
-          </div>
-        ) : null}
+          />
+          {refreshing ? 'Updating…' : 'Live · refreshes every 20s'}
+        </div>
       </AdminPageHeader>
 
       <div className="admin-page-body">
@@ -294,7 +315,7 @@ const AdminDashboardScreen = () => {
                   palette={palette}
                   isDark={isDark}
                   primary={palette.primary}
-                  onNavigate={navigate}
+                  onNavigate={handleKpiNavigate}
                 />
               ))}
             </div>
@@ -369,8 +390,8 @@ const AdminDashboardScreen = () => {
                       padding: '12px 18px',
                       border: 'none',
                       borderRadius: 10,
-                      background: palette.primary,
-                      color: '#ffffff',
+                      background: palette.buttonPrimaryBg,
+                      color: palette.buttonPrimaryText,
                       fontWeight: 700,
                       fontSize: 14,
                       cursor: pipelineBusy ? 'wait' : 'pointer',

@@ -6,23 +6,28 @@ import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { addBookmark, fetchPlatformCategories, removeBookmark, setReaction } from '../../utils/Service/api';
 import { setReactionForArticle } from '../../utils/reactionsStorage';
 import { NewsCard } from '../../components/NewsCard';
-import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
+import { MasonryFeed } from '../../components/MasonryFeed';
 import { openArticleDetail } from '../../utils/openArticleDetail';
-import { SkeletonCategoryGrid, getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
+import { SkeletonCategoryAccordion } from '../../components/skeletons/SkeletonLayouts';
 import {
     buildCategoryList,
     articleMatchesCategory,
     getCategoryIcon,
 } from '../../utils/categoryMatch';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
-
-// Major/popular categories to show upfront before "More" toggle
 const POPULAR_CATEGORY_NAMES = [
     'Technology', 'Politics', 'Business', 'Sports', 'Health',
     'Science', 'Entertainment', 'World', 'Finance', 'Education',
 ];
 
+const ARTICLES_PREVIEW_COUNT = 5;
 const INITIAL_VISIBLE_COUNT = 8;
+
+function articleSortTime(item) {
+    const raw = item.published_at || item.time || item.fetched_at || '';
+    const ts = new Date(raw).getTime();
+    return Number.isFinite(ts) ? ts : 0;
+}
 
 const CategoriesScreen = () => {
     const { theme } = useTheme();
@@ -42,6 +47,7 @@ const CategoriesScreen = () => {
     const [expandedCategory, setExpandedCategory] = useState(null);
     // whether the "More categories" section is open
     const [showMore, setShowMore] = useState(false);
+    const [expandedShowAll, setExpandedShowAll] = useState({});
 
     const loadNews = async () => {
         try {
@@ -201,10 +207,16 @@ const CategoriesScreen = () => {
 
                 {loading ? (
                     <div>
-                        <SkeletonCategoryGrid count={8} isDark={isDark} colors={colors} />
-                        <div style={{ marginTop: 28 }}>
-                            <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(isDark, colors)} />
+                        <div style={{
+                            display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', marginBottom: 20,
+                        }}>
+                            <div className="trak-sk-pulse" style={{
+                                flex: '1 1 220px', height: 44, borderRadius: 10,
+                                background: isDark ? colors.surface : '#ffffff',
+                                border: `1px solid ${borderColor}`,
+                            }} />
                         </div>
+                        <SkeletonCategoryAccordion count={6} isDark={isDark} colors={colors} />
                     </div>
                 ) : categories.length === 0 ? (
                     <div style={{
@@ -243,6 +255,14 @@ const CategoriesScreen = () => {
                             {categoriesToRender.map((category) => {
                                 const isExpanded = expandedCategory === category.name;
                                 const catArticles = articlesByCategory[category.name] || [];
+                                const sortedArticles = [...catArticles].sort(
+                                    (a, b) => articleSortTime(b) - articleSortTime(a)
+                                );
+                                const showAllArticles = expandedShowAll[category.name];
+                                const visibleArticles = showAllArticles
+                                    ? sortedArticles
+                                    : sortedArticles.slice(0, ARTICLES_PREVIEW_COUNT);
+                                const hiddenCount = sortedArticles.length - ARTICLES_PREVIEW_COUNT;
 
                                 return (
                                     <div
@@ -293,20 +313,44 @@ const CategoriesScreen = () => {
                                                         No articles found in this category.
                                                     </p>
                                                 ) : (
-                                                    <MasonryFeed gap={16}>
-                                                        {catArticles.map((item) => (
-                                                            <NewsCard
-                                                                key={item.id}
-                                                                item={item}
-                                                                layout="masonry"
-                                                                onPress={() => handleArticlePress(item)}
-                                                                votedItems={votedItems}
-                                                                bookmarkedItems={bookmarkedItems}
-                                                                onVote={handleVote}
-                                                                onBookmark={handleBookmark}
-                                                            />
-                                                        ))}
-                                                    </MasonryFeed>
+                                                    <>
+                                                        <MasonryFeed gap={16}>
+                                                            {visibleArticles.map((item) => (
+                                                                <NewsCard
+                                                                    key={item.id}
+                                                                    item={item}
+                                                                    layout="masonry"
+                                                                    onPress={() => handleArticlePress(item)}
+                                                                    votedItems={votedItems}
+                                                                    bookmarkedItems={bookmarkedItems}
+                                                                    onVote={handleVote}
+                                                                    onBookmark={handleBookmark}
+                                                                />
+                                                            ))}
+                                                        </MasonryFeed>
+                                                        {hiddenCount > 0 && !showAllArticles ? (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setExpandedShowAll((prev) => ({
+                                                                    ...prev,
+                                                                    [category.name]: true,
+                                                                }))}
+                                                                style={{
+                                                                    marginTop: 16,
+                                                                    padding: '10px 18px',
+                                                                    borderRadius: 8,
+                                                                    border: `1px solid ${borderColor}`,
+                                                                    background: colors.backgroundSecondary,
+                                                                    color: textPrimary,
+                                                                    fontWeight: 600,
+                                                                    fontSize: 14,
+                                                                    cursor: 'pointer',
+                                                                }}
+                                                            >
+                                                                Show more ({hiddenCount} more)
+                                                            </button>
+                                                        ) : null}
+                                                    </>
                                                 )}
                                             </div>
                                         )}

@@ -111,13 +111,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   itemTitle: {
-    fontSize: 16,
     fontWeight: '700',
     marginBottom: 4,
   },
-  itemSubtitle: {
-    fontSize: 14,
-  },
+  itemSubtitle: {},
   itemMeta: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -138,13 +135,10 @@ const styles = StyleSheet.create({
     marginRight: 6,
   },
   statusText: {
-    fontSize: 12,
     fontWeight: '600',
     textTransform: 'capitalize',
   },
-  itemDate: {
-    fontSize: 12,
-  },
+  itemDate: {},
   itemActions: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -2,6 +2,7 @@ import { mockApi } from './Service/mockApi';
 import { USER_PREFIX } from '../config/api';
 import { apiFetch } from '../api/client';
 import { getCardSummaryText } from './articleNavigation';
+import { parseApiResponse } from './getUserFacingError';
 
 /** Mock feed only when explicitly enabled (never auto-on in dev — hides real API issues). */
 const allowMockFallback = import.meta.env.VITE_ALLOW_MOCK_FEED === 'true';
@@ -45,11 +46,7 @@ async function fetchFeed(limit = 30, q = '', cursor = '') {
   if (q && String(q).trim()) params.set('q', String(q).trim());
   if (cursor && String(cursor).trim()) params.set('cursor', String(cursor).trim());
   const res = await apiFetch(`${USER_PREFIX}/feed/?${params}`);
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(t || `Feed ${res.status}`);
-  }
-  return res.json();
+  return parseApiResponse(res);
 }
 
 export function mergeUniqueById(existing, incoming) {
@@ -69,11 +66,7 @@ async function fetchExplore(limit = 50, q = '', cursor = '') {
   if (q && String(q).trim()) params.set('q', String(q).trim());
   if (cursor && String(cursor).trim()) params.set('cursor', String(cursor).trim());
   const res = await apiFetch(`${USER_PREFIX}/explore/?${params}`);
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(t || `Explore ${res.status}`);
-  }
-  return res.json();
+  return parseApiResponse(res);
 }
 
 export async function loadExplorePage({ q = '', limit = 30, cursor = '' } = {}) {

@@ -88,6 +88,7 @@ const RouterContent = () => {
           <Route index element={<Navigate to="dashboard" replace />} />
           <Route path="dashboard" />
           <Route path="users" />
+          <Route path="users/:userId" />
           <Route path="admins" />
           <Route path="profile" />
           <Route path="articles" />

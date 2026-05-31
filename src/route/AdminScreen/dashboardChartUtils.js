@@ -322,7 +322,7 @@ export const KPI_TAB_NAV = {
   queue: { tab: 'articles', pipeline: 'queue' },
   failed: { tab: 'articles', pipeline: 'failed' },
   completion: { tab: 'articles', pipeline: 'done' },
-  sources: { tab: 'settings', pipeline: '' },
+  sources: { tab: 'dashboard', pipeline: '', scrollKey: 'sources' },
   users: { tab: 'users', pipeline: '' },
   credibility: { tab: 'articles', pipeline: 'done' },
 };

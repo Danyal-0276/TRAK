@@ -24,15 +24,16 @@ const TAB_COMPONENTS = {
 };
 
 function buildRoutes(isAdmin) {
-  const routes = [
+  if (isAdmin) {
+    return [{ key: 'Admin', title: 'Admin' }];
+  }
+  return [
     { key: 'Home', title: 'Home' },
     { key: 'Search', title: 'Search' },
     { key: 'Notifications', title: 'Notifications' },
     { key: 'Profile', title: 'Profile' },
     { key: 'Settings', title: 'Settings' },
   ];
-  if (isAdmin) routes.push({ key: 'Admin', title: 'Admin' });
-  return routes;
 }
 
 export default function SwipeableMainTabs() {
@@ -97,7 +98,7 @@ export default function SwipeableMainTabs() {
           lazy
           removeClippedSubviews
         />
-        <CustomTabBar {...tabBarProps} />
+        {!isAdmin ? <CustomTabBar {...tabBarProps} /> : null}
       </View>
     </TabPagerContext.Provider>
   );

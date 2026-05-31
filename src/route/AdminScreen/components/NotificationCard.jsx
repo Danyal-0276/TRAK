@@ -1,7 +1,8 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet } from 'react-native';
 import { Bell } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
+import Text from '../../../components/ui/Text';
 
 const NotificationCard = ({ notification, palette: paletteProp }) => {
   const { palette: themePalette } = useAdminTheme();
@@ -22,18 +23,18 @@ const NotificationCard = ({ notification, palette: paletteProp }) => {
         <Bell size={20} color={palette.textSecondary} />
       </View>
       <View style={styles.notificationContent}>
-        <Text style={[styles.notificationSource, { color: palette.textPrimary }]}>
+        <Text variant="body" color={palette.textPrimary} style={{ fontWeight: '600', marginBottom: 4 }}>
           {notification.source}
         </Text>
-        <Text style={[styles.notificationMessage, { color: palette.textSecondary }]}>
+        <Text variant="caption" color={palette.textSecondary} style={{ marginBottom: 4 }}>
           {notification.message}
         </Text>
-        <Text style={[styles.notificationTime, { color: palette.textTertiary }]}>
+        <Text variant="caption" color={palette.textTertiary}>
           {notification.time}
         </Text>
       </View>
       <TouchableOpacity style={styles.notificationAction}>
-        <Text style={[styles.notificationActionText, { color: palette.textTertiary }]}>•••</Text>
+        <Text variant="body" color={palette.textTertiary}>•••</Text>
       </TouchableOpacity>
     </View>
   );
@@ -58,23 +59,8 @@ const styles = StyleSheet.create({
   notificationContent: {
     flex: 1,
   },
-  notificationSource: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  notificationMessage: {
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  notificationTime: {
-    fontSize: 12,
-  },
   notificationAction: {
     padding: 8,
-  },
-  notificationActionText: {
-    fontSize: 16,
   },
 });
 

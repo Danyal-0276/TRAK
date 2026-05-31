@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import './App.css';
+import { getUserFacingError } from './utils/getUserFacingError';
 
 // Error boundary component
 class ErrorBoundary extends React.Component {
@@ -31,7 +32,9 @@ class ErrorBoundary extends React.Component {
           textAlign: 'center',
         }}>
           <h1 style={{ color: '#ef4444', marginBottom: '16px' }}>Something went wrong</h1>
-          <p style={{ color: '#64748b', marginBottom: '8px' }}>{this.state.error?.message}</p>
+          <p style={{ color: '#64748b', marginBottom: '8px' }}>
+            {getUserFacingError(this.state.error, { fallback: 'Something went wrong loading the app. Please reload and try again.' })}
+          </p>
           <button
             onClick={() => window.location.reload()}
             style={{

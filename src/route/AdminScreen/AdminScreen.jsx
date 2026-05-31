@@ -130,6 +130,7 @@ const AdminScreen = ({ navigation }) => {
   const [liveUpdatedAt, setLiveUpdatedAt] = useState(null);
   const [articlePipelineFilter, setArticlePipelineFilter] = useState('');
   const [articlesLoading, setArticlesLoading] = useState(false);
+  const [listsLoading, setListsLoading] = useState(false);
   const [connectionUrlInput, setConnectionUrlInput] = useState('');
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState(null);
@@ -223,9 +224,13 @@ const AdminScreen = ({ navigation }) => {
       if (!silent) setRefreshing(true);
       if (isInitial) setOverviewLoading(true);
       setAnalyticsError(null);
-      const data = await loadAdminOverview({ cacheBust: manual || !silent, requireAnalytics: manual });
+      const data = await loadAdminOverview({
+        cacheBust: manual || !silent,
+        requireAnalytics: manual,
+        includeArticles: manual && !silent,
+        articlePageSize: 50,
+      });
       const mapped = (data.articles || []).map(mapAdminArticleRow);
-      if (mapped.length) setApiArticles(mapped);
       const enriched = enrichAnalyticsSnapshot(data.serverAnalytics, mapped, {
         users: data.users,
         connections: data.connections?.length ? data.connections : connections,
@@ -260,7 +265,7 @@ const AdminScreen = ({ navigation }) => {
     const apiScope = getArticlesApiScope(articlePipelineFilter);
     setArticlesLoading(true);
     try {
-      const res = await getAdminArticles({ page: 1, pageSize: 200, scope: apiScope });
+      const res = await getAdminArticles({ page: 1, pageSize: 100, scope: apiScope });
       setApiArticles((res.results || []).map(mapAdminArticleRow));
     } catch (e) {
       Alert.alert('Articles', e?.message || 'Could not load articles.');
@@ -270,58 +275,70 @@ const AdminScreen = ({ navigation }) => {
     }
   }, [articlePipelineFilter]);
 
-  const loadData = async () => {
-    await loadOverview({ silent: true });
-    await loadArticles();
+  const loadLists = useCallback(async () => {
+    setListsLoading(true);
+    try {
+      const listQ = activeTab === 'users' || activeTab === 'admins' ? searchQuery.trim() : '';
+      const [usersRes, adminsRes, notificationsRes, settingsRes] = await Promise.all([
+        getAdminUsers({ q: activeTab === 'users' ? listQ : '', role: 'user' }),
+        getAdminUsers({ q: activeTab === 'admins' ? listQ : '', role: 'admin' }),
+        getAdminNotifications(),
+        getAdminSettings(),
+      ]);
+      const usersData = (usersRes.results || []).map((u) => ({
+        id: u.id,
+        name: u.email?.split('@')[0] || 'user',
+        email: u.email,
+        status: u.is_active ? 'active' : 'inactive',
+        role: u.role,
+        isAdmin: false,
+      }));
+      const adminsData = (adminsRes.results || []).map((u) => ({
+        id: u.id,
+        name: u.email?.split('@')[0] || 'admin',
+        email: u.email,
+        status: u.is_active ? 'active' : 'inactive',
+        role: u.role,
+        is_super_admin: u.is_super_admin,
+      }));
+      const notificationsData = (notificationsRes.results || []).map((n) => ({
+        id: n.id,
+        title: n.type,
+        message: n.text,
+        status: n.read ? 'read' : 'unread',
+      }));
+      const settingsData = {
+        notifications: !!settingsRes.notifications_enabled_default,
+        pushNotification: !!settingsRes.notifications_enabled_default,
+        emailNotification: !!settingsRes.notifications_enabled_default,
+        inAppNotification: !!settingsRes.notifications_enabled_default,
+        connections: !!settingsRes.allow_external_connections,
+        moderationMode: settingsRes.moderation_mode || 'review',
+        language: settingsRes.language || 'English',
+        timezone: settingsRes.timezone || 'UTC',
+      };
+      const categoriesData = normAdminCategories(settingsRes.categories || []);
+      const connectionsData = normAdminConnections(settingsRes.connections || []);
+      setUsers(usersData);
+      setAdmins(adminsData);
+      setNotifications(notificationsData);
+      setSettings(settingsData);
+      setCategories(categoriesData);
+      setConnections(connectionsData);
+    } catch (e) {
+      showError(e?.message || 'Could not load admin lists.');
+    } finally {
+      setListsLoading(false);
+    }
+  }, [activeTab, searchQuery, showError]);
 
-    const listQ = activeTab === 'users' || activeTab === 'admins' ? searchQuery.trim() : '';
-    const [usersRes, adminsRes, notificationsRes, settingsRes] = await Promise.all([
-      getAdminUsers({ q: activeTab === 'users' ? listQ : '', role: 'user' }),
-      getAdminUsers({ q: activeTab === 'admins' ? listQ : '', role: 'admin' }),
-      getAdminNotifications(),
-      getAdminSettings(),
-    ]);
-    const usersData = (usersRes.results || []).map((u) => ({
-      id: u.id,
-      name: u.email?.split('@')[0] || 'user',
-      email: u.email,
-      status: u.is_active ? 'active' : 'inactive',
-      role: u.role,
-      isAdmin: false,
-    }));
-    const adminsData = (adminsRes.results || []).map((u) => ({
-      id: u.id,
-      name: u.email?.split('@')[0] || 'admin',
-      email: u.email,
-      status: u.is_active ? 'active' : 'inactive',
-      role: u.role,
-      is_super_admin: u.is_super_admin,
-    }));
-    const notificationsData = (notificationsRes.results || []).map((n) => ({
-      id: n.id,
-      title: n.type,
-      message: n.text,
-      status: n.read ? 'read' : 'unread',
-    }));
-    const settingsData = {
-      notifications: !!settingsRes.notifications_enabled_default,
-      pushNotification: !!settingsRes.notifications_enabled_default,
-      emailNotification: !!settingsRes.notifications_enabled_default,
-      inAppNotification: !!settingsRes.notifications_enabled_default,
-      connections: !!settingsRes.allow_external_connections,
-      moderationMode: settingsRes.moderation_mode || 'review',
-      language: settingsRes.language || 'English',
-      timezone: settingsRes.timezone || 'UTC',
-    };
-    const categoriesData = normAdminCategories(settingsRes.categories || []);
-    const connectionsData = normAdminConnections(settingsRes.connections || []);
-    setUsers(usersData);
-    setAdmins(adminsData);
-    setNotifications(notificationsData);
-    setSettings(settingsData);
-    setCategories(categoriesData);
-    setConnections(connectionsData);
-  };
+  const loadData = useCallback(async () => {
+    await loadOverview({ silent: true });
+    await loadLists();
+    if (activeTab === 'articles') {
+      await loadArticles();
+    }
+  }, [loadOverview, loadLists, loadArticles, activeTab]);
 
   const handleCreateAdmin = async (email, password) => {
     await postAdminCreate(email, password);
@@ -331,7 +348,7 @@ const AdminScreen = ({ navigation }) => {
   useEffect(() => {
     if (!bootstrapped || !isAdmin) return;
     loadData();
-  }, [bootstrapped, isAdmin]);
+  }, [bootstrapped, isAdmin, loadData]);
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin) return;
@@ -345,9 +362,9 @@ const AdminScreen = ({ navigation }) => {
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || (activeTab !== 'users' && activeTab !== 'admins')) return;
-    const id = setTimeout(() => loadData(), 350);
+    const id = setTimeout(() => loadLists(), 350);
     return () => clearTimeout(id);
-  }, [searchQuery, activeTab, bootstrapped, isAdmin]);
+  }, [searchQuery, activeTab, bootstrapped, isAdmin, loadLists]);
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || activeTab !== 'overview') return;
@@ -723,6 +740,7 @@ const AdminScreen = ({ navigation }) => {
             onSearchChange={setSearchQuery}
             onEdit={handleEdit}
             onDelete={(id) => handleDelete(id, 'user')}
+            loading={listsLoading}
           />
         );
       case 'admins':
@@ -733,6 +751,7 @@ const AdminScreen = ({ navigation }) => {
             onSearchChange={setSearchQuery}
             onDelete={(id) => handleDelete(id, 'admin')}
             onCreate={isSuperAdmin ? handleCreateAdmin : null}
+            loading={listsLoading}
           />
         );
       case 'articles':
@@ -833,9 +852,10 @@ const AdminScreen = ({ navigation }) => {
           }}
           initialLayout={{ width: layout.width }}
           renderTabBar={() => null}
-          swipeEnabled
-          animationEnabled
+          swipeEnabled={false}
+          animationEnabled={false}
           lazy
+          lazyPreloadDistance={1}
           removeClippedSubviews
           style={{ flex: 1 }}
         />

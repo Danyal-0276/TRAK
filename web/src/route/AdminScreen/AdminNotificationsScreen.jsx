@@ -1,21 +1,25 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Bell } from 'lucide-react';
 import { useAdminTheme } from './useAdminTheme';
 import AdminPageLayout from './components/AdminPageLayout';
 import AdminPageHeader from './components/AdminPageHeader';
 import { useAdminPageMeta } from './adminPageMeta';
 import { getAdminNotifications } from '../../api/adminApi';
-import { openAdminNotificationsSocket } from '../../api/adminNotificationsRealtime';
+import { openAdminNotificationsSocket, isAdminNotificationsWsEnabled } from '../../api/adminNotificationsRealtime';
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 
 const AdminNotificationsScreen = () => {
+    const { pathname } = useLocation();
+    const tabActive = pathname === '/admin/notifications';
     const { palette, isDark, colors } = useAdminTheme();
     const { title, description } = useAdminPageMeta();
     const [rows, setRows] = useState([]);
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState('All');
-    const socketRef = React.useRef(null);
-    const reconnectRef = React.useRef(null);
+    const socketRef = useRef(null);
+    const reconnectRef = useRef(null);
+    const reconnectAttemptsRef = useRef(0);
 
     const cardBackground = palette.card;
     const textPrimary = palette.textPrimary;
@@ -45,7 +49,11 @@ const AdminNotificationsScreen = () => {
     };
 
     useEffect(() => {
+        if (!tabActive) return undefined;
         loadRows();
+        if (!isAdminNotificationsWsEnabled()) return undefined;
+
+        const maxReconnects = 3;
         const connect = () => {
             const ws = openAdminNotificationsSocket((payload) => {
                 if (payload?.type !== 'notification.created' || !payload.notification?.id) return;
@@ -68,16 +76,25 @@ const AdminNotificationsScreen = () => {
             });
             if (!ws) return;
             socketRef.current = ws;
+            ws.onopen = () => {
+                reconnectAttemptsRef.current = 0;
+            };
             ws.onclose = () => {
-                reconnectRef.current = setTimeout(connect, 2500);
+                if (reconnectAttemptsRef.current >= maxReconnects) return;
+                reconnectAttemptsRef.current += 1;
+                reconnectRef.current = setTimeout(connect, 2500 * reconnectAttemptsRef.current);
+            };
+            ws.onerror = () => {
+                ws.close();
             };
         };
         connect();
         return () => {
             if (socketRef.current) socketRef.current.close();
             if (reconnectRef.current) clearTimeout(reconnectRef.current);
+            reconnectAttemptsRef.current = 0;
         };
-    }, []);
+    }, [tabActive]);
 
     const filtered = rows.filter((n) => {
         if (activeTab === 'Errors') return String(n.type || '').startsWith('admin_pipeline');

@@ -8,6 +8,7 @@ import MainAppStack from './MainAppStack.jsx';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeContext';
 import { defaultStackScreenOptions } from './stackScreenOptions';
+import { getInitialRouteForUser } from '../utils/authNavigation';
 import {
     EditProfileScreen,
     PrivacyScreen,
@@ -74,7 +75,7 @@ export default function AppNavigation() {
             </View>
         );
     }
-    const initialRouteName = user ? 'NewsFeed' : 'OpeningScreen';
+    const initialRouteName = getInitialRouteForUser(user);
     return (
         <NavigationContainer>
             <RootStack initialRouteName={initialRouteName} />

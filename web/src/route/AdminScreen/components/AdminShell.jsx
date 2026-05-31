@@ -5,6 +5,8 @@ import { useAuth } from '../../../context/AuthContext';
 import { useAdminTheme } from '../useAdminTheme';
 import AdminSidebar from './AdminSidebar';
 import AdminKeepAliveOutlet from './AdminKeepAliveOutlet';
+import { DASHBOARD_POLL_INTERVAL_MS } from '../adminTheme';
+import { dispatchAdminOverviewRefresh } from '../../../utils/adminOverviewEvents';
 import './adminShell.css';
 
 export default function AdminShell() {
@@ -44,6 +46,23 @@ export default function AdminShell() {
       document.body.style.color = prevColor;
     };
   }, [palette.page, palette.textPrimary]);
+
+  useEffect(() => {
+    const poll = () => {
+      if (document.visibilityState === 'visible') {
+        dispatchAdminOverviewRefresh({ silent: true });
+      }
+    };
+    const id = window.setInterval(poll, DASHBOARD_POLL_INTERVAL_MS);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') poll();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
 
   if (loading) {
     return (

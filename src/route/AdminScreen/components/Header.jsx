@@ -23,7 +23,7 @@ const Header = () => {
       <View style={styles.headerContent}>
         <TrakLogo size={32} showContainer />
         <View style={styles.titleBlock}>
-          <Text variant="title" style={[styles.headerTitle, { color: palette.textPrimary }]}>
+          <Text variant="subtitle" color={palette.textPrimary} style={{ fontWeight: '700' }}>
             TRAK Admin
           </Text>
           <Text variant="caption" style={{ color: palette.textTertiary, marginTop: 2 }}>
@@ -55,10 +55,6 @@ const styles = StyleSheet.create({
   },
   titleBlock: {
     alignItems: 'flex-start',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '700',
   },
 });
 

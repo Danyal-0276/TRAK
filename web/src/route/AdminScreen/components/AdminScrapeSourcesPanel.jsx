@@ -18,6 +18,7 @@ export default function AdminScrapeSourcesPanel({ connections, palette }) {
 
   return (
     <section
+      id="dashboard-sources"
       style={{
         backgroundColor: palette.card,
         borderRadius: 14,
@@ -52,7 +53,7 @@ export default function AdminScrapeSourcesPanel({ connections, palette }) {
         </div>
         <button
           type="button"
-          onClick={() => navigate('/admin/settings')}
+          onClick={() => navigate('/admin/settings#admin-sources')}
           style={{
             display: 'inline-flex',
             alignItems: 'center',

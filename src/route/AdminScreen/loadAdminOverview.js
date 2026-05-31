@@ -8,7 +8,15 @@ import {
 import { normAdminConnections } from '../../utils/adminLists';
 import { buildDashboardStatCards, isAnalyticsPayload } from './dashboardChartUtils';
 
-export async function loadAdminOverview({ cacheBust = false, requireAnalytics = false } = {}) {
+/** Avoid polling model-metrics after 404 (file not trained yet). */
+let modelMetricsUnavailable = false;
+
+export async function loadAdminOverview({
+  cacheBust = false,
+  requireAnalytics = false,
+  includeArticles = false,
+  articlePageSize = 50,
+} = {}) {
   let serverAnalytics = null;
   let modelMetrics = null;
   let articles = [];
@@ -33,16 +41,27 @@ export async function loadAdminOverview({ cacheBust = false, requireAnalytics = 
     serverAnalytics = null;
   }
 
-  try {
-    const res = await getAdminArticles({ page: 1, pageSize: 200, scope: 'all' });
-    articles = res.results || [];
-  } catch {
-    articles = [];
+  if (includeArticles) {
+    try {
+      const res = await getAdminArticles({
+        page: 1,
+        pageSize: Math.min(100, Math.max(1, articlePageSize)),
+        scope: 'all',
+      });
+      articles = res.results || [];
+    } catch {
+      articles = [];
+    }
   }
 
   try {
-    modelMetrics = await getAdminModelMetrics();
-  } catch {
+    if (!modelMetricsUnavailable) {
+      modelMetrics = await getAdminModelMetrics();
+    }
+  } catch (err) {
+    if (err?.status === 404) {
+      modelMetricsUnavailable = true;
+    }
     modelMetrics = null;
   }
 

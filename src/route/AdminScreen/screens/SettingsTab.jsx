@@ -5,6 +5,7 @@ import { useAdminTheme } from '../useAdminTheme';
 import ToggleSwitch from '../components/ToggleSwitch';
 import SettingRow from '../components/SettingRow';
 import Text from '../../../components/ui/Text';
+import { ADMIN_TEXT_STYLE } from '../adminTypography';
 import { useFeedback } from '../../../components/ui/FeedbackProvider';
 import AdminListPanel from '../components/AdminListPanel';
 import AdminCategoryPicker from '../components/AdminCategoryPicker';
@@ -68,7 +69,7 @@ const SettingsTab = ({
           <View style={[styles.iconContainer, { backgroundColor: `${palette.primary}15` }]}>
             <SettingsIcon size={20} color={palette.primary} />
           </View>
-          <Text variant="title" color={palette.textPrimary} style={styles.sectionTitle}>
+          <Text variant="subtitle" color={palette.textPrimary} style={ADMIN_TEXT_STYLE.sectionTitle}>
             Settings
           </Text>
         </View>
@@ -415,7 +416,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  sectionTitle: { fontSize: 20, fontWeight: '700' },
   settingsSection: {
     borderRadius: 16,
     padding: 20,

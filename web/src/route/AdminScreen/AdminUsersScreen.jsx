@@ -1,19 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useAdminTheme } from './useAdminTheme';
 import AdminPageLayout from './components/AdminPageLayout';
 import AdminPageHeader from './components/AdminPageHeader';
 import { useAdminPageMeta } from './adminPageMeta';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
-import { 
-    Users, 
-    Search, 
-    Edit, 
-    Trash2, 
-    CheckCircle, 
+import {
+    Users,
+    Search,
+    Trash2,
+    CheckCircle,
     XCircle,
     Mail,
     Calendar,
+    UserX,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { deleteAdminUser, getAdminUsers, patchAdminUser } from '../../api/adminApi';
@@ -27,6 +27,7 @@ const AdminUsersScreen = () => {
     const [users, setUsers] = useState([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
+    const [selectedIds, setSelectedIds] = useState(() => new Set());
 
     const cardBackground = palette.card;
     const textPrimary = palette.textPrimary;
@@ -46,6 +47,7 @@ const AdminUsersScreen = () => {
                 isAdmin: u.role === 'admin',
             }));
             setUsers(mapped);
+            setSelectedIds(new Set());
         } catch (error) {
             console.error('Error loading users:', error);
         } finally {
@@ -59,6 +61,26 @@ const AdminUsersScreen = () => {
         }, 280);
         return () => window.clearTimeout(t);
     }, [loadUsers]);
+
+    const selectableUsers = useMemo(() => users.filter((u) => !u.isAdmin), [users]);
+    const allSelected = selectableUsers.length > 0 && selectableUsers.every((u) => selectedIds.has(u.id));
+
+    const toggleSelectAll = () => {
+        if (allSelected) {
+            setSelectedIds(new Set());
+        } else {
+            setSelectedIds(new Set(selectableUsers.map((u) => u.id)));
+        }
+    };
+
+    const toggleSelect = (userId) => {
+        setSelectedIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(userId)) next.delete(userId);
+            else next.add(userId);
+            return next;
+        });
+    };
 
     const handleDelete = async (userId) => {
         const accepted = await confirm({
@@ -78,7 +100,46 @@ const AdminUsersScreen = () => {
         }
     };
 
-    const handleToggleStatus = async (userId) => {
+    const handleBulkDelete = async () => {
+        const ids = Array.from(selectedIds);
+        if (!ids.length) return;
+        const accepted = await confirm({
+            title: `Delete ${ids.length} user(s)?`,
+            message: 'This cannot be undone.',
+            confirmText: 'Delete all',
+            danger: true,
+        });
+        if (!accepted) return;
+        try {
+            await Promise.all(ids.map((id) => deleteAdminUser(id)));
+            await loadUsers();
+            success(`${ids.length} user(s) deleted.`);
+        } catch (e) {
+            notifyError(e?.message || 'Failed to delete selected users.');
+        }
+    };
+
+    const handleBulkDeactivate = async () => {
+        const ids = Array.from(selectedIds);
+        if (!ids.length) return;
+        const accepted = await confirm({
+            title: `Deactivate ${ids.length} user(s)?`,
+            message: 'Selected users will not be able to sign in.',
+            confirmText: 'Deactivate',
+            danger: true,
+        });
+        if (!accepted) return;
+        try {
+            await Promise.all(ids.map((id) => patchAdminUser(id, { is_active: false })));
+            await loadUsers();
+            success(`${ids.length} user(s) deactivated.`);
+        } catch (e) {
+            notifyError(e?.message || 'Failed to deactivate selected users.');
+        }
+    };
+
+    const handleToggleStatus = async (userId, e) => {
+        e?.stopPropagation?.();
         const target = users.find((u) => u.id === userId);
         if (!target) return;
         const nextStatus = target.status === 'active' ? 'inactive' : 'active';
@@ -94,27 +155,12 @@ const AdminUsersScreen = () => {
     const { title, description } = useAdminPageMeta();
 
     return (
-        <>
-            <style>{`
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `}</style>
-            <AdminPageLayout maxWidth="1400px">
-                <AdminPageHeader title={title} description={description} />
-                <div className="admin-page-body">
-
-                {/* Search Bar */}
-                <div style={{
-                    marginBottom: '24px',
-                }}>
-                    <div style={{
-                        position: 'relative',
-                        display: 'flex',
-                        alignItems: 'center',
-                    }}>
-                        <Search size={18} color={textSecondary} style={{ position: 'absolute', left: '16px', pointerEvents: 'none' }} />
+        <AdminPageLayout maxWidth="1400px">
+            <AdminPageHeader title={title} description={description} />
+            <div className="admin-page-body">
+                <div style={{ marginBottom: 24 }}>
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                        <Search size={18} color={textSecondary} style={{ position: 'absolute', left: 16, pointerEvents: 'none' }} />
                         <input
                             type="text"
                             placeholder="Search users by name or email..."
@@ -125,29 +171,63 @@ const AdminUsersScreen = () => {
                                 padding: '12px 16px 12px 44px',
                                 backgroundColor: palette.inputBg,
                                 border: `1px solid ${borderColor}`,
-                                borderRadius: '8px',
-                                fontSize: '14px',
+                                borderRadius: 8,
+                                fontSize: 14,
                                 outline: 'none',
-                                transition: 'all 0.2s ease',
                                 color: textPrimary,
-                            }}
-                            onFocus={(e) => {
-                                e.target.style.backgroundColor = palette.card;
-                                e.target.style.borderColor = palette.textPrimary;
-                                e.target.style.boxShadow = isDark 
-                                    ? '0 0 0 3px rgba(129, 140, 248, 0.2)' 
-                                    : '0 0 0 3px rgba(0, 0, 0, 0.1)';
-                            }}
-                            onBlur={(e) => {
-                                e.target.style.backgroundColor = palette.inputBg;
-                                e.target.style.borderColor = borderColor;
-                                e.target.style.boxShadow = 'none';
                             }}
                         />
                     </div>
                 </div>
 
-                {/* Users Table */}
+                {selectedIds.size > 0 ? (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginBottom: 16 }}>
+                        <span style={{ fontSize: 13, color: textSecondary, alignSelf: 'center' }}>
+                            {selectedIds.size} selected
+                        </span>
+                        <button
+                            type="button"
+                            onClick={handleBulkDeactivate}
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '8px 14px',
+                                borderRadius: 8,
+                                border: `1px solid ${borderColor}`,
+                                background: palette.pageAlt,
+                                color: textPrimary,
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                                fontSize: 13,
+                            }}
+                        >
+                            <UserX size={14} />
+                            Deactivate selected
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleBulkDelete}
+                            style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                padding: '8px 14px',
+                                borderRadius: 8,
+                                border: `1px solid ${palette.error}`,
+                                background: palette.errorBg,
+                                color: palette.error,
+                                cursor: 'pointer',
+                                fontWeight: 600,
+                                fontSize: 13,
+                            }}
+                        >
+                            <Trash2 size={14} />
+                            Delete selected
+                        </button>
+                    </div>
+                ) : null}
+
                 {loading ? (
                     <SkeletonTableRows rows={10} isDark={isDark} colors={colors} />
                 ) : users.length === 0 ? (
@@ -158,61 +238,63 @@ const AdminUsersScreen = () => {
                         justifyContent: 'center',
                         padding: '80px 20px',
                         backgroundColor: palette.pageAlt,
-                        borderRadius: '12px',
+                        borderRadius: 12,
                         border: `1px solid ${borderColor}`,
                     }}>
-                        <Users size={48} color={textSecondary} style={{ marginBottom: '16px' }} />
-                        <h3 style={{
-                            fontSize: '18px',
-                            fontWeight: '600',
-                            color: textPrimary,
-                            margin: '0 0 8px 0',
-                        }}>
+                        <Users size={48} color={textSecondary} style={{ marginBottom: 16 }} />
+                        <h3 style={{ fontSize: 18, fontWeight: 600, color: textPrimary, margin: '0 0 8px 0' }}>
                             No users found
                         </h3>
-                        <p style={{
-                            fontSize: '14px',
-                            color: textSecondary,
-                            margin: '0',
-                            textAlign: 'center',
-                        }}>
+                        <p style={{ fontSize: 14, color: textSecondary, margin: 0, textAlign: 'center' }}>
                             {searchQuery ? 'Try adjusting your search query' : 'No users in the system'}
                         </p>
                     </div>
                 ) : (
                     <div style={{
                         backgroundColor: cardBackground,
-                        borderRadius: '12px',
+                        borderRadius: 12,
                         border: `1px solid ${borderColor}`,
                         overflow: 'hidden',
                     }}>
                         <div style={{
                             display: isMobile ? 'none' : 'grid',
-                            gridTemplateColumns: isTablet ? '1fr 1.5fr 1fr 1fr 100px' : '1fr 2fr 1fr 1fr 120px',
-                            gap: isMobile ? '8px' : '16px',
-                            padding: isMobile ? '12px 16px' : '16px 20px',
+                            gridTemplateColumns: isTablet ? '40px 1fr 1.5fr 1fr 1fr 100px' : '40px 1fr 2fr 1fr 1fr 120px',
+                            gap: 16,
+                            padding: '16px 20px',
                             borderBottom: `1px solid ${borderColor}`,
                             backgroundColor: palette.pageAlt,
                         }}>
-                            <div style={{ fontSize: '12px', fontWeight: '600', color: textSecondary, textTransform: 'uppercase' }}>Name</div>
-                            <div style={{ fontSize: '12px', fontWeight: '600', color: textSecondary, textTransform: 'uppercase' }}>Email</div>
-                            <div style={{ fontSize: '12px', fontWeight: '600', color: textSecondary, textTransform: 'uppercase' }}>Status</div>
-                            <div style={{ fontSize: '12px', fontWeight: '600', color: textSecondary, textTransform: 'uppercase' }}>Join Date</div>
-                            <div style={{ fontSize: '12px', fontWeight: '600', color: textSecondary, textTransform: 'uppercase' }}>Actions</div>
+                            <div>
+                                <input
+                                    type="checkbox"
+                                    checked={allSelected}
+                                    onChange={toggleSelectAll}
+                                    aria-label="Select all users"
+                                />
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: textSecondary, textTransform: 'uppercase' }}>Name</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: textSecondary, textTransform: 'uppercase' }}>Email</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: textSecondary, textTransform: 'uppercase' }}>Status</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: textSecondary, textTransform: 'uppercase' }}>Join Date</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: textSecondary, textTransform: 'uppercase' }}>Actions</div>
                         </div>
                         {users.map((user) => (
                             <div
                                 key={user.id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => navigate(`/admin/users/${user.id}`)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') navigate(`/admin/users/${user.id}`);
+                                }}
                                 style={{
                                     display: isMobile ? 'block' : 'grid',
-                                    gridTemplateColumns: isMobile ? 'none' : (isTablet ? '1fr 1.5fr 1fr 1fr 100px' : '1fr 2fr 1fr 1fr 120px'),
-                                    gap: isMobile ? '12px' : '16px',
-                                    padding: isMobile ? '16px' : '16px 20px',
+                                    gridTemplateColumns: isMobile ? 'none' : (isTablet ? '40px 1fr 1.5fr 1fr 1fr 100px' : '40px 1fr 2fr 1fr 1fr 120px'),
+                                    gap: 16,
+                                    padding: isMobile ? 16 : '16px 20px',
                                     borderBottom: `1px solid ${borderColor}`,
-                                    borderRadius: isMobile ? '8px' : '0',
-                                    marginBottom: isMobile ? '12px' : '0',
-                                    border: isMobile ? `1px solid ${borderColor}` : 'none',
-                                    transition: 'all 0.2s ease',
+                                    cursor: 'pointer',
+                                    transition: 'background 0.2s ease',
                                 }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.backgroundColor = palette.pageAlt;
@@ -221,158 +303,103 @@ const AdminUsersScreen = () => {
                                     e.currentTarget.style.backgroundColor = cardBackground;
                                 }}
                             >
-                                <div style={{
-                                    display: isMobile ? 'flex' : 'flex',
-                                    alignItems: 'center',
-                                    gap: '12px',
-                                    marginBottom: isMobile ? '12px' : '0',
-                                }}>
+                                <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center' }}>
+                                    {!user.isAdmin ? (
+                                        <input
+                                            type="checkbox"
+                                            checked={selectedIds.has(user.id)}
+                                            onChange={() => toggleSelect(user.id)}
+                                            aria-label={`Select ${user.email}`}
+                                        />
+                                    ) : null}
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMobile ? 12 : 0 }}>
                                     <div style={{
-                                        width: '40px',
-                                        height: '40px',
-                                        borderRadius: '8px',
-                                        backgroundColor: palette.textPrimary,
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: 8,
+                                        backgroundColor: palette.buttonPrimaryBg || palette.textPrimary,
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        color: '#ffffff',
-                                        fontSize: '16px',
-                                        fontWeight: '700',
+                                        color: palette.buttonPrimaryText || '#ffffff',
+                                        fontSize: 16,
+                                        fontWeight: 700,
                                         flexShrink: 0,
                                     }}>
                                         {user.name.charAt(0).toUpperCase()}
                                     </div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{
-                                            fontSize: '14px',
-                                            fontWeight: '600',
-                                            color: textPrimary,
-                                        }}>
-                                            {user.name}
-                                        </div>
-                                        {user.isAdmin && (
-                                            <div style={{
-                                                fontSize: '11px',
-                                                color: '#f59e0b',
-                                                fontWeight: '600',
-                                                marginTop: '2px',
-                                            }}>
-                                                Admin
-                                            </div>
-                                        )}
+                                    <div>
+                                        <div style={{ fontSize: 14, fontWeight: 600, color: textPrimary }}>{user.name}</div>
+                                        {user.isAdmin ? (
+                                            <div style={{ fontSize: 11, color: palette.warning, fontWeight: 600, marginTop: 2 }}>Admin</div>
+                                        ) : null}
                                     </div>
                                 </div>
-                                <div style={{
-                                    display: isMobile ? 'flex' : 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    fontSize: '14px',
-                                    color: textSecondary,
-                                    marginBottom: isMobile ? '8px' : '0',
-                                }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: textSecondary, marginBottom: isMobile ? 8 : 0 }}>
                                     <Mail size={14} color={textSecondary} />
                                     {user.email}
                                 </div>
-                                <div style={{ marginBottom: isMobile ? '8px' : '0' }}>
+                                <div style={{ marginBottom: isMobile ? 8 : 0 }} onClick={(e) => e.stopPropagation()}>
                                     <button
-                                        onClick={() => handleToggleStatus(user.id)}
+                                        type="button"
+                                        onClick={(e) => handleToggleStatus(user.id, e)}
                                         style={{
                                             padding: '4px 12px',
                                             border: 'none',
-                                            borderRadius: '6px',
-                                            fontSize: '12px',
-                                            fontWeight: '600',
+                                            borderRadius: 6,
+                                            fontSize: 12,
+                                            fontWeight: 600,
                                             cursor: 'pointer',
-                                            backgroundColor: user.status === 'active' 
-                                                ? '#10b98120' 
-                                                : '#ef444420',
-                                            color: user.status === 'active' 
-                                                ? '#10b981' 
-                                                : '#ef4444',
+                                            backgroundColor: user.status === 'active' ? palette.successBg : palette.errorBg,
+                                            color: user.status === 'active' ? palette.success : palette.error,
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '4px',
+                                            gap: 4,
                                         }}
                                     >
-                                        {user.status === 'active' ? (
-                                            <CheckCircle size={12} />
-                                        ) : (
-                                            <XCircle size={12} />
-                                        )}
+                                        {user.status === 'active' ? <CheckCircle size={12} /> : <XCircle size={12} />}
                                         {user.status === 'active' ? 'Active' : 'Inactive'}
                                     </button>
                                 </div>
                                 <div style={{
-                                    fontSize: '13px',
+                                    fontSize: 13,
                                     color: textSecondary,
                                     display: 'flex',
                                     alignItems: 'center',
-                                    gap: '6px',
-                                    marginBottom: isMobile ? '8px' : '0',
+                                    gap: 6,
+                                    marginBottom: isMobile ? 8 : 0,
                                 }}>
                                     <Calendar size={12} color={textSecondary} />
                                     {new Date(user.joinDate).toLocaleDateString()}
                                 </div>
-                                <div style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    justifyContent: isMobile ? 'flex-start' : 'flex-end',
-                                }}>
-                                    <button
-                                        onClick={() => handleToggleStatus(user.id)}
-                                        style={{
-                                            padding: '6px',
-                                            border: `1px solid ${borderColor}`,
-                                            background: 'transparent',
-                                            borderRadius: '6px',
-                                            cursor: 'pointer',
-                                            transition: 'all 0.2s ease',
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.backgroundColor = palette.pageAlt;
-                                            e.currentTarget.style.borderColor = palette.textPrimary;
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.backgroundColor = 'transparent';
-                                            e.currentTarget.style.borderColor = borderColor;
-                                        }}
-                                    >
-                                        <Edit size={14} color={textPrimary} />
-                                    </button>
-                                    {!user.isAdmin && (
+                                <div
+                                    style={{ display: 'flex', alignItems: 'center', gap: 8, justifyContent: isMobile ? 'flex-start' : 'flex-end' }}
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    {!user.isAdmin ? (
                                         <button
+                                            type="button"
                                             onClick={() => handleDelete(user.id)}
                                             style={{
-                                                padding: '6px',
+                                                padding: 6,
                                                 border: `1px solid ${borderColor}`,
                                                 background: 'transparent',
-                                                borderRadius: '6px',
+                                                borderRadius: 6,
                                                 cursor: 'pointer',
-                                                transition: 'all 0.2s ease',
-                                            }}
-                                            onMouseEnter={(e) => {
-                                                e.currentTarget.style.backgroundColor = '#ef444420';
-                                                e.currentTarget.style.borderColor = '#ef4444';
-                                            }}
-                                            onMouseLeave={(e) => {
-                                                e.currentTarget.style.backgroundColor = 'transparent';
-                                                e.currentTarget.style.borderColor = borderColor;
                                             }}
                                         >
-                                            <Trash2 size={14} color="#ef4444" />
+                                            <Trash2 size={14} color={palette.error} />
                                         </button>
-                                    )}
+                                    ) : null}
                                 </div>
                             </div>
                         ))}
                     </div>
                 )}
-                </div>
-            </AdminPageLayout>
-        </>
+            </div>
+        </AdminPageLayout>
     );
 };
 
 export default AdminUsersScreen;
-

@@ -1,9 +1,5 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet, ScrollView, LayoutAnimation, Platform, UIManager } from 'react-native';
-
-if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
-  UIManager.setLayoutAnimationEnabledExperimental(true);
-}
+import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { BarChart3, Users, Shield, FileText, Bell, Settings as SettingsIcon } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
 
@@ -37,10 +33,7 @@ const TabNavigation = ({ activeTab, onTabChange }) => {
               style={[styles.tabButton, isActive && { 
                 backgroundColor: `${palette.primary}15`,
               }]}
-              onPress={() => {
-                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                onTabChange(id);
-              }}
+              onPress={() => onTabChange(id)}
               activeOpacity={0.7}
             >
               {isActive ? (

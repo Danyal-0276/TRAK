@@ -30,7 +30,9 @@ export default function AdminStatKpiCard({ stat, palette, onPress }) {
           </View>
           {onPress ? <ArrowRight size={14} color={palette.textTertiary} /> : null}
         </View>
-        <Text style={[styles.value, { color: palette.textPrimary }]}>{stat.value ?? '—'}</Text>
+        <Text variant="title" color={palette.textPrimary} style={styles.value}>
+          {stat.value ?? '—'}
+        </Text>
         <Text variant="caption" color={palette.textSecondary} style={styles.label}>
           {stat.label}
         </Text>
@@ -57,6 +59,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  value: { fontSize: 26, fontWeight: '800', letterSpacing: -0.5, marginBottom: 4 },
-  label: { fontSize: 12, fontWeight: '600' },
+  value: { fontWeight: '700', letterSpacing: -0.25, marginBottom: 4 },
+  label: { fontWeight: '600' },
 });

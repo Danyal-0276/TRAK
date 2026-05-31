@@ -3,19 +3,10 @@
  */
 import { AUTH_PREFIX } from '../config/api';
 import { apiFetch } from './client';
+import { parseApiResponse } from '../utils/getUserFacingError';
 
 async function parseJson(res) {
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg =
-      data.detail ||
-      (typeof data.email === 'string' ? data.email : null) ||
-      (Array.isArray(data.email) ? data.email[0] : null) ||
-      (Array.isArray(data.code) ? data.code[0] : null) ||
-      `Request failed (${res.status})`;
-    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
-  }
-  return data;
+  return parseApiResponse(res);
 }
 
 export async function validateEmail(email) {
