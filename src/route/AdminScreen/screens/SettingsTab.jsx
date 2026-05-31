@@ -45,8 +45,13 @@ const SettingsTab = ({
   darkTheme,
   onToggleTheme,
 }) => {
-  const { palette } = useAdminTheme();
+  const { palette, isDark } = useAdminTheme();
   const { confirm } = useFeedback();
+
+  const actionBg = palette.textPrimary;
+  const actionFg = palette.textInverse;
+  const actionMutedBg = isDark ? palette.border : palette.textSecondary;
+  const listBtnFg = (active) => (active && isDark ? palette.textPrimary : actionFg);
 
   const listColors = {
     textPrimary: palette.textPrimary,
@@ -61,7 +66,7 @@ const SettingsTab = ({
     ...listColors,
     inputBg: palette.inputBg,
     card: palette.card,
-    primary: palette.primary,
+    primary: palette.textPrimary,
     textTertiary: palette.textTertiary,
   };
 
@@ -69,8 +74,8 @@ const SettingsTab = ({
     <View style={styles.managementSection}>
       <View style={styles.managementHeader}>
         <View style={styles.headerLeft}>
-          <View style={[styles.iconContainer, { backgroundColor: `${palette.primary}15` }]}>
-            <SettingsIcon size={20} color={palette.primary} />
+          <View style={[styles.iconContainer, { backgroundColor: `${palette.textPrimary}12` }]}>
+            <SettingsIcon size={20} color={palette.textPrimary} />
           </View>
           <Text variant="subtitle" color={palette.textPrimary} style={ADMIN_TEXT_STYLE.sectionTitle}>
             Settings
@@ -108,7 +113,7 @@ const SettingsTab = ({
         </Text>
         <SettingRow label="Language">
           <TouchableOpacity
-            style={[styles.settingValueButton, { backgroundColor: palette.primary }]}
+            style={[styles.settingValueButton, { backgroundColor: actionBg }]}
             onPress={() => {
               Alert.alert('Language', 'Select language', [
                 ...LANGUAGE_OPTIONS.map((lang) => ({
@@ -120,14 +125,14 @@ const SettingsTab = ({
             }}
             activeOpacity={0.85}
           >
-            <Text variant="caption" color="#ffffff" style={styles.settingValueText}>
+            <Text variant="caption" color={actionFg} style={styles.settingValueText}>
               {settings.language || 'English'}
             </Text>
           </TouchableOpacity>
         </SettingRow>
         <SettingRow label="Timezone">
           <TouchableOpacity
-            style={[styles.settingValueButton, { backgroundColor: palette.primary }]}
+            style={[styles.settingValueButton, { backgroundColor: actionBg }]}
             onPress={() => {
               Alert.alert('Timezone', 'Select timezone', [
                 ...TIMEZONE_OPTIONS.map((tz) => ({
@@ -139,7 +144,7 @@ const SettingsTab = ({
             }}
             activeOpacity={0.85}
           >
-            <Text variant="caption" color="#ffffff" style={styles.settingValueText}>
+            <Text variant="caption" color={actionFg} style={styles.settingValueText}>
               {settings.timezone || 'UTC'}
             </Text>
           </TouchableOpacity>
@@ -154,12 +159,12 @@ const SettingsTab = ({
           <TouchableOpacity
             style={[
               styles.listButton,
-              { backgroundColor: listPanel === 'category' ? palette.textSecondary : palette.primary },
+              { backgroundColor: listPanel === 'category' ? actionMutedBg : actionBg },
             ]}
             onPress={() => onToggleListPanel('category')}
             activeOpacity={0.8}
           >
-            <Text variant="caption" color="#ffffff" style={styles.listButtonText}>
+            <Text variant="caption" color={listBtnFg(listPanel === 'category')} style={styles.listButtonText}>
               {listPanel === 'category' ? 'Hide list' : 'List'}
             </Text>
           </TouchableOpacity>
@@ -194,11 +199,11 @@ const SettingsTab = ({
             onSubmitEditing={onAddCategory}
           />
           <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: palette.primary }]}
+            style={[styles.addBtn, { backgroundColor: actionBg }]}
             onPress={onAddCategory}
             activeOpacity={0.8}
           >
-            <Plus size={18} color="#ffffff" />
+            <Plus size={18} color={actionFg} />
           </TouchableOpacity>
         </View>
 
@@ -283,11 +288,11 @@ const SettingsTab = ({
                     onSubmitEditing={() => onAddSubcategory(selectedCategory.slug)}
                   />
                   <TouchableOpacity
-                    style={[styles.addBtn, { backgroundColor: palette.primary, width: 44, height: 44, borderRadius: 12 }]}
+                    style={[styles.addBtn, { backgroundColor: actionBg, width: 44, height: 44, borderRadius: 12 }]}
                     onPress={() => onAddSubcategory(selectedCategory.slug)}
                     activeOpacity={0.8}
                   >
-                    <Plus size={16} color="#ffffff" />
+                    <Plus size={16} color={actionFg} />
                   </TouchableOpacity>
                 </View>
               </View>
@@ -313,12 +318,12 @@ const SettingsTab = ({
           <TouchableOpacity
             style={[
               styles.listButton,
-              { backgroundColor: listPanel === 'connection' ? palette.textSecondary : palette.primary },
+              { backgroundColor: listPanel === 'connection' ? actionMutedBg : actionBg },
             ]}
             onPress={() => onToggleListPanel('connection')}
             activeOpacity={0.8}
           >
-            <Text variant="caption" color="#ffffff" style={styles.listButtonText}>
+            <Text variant="caption" color={listBtnFg(listPanel === 'connection')} style={styles.listButtonText}>
               {listPanel === 'connection' ? 'Hide list' : 'List'}
             </Text>
           </TouchableOpacity>
@@ -371,11 +376,11 @@ const SettingsTab = ({
             onSubmitEditing={onAddConnection}
           />
           <TouchableOpacity
-            style={[styles.addBtn, { backgroundColor: palette.primary }]}
+            style={[styles.addBtn, { backgroundColor: actionBg }]}
             onPress={onAddConnection}
             activeOpacity={0.8}
           >
-            <Plus size={18} color="#ffffff" />
+            <Plus size={18} color={actionFg} />
           </TouchableOpacity>
         </View>
 
@@ -395,7 +400,7 @@ const SettingsTab = ({
           onPress={onToggleTheme}
           activeOpacity={0.8}
         >
-          {darkTheme ? <Sun size={18} color={palette.primary} /> : <Moon size={18} color={palette.primary} />}
+          {darkTheme ? <Sun size={18} color={palette.textPrimary} /> : <Moon size={18} color={palette.textPrimary} />}
           <Text variant="body" color={palette.textPrimary} style={{ fontWeight: '600', marginLeft: 10 }}>
             {darkTheme ? 'Switch to light mode' : 'Switch to dark mode'}
           </Text>
@@ -405,7 +410,7 @@ const SettingsTab = ({
           onPress={onViewNewsApp}
           activeOpacity={0.8}
         >
-          <Newspaper size={18} color={palette.primary} />
+          <Newspaper size={18} color={palette.textPrimary} />
           <Text variant="body" color={palette.textPrimary} style={{ fontWeight: '600', marginLeft: 10 }}>
             View news app
           </Text>

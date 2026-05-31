@@ -7,6 +7,7 @@ import AdminSidebar from './AdminSidebar';
 import AdminKeepAliveOutlet from './AdminKeepAliveOutlet';
 import { DASHBOARD_POLL_INTERVAL_MS } from '../adminTheme';
 import { dispatchAdminOverviewRefresh } from '../../../utils/adminOverviewEvents';
+import { isDashboardPath } from '../hooks/useAdminTabActive';
 import './adminShell.css';
 
 export default function AdminShell() {
@@ -49,7 +50,10 @@ export default function AdminShell() {
 
   useEffect(() => {
     const poll = () => {
-      if (document.visibilityState === 'visible') {
+      if (
+        document.visibilityState === 'visible' &&
+        isDashboardPath(location.pathname)
+      ) {
         dispatchAdminOverviewRefresh({ silent: true });
       }
     };
@@ -62,7 +66,7 @@ export default function AdminShell() {
       window.clearInterval(id);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, []);
+  }, [location.pathname]);
 
   if (loading) {
     return (

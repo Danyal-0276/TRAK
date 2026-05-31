@@ -19,12 +19,14 @@ export async function getAdminAnalytics({ cacheBust = false } = {}) {
   return parseJson(res);
 }
 
-export async function getAdminArticles({ page = 1, pageSize = 20, scope = 'all' } = {}) {
+export async function getAdminArticles({ page = 1, pageSize = 20, scope = 'all', pipelineStatus = '', moderationStatus = '' } = {}) {
   const params = new URLSearchParams({
     page: String(page),
     page_size: String(pageSize),
     scope: String(scope),
   });
+  if (pipelineStatus) params.set('pipeline_status', String(pipelineStatus));
+  if (moderationStatus) params.set('moderation_status', String(moderationStatus));
   const res = await apiFetch(`${ADMIN_PREFIX}/articles/?${params}`, {}, API_BASE);
   return parseJson(res);
 }

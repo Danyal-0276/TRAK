@@ -34,7 +34,7 @@ import {
   deleteAdminConnection,
 } from '../../api/adminApi';
 import { loadAdminOverview } from './loadAdminOverview';
-import { DASHBOARD_POLL_INTERVAL_MS } from './adminTheme';
+import { DASHBOARD_POLL_INTERVAL_MS, ARTICLES_POLL_INTERVAL_MS } from './adminTheme';
 import {
   buildDashboardStatCards,
   KPI_TAB_NAV,
@@ -57,7 +57,7 @@ import AdminArticleReviewModal from './components/AdminArticleReviewModal';
 import EditModal from './components/EditModal';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { buildArticleDetailParams } from '../../utils/articleNavigation';
-import { getArticlesApiScope, filterArticlesForDisplay } from '../../utils/adminArticleFilters';
+import { getArticlesFetchParams, filterArticlesForDisplay } from '../../utils/adminArticleFilters';
 import { ADMIN_TAB_ROUTES } from '../../navigation/adminTabIds';
 import { openAdminNotificationsSocket } from '../../api/adminNotificationsRealtime';
 
@@ -136,6 +136,7 @@ const AdminScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [liveUpdatedAt, setLiveUpdatedAt] = useState(null);
   const [articlePipelineFilter, setArticlePipelineFilter] = useState('');
+  const [articleCounts, setArticleCounts] = useState(null);
   const [articlesLoading, setArticlesLoading] = useState(false);
   const [listsLoading, setListsLoading] = useState(false);
   const [connectionUrlInput, setConnectionUrlInput] = useState('');
@@ -288,17 +289,27 @@ const AdminScreen = ({ navigation }) => {
     }
   }, [updateConnectionsIfChanged]);
 
-  const loadArticles = useCallback(async () => {
-    const apiScope = getArticlesApiScope(articlePipelineFilter);
-    setArticlesLoading(true);
+  const loadArticles = useCallback(async ({ silent = false } = {}) => {
+    const { scope, pipelineStatus, moderationStatus } = getArticlesFetchParams(articlePipelineFilter);
+    if (!silent) setArticlesLoading(true);
     try {
-      const res = await getAdminArticles({ page: 1, pageSize: 100, scope: apiScope });
+      const res = await getAdminArticles({
+        page: 1,
+        pageSize: 100,
+        scope,
+        pipelineStatus,
+        moderationStatus,
+      });
       setApiArticles((res.results || []).map(mapAdminArticleRow));
+      setArticleCounts(res.counts || null);
     } catch (e) {
-      Alert.alert('Articles', e?.message || 'Could not load articles.');
-      setApiArticles([]);
+      if (!silent) {
+        Alert.alert('Articles', e?.message || 'Could not load articles.');
+        setApiArticles([]);
+        setArticleCounts(null);
+      }
     } finally {
-      setArticlesLoading(false);
+      if (!silent) setArticlesLoading(false);
     }
   }, [articlePipelineFilter]);
 
@@ -391,6 +402,21 @@ const AdminScreen = ({ navigation }) => {
     if (!bootstrapped || !isAdmin || activeTab !== 'articles') return;
     loadArticles();
   }, [activeTab, articlePipelineFilter, bootstrapped, isAdmin, loadArticles]);
+
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin || activeTab !== 'articles') return undefined;
+    const poll = () => {
+      if (AppState.currentState === 'active') loadArticles({ silent: true });
+    };
+    const id = setInterval(poll, ARTICLES_POLL_INTERVAL_MS);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') loadArticles({ silent: true });
+    });
+    return () => {
+      clearInterval(id);
+      sub.remove();
+    };
+  }, [activeTab, bootstrapped, isAdmin, loadArticles]);
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || (activeTab !== 'users' && activeTab !== 'admins')) return;
@@ -800,6 +826,7 @@ const AdminScreen = ({ navigation }) => {
             pipelineFilter={articlePipelineFilter}
             onPipelineFilterChange={handleArticlePipelineFilterChange}
             loading={articlesLoading}
+            articleCounts={articleCounts}
             palette={adminPalette}
           />
         );

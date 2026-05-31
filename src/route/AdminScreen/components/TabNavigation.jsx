@@ -11,7 +11,7 @@ const TABS = [
   { id: 'articles', icon: FileText, label: 'Articles' },
   { id: 'feedback', icon: MessageSquare, label: 'Feedback' },
   { id: 'notifications', icon: Bell, label: 'Alerts' },
-  { id: 'settings', icon: SettingsIcon, label: 'Settings', system: true },
+  { id: 'settings', icon: SettingsIcon, label: 'Settings' },
 ];
 
 const TabNavigation = ({ activeTab, onTabChange }) => {
@@ -19,30 +19,48 @@ const TabNavigation = ({ activeTab, onTabChange }) => {
 
   return (
     <View style={[styles.tabNav, { backgroundColor: palette.card, borderBottomColor: palette.border }]}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabNavContent}>
-        {TABS.map(({ id, icon: Icon, label, system }) => {
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.tabNavContent}
+      >
+        {TABS.map(({ id, icon: Icon, label }) => {
           const isActive = activeTab === id;
-          const activeBg = isDark ? palette.navActiveBg : `${palette.primary}12`;
-          const activeIconColor = isDark ? palette.navActiveText : palette.primary;
-          const inactiveIconColor = isDark ? palette.textPrimary : palette.textSecondary;
+
+          // Dark: active = light pill + dark icon; inactive = bordered tile + light icon
+          const activeBg = isDark ? palette.textPrimary : palette.textPrimary;
+          const activeFg = isDark ? palette.textInverse : '#ffffff';
+          const inactiveBg = isDark ? palette.inputBg : palette.pageAlt;
+          const inactiveBorder = isDark ? palette.border : palette.borderLight;
+          const inactiveFg = isDark ? palette.textPrimary : palette.textSecondary;
 
           return (
             <TouchableOpacity
               key={id}
               style={[
                 styles.tabButton,
-                system && styles.systemTab,
-                isActive && { backgroundColor: activeBg, borderColor: isDark ? palette.border : palette.primary },
-                !isActive && { borderColor: palette.border, backgroundColor: palette.navHover },
+                isActive
+                  ? { backgroundColor: activeBg, borderColor: activeBg }
+                  : { backgroundColor: inactiveBg, borderColor: inactiveBorder },
               ]}
               onPress={() => onTabChange(id)}
               activeOpacity={0.7}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isActive }}
+              accessibilityLabel={label}
             >
-              <Icon size={18} color={isActive ? activeIconColor : inactiveIconColor} strokeWidth={isActive ? 2.5 : 2} />
+              <Icon
+                size={20}
+                color={isActive ? activeFg : inactiveFg}
+                strokeWidth={isActive ? 2.5 : 2}
+              />
               <Text
                 variant="caption"
-                color={isActive ? activeIconColor : palette.textSecondary}
-                style={[styles.tabLabel, isActive && { fontWeight: '700' }]}
+                style={[
+                  styles.tabLabel,
+                  { color: isActive ? activeFg : inactiveFg },
+                  isActive && styles.tabLabelActive,
+                ]}
                 numberOfLines={1}
               >
                 {label}
@@ -69,20 +87,20 @@ const styles = StyleSheet.create({
   tabButton: {
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 72,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    minWidth: 76,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
     marginRight: 4,
   },
-  systemTab: {
-    marginLeft: 4,
-  },
   tabLabel: {
-    marginTop: 4,
-    fontSize: 10,
+    marginTop: 5,
+    fontSize: 11,
     textAlign: 'center',
+  },
+  tabLabelActive: {
+    fontWeight: '700',
   },
 });
 

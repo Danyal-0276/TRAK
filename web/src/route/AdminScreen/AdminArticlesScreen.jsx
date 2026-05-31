@@ -18,6 +18,7 @@ import { useAdminPageMeta } from './adminPageMeta';
 import { deleteAdminArticle, getAdminArticles, patchAdminArticle } from '../../api/adminApi';
 import {
     getArticlesApiScope,
+    getArticlesFetchParams,
     parseArticleRouteParams,
     filterArticlesForDisplay,
 } from '../../utils/adminArticleFilters';
@@ -29,9 +30,11 @@ import ArticleInsightBadges, {
 } from './components/ArticleInsightBadges';
 import { enableAdminAppPreview } from '../../utils/adminAppPreview';
 import { normalizeArticleForDetail } from '../../utils/articleNavigation';
-import { subscribeAdminOverviewRefresh } from '../../utils/adminOverviewEvents';
+import { ARTICLES_POLL_INTERVAL_MS } from './adminTheme';
 import { isArticlesPath } from './hooks/useAdminTabActive';
 import AdminArticleReviewModal from './components/AdminArticleReviewModal';
+import AdminArticleHeroImage from './components/AdminArticleHeroImage';
+import AdminArticlesControlPanel from './components/AdminArticlesControlPanel';
 
 const AdminArticlesScreen = () => {
     const { palette, isDark, colors } = useAdminTheme();
@@ -41,6 +44,7 @@ const AdminArticlesScreen = () => {
     const articlesTabActive = isArticlesPath(pathname);
     const [searchParams, setSearchParams] = useSearchParams();
     const [articles, setArticles] = useState([]);
+    const [articleCounts, setArticleCounts] = useState(null);
     const { confirm, success, error: notifyError } = useUIFeedback();
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
@@ -100,25 +104,28 @@ const AdminArticlesScreen = () => {
     };
 
     const loadArticles = useCallback(
-        async (fetchScope, pipeFilter) => {
+        async (fetchScope, pipeFilter, { silent = false } = {}) => {
             try {
-                setLoading(true);
-                const serverPipeline = ['queue', 'pending', 'processing', 'failed'].includes(pipeFilter)
-                    ? pipeFilter
-                    : '';
+                if (!silent) setLoading(true);
+                const { scope, pipelineStatus, moderationStatus } = getArticlesFetchParams(pipeFilter);
                 const response = await getAdminArticles({
                     page: 1,
                     pageSize: 100,
-                    scope: fetchScope,
-                    pipelineStatus: serverPipeline,
+                    scope: fetchScope || scope,
+                    pipelineStatus,
+                    moderationStatus,
                 });
                 setArticles((response.results || []).map(mapApiDoc));
+                setArticleCounts(response.counts || null);
             } catch (error) {
                 console.error('Error loading articles:', error);
-                notifyError(error?.message || 'Could not load articles.');
-                setArticles([]);
+                if (!silent) {
+                    notifyError(error?.message || 'Could not load articles.');
+                    setArticles([]);
+                    setArticleCounts(null);
+                }
             } finally {
-                setLoading(false);
+                if (!silent) setLoading(false);
             }
         },
         [notifyError]
@@ -130,9 +137,20 @@ const AdminArticlesScreen = () => {
 
     useEffect(() => {
         if (!articlesTabActive) return undefined;
-        return subscribeAdminOverviewRefresh(() => {
-            loadArticles(apiScope, pipelineFilter);
-        });
+        const poll = () => {
+            if (document.visibilityState === 'visible') {
+                loadArticles(apiScope, pipelineFilter, { silent: true });
+            }
+        };
+        const id = window.setInterval(poll, ARTICLES_POLL_INTERVAL_MS);
+        const onVisibility = () => {
+            if (document.visibilityState === 'visible') poll();
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+        return () => {
+            window.clearInterval(id);
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
     }, [articlesTabActive, apiScope, pipelineFilter, loadArticles]);
 
     const handleDelete = async (articleId) => {
@@ -147,8 +165,8 @@ const AdminArticlesScreen = () => {
             if (!target) return;
             try {
                 await deleteAdminArticle(target.scope, articleId);
-                setArticles((prev) => prev.filter((a) => a.id !== articleId));
                 success('Article deleted.');
+                loadArticles(apiScope, pipelineFilter);
             } catch (e) {
                 notifyError(e?.message || 'Failed to delete article.');
             }
@@ -164,6 +182,7 @@ const AdminArticlesScreen = () => {
             await patchAdminArticle(target.scope, articleId, { status: nextStatus });
             setArticles((prev) => prev.map((a) => (a.id === articleId ? { ...a, moderation_status: nextStatus } : a)));
             success('Article status updated.');
+            loadArticles(apiScope, pipelineFilter);
         } catch (e) {
             setStatusById((prev) => ({ ...prev, [articleId]: previous }));
             notifyError(e?.message || 'Failed to update status.');
@@ -171,6 +190,18 @@ const AdminArticlesScreen = () => {
     };
 
     const filteredArticles = filterArticlesForDisplay(articles, pipelineFilter, searchQuery);
+
+    const handleFilterChange = (filterId) => {
+        setPipelineFilter(filterId);
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete('scope');
+            if (filterId) next.set('pipeline', filterId);
+            else next.delete('pipeline');
+            return next;
+        });
+    };
+
     const { title, description } = useAdminPageMeta();
 
     return (
@@ -183,53 +214,16 @@ const AdminArticlesScreen = () => {
             `}</style>
             <AdminPageLayout maxWidth="1400px">
                 <AdminPageHeader title={title} description={description}>
-                    <div style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: '8px',
-                            marginTop: '12px',
-                        }}>
-                            {[
-                                { id: '', label: 'Any status' },
-                                { id: 'queue', label: 'Queue' },
-                                { id: 'pending', label: 'Pending' },
-                                { id: 'processing', label: 'Processing' },
-                                { id: 'done', label: 'Done (processed feed)' },
-                                { id: 'failed', label: 'Failed' },
-                            ].map((p) => {
-                                const active = pipelineFilter === p.id;
-                                return (
-                                    <button
-                                        key={p.id || 'any'}
-                                        type="button"
-                                        onClick={() => {
-                                            setPipelineFilter(p.id);
-                                            setSearchParams((prev) => {
-                                                const next = new URLSearchParams(prev);
-                                                next.delete('scope');
-                                                if (p.id) next.set('pipeline', p.id);
-                                                else next.delete('pipeline');
-                                                return next;
-                                            });
-                                        }}
-                                        style={{
-                                            padding: '6px 12px',
-                                            borderRadius: '8px',
-                                            border: `1px solid ${active ? (palette.primary) : borderColor}`,
-                                            background: active
-                                                ? (isDark ? 'rgba(129, 140, 248, 0.12)' : '#f1f5f9')
-                                                : (palette.inputBg),
-                                            color: active ? textPrimary : textSecondary,
-                                            cursor: 'pointer',
-                                            fontWeight: active ? 600 : 500,
-                                            fontSize: '12px',
-                                        }}
-                                    >
-                                        {p.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                    <AdminArticlesControlPanel
+                        palette={palette}
+                        isDark={isDark}
+                        loading={loading}
+                        articleCounts={articleCounts}
+                        pipelineFilter={pipelineFilter}
+                        onFilterChange={handleFilterChange}
+                        displayedCount={filteredArticles.length}
+                        searchQuery={searchQuery}
+                    />
                 </AdminPageHeader>
 
                 <div className="admin-page-body">
@@ -346,6 +340,18 @@ const AdminArticlesScreen = () => {
                                         : '0 1px 3px rgba(0, 0, 0, 0.05)';
                                 }}
                             >
+                                {article.image_url ? (
+                                    <AdminArticleHeroImage
+                                        src={article.image_url}
+                                        alt={article.title || 'Article'}
+                                        maxHeight={320}
+                                        borderRadius={8}
+                                        backgroundColor={palette.inputBg}
+                                        style={{ marginBottom: 12 }}
+                                        dynamicAspect
+                                    />
+                                ) : null}
+
                                 <div style={{
                                     display: 'flex',
                                     alignItems: 'flex-start',

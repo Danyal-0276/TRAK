@@ -13,7 +13,7 @@ import {
     Clock
 } from 'lucide-react';
 import * as notificationsApi from '../../api/notificationsApi';
-import { openNotificationsSocket } from '../../api/notificationsRealtime';
+import { openNotificationsSocket, isNotificationsWsEnabled, NOTIFICATIONS_POLL_FALLBACK_MS } from '../../api/notificationsRealtime';
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 
 const NotificationsScreen = () => {
@@ -31,7 +31,7 @@ const NotificationsScreen = () => {
 
     useEffect(() => {
         loadNotifications();
-        const poll = setInterval(loadNotifications, 30000);
+        let pollId = null;
         const connect = () => {
             const ws = openNotificationsSocket((payload) => {
                 if (payload?.type !== 'notification.created' || !payload.notification?.id) return;
@@ -48,8 +48,11 @@ const NotificationsScreen = () => {
             };
         };
         connect();
+        if (!isNotificationsWsEnabled()) {
+            pollId = setInterval(() => loadNotifications({ silent: true }), NOTIFICATIONS_POLL_FALLBACK_MS);
+        }
         return () => {
-            clearInterval(poll);
+            if (pollId) clearInterval(pollId);
             if (socketRef.current) socketRef.current.close();
             if (reconnectRef.current) clearTimeout(reconnectRef.current);
         };
@@ -59,16 +62,16 @@ const NotificationsScreen = () => {
         filterNotifications();
     }, [activeTab, notifications]);
 
-    const loadNotifications = async () => {
+    const loadNotifications = async ({ silent = false } = {}) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const data = await notificationsApi.getNotifications();
             setNotifications(data);
             setFilteredNotifications(data);
         } catch (error) {
             console.error("Error loading notifications:", error);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 

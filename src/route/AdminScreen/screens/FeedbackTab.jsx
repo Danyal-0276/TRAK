@@ -8,6 +8,7 @@ import {
   Modal,
   TextInput,
   ScrollView,
+  AppState,
 } from 'react-native';
 import { MessageSquare, Flag, User } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
@@ -15,6 +16,7 @@ import EmptyState from '../components/EmptyState';
 import Text from '../../../components/ui/Text';
 import { getAdminFeedback, patchAdminFeedback } from '../../../api/adminApi';
 import { useFeedback } from '../../../components/ui/FeedbackProvider';
+import { FEEDBACK_POLL_INTERVAL_MS } from '../adminTheme';
 
 const STATUS_CHIPS = [
   { key: 'pending', label: 'Pending' },
@@ -34,22 +36,36 @@ const FeedbackTab = ({ navigation }) => {
   const [adminNotes, setAdminNotes] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const loadRows = useCallback(async () => {
+  const loadRows = useCallback(async ({ silent = false } = {}) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const status = statusTab === 'all' ? '' : statusTab;
       const data = await getAdminFeedback({ status, limit: 100 });
       setRows(data.results || []);
       setStats(data.stats || {});
     } catch {
-      setRows([]);
+      if (!silent) setRows([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [statusTab]);
 
   useEffect(() => {
     loadRows();
+  }, [loadRows]);
+
+  useEffect(() => {
+    const poll = () => {
+      if (AppState.currentState === 'active') loadRows({ silent: true });
+    };
+    const id = setInterval(poll, FEEDBACK_POLL_INTERVAL_MS);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') loadRows({ silent: true });
+    });
+    return () => {
+      clearInterval(id);
+      sub.remove();
+    };
   }, [loadRows]);
 
   const saveDetail = async (status) => {

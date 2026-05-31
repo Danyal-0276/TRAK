@@ -1,4 +1,4 @@
-/** Admin overview refresh — polled from AdminShell, consumed by Dashboard/Articles. */
+/** Admin dashboard refresh — polled from AdminShell when dashboard is visible. */
 export const ADMIN_OVERVIEW_REFRESH = 'admin:overview-refresh';
 
 export function dispatchAdminOverviewRefresh(detail = { silent: true }) {

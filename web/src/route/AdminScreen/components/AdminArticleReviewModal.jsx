@@ -7,6 +7,7 @@ import ArticleInsightBadges, {
   ArticleTopicKeywords,
   ArticleCredibilityIndicator,
 } from './ArticleInsightBadges';
+import AdminArticleHeroImage from './AdminArticleHeroImage';
 
 const MODERATION_OPTIONS = [
   { value: 'review', label: 'Needs review' },
@@ -149,20 +150,13 @@ export default function AdminArticleReviewModal({
         </div>
 
         <div style={{ padding: 20 }}>
-          {article.image_url ? (
-            <img
-              src={article.image_url}
-              alt=""
-              style={{
-                width: '100%',
-                maxHeight: 220,
-                objectFit: 'cover',
-                borderRadius: 10,
-                marginBottom: 16,
-                backgroundColor: palette.inputBg,
-              }}
-            />
-          ) : null}
+          <AdminArticleHeroImage
+            src={article.image_url}
+            alt={article.title || 'Article'}
+            maxHeight={320}
+            backgroundColor={palette.inputBg}
+            dynamicAspect
+          />
 
           <ArticleInsightBadges
             article={article}

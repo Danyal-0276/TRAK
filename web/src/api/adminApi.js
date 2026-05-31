@@ -16,15 +16,22 @@ export async function getAdminAnalytics({ cacheBust = false } = {}) {
   return parseJson(res);
 }
 
-export async function getAdminArticles({ page = 1, pageSize = 20, scope = 'all', pipelineStatus = '' } = {}) {
+export async function getAdminArticles({ page = 1, pageSize = 20, scope = 'all', pipelineStatus = '', moderationStatus = '' } = {}) {
   const params = new URLSearchParams({
     page: String(page),
     page_size: String(pageSize),
     scope: String(scope),
   });
   if (pipelineStatus) params.set('pipeline_status', String(pipelineStatus));
+  if (moderationStatus) params.set('moderation_status', String(moderationStatus));
   const res = await apiFetch(`${ADMIN_PREFIX}/articles/?${params}`);
   return parseJson(res);
+}
+
+export function getAdminArticleImageProxyUrl(imageUrl) {
+  if (!imageUrl) return '';
+  const params = new URLSearchParams({ url: String(imageUrl) });
+  return `${ADMIN_PREFIX}/articles/image-proxy/?${params.toString()}`;
 }
 
 export async function postAdminPipelineRun(limit = 10) {

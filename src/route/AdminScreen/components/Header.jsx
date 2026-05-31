@@ -28,7 +28,6 @@ const Header = ({ activeTab = 'overview' }) => {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
   const email = user?.email || '';
-  const roleLabel = user?.is_super_admin ? 'Super Admin' : 'Administrator';
   const displayName = displayNameFromEmail(email);
   const initial = displayName.charAt(0).toUpperCase() || 'A';
   const sectionLabel = TAB_LABELS[activeTab] || 'Admin';
@@ -40,43 +39,32 @@ const Header = ({ activeTab = 'overview' }) => {
         {
           backgroundColor: palette.card,
           borderBottomColor: palette.border,
-          paddingTop: Math.max(insets.top, 12),
+          paddingTop: Math.max(insets.top, 8),
         },
       ]}
     >
-      <View style={styles.userRow}>
-        <View style={[styles.avatar, { backgroundColor: `${palette.primary}22` }]}>
-          <Text variant="subtitle" color={palette.primary} style={{ fontWeight: '800' }}>
+      <View style={styles.row}>
+        <TrakLogo size={28} showContainer />
+
+        <View style={styles.titleBlock}>
+          <Text variant="subtitle" color={palette.textPrimary} style={styles.sectionTitle} numberOfLines={1}>
+            {sectionLabel}
+          </Text>
+          {displayName ? (
+            <Text variant="caption" color={palette.textTertiary} numberOfLines={1}>
+              {displayName}
+            </Text>
+          ) : null}
+        </View>
+
+        <View
+          style={[styles.avatar, { backgroundColor: `${palette.primary}18` }]}
+          accessibilityLabel={email ? `${displayName}, ${email}` : displayName}
+        >
+          <Text variant="caption" color={palette.primary} style={{ fontWeight: '800', fontSize: 13 }}>
             {initial}
           </Text>
         </View>
-        <View style={styles.userMeta}>
-          <Text variant="subtitle" color={palette.textPrimary} style={{ fontWeight: '700' }} numberOfLines={1}>
-            {displayName}
-          </Text>
-          <View style={[styles.roleBadge, { backgroundColor: palette.navActiveBg, borderColor: palette.border }]}>
-            <Text variant="caption" color={palette.textSecondary} style={{ fontWeight: '600' }}>
-              {roleLabel}
-            </Text>
-          </View>
-        </View>
-      </View>
-
-      <View style={styles.brandRow}>
-        <TrakLogo size={24} showContainer />
-        <View style={{ flex: 1 }}>
-          <Text variant="caption" color={palette.textPrimary} style={{ fontWeight: '700' }}>
-            TRAK Admin
-          </Text>
-          <Text variant="caption" color={palette.textTertiary}>
-            {sectionLabel} · News operations
-          </Text>
-        </View>
-        {email ? (
-          <Text variant="caption" color={palette.textTertiary} numberOfLines={1} style={{ maxWidth: '40%' }}>
-            {email}
-          </Text>
-        ) : null}
       </View>
     </View>
   );
@@ -86,39 +74,27 @@ const styles = StyleSheet.create({
   header: {
     borderBottomWidth: 1,
     zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  userRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 10,
     gap: 12,
   },
-  userMeta: { flex: 1, minWidth: 0 },
-  roleBadge: {
-    alignSelf: 'flex-start',
-    marginTop: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-    borderWidth: 1,
+  titleBlock: {
+    flex: 1,
+    minWidth: 0,
   },
-  brandRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-    gap: 10,
+  sectionTitle: {
+    fontWeight: '700',
+    fontSize: 17,
+    letterSpacing: -0.2,
   },
   avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -1,13 +1,29 @@
 import React from 'react';
 import { TouchableOpacity, View, StyleSheet } from 'react-native';
+import { useAdminTheme } from '../useAdminTheme';
 
 const ToggleSwitch = ({ value, onValueChange }) => {
+  const { palette, isDark } = useAdminTheme();
+
+  const trackOff = isDark ? palette.border : palette.borderLight;
+  const trackOn = palette.success;
+  const thumb = isDark ? palette.textPrimary : '#ffffff';
+
   return (
     <TouchableOpacity
-      style={[styles.toggle, value && styles.toggleActive]}
+      style={[styles.toggle, { backgroundColor: value ? trackOn : trackOff }]}
       onPress={() => onValueChange(!value)}
+      activeOpacity={0.85}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value }}
     >
-      <View style={[styles.toggleThumb, value && styles.toggleThumbActive]} />
+      <View
+        style={[
+          styles.toggleThumb,
+          { backgroundColor: thumb },
+          value && styles.toggleThumbActive,
+        ]}
+      />
     </TouchableOpacity>
   );
 };
@@ -17,18 +33,13 @@ const styles = StyleSheet.create({
     width: 50,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#e0e0e0',
     padding: 2,
     justifyContent: 'center',
-  },
-  toggleActive: {
-    backgroundColor: '#4CAF50',
   },
   toggleThumb: {
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#fff',
   },
   toggleThumbActive: {
     transform: [{ translateX: 24 }],

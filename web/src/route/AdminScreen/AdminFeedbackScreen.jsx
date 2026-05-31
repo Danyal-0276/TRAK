@@ -8,6 +8,7 @@ import { useAdminPageMeta } from './adminPageMeta';
 import { getAdminFeedback, patchAdminFeedback } from '../../api/adminApi';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
+import { FEEDBACK_POLL_INTERVAL_MS } from './adminTheme';
 
 const STATUS_TABS = ['pending', 'reviewed', 'dismissed', 'all'];
 
@@ -31,24 +32,40 @@ const AdminFeedbackScreen = () => {
   const textSecondary = palette.textSecondary;
   const borderColor = palette.border;
 
-  const loadRows = useCallback(async () => {
+  const loadRows = useCallback(async ({ silent = false } = {}) => {
     if (!tabActive) return;
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const status = statusTab === 'all' ? '' : statusTab;
       const data = await getAdminFeedback({ status, limit: 100 });
       setRows(data.results || []);
       setStats(data.stats || { pending: 0, reviewed: 0, dismissed: 0, total: 0 });
     } catch {
-      setRows([]);
+      if (!silent) setRows([]);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [statusTab, tabActive]);
 
   useEffect(() => {
     loadRows();
   }, [loadRows]);
+
+  useEffect(() => {
+    if (!tabActive) return undefined;
+    const poll = () => {
+      if (document.visibilityState === 'visible') loadRows({ silent: true });
+    };
+    const id = window.setInterval(poll, FEEDBACK_POLL_INTERVAL_MS);
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') poll();
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [tabActive, loadRows]);
 
   const openDetail = (row) => {
     setSelected(row);

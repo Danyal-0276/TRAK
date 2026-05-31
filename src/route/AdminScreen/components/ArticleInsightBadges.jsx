@@ -1,69 +1,24 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
-import { Sparkles, GitBranch, CheckCircle2, AlertTriangle } from 'lucide-react-native';
+import { Sparkles, GitBranch, CheckCircle2, AlertTriangle, CheckCircle, ShieldCheck } from 'lucide-react-native';
 import Text from '../../../components/ui/Text';
+import {
+  LABEL_STYLES,
+  getArticleCredibilityMeta,
+  styleForCredibilityScore,
+} from '../../../utils/credibilityIndicator';
 
-export const LABEL_STYLES = {
-  real: { bg: 'rgba(16, 185, 129, 0.12)', color: '#10b981', border: 'rgba(16, 185, 129, 0.35)' },
-  fake: { bg: 'rgba(239, 68, 68, 0.12)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.35)' },
-  suspicious: { bg: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.35)' },
-  unknown: { bg: 'rgba(100, 116, 139, 0.12)', color: '#64748b', border: 'rgba(100, 116, 139, 0.35)' },
+export {
+  LABEL_STYLES,
+  getArticleCredibilityMeta,
+  styleForCredibilityScore,
+} from '../../../utils/credibilityIndicator';
+
+const MODERATION_STYLES = {
+  review: { bg: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.35)' },
+  approved: LABEL_STYLES.real,
+  rejected: LABEL_STYLES.fake,
 };
-
-export function normalizeLabelKey(name, labelCode) {
-  const n = String(name || '').toLowerCase();
-  if (n.includes('fake') || labelCode === 1) return 'fake';
-  if (n.includes('suspicious') || n.includes('mixed') || labelCode === 2) return 'suspicious';
-  if (n.includes('real') || labelCode === 0) return 'real';
-  return 'unknown';
-}
-
-export function getCredibilityScore(article) {
-  if (article.credibility_score != null && !Number.isNaN(Number(article.credibility_score))) {
-    return Math.round(Math.min(100, Math.max(0, Number(article.credibility_score))));
-  }
-  const probs = article.credibility_probs;
-  if (!Array.isArray(probs) || !probs.length) return null;
-  const pReal = Number(probs[0]) || 0;
-  const pFake = Number(probs[1]) || 0;
-  const pSusp = Number(probs[2]) || 0;
-  const net = probs.length >= 3 ? pReal - pFake - 0.25 * pSusp : pReal - pFake;
-  return Math.round(50 + 50 * Math.max(-1, Math.min(1, net)));
-}
-
-export function styleForCredibilityScore(score) {
-  if (score == null) return LABEL_STYLES.unknown;
-  if (score >= 70) return LABEL_STYLES.real;
-  if (score >= 40) return LABEL_STYLES.suspicious;
-  return LABEL_STYLES.fake;
-}
-
-export function getArticleCredibilityMeta(article) {
-  const isProcessed = article.scope === 'processed' || article.category === 'Processed';
-  if (!isProcessed) {
-    const pipeline = article.pipeline_status;
-    if (article.scope === 'raw' && pipeline) {
-      const style =
-        pipeline === 'done'
-          ? LABEL_STYLES.real
-          : pipeline === 'failed'
-            ? LABEL_STYLES.fake
-            : pipeline === 'processing'
-              ? LABEL_STYLES.suspicious
-              : LABEL_STYLES.unknown;
-      return { show: true, labelKey: 'unknown', style, score: null, labelName: pipeline };
-    }
-    return { show: false };
-  }
-  const score = getCredibilityScore(article);
-  const labelKey = normalizeLabelKey(article.credibility_label_name, article.credibility_label);
-  const style = styleForCredibilityScore(score) || LABEL_STYLES[labelKey] || LABEL_STYLES.unknown;
-  const labelName =
-    article.credibility_label_name ||
-    (article.credibility_label === 0 ? 'Real' : article.credibility_label === 1 ? 'Fake' : 'Suspicious');
-  if (article.credibility_label == null && score == null) return { show: false };
-  return { show: true, labelKey, style, score, labelName };
-}
 
 function Chip({ label, value, style, Icon }) {
   return (
@@ -76,18 +31,55 @@ function Chip({ label, value, style, Icon }) {
   );
 }
 
+/** Next to source name — same placement as user feed (green / yellow / red). */
+export function ArticleCredibilitySourceDot({ article, size = 12 }) {
+  const meta = getArticleCredibilityMeta(article);
+  if (!meta.show) return null;
+
+  const { style, labelKey } = meta;
+  const title = meta.score != null ? `${meta.labelName} · ${meta.score}/100` : String(meta.labelName);
+
+  if (labelKey === 'fake') {
+    return <AlertTriangle size={size} color={style.color} strokeWidth={2.5} accessibilityLabel={title} />;
+  }
+
+  return <CheckCircle size={size} color={style.color} fill={style.color} strokeWidth={2.5} accessibilityLabel={title} />;
+}
+
+/** Top-right indicator colored by credibility score (0–100). */
 export function ArticleCredibilityIndicator({ article }) {
   const meta = getArticleCredibilityMeta(article);
   if (!meta.show) return null;
+
   const { style, labelKey, score } = meta;
   const Icon = labelKey === 'fake' ? AlertTriangle : CheckCircle2;
+  const iconFill = labelKey === 'fake' ? 'none' : style.color;
+
   return (
     <View style={styles.indicator}>
-      <Icon size={18} color={style.color} strokeWidth={2.5} />
+      <Icon size={18} color={style.color} fill={iconFill} strokeWidth={2.5} />
       {score != null ? (
         <Text style={{ fontSize: 11, fontWeight: '700', color: style.color, marginTop: 2 }}>{score}</Text>
       ) : null}
     </View>
+  );
+}
+
+function moderationChip(article, textSecondary, borderColor) {
+  const isProcessed = article.scope === 'processed' || article.category === 'Processed';
+  if (!isProcessed) return null;
+
+  const status = String(article.moderation_status || 'review').toLowerCase();
+  const style = MODERATION_STYLES[status] || {
+    bg: 'rgba(100, 116, 139, 0.12)',
+    color: textSecondary,
+    border: borderColor,
+  };
+  const label =
+    status === 'review' ? 'needs review' : status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : status;
+
+  return (
+    <Chip key="moderation" label="Moderation" value={label} style={style} Icon={ShieldCheck} />
   );
 }
 
@@ -99,46 +91,55 @@ export default function ArticleInsightBadges({ article, palette, textSecondary: 
 
   if (isProcessed) {
     const meta = getArticleCredibilityMeta(article);
-    if (!meta.show) return null;
-    const { labelKey, style, labelName, score } = meta;
-    if (score != null) {
-      chips.push(<Chip key="score" label="Credibility score" value={`${score}/100`} style={styleForCredibilityScore(score)} />);
-    }
-    const conf = article.credibility_confidence_pct;
-    if (conf != null && conf !== score) {
-      chips.push(<Chip key="conf" label="Verdict confidence" value={`${conf}%`} style={style} />);
-    }
-    const breakdown = article.credibility_prob_breakdown;
-    if (breakdown && typeof breakdown === 'object') {
+    if (meta.show) {
+      const { labelKey, style, labelName, score } = meta;
+
+      if (score != null) {
+        chips.push(<Chip key="score" label="Credibility score" value={`${score}/100`} style={styleForCredibilityScore(score)} />);
+      }
+
+      const conf = article.credibility_confidence_pct;
+      if (conf != null && conf !== score) {
+        chips.push(<Chip key="conf" label="Verdict confidence" value={`${conf}%`} style={style} />);
+      }
+
+      const breakdown = article.credibility_prob_breakdown;
+      if (breakdown && typeof breakdown === 'object') {
+        chips.push(
+          <Chip
+            key="dist"
+            label="Distribution"
+            value={`R ${breakdown.real}% · F ${breakdown.fake}% · S ${breakdown.suspicious}%`}
+            style={{ bg: 'rgba(100,116,139,0.08)', color: textSecondary, border: borderColor }}
+          />
+        );
+      }
+
       chips.push(
         <Chip
-          key="dist"
-          label="Distribution"
-          value={`R ${breakdown.real}% · F ${breakdown.fake}% · S ${breakdown.suspicious}%`}
-          style={{ bg: 'rgba(100,116,139,0.08)', color: textSecondary, border: borderColor }}
+          key="verdict"
+          label="Verdict"
+          value={String(labelName).replace(/_/g, ' ')}
+          style={style}
+          Icon={labelKey === 'fake' ? AlertTriangle : CheckCircle2}
         />
       );
+
+      if (article.fact_check_verdict && article.fact_check_verdict !== 'skipped') {
+        chips.push(
+          <Chip
+            key="fact"
+            label="Fact check"
+            value={String(article.fact_check_verdict).replace(/_/g, ' ')}
+            style={{ bg: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: 'rgba(59,130,246,0.3)' }}
+            Icon={Sparkles}
+          />
+        );
+      }
     }
-    chips.push(
-      <Chip
-        key="verdict"
-        label="Verdict"
-        value={String(labelName).replace(/_/g, ' ')}
-        style={style}
-        Icon={labelKey === 'fake' ? AlertTriangle : CheckCircle2}
-      />
-    );
-    if (article.fact_check_verdict && article.fact_check_verdict !== 'skipped') {
-      chips.push(
-        <Chip
-          key="fact"
-          label="Fact check"
-          value={String(article.fact_check_verdict).replace(/_/g, ' ')}
-          style={{ bg: 'rgba(59,130,246,0.1)', color: '#3b82f6', border: 'rgba(59,130,246,0.3)' }}
-          Icon={Sparkles}
-        />
-      );
-    }
+
+    const modChip = moderationChip(article, textSecondary, borderColor);
+    if (modChip) chips.push(modChip);
   }
 
   if (article.pipeline_status && article.scope === 'raw') {
