@@ -14,7 +14,7 @@ const TABS = [
   { id: 'settings', icon: SettingsIcon, label: 'Settings' },
 ];
 
-const TabNavigation = ({ activeTab, onTabChange }) => {
+const TabNavigation = ({ activeTab, onTabChange, unreadAlerts = 0 }) => {
   const { palette, isDark } = useAdminTheme();
 
   return (
@@ -26,6 +26,7 @@ const TabNavigation = ({ activeTab, onTabChange }) => {
       >
         {TABS.map(({ id, icon: Icon, label }) => {
           const isActive = activeTab === id;
+          const badge = id === 'notifications' && unreadAlerts > 0 ? unreadAlerts : 0;
 
           // Dark: active = light pill + dark icon; inactive = bordered tile + light icon
           const activeBg = isDark ? palette.textPrimary : palette.textPrimary;
@@ -49,11 +50,20 @@ const TabNavigation = ({ activeTab, onTabChange }) => {
               accessibilityState={{ selected: isActive }}
               accessibilityLabel={label}
             >
-              <Icon
-                size={20}
-                color={isActive ? activeFg : inactiveFg}
-                strokeWidth={isActive ? 2.5 : 2}
-              />
+              <View style={styles.iconWrap}>
+                <Icon
+                  size={20}
+                  color={isActive ? activeFg : inactiveFg}
+                  strokeWidth={isActive ? 2.5 : 2}
+                />
+                {badge > 0 ? (
+                  <View style={styles.badge}>
+                    <Text variant="caption" style={styles.badgeText}>
+                      {badge > 99 ? '99+' : badge}
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
               <Text
                 variant="caption"
                 style={[
@@ -94,6 +104,20 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginRight: 4,
   },
+  iconWrap: { position: 'relative' },
+  badge: {
+    position: 'absolute',
+    top: -5,
+    right: -8,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: '#dc2626',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { color: '#fff', fontSize: 9, fontWeight: '700', lineHeight: 12 },
   tabLabel: {
     marginTop: 5,
     fontSize: 11,

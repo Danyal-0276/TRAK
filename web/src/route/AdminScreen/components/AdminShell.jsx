@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { useAuth } from '../../../context/AuthContext';
@@ -7,7 +7,14 @@ import AdminSidebar from './AdminSidebar';
 import AdminKeepAliveOutlet from './AdminKeepAliveOutlet';
 import { DASHBOARD_POLL_INTERVAL_MS } from '../adminTheme';
 import { dispatchAdminOverviewRefresh } from '../../../utils/adminOverviewEvents';
+import {
+  dispatchAdminNotification,
+  isFeedbackNotificationType,
+} from '../../../utils/adminNotificationsEvents';
 import { isDashboardPath } from '../hooks/useAdminTabActive';
+import { getAdminNotifications } from '../../../api/adminApi';
+import { openAdminNotificationsSocket, isAdminNotificationsWsEnabled } from '../../../api/adminNotificationsRealtime';
+import { useUIFeedback } from '../../../components/ui/UIFeedback';
 import './adminShell.css';
 
 export default function AdminShell() {
@@ -15,12 +22,67 @@ export default function AdminShell() {
   const { user, isAdmin, isSuperAdmin, loading, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { info } = useUIFeedback();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadAlerts, setUnreadAlerts] = useState(0);
+  const socketRef = useRef(null);
+  const reconnectRef = useRef(null);
   const [isDesktop, setIsDesktop] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(min-width: 1024px)').matches
   );
 
   const sidebarVisible = isDesktop || sidebarOpen;
+
+  const refreshUnreadCount = useCallback(async () => {
+    try {
+      const data = await getAdminNotifications();
+      const unread = (data.results || []).filter((n) => !n.read).length;
+      setUnreadAlerts(unread);
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  const handleLiveNotification = useCallback(
+    (n) => {
+      if (!n?.id) return;
+      dispatchAdminNotification(n);
+      setUnreadAlerts((prev) => prev + 1);
+      if (isFeedbackNotificationType(n.type)) {
+        info(n.text || 'New user feedback received');
+      }
+    },
+    [info]
+  );
+
+  useEffect(() => {
+    if (!isAdmin || loading) return undefined;
+    refreshUnreadCount();
+    if (!isAdminNotificationsWsEnabled()) return undefined;
+
+    const connect = () => {
+      const ws = openAdminNotificationsSocket((payload) => {
+        if (payload?.type !== 'notification.created' || !payload.notification?.id) return;
+        handleLiveNotification(payload.notification);
+      });
+      if (!ws) return;
+      socketRef.current = ws;
+      ws.onclose = () => {
+        reconnectRef.current = window.setTimeout(connect, 2500);
+      };
+    };
+    connect();
+    return () => {
+      if (socketRef.current) socketRef.current.close();
+      if (reconnectRef.current) window.clearTimeout(reconnectRef.current);
+    };
+  }, [isAdmin, loading, refreshUnreadCount, handleLiveNotification]);
+
+  useEffect(() => {
+    if (location.pathname === '/admin/notifications') {
+      refreshUnreadCount();
+    }
+  }, [location.pathname, refreshUnreadCount]);
 
   useEffect(() => {
     setSidebarOpen(false);
@@ -114,6 +176,7 @@ export default function AdminShell() {
         user={user}
         isSuperAdmin={isSuperAdmin}
         onLogout={handleLogout}
+        unreadAlerts={unreadAlerts}
       />
 
       <div className="admin-shell__main">

@@ -6,9 +6,9 @@ function wsBase() {
   return API_BASE.replace('http://', 'ws://');
 }
 
-/** WebSocket needs ASGI (daphne). Off unless VITE_ENABLE_NOTIFICATIONS_WS=true in .env */
+/** WebSocket needs ASGI (daphne). On unless VITE_ENABLE_NOTIFICATIONS_WS=false. */
 export function isAdminNotificationsWsEnabled() {
-  return import.meta.env.VITE_ENABLE_NOTIFICATIONS_WS === 'true';
+  return import.meta.env.VITE_ENABLE_NOTIFICATIONS_WS !== 'false';
 }
 
 export function openAdminNotificationsSocket(onMessage) {

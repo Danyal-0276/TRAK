@@ -9,7 +9,8 @@ import { useTheme } from '../../../theme/ThemeContext';
 export const ArticleSourceInfo = ({ source, time, verified, trending, readTime }) => {
     const { theme } = useTheme();
     const { colors } = theme;
-    
+    const sourceLabel = String(source || 'News').trim() || 'News';
+
     return (
         <View style={styles.container}>
             <View style={[
@@ -17,12 +18,12 @@ export const ArticleSourceInfo = ({ source, time, verified, trending, readTime }
                 { backgroundColor: trending ? colors.primary : colors.textSecondary }
             ]}>
                 <Text style={[styles.sourceIconText, { color: colors.textInverse }]}>
-                    {source.substring(0, 2).toUpperCase()}
+                    {sourceLabel.substring(0, 2).toUpperCase()}
                 </Text>
             </View>
             <View style={styles.details}>
                 <View style={styles.nameRow}>
-                    <Text style={[styles.sourceName, { color: colors.textPrimary }]}>{source}</Text>
+                    <Text style={[styles.sourceName, { color: colors.textPrimary }]}>{sourceLabel}</Text>
                     {verified && (
                         <CheckCircle size={14} color={colors.verified || colors.info} fill={colors.verified || colors.info} />
                     )}

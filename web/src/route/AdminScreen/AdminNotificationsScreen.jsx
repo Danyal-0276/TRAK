@@ -7,6 +7,7 @@ import AdminPageHeader from './components/AdminPageHeader';
 import { useAdminPageMeta } from './adminPageMeta';
 import { getAdminNotifications } from '../../api/adminApi';
 import { openAdminNotificationsSocket, isAdminNotificationsWsEnabled } from '../../api/adminNotificationsRealtime';
+import { subscribeAdminNotifications } from '../../utils/adminNotificationsEvents';
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 
 const AdminNotificationsScreen = () => {
@@ -98,6 +99,28 @@ const AdminNotificationsScreen = () => {
             reconnectAttemptsRef.current = 0;
         };
     }, [tabActive]);
+
+    useEffect(() => {
+        return subscribeAdminNotifications((n) => {
+            if (!n?.id) return;
+            setRows((prev) => {
+                if (prev.some((r) => String(r.id) === String(n.id))) return prev;
+                return [
+                    {
+                        id: n.id,
+                        type: n.type || 'alert',
+                        text: n.text || '',
+                        details: n.details || '',
+                        read: false,
+                        important: !!n.important,
+                        meta: n.meta || {},
+                        created_at: n.created_at || new Date().toISOString(),
+                    },
+                    ...prev,
+                ];
+            });
+        });
+    }, []);
 
     const filtered = rows.filter((n) => {
         if (activeTab === 'Errors') return String(n.type || '').startsWith('admin_pipeline');

@@ -192,13 +192,26 @@ const AdminScreen = ({ navigation }) => {
           return [
             {
               id: n.id,
+              type: n.type || 'alert',
               title: n.type || 'alert',
+              source: (n.type || 'alert').replace(/_/g, ' '),
               message: n.text || n.details || '',
+              details: n.details || '',
               status: 'unread',
+              read: false,
+              important: !!n.important,
+              meta: n.meta || {},
+              time: n.created_at
+                ? String(n.created_at).slice(0, 16).replace('T', ' ')
+                : '',
+              created_at: n.created_at,
             },
             ...prev,
           ];
         });
+        if (n.type === 'admin_user_feedback' || n.type === 'admin_user_report') {
+          showSuccess(n.text || 'New user feedback');
+        }
       });
       if (!ws) return;
       adminSocketRef.current = ws;
@@ -211,7 +224,7 @@ const AdminScreen = ({ navigation }) => {
       if (adminSocketRef.current) adminSocketRef.current.close();
       if (adminReconnectRef.current) clearTimeout(adminReconnectRef.current);
     };
-  }, [isAdmin]);
+  }, [isAdmin, showSuccess]);
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -905,7 +918,11 @@ const AdminScreen = ({ navigation }) => {
       />
 
       <Header activeTab={activeTab} />
-      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      <TabNavigation
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        unreadAlerts={notifications.filter((n) => !n.read).length}
+      />
 
       <Animated.View
         style={{

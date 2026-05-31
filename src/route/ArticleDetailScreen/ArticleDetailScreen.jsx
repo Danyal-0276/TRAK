@@ -44,7 +44,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     const { colors } = theme;
     const initialArticle = normalizeArticleForDetail(route.params?.article || {});
     const [article, setArticle] = useState(initialArticle);
-    const [reaction, setReactionState] = useState(null); // 'up' | 'down' | null
+    const [reaction, setReactionState] = useState(null);
     const [reactionPending, setReactionPending] = useState(false);
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [likeCount, setLikeCount] = useState(Number(initialArticle.like_count ?? 0));
@@ -65,7 +65,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         [articleBody, listenText]
     );
 
-    // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
     const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -160,7 +159,16 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 useNativeDriver: true,
             }),
         ]).start();
-    }, []);
+    }, [fadeAnim, slideAnim, scaleAnim, circle1Anim, circle2Anim]);
+
+    useFocusEffect(
+        useCallback(() => {
+            const unsub = navigation.addListener('beforeRemove', () => {
+                stopNativePlayback();
+            });
+            return unsub;
+        }, [navigation])
+    );
 
     const handleLike = async () => {
         if (reactionPending) return;
@@ -244,15 +252,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         navigation.navigate('MainTabs', { screen: 'Home' });
     };
 
-    useFocusEffect(
-        useCallback(() => {
-            const unsub = navigation.addListener('beforeRemove', () => {
-                stopNativePlayback();
-            });
-            return unsub;
-        }, [navigation])
-    );
-
     return (
         <>
         <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
@@ -261,7 +260,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 backgroundColor={colors.background} 
             />
             
-            {/* Enhanced gradient background */}
             <LinearGradient
                 colors={theme.mode === 'dark' 
                     ? [colors.background, colors.backgroundSecondary, colors.background]
@@ -272,7 +270,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 style={styles.gradientBackground}
             />
             
-            {/* Animated decorative circles */}
             <Animated.View 
                 style={[
                     styles.accentCircle1, 
@@ -309,7 +306,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
             />
 
             <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]}>
-                {/* Header */}
                 <Animated.View
                     style={{
                         opacity: fadeAnim,
@@ -319,7 +315,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                     <ArticleDetailHeader onBackPress={handleBack} onMorePress={handleMoreMenu} />
                 </Animated.View>
 
-                {/* Article Content */}
                 {detailLoading ? (
                     <View style={{ padding: 16, flex: 1 }}>
                         <FeedSkeleton colors={colors} count={2} />
@@ -359,7 +354,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                             },
                         ]}
                     >
-                        {/* Source Information */}
                         <Animated.View
                             style={{
                                 opacity: fadeAnim,
@@ -389,7 +383,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                             onActiveLineIndex={setActiveTtsLineIndex}
                         />
 
-                        {/* Article Content */}
                         <Animated.View
                             style={{
                                 opacity: fadeAnim,
@@ -414,17 +407,16 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                             />
                         </Animated.View>
 
-                        {/* Bottom Spacer for Actions */}
                         <View style={styles.bottomSpacer} />
                     </Animated.View>
                     </View>
                 </ScrollView>
                 )}
 
-                {/* Bottom Actions */}
                 <Animated.View
+                    pointerEvents={detailLoading || (fetchError && !article.title) ? 'none' : 'auto'}
                     style={{
-                        opacity: fadeAnim,
+                        opacity: detailLoading || (fetchError && !article.title) ? 0 : fadeAnim,
                         transform: [
                             {
                                 translateY: slideAnim.interpolate({

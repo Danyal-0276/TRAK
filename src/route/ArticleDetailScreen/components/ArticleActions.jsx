@@ -1,144 +1,153 @@
-// ============================================
-// FILE: components/ArticleActions.jsx
-// ============================================
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { ChevronUp, ChevronDown, Bookmark, Share } from 'lucide-react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { ChevronUp, ChevronDown, Bookmark, Share2 } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../theme/ThemeContext';
 
 export const ArticleActions = ({
-    likeCount,
-    dislikeCount,
-    isLiked,
-    isDisliked,
-    isBookmarked,
-    onLike,
-    onDislike,
-    onBookmark,
-    onShare,
+  likeCount,
+  dislikeCount,
+  isLiked,
+  isDisliked,
+  isBookmarked,
+  onLike,
+  onDislike,
+  onBookmark,
+  onShare,
 }) => {
-    const { theme } = useTheme();
-    const { colors } = theme;
-    
-    return (
-        <View style={[styles.container, { 
-            backgroundColor: colors.surface,
-            borderTopColor: colors.border,
-            shadowColor: colors.shadow,
-        }]}>
-            <View style={styles.actions}>
-                {/* Like Button */}
-                <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={onLike}
-                >
-                    <ChevronUp 
-                        size={22} 
-                        color={isLiked ? colors.textPrimary : colors.textTertiary} 
-                        strokeWidth={2.5}
-                    />
-                    <Text style={[
-                        styles.actionText,
-                        { color: colors.textTertiary },
-                        isLiked && { color: colors.textPrimary }
-                    ]}>
-                        {likeCount}
-                    </Text>
-                </TouchableOpacity>
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const insets = useSafeAreaInsets();
+  const isDark = theme.mode === 'dark';
 
-                {/* Dislike Button */}
-                <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={onDislike}
-                >
-                    <ChevronDown 
-                        size={22} 
-                        color={isDisliked ? colors.textPrimary : colors.textTertiary} 
-                        strokeWidth={2.5}
-                    />
-                    <Text style={[
-                        styles.actionText,
-                        { color: colors.textTertiary },
-                        isDisliked && { color: colors.textPrimary }
-                    ]}>
-                        {dislikeCount}
-                    </Text>
-                </TouchableOpacity>
+  const dockBg = isDark ? colors.surface : colors.surface;
+  const pillBg = isDark ? colors.backgroundSecondary : colors.background;
 
-                {/* Bookmark Button */}
-                <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={onBookmark}
-                >
-                    <Bookmark 
-                        size={20} 
-                        color={isBookmarked ? colors.textPrimary : colors.textTertiary}
-                        fill={isBookmarked ? colors.textPrimary : 'none'}
-                        strokeWidth={2}
-                    />
-                    <Text style={[
-                        styles.actionText,
-                        { color: colors.textTertiary },
-                        isBookmarked && { color: colors.textPrimary }
-                    ]}>
-                        Save
-                    </Text>
-                </TouchableOpacity>
+  const renderBtn = (icon, label, active, onPress, count) => (
+    <TouchableOpacity style={[styles.btn, { backgroundColor: active ? colors.primary + '14' : 'transparent' }]} onPress={onPress} activeOpacity={0.75}>
+      {icon}
+      <Text style={[styles.btnLabel, { color: active ? colors.textPrimary : colors.textSecondary }]}>
+        {count != null ? count : label}
+      </Text>
+    </TouchableOpacity>
+  );
 
-                {/* Share Button */}
-                <TouchableOpacity 
-                    style={styles.actionButton}
-                    onPress={onShare}
-                >
-                    <Share 
-                        size={20} 
-                        color={colors.textPrimary} 
-                        strokeWidth={2}
-                    />
-                    <Text style={[styles.actionText, { color: colors.textPrimary }]}>Share</Text>
-                </TouchableOpacity>
-            </View>
+  return (
+    <View
+      style={[
+        styles.outer,
+        {
+          paddingBottom: Math.max(insets.bottom, 12),
+          backgroundColor: 'transparent',
+        },
+      ]}
+      pointerEvents="box-none"
+    >
+      <View
+        style={[
+          styles.dock,
+          {
+            backgroundColor: dockBg,
+            borderColor: colors.borderLight,
+            shadowColor: colors.shadowDark || '#000',
+          },
+        ]}
+      >
+        <View style={[styles.pill, { backgroundColor: pillBg }]}>
+          {renderBtn(
+            <ChevronUp size={20} color={isLiked ? colors.primary : colors.textTertiary} strokeWidth={2.5} />,
+            'Up',
+            isLiked,
+            onLike,
+            likeCount
+          )}
+          <View style={[styles.sep, { backgroundColor: colors.borderLight }]} />
+          {renderBtn(
+            <ChevronDown size={20} color={isDisliked ? colors.error : colors.textTertiary} strokeWidth={2.5} />,
+            'Down',
+            isDisliked,
+            onDislike,
+            dislikeCount
+          )}
         </View>
-    );
+
+        <TouchableOpacity
+          style={[styles.roundBtn, { backgroundColor: isBookmarked ? colors.primary : pillBg, borderColor: colors.borderLight }]}
+          onPress={onBookmark}
+          activeOpacity={0.8}
+        >
+          <Bookmark
+            size={20}
+            color={isBookmarked ? colors.textOnPrimary || '#fff' : colors.textPrimary}
+            fill={isBookmarked ? colors.textOnPrimary || '#fff' : 'none'}
+          />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.roundBtn, { backgroundColor: pillBg, borderColor: colors.borderLight }]}
+          onPress={onShare}
+          activeOpacity={0.8}
+        >
+          <Share2 size={20} color={colors.textPrimary} strokeWidth={2} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
-    container: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        paddingTop: 14,
-        paddingBottom: 20,
-        paddingHorizontal: 16,
-        borderTopWidth: 1,
-        shadowOffset: {
-            width: 0,
-            height: -2,
-        },
-        shadowOpacity: 0.06,
-        shadowRadius: 8,
-        elevation: 8,
-    },
-    actions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingVertical: 4,
-    },
-    actionButton: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: 8,
-        paddingHorizontal: 12,
-        borderRadius: 4,
-        backgroundColor: 'transparent',
-        flex: 1,
-    },
-    actionText: {
-        fontSize: 13,
-        fontWeight: '700',
-        textAlign: 'center',
-        marginTop: 4,
-    },
+  outer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 16,
+  },
+  dock: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+      },
+      android: { elevation: 10 },
+    }),
+  },
+  pill: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  btn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+  },
+  btnLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  sep: {
+    width: 1,
+    height: 24,
+  },
+  roundBtn: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });

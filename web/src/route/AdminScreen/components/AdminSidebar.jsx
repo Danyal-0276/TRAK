@@ -25,7 +25,7 @@ const MAIN_NAV = [
   { path: '/admin/users', icon: Users, label: 'Users' },
   { path: '/admin/admins', icon: Shield, label: 'Admins' },
   { path: '/admin/feedback', icon: MessageSquare, label: 'User feedback' },
-  { path: '/admin/notifications', icon: Bell, label: 'Notifications' },
+  { path: '/admin/notifications', icon: Bell, label: 'Notifications', badge: true },
 ];
 
 const SYSTEM_NAV = [
@@ -50,13 +50,15 @@ export default function AdminSidebar({
   user,
   isSuperAdmin,
   onLogout,
+  unreadAlerts = 0,
 }) {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
   const isDark = theme.mode === 'dark';
 
-  const renderLink = ({ path, icon: Icon, label }) => {
+  const renderLink = ({ path, icon: Icon, label, badge }) => {
     const active = linkActive(location.pathname, path);
+    const showBadge = badge && unreadAlerts > 0;
     return (
       <NavLink
         key={path}
@@ -66,6 +68,11 @@ export default function AdminSidebar({
       >
         <span className="admin-sidebar__link-icon">
           <Icon size={18} strokeWidth={active ? 2.5 : 2} />
+          {showBadge ? (
+            <span className="admin-sidebar__badge" aria-label={`${unreadAlerts} unread alerts`}>
+              {unreadAlerts > 99 ? '99+' : unreadAlerts}
+            </span>
+          ) : null}
         </span>
         {label}
       </NavLink>
