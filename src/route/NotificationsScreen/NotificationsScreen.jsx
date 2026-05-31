@@ -6,7 +6,12 @@ import { useNavigation } from "@react-navigation/native";
 import LinearGradient from "react-native-linear-gradient";
 import NotificationTabs from "./components/NotificationTabs";
 import * as notificationsApi from "../../api/notificationsApi";
-import { openNotificationsSocket } from "../../api/notificationsRealtime";
+import { openNotificationsSocket, NOTIFICATIONS_POLL_FALLBACK_MS } from "../../api/notificationsRealtime";
+import {
+  dispatchNotificationRead,
+  dispatchAllNotificationsRead,
+  dispatchNotificationsRefresh,
+} from "../../utils/userNotificationsEvents";
 import { useTheme } from "../../theme/ThemeContext";
 import Text from "../../components/ui/Text";
 import AccentTabHeader from "../../components/ui/AccentTabHeader";
@@ -37,6 +42,7 @@ const NotificationsScreen = () => {
   const socketRef = useRef(null);
   const reconnectRef = useRef(null);
   const pollRef = useRef(null);
+  const wsConnectedRef = useRef(false);
 
   useEffect(() => {
     loadNotifications();
@@ -74,11 +80,14 @@ const NotificationsScreen = () => {
       }),
     ]).start();
     startRealtime();
-    pollRef.current = setInterval(loadNotifications, 30000);
+    pollRef.current = setInterval(() => {
+      if (!wsConnectedRef.current) loadNotifications({ silent: true });
+    }, NOTIFICATIONS_POLL_FALLBACK_MS);
     return () => {
       if (socketRef.current) socketRef.current.close();
       if (reconnectRef.current) clearTimeout(reconnectRef.current);
       if (pollRef.current) clearInterval(pollRef.current);
+      wsConnectedRef.current = false;
     };
   }, []);
 
@@ -93,7 +102,11 @@ const NotificationsScreen = () => {
     });
     if (!ws) return;
     socketRef.current = ws;
+    ws.onopen = () => {
+      wsConnectedRef.current = true;
+    };
     ws.onclose = () => {
+      wsConnectedRef.current = false;
       reconnectRef.current = setTimeout(startRealtime, 2500);
     };
   };
@@ -105,14 +118,16 @@ const NotificationsScreen = () => {
 
   const handleListScroll = handleCollapsibleScroll;
 
-  const loadNotifications = async () => {
+  const loadNotifications = async ({ silent = false } = {}) => {
     try {
+      if (!silent) setLoading(true);
       const data = await notificationsApi.getNotifications();
       setNotifications(data);
+      dispatchNotificationsRefresh();
     } catch (error) {
       console.error("Error loading notifications:", error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -125,6 +140,7 @@ const NotificationsScreen = () => {
           : notification
       );
       setNotifications(updatedNotifications);
+      dispatchNotificationRead(notificationId);
     } catch (error) {
       console.error("Error marking as read:", error);
     }
@@ -152,16 +168,24 @@ const NotificationsScreen = () => {
         read: true
       }));
       setNotifications(updatedNotifications);
+      dispatchAllNotificationsRead();
     } catch (error) {
       console.error("Error marking all as read:", error);
     }
   };
 
-  const handleNotificationPress = (notificationId) => {
-    // Navigate to detail screen and pass the markAsRead function
-    navigation.navigate('NotificationDetail', { 
-      notificationId,
-      onMarkAsRead: markAsRead 
+  const handleNotificationPress = (notification) => {
+    const articleId = notification?.meta?.article_id;
+    if (articleId && (notification.type === 'keyword_match' || notification.type === 'keyword')) {
+      if (!notification.read) {
+        markAsRead(notification.id);
+      }
+      navigation.navigate('ArticleDetail', { articleId: String(articleId) });
+      return;
+    }
+    navigation.navigate('NotificationDetail', {
+      notificationId: notification.id,
+      onMarkAsRead: markAsRead,
     });
   };
 

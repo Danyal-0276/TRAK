@@ -273,6 +273,24 @@ export function activityAreaData(snapshot) {
   }));
 }
 
+export function feedbackStatusPieData(snapshot, palette) {
+  const stats = snapshot?.feedback_stats;
+  if (!stats || !palette) return [];
+  return [
+    { name: 'Pending', value: Number(stats.pending) || 0, fill: palette.warning },
+    { name: 'Reviewed', value: Number(stats.reviewed) || 0, fill: palette.success },
+    { name: 'Dismissed', value: Number(stats.dismissed) || 0, fill: palette.textTertiary },
+  ].filter((d) => d.value > 0);
+}
+
+export function feedbackCategoryBarData(snapshot, limit = 8) {
+  const byCat = snapshot?.feedback_stats?.by_category || {};
+  return Object.entries(byCat)
+    .map(([name, count]) => ({ name: name.replace(/_/g, ' '), count: Number(count) || 0 }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit);
+}
+
 export function emptyAnalyticsSnapshot() {
   return {
     raw_total: 0,

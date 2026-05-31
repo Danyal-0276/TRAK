@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { 
     Bell, 
@@ -12,10 +13,16 @@ import {
     Clock
 } from 'lucide-react';
 import * as notificationsApi from '../../api/notificationsApi';
-import { openNotificationsSocket } from '../../api/notificationsRealtime';
+import { openNotificationsSocket, isNotificationsWsEnabled, NOTIFICATIONS_POLL_FALLBACK_MS } from '../../api/notificationsRealtime';
+import {
+  dispatchNotificationRead,
+  dispatchAllNotificationsRead,
+  dispatchNotificationsRefresh,
+} from '../../utils/userNotificationsEvents';
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 
 const NotificationsScreen = () => {
+    const navigate = useNavigate();
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
@@ -29,7 +36,7 @@ const NotificationsScreen = () => {
 
     useEffect(() => {
         loadNotifications();
-        const poll = setInterval(loadNotifications, 30000);
+        let pollId = null;
         const connect = () => {
             const ws = openNotificationsSocket((payload) => {
                 if (payload?.type !== 'notification.created' || !payload.notification?.id) return;
@@ -46,8 +53,11 @@ const NotificationsScreen = () => {
             };
         };
         connect();
+        if (!isNotificationsWsEnabled()) {
+            pollId = setInterval(() => loadNotifications({ silent: true }), NOTIFICATIONS_POLL_FALLBACK_MS);
+        }
         return () => {
-            clearInterval(poll);
+            if (pollId) clearInterval(pollId);
             if (socketRef.current) socketRef.current.close();
             if (reconnectRef.current) clearTimeout(reconnectRef.current);
         };
@@ -57,16 +67,17 @@ const NotificationsScreen = () => {
         filterNotifications();
     }, [activeTab, notifications]);
 
-    const loadNotifications = async () => {
+    const loadNotifications = async ({ silent = false } = {}) => {
         try {
-            setLoading(true);
+            if (!silent) setLoading(true);
             const data = await notificationsApi.getNotifications();
             setNotifications(data);
             setFilteredNotifications(data);
+            dispatchNotificationsRefresh();
         } catch (error) {
             console.error("Error loading notifications:", error);
         } finally {
-            setLoading(false);
+            if (!silent) setLoading(false);
         }
     };
 
@@ -92,6 +103,7 @@ const NotificationsScreen = () => {
             setNotifications(prev => 
                 prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
             );
+            dispatchNotificationRead(notificationId);
         } catch (error) {
             console.error("Error marking as read:", error);
         }
@@ -101,6 +113,7 @@ const NotificationsScreen = () => {
         try {
             await notificationsApi.markAllAsRead();
             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+            dispatchAllNotificationsRead();
         } catch (error) {
             console.error("Error marking all as read:", error);
         }
@@ -109,6 +122,11 @@ const NotificationsScreen = () => {
     const handleNotificationClick = (notification) => {
         if (!notification.read) {
             markAsRead(notification.id);
+        }
+        const articleId = notification.meta?.article_id;
+        if (articleId && (notification.type === 'keyword_match' || notification.type === 'keyword')) {
+            navigate(`/article/${encodeURIComponent(String(articleId))}`);
+            return;
         }
         setSelectedNotification(notification);
     };

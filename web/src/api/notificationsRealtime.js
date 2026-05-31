@@ -7,8 +7,11 @@ function wsBase() {
 }
 
 export function isNotificationsWsEnabled() {
-  return import.meta.env.VITE_ENABLE_NOTIFICATIONS_WS === 'true';
+  return import.meta.env.VITE_ENABLE_NOTIFICATIONS_WS !== 'false';
 }
+
+/** HTTP fallback when live WebSocket is disabled. */
+export const NOTIFICATIONS_POLL_FALLBACK_MS = 60_000;
 
 /** Live push needs ASGI (e.g. daphne). Off unless VITE_ENABLE_NOTIFICATIONS_WS=true. */
 export function openNotificationsSocket(onMessage) {

@@ -158,6 +158,16 @@ const NotificationDetailScreen = () => {
   }
 
   const iconColor = getIconColor(notification.type);
+  const articleId = notification.meta?.article_id;
+  const isArticleAlert = Boolean(
+    articleId && (notification.type === 'keyword_match' || notification.type === 'keyword')
+  );
+  const isSocialType = ['mention', 'like', 'comment', 'follow'].includes(notification.type);
+
+  const openArticle = () => {
+    if (!articleId) return;
+    navigation.navigate('ArticleDetail', { articleId: String(articleId) });
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
@@ -290,11 +300,14 @@ const NotificationDetailScreen = () => {
             
             <View style={styles.headerText}>
               <Text variant="title" style={[styles.notificationTitle, { color: colors.textPrimary }]}>
-                {notification.type === "mention" && "Mention"}
-                {notification.type === "keyword" && "Keyword Alert"}
-                {notification.type === "like" && "Like"}
-                {notification.type === "comment" && "Comment"}
-                {notification.type === "follow" && "New Follower"}
+                {notification.type === 'keyword_match' && 'Keyword alert'}
+                {notification.type === 'welcome_back' && 'Welcome back'}
+                {notification.type === 'mention' && 'Mention'}
+                {notification.type === 'keyword' && 'Keyword Alert'}
+                {notification.type === 'like' && 'Like'}
+                {notification.type === 'comment' && 'Comment'}
+                {notification.type === 'follow' && 'New Follower'}
+                {!['keyword_match', 'welcome_back', 'mention', 'keyword', 'like', 'comment', 'follow'].includes(notification.type) && 'Notification'}
               </Text>
               <Text variant="caption" color={colors.textSecondary} style={styles.notificationTime}>
                 {notification.time}
@@ -335,7 +348,8 @@ const NotificationDetailScreen = () => {
               </Text>
             </View>
 
-            {/* User Info Card */}
+            {/* User Info Card — social types only */}
+            {isSocialType ? (
             <Animated.View 
               style={[
                 styles.userInfo,
@@ -373,9 +387,20 @@ const NotificationDetailScreen = () => {
                 </Text>
               </View>
             </Animated.View>
+            ) : null}
 
             {/* Action Buttons */}
             <View style={styles.actions}>
+              {isArticleAlert ? (
+                <TouchableOpacity
+                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                  activeOpacity={0.8}
+                  onPress={openArticle}
+                >
+                  <Hash size={18} color={colors.surface} />
+                  <Text variant="body" color={colors.surface} style={styles.actionButtonText}>View article</Text>
+                </TouchableOpacity>
+              ) : null}
               {notification.type === "mention" && (
                 <TouchableOpacity 
                   style={[styles.actionButton, { backgroundColor: colors.primary }]}

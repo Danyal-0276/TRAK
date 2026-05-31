@@ -34,7 +34,7 @@ import {
   deleteAdminConnection,
 } from '../../api/adminApi';
 import { loadAdminOverview } from './loadAdminOverview';
-import { DASHBOARD_POLL_INTERVAL_MS } from './adminTheme';
+import { DASHBOARD_POLL_INTERVAL_MS, ARTICLES_POLL_INTERVAL_MS } from './adminTheme';
 import {
   buildDashboardStatCards,
   KPI_TAB_NAV,
@@ -51,13 +51,16 @@ import UsersTab from './screens/UsersTab';
 import AdminsTab from './screens/AdminsTab';
 import ArticlesTab from './screens/ArticlesTab';
 import NotificationsTab from './screens/NotificationsTab';
+import FeedbackTab from './screens/FeedbackTab';
 import SettingsTab from './screens/SettingsTab';
+import AdminArticleReviewModal from './components/AdminArticleReviewModal';
 import EditModal from './components/EditModal';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { buildArticleDetailParams } from '../../utils/articleNavigation';
-import { getArticlesApiScope, filterArticlesForDisplay } from '../../utils/adminArticleFilters';
+import { getArticlesFetchParams, filterArticlesForDisplay } from '../../utils/adminArticleFilters';
 import { ADMIN_TAB_ROUTES } from '../../navigation/adminTabIds';
 import { openAdminNotificationsSocket } from '../../api/adminNotificationsRealtime';
+import { dispatchAdminFeedbackRefresh } from '../../utils/adminNotificationsEvents';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PIPELINE_BATCH_SIZE = 15;
@@ -97,13 +100,18 @@ function mapAdminArticleRow(doc) {
     fake_detection_label: doc.fake_detection_label,
     fact_check_verdict: doc.fact_check_verdict,
     fact_check_hits: doc.fact_check_hits,
+    fact_check_provider: doc.fact_check_provider,
+    credibility_confidence_pct: doc.credibility_confidence_pct,
+    credibility_prob_breakdown: doc.credibility_prob_breakdown,
+    credibility_label_prob: doc.credibility_label_prob,
+    image_url: doc.image_url,
     source_key: doc.source_key,
     topic_keywords: doc.topic_keywords || [],
   };
 }
 
 const AdminScreen = ({ navigation }) => {
-  const { theme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const { user, isAdmin, isSuperAdmin, bootstrapped, logout } = useAuth();
   const { palette: adminPalette } = useAdminTheme();
   const isDark = theme.mode === 'dark';
@@ -129,6 +137,7 @@ const AdminScreen = ({ navigation }) => {
   const [refreshing, setRefreshing] = useState(false);
   const [liveUpdatedAt, setLiveUpdatedAt] = useState(null);
   const [articlePipelineFilter, setArticlePipelineFilter] = useState('');
+  const [articleCounts, setArticleCounts] = useState(null);
   const [articlesLoading, setArticlesLoading] = useState(false);
   const [listsLoading, setListsLoading] = useState(false);
   const [connectionUrlInput, setConnectionUrlInput] = useState('');
@@ -139,6 +148,8 @@ const AdminScreen = ({ navigation }) => {
   const [settings, setSettings] = useState({});
   const [categories, setCategories] = useState([]);
   const [connections, setConnections] = useState([]);
+  const connectionsRef = useRef([]);
+  const hasBootstrappedRef = useRef(false);
   const [categoryInput, setCategoryInput] = useState('');
   const [connectionInput, setConnectionInput] = useState('');
   const [subInputs, setSubInputs] = useState({});
@@ -148,6 +159,7 @@ const AdminScreen = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const [reviewArticle, setReviewArticle] = useState(null);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -181,13 +193,27 @@ const AdminScreen = ({ navigation }) => {
           return [
             {
               id: n.id,
+              type: n.type || 'alert',
               title: n.type || 'alert',
+              source: (n.type || 'alert').replace(/_/g, ' '),
               message: n.text || n.details || '',
+              details: n.details || '',
               status: 'unread',
+              read: false,
+              important: !!n.important,
+              meta: n.meta || {},
+              time: n.created_at
+                ? String(n.created_at).slice(0, 16).replace('T', ' ')
+                : '',
+              created_at: n.created_at,
             },
             ...prev,
           ];
         });
+        if (n.type === 'admin_user_feedback' || n.type === 'admin_user_report') {
+          showSuccess(n.text || 'New user feedback');
+          dispatchAdminFeedbackRefresh({ notification: n });
+        }
       });
       if (!ws) return;
       adminSocketRef.current = ws;
@@ -200,7 +226,7 @@ const AdminScreen = ({ navigation }) => {
       if (adminSocketRef.current) adminSocketRef.current.close();
       if (adminReconnectRef.current) clearTimeout(adminReconnectRef.current);
     };
-  }, [isAdmin]);
+  }, [isAdmin, showSuccess]);
 
   useEffect(() => {
     if (!bootstrapped) return;
@@ -213,6 +239,23 @@ const AdminScreen = ({ navigation }) => {
       navigation.reset({ index: 0, routes: [{ name: 'NewsFeed' }] });
     }
   }, [bootstrapped, user, isAdmin, navigation]);
+
+  useEffect(() => {
+    connectionsRef.current = connections;
+  }, [connections]);
+
+  const updateConnectionsIfChanged = useCallback((next) => {
+    const normalized = normAdminConnections(next || []);
+    setConnections((prev) => {
+      if (
+        prev.length === normalized.length &&
+        prev.every((row, i) => row.slug === normalized[i]?.slug && row.url === normalized[i]?.url)
+      ) {
+        return prev;
+      }
+      return normalized;
+    });
+  }, []);
 
   useEffect(() => {
     hasSnapshotRef.current = Boolean(serverAnalytics);
@@ -233,13 +276,13 @@ const AdminScreen = ({ navigation }) => {
       const mapped = (data.articles || []).map(mapAdminArticleRow);
       const enriched = enrichAnalyticsSnapshot(data.serverAnalytics, mapped, {
         users: data.users,
-        connections: data.connections?.length ? data.connections : connections,
+        connections: data.connections?.length ? data.connections : connectionsRef.current,
       });
       const hasKpis =
         isAnalyticsPayload(data.serverAnalytics) ||
         mapped.length > 0 ||
         (data.users?.length ?? 0) > 0 ||
-        (data.connections?.length ?? connections.length) > 0;
+        (data.connections?.length ?? connectionsRef.current.length) > 0;
       if (hasKpis) {
         setServerAnalytics({ ...enriched, _refreshedAt: Date.now() });
         setAnalyticsError(
@@ -250,7 +293,7 @@ const AdminScreen = ({ navigation }) => {
         if (manual || !silent) setServerAnalytics(null);
       }
       if (data.modelMetrics) setModelMetrics(data.modelMetrics);
-      if (data.connections?.length) setConnections(data.connections);
+      if (data.connections?.length) updateConnectionsIfChanged(data.connections);
       setLiveUpdatedAt(new Date());
     } catch (e) {
       setAnalyticsError(e?.message || 'Failed to load analytics.');
@@ -259,19 +302,29 @@ const AdminScreen = ({ navigation }) => {
       if (!silent) setRefreshing(false);
       setOverviewLoading(false);
     }
-  }, [connections]);
+  }, [updateConnectionsIfChanged]);
 
-  const loadArticles = useCallback(async () => {
-    const apiScope = getArticlesApiScope(articlePipelineFilter);
-    setArticlesLoading(true);
+  const loadArticles = useCallback(async ({ silent = false } = {}) => {
+    const { scope, pipelineStatus, moderationStatus } = getArticlesFetchParams(articlePipelineFilter);
+    if (!silent) setArticlesLoading(true);
     try {
-      const res = await getAdminArticles({ page: 1, pageSize: 100, scope: apiScope });
+      const res = await getAdminArticles({
+        page: 1,
+        pageSize: 100,
+        scope,
+        pipelineStatus,
+        moderationStatus,
+      });
       setApiArticles((res.results || []).map(mapAdminArticleRow));
+      setArticleCounts(res.counts || null);
     } catch (e) {
-      Alert.alert('Articles', e?.message || 'Could not load articles.');
-      setApiArticles([]);
+      if (!silent) {
+        Alert.alert('Articles', e?.message || 'Could not load articles.');
+        setApiArticles([]);
+        setArticleCounts(null);
+      }
     } finally {
-      setArticlesLoading(false);
+      if (!silent) setArticlesLoading(false);
     }
   }, [articlePipelineFilter]);
 
@@ -303,9 +356,21 @@ const AdminScreen = ({ navigation }) => {
       }));
       const notificationsData = (notificationsRes.results || []).map((n) => ({
         id: n.id,
+        type: n.type,
         title: n.type,
+        source: n.type?.replace(/_/g, ' ') || 'Alert',
         message: n.text,
+        details: n.details || '',
         status: n.read ? 'read' : 'unread',
+        read: !!n.read,
+        important: !!n.important,
+        meta: n.meta || {},
+        time: n.created_at
+          ? (typeof n.created_at === 'string'
+            ? n.created_at.slice(0, 16).replace('T', ' ')
+            : new Date(n.created_at).toLocaleString())
+          : '',
+        created_at: n.created_at,
       }));
       const settingsData = {
         notifications: !!settingsRes.notifications_enabled_default,
@@ -324,21 +389,18 @@ const AdminScreen = ({ navigation }) => {
       setNotifications(notificationsData);
       setSettings(settingsData);
       setCategories(categoriesData);
-      setConnections(connectionsData);
+      updateConnectionsIfChanged(connectionsData);
     } catch (e) {
       showError(e?.message || 'Could not load admin lists.');
     } finally {
       setListsLoading(false);
     }
-  }, [activeTab, searchQuery, showError]);
+  }, [activeTab, searchQuery, showError, updateConnectionsIfChanged]);
 
   const loadData = useCallback(async () => {
     await loadOverview({ silent: true });
     await loadLists();
-    if (activeTab === 'articles') {
-      await loadArticles();
-    }
-  }, [loadOverview, loadLists, loadArticles, activeTab]);
+  }, [loadOverview, loadLists]);
 
   const handleCreateAdmin = async (email, password) => {
     await postAdminCreate(email, password);
@@ -346,18 +408,29 @@ const AdminScreen = ({ navigation }) => {
   };
 
   useEffect(() => {
-    if (!bootstrapped || !isAdmin) return;
+    if (!bootstrapped || !isAdmin || hasBootstrappedRef.current) return;
+    hasBootstrappedRef.current = true;
     loadData();
   }, [bootstrapped, isAdmin, loadData]);
 
   useEffect(() => {
-    if (!bootstrapped || !isAdmin) return;
-    loadArticles();
-  }, [articlePipelineFilter, bootstrapped, isAdmin, loadArticles]);
-
-  useEffect(() => {
     if (!bootstrapped || !isAdmin || activeTab !== 'articles') return;
     loadArticles();
+  }, [activeTab, articlePipelineFilter, bootstrapped, isAdmin, loadArticles]);
+
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin || activeTab !== 'articles') return undefined;
+    const poll = () => {
+      if (AppState.currentState === 'active') loadArticles({ silent: true });
+    };
+    const id = setInterval(poll, ARTICLES_POLL_INTERVAL_MS);
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') loadArticles({ silent: true });
+    });
+    return () => {
+      clearInterval(id);
+      sub.remove();
+    };
   }, [activeTab, bootstrapped, isAdmin, loadArticles]);
 
   useEffect(() => {
@@ -547,14 +620,14 @@ const AdminScreen = ({ navigation }) => {
       applySettingsFromApi(settingsRes);
       const cats = normAdminCategories(settingsRes.categories || []);
       setCategories(cats);
-      setConnections(normAdminConnections(settingsRes.connections || []));
+      updateConnectionsIfChanged(settingsRes.connections || []);
       setSelectedCategorySlug((prev) => (prev && cats.some((c) => c.slug === prev) ? prev : ''));
       return cats;
     } catch (e) {
       showError(e?.message || 'Could not load settings from server.');
       return [];
     }
-  }, [showError]);
+  }, [showError, updateConnectionsIfChanged]);
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || activeTab !== 'settings') return;
@@ -760,6 +833,7 @@ const AdminScreen = ({ navigation }) => {
             articles={filteredArticles}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
+            onReviewArticle={setReviewArticle}
             onViewArticle={(article) =>
               navigation.navigate('ArticleDetail', buildArticleDetailParams(article))
             }
@@ -767,11 +841,25 @@ const AdminScreen = ({ navigation }) => {
             pipelineFilter={articlePipelineFilter}
             onPipelineFilterChange={handleArticlePipelineFilterChange}
             loading={articlesLoading}
+            articleCounts={articleCounts}
             palette={adminPalette}
           />
         );
+      case 'feedback':
+        return scroll(<FeedbackTab navigation={navigation} />);
       case 'notifications':
-        return scroll(<NotificationsTab notifications={notifications} />);
+        return scroll(
+          <NotificationsTab
+            notifications={notifications}
+            onSwitchTab={setActiveTab}
+            loading={listsLoading}
+            onNotificationRead={(id) => {
+              setNotifications((prev) =>
+                prev.map((n) => (String(n.id) === String(id) ? { ...n, read: true, status: 'read' } : n))
+              );
+            }}
+          />
+        );
       case 'settings':
         return scroll(
           <SettingsTab
@@ -802,6 +890,9 @@ const AdminScreen = ({ navigation }) => {
             onDeleteAllCategories={handleDeleteAllCategories}
             onDeleteAllConnections={handleDeleteAllConnections}
             onLogout={handleLogout}
+            onViewNewsApp={() => navigation.navigate('NewsFeedPreview')}
+            darkTheme={theme.mode === 'dark'}
+            onToggleTheme={toggleTheme}
           />
         );
       default:
@@ -827,14 +918,18 @@ const AdminScreen = ({ navigation }) => {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: adminPalette.page }]} edges={['top']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: adminPalette.page }]} edges={[]}>
       <StatusBar
         barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'}
         backgroundColor={adminPalette.page}
       />
 
-      <Header />
-      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      <Header activeTab={activeTab} />
+      <TabNavigation
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        unreadAlerts={notifications.filter((n) => !n.read).length}
+      />
 
       <Animated.View
         style={{
@@ -873,6 +968,21 @@ const AdminScreen = ({ navigation }) => {
         onFormChange={handleFormChange}
         fields={activeTab === 'users' ? userFields : articleFields}
         onSave={handleSave}
+      />
+
+      <AdminArticleReviewModal
+        visible={Boolean(reviewArticle)}
+        article={reviewArticle}
+        onClose={() => setReviewArticle(null)}
+        onSaved={(updated) => {
+          setApiArticles((prev) =>
+            prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row))
+          );
+        }}
+        onOpenInApp={(article) => {
+          setReviewArticle(null);
+          navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
+        }}
       />
 
     </SafeAreaView>

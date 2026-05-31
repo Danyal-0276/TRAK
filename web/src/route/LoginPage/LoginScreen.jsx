@@ -94,6 +94,13 @@ const LoginScreen = () => {
                     0% { transform: rotate(0deg); }
                     100% { transform: rotate(360deg); }
                 }
+                @keyframes authCardEnter {
+                    from { opacity: 0; transform: translateY(24px) scale(0.98); }
+                    to { opacity: 1; transform: translateY(0) scale(1); }
+                }
+                .auth-form-card {
+                    animation: authCardEnter 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+                }
             `}</style>
             <div style={{
                 minHeight: '100vh',
@@ -106,7 +113,7 @@ const LoginScreen = () => {
                 overflow: 'hidden',
             }}>
             <NewsBackgroundAnimation />
-            <div style={{
+            <div className="auth-form-card" style={{
                 width: '100%',
                 maxWidth: '420px',
                 position: 'relative',

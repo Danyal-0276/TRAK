@@ -522,56 +522,6 @@ const UserProfileScreen = () => {
                     <ActionRow icon={LogOut} label="Log out" subtitle="Sign out of this device" onClick={handleLogout} danger />
                 </div>
 
-                    {!isAdmin && !emailVerified && (
-                        <div className="trak-profile-verify">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                                <ShieldCheck size={16} color={textPrimary} />
-                                <span style={{ fontSize: '14px', fontWeight: '700', color: textPrimary }}>
-                                    Verify your email
-                                </span>
-                            </div>
-                            <p style={{ margin: '0 0 12px 0', fontSize: '13px', color: textSecondary }}>
-                                Your email address has not been verified yet. Enter your email below to receive a verification code.
-                            </p>
-                            <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', flexWrap: 'wrap' }}>
-                                <button type="button" onClick={() => setVerificationChannel("email")} style={{ padding: '7px 12px', borderRadius: '8px', border: `1px solid ${verificationChannel === "email" ? colors.textSecondary : borderColor}`, background: verificationChannel === "email" ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : 'transparent', cursor: 'pointer', color: textPrimary, fontSize: '12px', fontWeight: 600 }}>Email</button>
-                                <button type="button" onClick={() => setVerificationChannel("phone")} style={{ padding: '7px 12px', borderRadius: '8px', border: `1px solid ${verificationChannel === "phone" ? colors.textSecondary : borderColor}`, background: verificationChannel === "phone" ? (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)') : 'transparent', cursor: 'pointer', color: textPrimary, fontSize: '12px', fontWeight: 600 }}>Phone</button>
-                                <button type="button" onClick={sendVerificationCode} disabled={sendingCode} style={{ padding: '7px 12px', borderRadius: '8px', border: 'none', background: action.background, color: action.foreground, cursor: sendingCode ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600 }}>
-                                    {sendingCode ? <Loader2 size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> : null}
-                                    {sendingCode ? "Sending..." : "Send Code"}
-                                </button>
-                            </div>
-                            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-                                <input
-                                    type="text"
-                                    value={verificationCode}
-                                    onChange={(e) => setVerificationCode(e.target.value)}
-                                    placeholder="Enter verification code"
-                                    style={{ flex: '1 1 220px', minWidth: '220px', padding: '9px 12px', borderRadius: '8px', border: `1px solid ${borderColor}`, backgroundColor: cardBackground, color: textPrimary, fontSize: '13px' }}
-                                />
-                                <button type="button" onClick={confirmVerificationCode} disabled={verifyingCode} style={{ padding: '9px 14px', borderRadius: '8px', border: `1px solid ${borderColor}`, background: 'transparent', color: textPrimary, cursor: verifyingCode ? 'wait' : 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600 }}>
-                                    {verifyingCode ? <Loader2 size={12} style={{ animation: 'spin 0.8s linear infinite' }} /> : null}
-                                    {verifyingCode ? "Verifying..." : "Verify"}
-                                </button>
-                            </div>
-                            {verifyMessage ? (
-                                <div style={{
-                                    marginTop: '10px', fontSize: '12px',
-                                    color: verifyMessage.toLowerCase().includes('success') || verifyMessage.toLowerCase().includes('verified')
-                                        ? '#16a34a'
-                                        : '#ef4444',
-                                }}>
-                                    {verifyMessage}
-                                </div>
-                            ) : null}
-                            {devCodeHint ? (
-                                <div style={{ marginTop: '6px', fontSize: '12px', color: colors.textSecondary }}>
-                                    Test code: <strong>{devCodeHint}</strong>
-                                </div>
-                            ) : null}
-                        </div>
-                    )}
-
                 <section className="trak-profile-saved">
                 <div className="trak-profile-saved-header">
                     <div className="trak-profile-saved-title-row">

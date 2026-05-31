@@ -11,7 +11,11 @@ export const TTS_LANGUAGES = [
 const TTS_BATCH_SIZE = 4;
 const MAX_ARTICLE_CHARS = 40_000;
 
-/** Parse API body; avoid "Unexpected token '<'" when server returns HTML 404 pages. */
+export function createTtsSessionId(articleHint = '') {
+  const base = String(articleHint || 'listen').slice(0, 24);
+  return `${base}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export async function parseApiResponse(res) {
   const text = await res.text();
   const trimmed = text.trimStart();
@@ -45,7 +49,6 @@ export async function parseApiResponse(res) {
   return payload;
 }
 
-/** Client-side split when /article-tts/plan/ is missing on older backends. */
 export function planSegmentsLocally(text, maxTotal = MAX_ARTICLE_CHARS) {
   return planSegmentsProgressive(text, undefined, undefined, maxTotal);
 }
@@ -63,19 +66,18 @@ async function postTts(path, body, timeoutMs) {
   return parseApiResponse(res);
 }
 
-/** Split article locally (instant — no network wait before first chunk). */
 export async function requestArticleTtsPlan(fullText) {
   const segments = planSegmentsLocally(fullText);
   if (!segments.length) throw new Error('Nothing to read aloud.');
   return segments;
 }
 
-/** Up to 4 segments synthesized in parallel on the server. */
-export async function requestArticleTtsChunks(segmentTexts, language = 'english') {
+export async function requestArticleTtsChunks(segmentTexts, language = 'english', opts = {}) {
+  const { ttsSessionId, voice } = opts;
   try {
     const payload = await postTts(
       '/article-tts/chunks/',
-      { segments: segmentTexts, language },
+      { segments: segmentTexts, language, tts_session_id: ttsSessionId, voice },
       TTS_CHUNK_TIMEOUT_MS
     );
     const chunks = payload.chunks || [];
@@ -84,7 +86,7 @@ export async function requestArticleTtsChunks(segmentTexts, language = 'english'
   } catch (batchErr) {
     try {
       return await Promise.all(
-        segmentTexts.map((text) => requestArticleTtsChunk(text, language))
+        segmentTexts.map((text) => requestArticleTtsChunk(text, language, opts))
       );
     } catch {
       throw batchErr;
@@ -92,12 +94,12 @@ export async function requestArticleTtsChunks(segmentTexts, language = 'english'
   }
 }
 
-/** One segment of audio. Falls back to legacy /article-tts/ for that segment only. */
-export async function requestArticleTtsChunk(segmentText, language = 'english') {
+export async function requestArticleTtsChunk(segmentText, language = 'english', opts = {}) {
+  const { ttsSessionId, voice } = opts;
   try {
     const payload = await postTts(
       '/article-tts/chunk/',
-      { text: segmentText, language },
+      { text: segmentText, language, tts_session_id: ttsSessionId, voice },
       TTS_CHUNK_TIMEOUT_MS
     );
     if (!payload?.audio) throw new Error('No audio returned for this section.');
@@ -130,138 +132,187 @@ export function normalizeAudioBase64(raw) {
   return s.replace(/\s/g, '');
 }
 
-export function base64ToBytes(base64Audio) {
+function base64ToBlob(base64Audio, format = 'mp3') {
   const clean = normalizeAudioBase64(base64Audio);
-  if (!clean) throw new Error('No audio data received.');
-  try {
-    const binary = atob(clean);
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    if (bytes.length < 12) throw new Error('Audio file too small.');
-    return bytes;
-  } catch {
-    throw new Error('Invalid audio data from server.');
+  const binary = atob(clean);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  const mime = String(format || 'mp3').toLowerCase() === 'wav' ? 'audio/wav' : 'audio/mpeg';
+  return new Blob([bytes], { type: mime });
+}
+
+function cacheKey(index, language, voice) {
+  return `${language}:${voice || 'default'}:${index}`;
+}
+
+let activeAudio = null;
+let activeBlobUrl = null;
+
+function cleanupActiveAudio() {
+  if (activeAudio) {
+    try {
+      activeAudio.pause();
+      activeAudio.src = '';
+    } catch {
+      /* ignore */
+    }
+    activeAudio = null;
+  }
+  if (activeBlobUrl) {
+    try {
+      URL.revokeObjectURL(activeBlobUrl);
+    } catch {
+      /* ignore */
+    }
+    activeBlobUrl = null;
   }
 }
 
-function decodeToAudioBuffer(ctx, base64Audio) {
-  const bytes = base64ToBytes(base64Audio);
-  const copy = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength);
-  return ctx.decodeAudioData(copy);
+export function stopNativePlayback() {
+  cleanupActiveAudio();
 }
 
-/**
- * Start progressive TTS playback. Returns { stop, promise } immediately so Stop works mid-play.
- */
+export function pauseNativePlayback() {
+  activeAudio?.pause?.();
+}
+
+export function resumeNativePlayback() {
+  activeAudio?.play?.().catch(() => {});
+}
+
+export async function getNativePlaybackPosition() {
+  return activeAudio?.currentTime || 0;
+}
+
+function playBlobAndWait(blob, { startAt = 0, isAborted, isPaused } = {}) {
+  cleanupActiveAudio();
+  const url = URL.createObjectURL(blob);
+  activeBlobUrl = url;
+  const audio = new Audio(url);
+  activeAudio = audio;
+
+  return new Promise((resolve, reject) => {
+    const finish = (err) => {
+      cleanupActiveAudio();
+      if (err) reject(err);
+      else resolve();
+    };
+
+    audio.addEventListener('ended', () => {
+      if (isPaused?.()) return;
+      finish();
+    });
+    audio.addEventListener('error', () => finish(new Error('Audio playback failed')));
+
+    const poll = setInterval(() => {
+      if (isAborted?.()) {
+        clearInterval(poll);
+        finish();
+        return;
+      }
+      if (isPaused?.()) return;
+      const dur = Number(audio.duration) || 0;
+      const cur = Number(audio.currentTime) || 0;
+      if (dur > 0 && cur >= dur - 0.15) {
+        clearInterval(poll);
+        finish();
+      }
+    }, 250);
+
+    audio.addEventListener('loadedmetadata', () => {
+      if (startAt > 0) audio.currentTime = startAt;
+      audio.play().catch((e) => {
+        clearInterval(poll);
+        finish(e);
+      });
+    });
+
+    audio.load();
+  });
+}
+
+function estimateSegmentDurationMs(base64Audio) {
+  const len = String(base64Audio || '').length;
+  const bytes = (len * 3) / 4;
+  const sec = Math.max(2, Math.min(180, bytes / 12000));
+  return Math.round((sec + 0.5) * 1000);
+}
+
 export function playArticleTtsStreaming(
   segments,
   language,
-  { onProgress, onUrduPart, onFirstReady, onSegmentStart, isCancelled } = {}
+  {
+    onProgress,
+    onUrduPart,
+    onFirstReady,
+    onSegmentStart,
+    isCancelled,
+    startSegmentIndex = 0,
+    ttsSessionId,
+    voice: initialVoice,
+  } = {}
 ) {
-  const session = { stopped: false, activeSource: null, ctx: null, gain: null };
+  let halted = false;
+  let paused = false;
+  let pinnedVoice = initialVoice || null;
+  const sessionId = ttsSessionId || createTtsSessionId();
+  const checkpoint = { segmentIndex: startSegmentIndex, offsetSec: 0 };
 
   const halt = () => {
-    if (session.stopped) return;
-    session.stopped = true;
-    if (session.activeSource) {
-      try {
-        session.activeSource.stop(0);
-      } catch {
-        /* already stopped */
-      }
-      try {
-        session.activeSource.disconnect();
-      } catch {
-        /* ignore */
-      }
-      session.activeSource = null;
-    }
-    const ctx = session.ctx;
-    if (ctx && ctx.state !== 'closed') {
-      ctx.suspend().catch(() => {});
-      ctx.close().catch(() => {});
-    }
+    halted = true;
+    paused = false;
+    stopNativePlayback();
   };
 
-  const playAudioBuffer = (buffer) =>
-    new Promise((resolve, reject) => {
-      if (session.stopped || isCancelled?.()) return resolve();
-      const ctx = session.ctx;
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(reject);
-      }
-      const source = ctx.createBufferSource();
-      session.activeSource = source;
-      source.buffer = buffer;
-      source.connect(session.gain);
-      source.onended = () => {
-        if (session.activeSource === source) session.activeSource = null;
-        resolve();
-      };
-      try {
-        source.start(0);
-      } catch {
-        resolve();
-      }
-    });
+  const pause = () => {
+    if (halted) return;
+    paused = true;
+    pauseNativePlayback();
+    checkpoint.offsetSec = activeAudio?.currentTime || 0;
+  };
+
+  const resume = () => {
+    if (halted) return;
+    paused = false;
+    resumeNativePlayback();
+  };
+
+  const getCheckpoint = () => ({ ...checkpoint, voice: pinnedVoice, ttsSessionId: sessionId });
 
   const promise = (async () => {
-    const AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (!AudioCtx) throw new Error('Web Audio is not supported in this browser.');
-
-    session.ctx = new AudioCtx();
-    session.gain = session.ctx.createGain();
-    session.gain.connect(session.ctx.destination);
-    if (session.ctx.state === 'suspended') {
-      await session.ctx.resume();
-    }
-
     const cache = new Map();
     const inflight = new Map();
 
-    const payloadToEntry = async (payload) => {
-      const buffer = await decodeToAudioBuffer(session.ctx, payload.audio);
-      return { buffer, urdu: payload.urdu_text };
-    };
-
     const loadSegment = async (index) => {
-      if (session.stopped || isCancelled?.()) return null;
+      if (halted || isCancelled?.()) return null;
       if (index < 0 || index >= segments.length) return null;
-      if (cache.has(index)) return cache.get(index);
-      if (inflight.has(index)) {
+      const key = cacheKey(index, language, pinnedVoice);
+      if (cache.has(key)) return cache.get(key);
+      if (inflight.has(key)) {
         try {
-          const shared = await inflight.get(index);
-          if (shared) return shared;
+          return await inflight.get(key);
         } catch (err) {
           throw err;
         }
-        if (cache.has(index)) return cache.get(index);
-        throw new Error('Could not load audio for this section.');
       }
 
       const p = (async () => {
-        try {
-          const payload = await requestArticleTtsChunk(segments[index], language);
-          if (session.stopped || isCancelled?.()) return null;
-          const entry = await payloadToEntry(payload);
-          cache.set(index, entry);
-          return entry;
-        } catch (err) {
-          const msg = err?.message || 'TTS request failed';
-          if (language === 'urdu' && !msg.toLowerCase().includes('urdu')) {
-            throw new Error(
-              `Urdu audio failed: ${msg}. Ensure pip install edge-tts deep-translator and restart Django.`
-            );
-          }
-          throw err;
-        }
+        const payload = await requestArticleTtsChunk(segments[index], language, {
+          ttsSessionId: sessionId,
+          voice: pinnedVoice,
+        });
+        if (payload?.voice_id) pinnedVoice = payload.voice_id;
+        const blob = base64ToBlob(payload.audio, payload.format || 'mp3');
+        const entry = { blob, urdu: payload.urdu_text, payload };
+        cache.set(cacheKey(index, language, pinnedVoice), entry);
+        return entry;
       })();
 
-      inflight.set(index, p);
+      inflight.set(key, p);
       try {
         return await p;
       } finally {
-        inflight.delete(index);
+        inflight.delete(key);
       }
     };
 
@@ -270,64 +321,60 @@ export function playArticleTtsStreaming(
       for (let k = 1; k <= maxAhead; k++) {
         const idx = fromIndex + k;
         if (idx >= segments.length) break;
-        if (!cache.has(idx) && !inflight.has(idx)) {
-          loadSegment(idx).catch(() => {});
-        }
+        const key = cacheKey(idx, language, pinnedVoice);
+        if (!cache.has(key) && !inflight.has(key)) loadSegment(idx).catch(() => {});
       }
     };
 
-    try {
-      for (let i = 0; i < segments.length; i++) {
-        if (session.stopped || isCancelled?.()) break;
+    for (let i = Math.max(0, startSegmentIndex); i < segments.length; i++) {
+      if (halted || isCancelled?.()) break;
+      checkpoint.segmentIndex = i;
 
-        const entry = await loadSegment(i);
-        if (session.stopped || isCancelled?.()) break;
-        if (!entry) {
-          throw new Error('Could not load audio. Check that Django is running and TTS dependencies are installed.');
-        }
-
-        prefetchAhead(i);
-
-        if (i === 0) onFirstReady?.();
-        if (entry?.urdu && onUrduPart) onUrduPart(entry.urdu, i);
-
-        const durationMs = Math.round((entry.buffer?.duration || 3) * 1000);
-        onSegmentStart?.(i, { durationMs, segmentText: segments[i] });
-
-        if (!session.stopped && !isCancelled?.()) {
-          await playAudioBuffer(entry.buffer);
-        }
-        if (session.stopped || isCancelled?.()) break;
-        onProgress?.(i + 1, segments.length);
+      const entry = await loadSegment(i);
+      if (halted || isCancelled?.()) break;
+      if (!entry) {
+        throw new Error('Could not load audio. Check that Django is running and TTS dependencies are installed.');
       }
-    } finally {
-      if (session.ctx?.state !== 'closed') {
-        await session.ctx.close().catch(() => {});
+
+      prefetchAhead(i);
+
+      if (i === startSegmentIndex) onFirstReady?.();
+      if (entry?.urdu && onUrduPart) onUrduPart(entry.urdu, i);
+
+      const durationMs = estimateSegmentDurationMs(entry.payload?.audio);
+      const startAt = i === startSegmentIndex ? checkpoint.offsetSec : 0;
+      onSegmentStart?.(i, { durationMs, segmentText: segments[i], offsetSec: startAt });
+
+      if (!halted && !isCancelled?.()) {
+        const playPromise = playBlobAndWait(entry.blob, {
+          startAt,
+          isAborted: () => halted || isCancelled?.(),
+          isPaused: () => paused,
+        });
+
+        let wasPaused = false;
+        const pausePoller = setInterval(() => {
+          if (halted || isCancelled?.()) return;
+          if (paused && !wasPaused) {
+            pauseNativePlayback();
+            wasPaused = true;
+          } else if (!paused && wasPaused) {
+            resumeNativePlayback();
+            wasPaused = false;
+          }
+        }, 200);
+
+        try {
+          await playPromise;
+        } finally {
+          clearInterval(pausePoller);
+        }
       }
+
+      checkpoint.offsetSec = 0;
+      onProgress?.(i + 1, segments.length);
     }
   })();
 
-  return { stop: halt, promise };
-}
-
-export async function playWavBase64(base64Audio, { onEnded } = {}) {
-  const AudioCtx = window.AudioContext || window.webkitAudioContext;
-  if (!AudioCtx) throw new Error('Web Audio is not supported.');
-
-  const ctx = new AudioCtx();
-  const buffer = await decodeToAudioBuffer(ctx, base64Audio);
-  const gain = ctx.createGain();
-  gain.connect(ctx.destination);
-
-  await new Promise((resolve) => {
-    const source = ctx.createBufferSource();
-    source.buffer = buffer;
-    source.connect(gain);
-    source.onended = resolve;
-    source.start(0);
-  });
-  await ctx.close().catch(() => {});
-  onEnded?.();
-
-  return { stop: () => ctx.close().catch(() => {}) };
+  return { stop: halt, pause, resume, promise, getCheckpoint };
 }

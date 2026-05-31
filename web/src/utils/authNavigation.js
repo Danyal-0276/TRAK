@@ -15,19 +15,12 @@ export function getPostAuthPath(session, { fromSignup = false } = {}) {
     return '/newsfeed';
   }
 
-  if (session?.verification_required && !user?.email_verified) {
-    return '/verify-email';
-  }
-
   return '/tag-selection';
 }
 
-export function getPostAuthState(path, { fromSignup = false, email = '' } = {}) {
+export function getPostAuthState(path, { fromSignup = false } = {}) {
   if (path === '/tag-selection') {
     return { fromSignup: true };
-  }
-  if (path === '/verify-email') {
-    return { email, fromSignup: true };
   }
   return undefined;
 }

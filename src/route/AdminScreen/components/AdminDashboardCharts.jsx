@@ -6,6 +6,8 @@ import {
   activityAreaData,
   barListRows,
   credibilityPieData,
+  feedbackStatusPieData,
+  feedbackCategoryBarData,
   pipelinePieData,
   sourceBarData,
 } from '../dashboardChartUtils';
@@ -81,6 +83,13 @@ export default function AdminDashboardCharts({ snapshot, palette }) {
   const activity = activityAreaData(snapshot);
   const pipeline = pipelinePieData(snapshot, palette);
   const credibility = credibilityPieData(snapshot, palette);
+  const feedbackStatus = feedbackStatusPieData(snapshot, palette);
+  const feedbackCategories = feedbackCategoryBarData(snapshot).map((row) => ({
+    key: row.name,
+    name: row.name,
+    value: row.count,
+    fill: palette.chart.info,
+  }));
   const factRows = barListRows(Object.entries(snapshot?.fact_check_by_verdict || {}), palette, {
     nameFormatter: (n) => String(n).replace(/_/g, ' '),
   })
@@ -266,6 +275,40 @@ export default function AdminDashboardCharts({ snapshot, palette }) {
             absolute
             hasLegend
           />
+        ) : null}
+      </ChartCard>
+
+      <ChartCard
+        title="User feedback"
+        subtitle="By review status"
+        palette={palette}
+        isEmpty={!feedbackStatus.length}
+        emptyMessage="No feedback yet"
+      >
+        {feedbackStatus.length ? (
+          <PieChart
+            data={toPieData(feedbackStatus)}
+            width={chartWidth}
+            height={CHART_HEIGHT}
+            chartConfig={baseConfig}
+            accessor="population"
+            backgroundColor="transparent"
+            paddingLeft="12"
+            absolute
+            hasLegend
+          />
+        ) : null}
+      </ChartCard>
+
+      <ChartCard
+        title="Feedback by category"
+        subtitle="Top report categories"
+        palette={palette}
+        isEmpty={!feedbackCategories.length}
+        emptyMessage="No category breakdown"
+      >
+        {feedbackCategories.length ? (
+          <AdminHorizontalBarList rows={feedbackCategories} palette={palette} />
         ) : null}
       </ChartCard>
 

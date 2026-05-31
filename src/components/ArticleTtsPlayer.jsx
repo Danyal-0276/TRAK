@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
-import { Volume2, Square, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator, AppState } from 'react-native';
+import { Volume2, Square, ChevronDown, ChevronUp, Pause, Play } from 'lucide-react-native';
 import Text from './ui/Text';
 import { useTheme } from '../theme/ThemeContext';
 import {
@@ -8,6 +8,8 @@ import {
   requestArticleTtsPlan,
   playArticleTtsStreaming,
   stopNativePlayback,
+  createTtsSessionId,
+  getNativePlaybackPosition,
 } from '../utils/articleTts';
 import {
   lineIndicesForSegment,
@@ -21,6 +23,7 @@ export default function ArticleTtsPlayer({
   highlightLines = [],
   onActiveLineIndex,
   defaultCollapsed = true,
+  articleId = '',
 }) {
   const { theme } = useTheme();
   const isDark = theme.mode === 'dark';
@@ -34,6 +37,10 @@ export default function ArticleTtsPlayer({
   const audioStartedRef = useRef(false);
   const statusRef = useRef(status);
   const cancelLineHighlightRef = useRef(null);
+  const highlightControllerRef = useRef(null);
+  const highlightCheckpointRef = useRef({ segmentIndex: 0, lineOffset: 0, elapsedMs: 0, durationMs: 0 });
+  const segmentsRef = useRef([]);
+  const sessionOptsRef = useRef({ ttsSessionId: null, voice: null, startSegmentIndex: 0 });
   statusRef.current = status;
 
   const listenText = String(text || '').trim();
@@ -42,7 +49,7 @@ export default function ArticleTtsPlayer({
   const bg = palette.surfaceElevated || palette.backgroundSecondary || '#f8fafc';
   const textPrimary = palette.textPrimary || '#0f172a';
   const textSecondary = palette.textSecondary || '#64748b';
-  const isActive = status === 'loading' || status === 'playing';
+  const isActive = status === 'loading' || status === 'playing' || status === 'paused';
   const btnBg = isActive ? palette.textTertiary || '#737373' : isDark ? palette.textPrimary : palette.primary;
   const btnFg = isDark ? palette.background || '#0a0a0a' : palette.textOnPrimary || '#ffffff';
 
@@ -50,8 +57,23 @@ export default function ArticleTtsPlayer({
     if (isActive) setExpanded(true);
   }, [isActive]);
 
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'background' && statusRef.current === 'playing') {
+        playbackRef.current?.pause?.();
+        setStatus('paused');
+        highlightControllerRef.current?.pause?.();
+        getNativePlaybackPosition().then((sec) => {
+          highlightCheckpointRef.current.elapsedMs = Math.round((sec || 0) * 1000);
+        });
+      }
+    });
+    return () => sub.remove();
+  }, []);
+
   const clearLineHighlights = useCallback(() => {
-    cancelLineHighlightRef.current?.();
+    highlightControllerRef.current?.cancel?.();
+    highlightControllerRef.current = null;
     cancelLineHighlightRef.current = null;
     onActiveLineIndex?.(-1);
   }, [onActiveLineIndex]);
@@ -65,14 +87,114 @@ export default function ArticleTtsPlayer({
     setProgress({ current: 0, total: 0 });
     setStatus('idle');
     setError('');
+    sessionOptsRef.current = { ttsSessionId: null, voice: null, startSegmentIndex: 0 };
   }, [clearLineHighlights]);
 
   useEffect(() => () => stopPlayback(), [stopPlayback]);
 
+  const startHighlightForSegment = useCallback(
+    (segmentIndex, durationMs, offsetSec = 0) => {
+      cancelLineHighlightRef.current?.();
+      const indices = lineIndicesForSegment(highlightLines, segmentIndex);
+      if (!indices.length) return;
+      const elapsedMs = Math.round((offsetSec || 0) * 1000);
+      const lineOffset = highlightCheckpointRef.current.segmentIndex === segmentIndex
+        ? highlightCheckpointRef.current.lineOffset
+        : 0;
+      highlightCheckpointRef.current = { segmentIndex, lineOffset: 0, elapsedMs, durationMs };
+      const controller = scheduleLineHighlights(
+        indices,
+        highlightLines,
+        durationMs,
+        (lineIdx) => {
+          highlightCheckpointRef.current.lineOffset = indices.indexOf(lineIdx);
+          onActiveLineIndex?.(lineIdx);
+        },
+        () => cancelledRef.current,
+        { startLineOffset: lineOffset, elapsedMs }
+      );
+      highlightControllerRef.current = controller;
+      cancelLineHighlightRef.current = () => controller?.cancel?.();
+    },
+    [highlightLines, onActiveLineIndex]
+  );
+
+  const runPlayback = async (startIndex = 0) => {
+    const segments = segmentsRef.current;
+    if (!segments.length) return;
+
+    if (!sessionOptsRef.current.ttsSessionId) {
+      sessionOptsRef.current.ttsSessionId = createTtsSessionId(articleId);
+    }
+
+    const session = playArticleTtsStreaming(segments, language, {
+      startSegmentIndex: startIndex,
+      ttsSessionId: sessionOptsRef.current.ttsSessionId,
+      voice: sessionOptsRef.current.voice,
+      isCancelled: () => cancelledRef.current,
+      onFirstReady: () => {
+        if (!cancelledRef.current) {
+          audioStartedRef.current = true;
+          setStatus('playing');
+        }
+      },
+      onSegmentStart: (segmentIndex, { durationMs, offsetSec }) => {
+        if (cancelledRef.current) return;
+        const cp = playbackRef.current?.getCheckpoint?.();
+        if (cp?.voice) sessionOptsRef.current.voice = cp.voice;
+        startHighlightForSegment(segmentIndex, durationMs, offsetSec);
+      },
+      onProgress: (current, total) => {
+        if (!cancelledRef.current) setProgress({ current, total });
+      },
+    });
+
+    playbackRef.current = session;
+    await session.promise;
+
+    if (cancelledRef.current) return;
+
+    playbackRef.current = null;
+    clearLineHighlights();
+    if (!audioStartedRef.current) {
+      setStatus('error');
+      setError(
+        'Playback did not start. Restart Django, run pip install -r requirements.txt, then try again.'
+      );
+      return;
+    }
+    setStatus('idle');
+    setProgress({ current: 0, total: 0 });
+    sessionOptsRef.current = { ttsSessionId: null, voice: null, startSegmentIndex: 0 };
+  };
+
   const handlePlay = async () => {
     if (!listenText || disabled) return;
+
+    if (statusRef.current === 'paused') {
+      playbackRef.current?.resume?.();
+      setStatus('playing');
+      const cp = playbackRef.current?.getCheckpoint?.();
+      if (cp) {
+        if (cp.voice) sessionOptsRef.current.voice = cp.voice;
+        const offsetSec =
+          (highlightCheckpointRef.current.elapsedMs || 0) / 1000 || cp.offsetSec || 0;
+        startHighlightForSegment(
+          cp.segmentIndex,
+          highlightCheckpointRef.current.durationMs,
+          offsetSec
+        );
+      }
+      return;
+    }
+
     if (statusRef.current === 'playing' || statusRef.current === 'loading') {
-      stopPlayback();
+      playbackRef.current?.pause?.();
+      setStatus('paused');
+      highlightControllerRef.current?.pause?.();
+      getNativePlaybackPosition().then((sec) => {
+        highlightCheckpointRef.current.elapsedMs = Math.round((sec || 0) * 1000);
+      });
       return;
     }
 
@@ -82,55 +204,14 @@ export default function ArticleTtsPlayer({
     setProgress({ current: 0, total: 0 });
     clearLineHighlights();
     setStatus('loading');
+    sessionOptsRef.current = { ttsSessionId: createTtsSessionId(articleId), voice: null, startSegmentIndex: 0 };
 
     try {
       const segments = await requestArticleTtsPlan(listenText);
       if (cancelledRef.current) return;
-
+      segmentsRef.current = segments;
       setProgress({ current: 0, total: segments.length });
-
-      const session = playArticleTtsStreaming(segments, language, {
-        isCancelled: () => cancelledRef.current,
-        onFirstReady: () => {
-          if (!cancelledRef.current) {
-            audioStartedRef.current = true;
-            setStatus('playing');
-          }
-        },
-        onSegmentStart: (segmentIndex, { durationMs }) => {
-          if (cancelledRef.current) return;
-          cancelLineHighlightRef.current?.();
-          const indices = lineIndicesForSegment(highlightLines, segmentIndex);
-          if (!indices.length) return;
-          cancelLineHighlightRef.current = scheduleLineHighlights(
-            indices,
-            highlightLines,
-            durationMs,
-            (lineIdx) => onActiveLineIndex?.(lineIdx),
-            () => cancelledRef.current
-          );
-        },
-        onProgress: (current, total) => {
-          if (!cancelledRef.current) setProgress({ current, total });
-        },
-      });
-
-      playbackRef.current = session;
-      await session.promise;
-
-      if (cancelledRef.current) return;
-
-      playbackRef.current = null;
-      clearLineHighlights();
-      if (!audioStartedRef.current) {
-        setStatus('error');
-        setError(
-          'Playback did not start. Restart Django, run pip install -r requirements.txt, then try again.'
-        );
-        return;
-      }
-      setStatus('idle');
-      setProgress({ current: 0, total: 0 });
+      await runPlayback(0);
     } catch (e) {
       if (cancelledRef.current) return;
       stopPlayback();
@@ -158,28 +239,45 @@ export default function ArticleTtsPlayer({
   const progressPct =
     progress.total > 0 ? Math.min(100, (progress.current / progress.total) * 100) : null;
 
-  const playButton = (compact = false) => (
-    <TouchableOpacity
-      style={[
-        compact ? styles.playBtnCompact : styles.playBtn,
-        { backgroundColor: btnBg },
-      ]}
-      onPress={handlePlay}
-      disabled={disabled}
-      activeOpacity={0.85}
-      accessibilityLabel={isActive ? 'Stop listening' : 'Play article audio'}
-    >
-      {status === 'loading' ? (
-        <ActivityIndicator color={btnFg} size="small" />
-      ) : status === 'playing' ? (
-        <Square size={16} color={btnFg} fill={btnFg} />
-      ) : (
-        <Volume2 size={16} color={btnFg} />
-      )}
-      {!compact ? (
-        <Text style={[styles.playLabel, { color: btnFg }]}>{isActive ? 'Stop' : 'Play'}</Text>
+  const primaryIcon =
+    status === 'loading' ? (
+      <ActivityIndicator color={btnFg} size="small" />
+    ) : status === 'playing' ? (
+      <Pause size={16} color={btnFg} />
+    ) : status === 'paused' ? (
+      <Play size={16} color={btnFg} />
+    ) : (
+      <Volume2 size={16} color={btnFg} />
+    );
+
+  const primaryLabel =
+    status === 'loading' ? 'Loading' : status === 'playing' ? 'Pause' : status === 'paused' ? 'Resume' : 'Play';
+
+  const playControls = (compact = false) => (
+    <View style={styles.controlRow}>
+      <TouchableOpacity
+        style={[compact ? styles.playBtnCompact : styles.playBtn, { backgroundColor: btnBg }]}
+        onPress={handlePlay}
+        disabled={disabled || status === 'loading'}
+        activeOpacity={0.85}
+        accessibilityLabel={primaryLabel}
+      >
+        {primaryIcon}
+        {!compact ? <Text style={[styles.playLabel, { color: btnFg }]}>{primaryLabel}</Text> : null}
+      </TouchableOpacity>
+      {isActive && status !== 'loading' ? (
+        <TouchableOpacity
+          style={[styles.stopBtn, { borderColor: border }]}
+          onPress={stopPlayback}
+          accessibilityLabel="Stop listening"
+        >
+          <Square size={14} color={textSecondary} fill={textSecondary} />
+          {!compact ? (
+            <Text style={[styles.stopLabel, { color: textSecondary }]}>Stop</Text>
+          ) : null}
+        </TouchableOpacity>
       ) : null}
-    </TouchableOpacity>
+    </View>
   );
 
   return (
@@ -198,7 +296,7 @@ export default function ArticleTtsPlayer({
           </Text>
         </TouchableOpacity>
         <View style={styles.summaryActions}>
-          {!expanded ? playButton(true) : null}
+          {!expanded ? playControls(true) : null}
           <TouchableOpacity
             onPress={() => setExpanded((v) => !v)}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -248,7 +346,7 @@ export default function ArticleTtsPlayer({
           </View>
 
           <View style={styles.playRow}>
-            {playButton(false)}
+            {playControls(false)}
             {isActive ? (
               <View style={[styles.progressTrack, { backgroundColor: border }]}>
                 {progressPct == null ? (
@@ -328,6 +426,7 @@ const styles = StyleSheet.create({
     gap: 12,
     minHeight: 40,
   },
+  controlRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0 },
   playBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -345,7 +444,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
+  stopBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
   playLabel: { fontWeight: '700', fontSize: 13 },
+  stopLabel: { fontWeight: '600', fontSize: 12 },
   progressTrack: {
     flex: 1,
     height: 6,

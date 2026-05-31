@@ -4,10 +4,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { iconMap } from '../config/tabBarConfig.js';
 import { useTheme } from '../../theme/ThemeContext';
 import { subscribeTabBarVisibility, resetTabBarVisibility } from '../tabBarVisibility';
+import NotificationBadge from '../../components/NotificationBadge';
+import { useNotificationUnread } from '../../context/NotificationUnreadContext';
 
 const CustomTabBar = ({ state, descriptors, navigation }) => {
     const { theme } = useTheme();
     const { colors, radius, spacing } = theme;
+    const { unreadCount } = useNotificationUnread();
     const insets = useSafeAreaInsets();
     const translateY = useRef(new Animated.Value(0)).current;
     const opacity = useRef(new Animated.Value(1)).current;
@@ -166,6 +169,9 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
                             >
                                 <View style={styles.iconContainer}>
                                     {renderTabIcon(route.name, isFocused)}
+                                    {route.name === 'Notifications' ? (
+                                      <NotificationBadge count={unreadCount} />
+                                    ) : null}
                                 </View>
                             </TouchableOpacity>
                         );

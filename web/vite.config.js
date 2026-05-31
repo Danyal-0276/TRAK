@@ -12,12 +12,18 @@ export default defineConfig({
   server: {
     port: 3000,
     open: true,
-    // Dev proxy when VITE_API_URL=http://localhost:3000 — forwards /api to backend.
+    // Dev proxy when VITE_API_URL=http://localhost:3000 — forwards /api and /ws to Django.
     proxy: {
       '/api': {
         target: process.env.VITE_DEV_API_PROXY || 'http://127.0.0.1:8000',
         changeOrigin: true,
         secure: false,
+      },
+      '/ws': {
+        target: process.env.VITE_DEV_API_PROXY || 'http://127.0.0.1:8000',
+        changeOrigin: true,
+        secure: false,
+        ws: true,
       },
     },
     // Vite HMR needs unsafe-eval; Firebase Google sign-in needs Google/Firebase hosts.
@@ -26,7 +32,7 @@ export default defineConfig({
         "default-src 'self'",
         "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://apis.google.com https://www.gstatic.com https://www.googleapis.com",
         "style-src 'self' 'unsafe-inline' https://accounts.google.com",
-        "img-src 'self' data: blob: https://*.googleusercontent.com https://www.gstatic.com",
+        "img-src 'self' data: blob: https: http:",
         "font-src 'self' data:",
         "connect-src 'self' http://127.0.0.1:8000 http://localhost:8000 https://trak-backend-upip.onrender.com https://*.googleapis.com https://*.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebase.googleapis.com wss://localhost:3000 ws://localhost:3000",
         "frame-src 'self' https://accounts.google.com https://*.google.com https://*.firebaseapp.com https://*.web.app",

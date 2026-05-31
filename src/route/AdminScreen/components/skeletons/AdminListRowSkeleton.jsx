@@ -1,8 +1,11 @@
 import React from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
 import { useAdminShimmer } from './useAdminShimmer';
+import { useAdminTheme } from '../../useAdminTheme';
 
-export default function AdminListRowSkeleton({ palette, count = 5 }) {
+export default function AdminListRowSkeleton({ palette: paletteProp, count = 5 }) {
+  const { palette: themePalette } = useAdminTheme();
+  const palette = paletteProp || themePalette;
   const opacity = useAdminShimmer();
   const border = palette.border || palette.borderLight;
   const fill = palette.pageAlt || palette.borderLight;

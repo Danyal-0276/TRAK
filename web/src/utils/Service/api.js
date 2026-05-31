@@ -262,10 +262,15 @@ export const getUserKeywordsFromServer = () => authRequest('/api/user/keywords/'
 export const fetchPlatformCategories = () => authRequest('/api/user/platform-categories/');
 
 export const submitArticleReport = (payload) =>
-  authRequest('/api/user/reports/', {
+  submitUserFeedback({ ...payload, type: payload.type || 'article_report' });
+
+export const submitUserFeedback = (payload) =>
+  authRequest('/api/user/feedback/', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+
+export const fetchFeedbackCategories = () => authRequest('/api/user/feedback/');
 
 export const getNotificationPreferences = () => authRequest('/api/notifications/preferences/');
 

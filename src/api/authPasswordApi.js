@@ -1,6 +1,24 @@
 import { AUTH_PREFIX } from '../config/api';
 import { fetchWithTimeout, sleep } from './fetchWithTimeout';
 
+export async function checkPasswordResetEmail(email) {
+  const url = `${AUTH_PREFIX}/password-reset/check-email/`;
+  const res = await fetchWithTimeout(
+    url,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    },
+    15000
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || data.email?.[0] || 'Could not verify email');
+  }
+  return data;
+}
+
 /**
  * Request password reset email (no auth).
  * @param {string} email

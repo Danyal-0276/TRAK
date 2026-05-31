@@ -89,28 +89,79 @@ export function lineIndicesForSegment(lines, segmentIndex) {
 /**
  * Schedule onLine(index) proportionally across durationMs (clears prior timers via returned cancel).
  */
-export function scheduleLineHighlights(lineIndices, lines, durationMs, onLine, isCancelled) {
+export function scheduleLineHighlights(
+  lineIndices,
+  lines,
+  durationMs,
+  onLine,
+  isCancelled,
+  { startLineOffset = 0, elapsedMs = 0 } = {}
+) {
   const timers = [];
-  const cancel = () => timers.forEach((t) => clearTimeout(t));
+  let paused = false;
+  let pauseStartedAt = 0;
+  let totalPausedMs = 0;
+  let nextLineIdx = Math.max(0, Math.min(startLineOffset, lineIndices.length - 1));
+
+  const clearTimers = () => {
+    timers.forEach((t) => clearTimeout(t));
+    timers.length = 0;
+  };
+
+  const cancel = () => {
+    clearTimers();
+    paused = false;
+  };
+
+  const scheduleFrom = (fromLineIdx, fromElapsedMs) => {
+    clearTimers();
+    if (!lineIndices.length || durationMs <= 0 || paused) return;
+
+    const remainingMs = Math.max(0, durationMs - (fromElapsedMs || 0));
+    const weights = lineIndices.map((i) => Math.max(1, lines[i]?.text?.length || 1));
+    const total = weights.reduce((a, b) => a + b, 0) || 1;
+
+    const startIdx = Math.max(0, Math.min(fromLineIdx, lineIndices.length - 1));
+    nextLineIdx = startIdx;
+    if (!isCancelled?.() && !paused) onLine(lineIndices[startIdx]);
+
+    let elapsed = 0;
+    for (let j = startIdx + 1; j < lineIndices.length; j++) {
+      elapsed += Math.round((weights[j - 1] / total) * remainingMs);
+      const lineIdx = lineIndices[j];
+      const fireAt = elapsed;
+      const t = setTimeout(() => {
+        if (isCancelled?.() || paused) return;
+        nextLineIdx = j;
+        onLine(lineIdx);
+      }, fireAt + totalPausedMs);
+      timers.push(t);
+    }
+  };
+
+  const pause = () => {
+    if (paused) return;
+    paused = true;
+    pauseStartedAt = Date.now();
+    clearTimers();
+  };
+
+  const resume = () => {
+    if (!paused) return;
+    totalPausedMs += Date.now() - pauseStartedAt;
+    paused = false;
+    pauseStartedAt = 0;
+    scheduleFrom(nextLineIdx, elapsedMs);
+  };
 
   if (!lineIndices.length || durationMs <= 0) {
-    return cancel;
+    return { cancel, pause, resume };
   }
 
-  const weights = lineIndices.map((i) => Math.max(1, lines[i]?.text?.length || 1));
-  const total = weights.reduce((a, b) => a + b, 0) || 1;
+  scheduleFrom(
+    Math.max(0, Math.min(startLineOffset, lineIndices.length - 1)),
+    elapsedMs || 0
+  );
 
-  if (!isCancelled?.()) onLine(lineIndices[0]);
-
-  let elapsed = 0;
-  for (let j = 1; j < lineIndices.length; j++) {
-    elapsed += Math.round((weights[j - 1] / total) * durationMs);
-    const lineIdx = lineIndices[j];
-    const t = setTimeout(() => {
-      if (!isCancelled?.()) onLine(lineIdx);
-    }, elapsed);
-    timers.push(t);
-  }
-
-  return cancel;
+  return { cancel, pause, resume };
 }

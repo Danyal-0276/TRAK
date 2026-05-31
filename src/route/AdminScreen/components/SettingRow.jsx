@@ -1,10 +1,16 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
+import { useAdminTheme } from '../useAdminTheme';
+import Text from '../../../components/ui/Text';
 
 const SettingRow = ({ label, children }) => {
+  const { palette } = useAdminTheme();
+
   return (
-    <View style={styles.settingRow}>
-      <Text style={styles.settingLabel}>{label}</Text>
+    <View style={[styles.settingRow, { borderBottomColor: palette.borderLight }]}>
+      <Text variant="body" color={palette.textPrimary} style={styles.settingLabel}>
+        {label}
+      </Text>
       {children}
     </View>
   );
@@ -17,12 +23,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   settingLabel: {
     fontSize: 15,
-    color: '#000',
     fontWeight: '500',
+    flex: 1,
+    marginRight: 12,
   },
 });
 

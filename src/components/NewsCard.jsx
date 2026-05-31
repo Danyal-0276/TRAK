@@ -1,7 +1,7 @@
 // ============================================
 // FILE: components/NewsCard.jsx
 // ============================================
-import React, { useRef, useEffect, memo } from 'react';
+import React, { useRef, useEffect, memo, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
 import { resolveArticleSource } from '../utils/articleSource';
 import { shareArticle, openArticleMenu } from '../utils/articleMenu';
@@ -17,6 +17,7 @@ import {
     Clock,
 } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
+import FeedbackModal from './FeedbackModal';
 
 function NewsCardInner({
     item,
@@ -30,6 +31,7 @@ function NewsCardInner({
 }) {
     const { theme } = useTheme();
     const feedback = useFeedback();
+    const [feedbackOpen, setFeedbackOpen] = useState(false);
     const { colors } = theme;
     const safeId = item?.id != null ? String(item.id) : `news-${index}`;
     const safeSource = resolveArticleSource(item);
@@ -272,6 +274,7 @@ function NewsCardInner({
     const credText = isFake ? 'Fake / Low credibility' : credLabel === 'real' ? 'Verified / Higher credibility' : credLabel || 'Credibility';
 
     return (
+        <>
         <Animated.View
             style={[
                 cardStyles.container,
@@ -316,7 +319,7 @@ function NewsCardInner({
                         style={cardStyles.moreButton}
                         onPress={(e) => {
                             e.stopPropagation();
-                            openArticleMenu(item, feedback);
+                            openArticleMenu(item, feedback, { onOpenFeedback: () => setFeedbackOpen(true) });
                         }}
                         accessibilityLabel="More options"
                     >
@@ -415,6 +418,13 @@ function NewsCardInner({
             </View>
         </TouchableOpacity>
         </Animated.View>
+        <FeedbackModal
+            visible={feedbackOpen}
+            onClose={() => setFeedbackOpen(false)}
+            item={item}
+            type="article_report"
+        />
+        </>
     );
 }
 

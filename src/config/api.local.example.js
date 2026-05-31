@@ -4,6 +4,7 @@ import { RENDER_API_BASE } from '../../config/apiBase';
 // Copy to api.local.js (gitignored) to override API_BASE in dev.
 
 /** true = Render (production API). false = local Django on your PC. */
+/** Release builds auto-use Render via api.local.js (__DEV__ check). */
 const USE_RENDER = true;
 
 const DEV_LAN_HOST = '192.168.1.8';

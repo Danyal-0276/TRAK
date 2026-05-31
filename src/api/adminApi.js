@@ -19,12 +19,14 @@ export async function getAdminAnalytics({ cacheBust = false } = {}) {
   return parseJson(res);
 }
 
-export async function getAdminArticles({ page = 1, pageSize = 20, scope = 'all' } = {}) {
+export async function getAdminArticles({ page = 1, pageSize = 20, scope = 'all', pipelineStatus = '', moderationStatus = '' } = {}) {
   const params = new URLSearchParams({
     page: String(page),
     page_size: String(pageSize),
     scope: String(scope),
   });
+  if (pipelineStatus) params.set('pipeline_status', String(pipelineStatus));
+  if (moderationStatus) params.set('moderation_status', String(moderationStatus));
   const res = await apiFetch(`${ADMIN_PREFIX}/articles/?${params}`, {}, API_BASE);
   return parseJson(res);
 }
@@ -100,6 +102,41 @@ export async function patchAdminSettings(payload) {
 
 export async function getAdminNotifications() {
   const res = await apiFetch(`${ADMIN_PREFIX}/notifications/`, {}, API_BASE);
+  return parseJson(res);
+}
+
+export async function markAdminNotificationRead(notificationId) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/notifications/${encodeURIComponent(notificationId)}/mark-read/`,
+    { method: 'POST' },
+    API_BASE
+  );
+  return parseJson(res);
+}
+
+export async function getAdminFeedback({ status = '', type = '', category = '', limit = 50, skip = 0 } = {}) {
+  const params = new URLSearchParams();
+  if (status) params.set('status', status);
+  if (type) params.set('type', type);
+  if (category) params.set('category', category);
+  params.set('limit', String(limit));
+  params.set('skip', String(skip));
+  const res = await apiFetch(`${ADMIN_PREFIX}/feedback/?${params}`, {}, API_BASE);
+  return parseJson(res);
+}
+
+export async function patchAdminFeedback(feedbackId, payload) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/feedback/${encodeURIComponent(feedbackId)}/`,
+    { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) },
+    API_BASE
+  );
+  return parseJson(res);
+}
+
+export async function getAdminArticleById(articleId) {
+  const params = new URLSearchParams({ id: String(articleId) });
+  const res = await apiFetch(`${ADMIN_PREFIX}/articles/lookup/?${params}`, {}, API_BASE);
   return parseJson(res);
 }
 

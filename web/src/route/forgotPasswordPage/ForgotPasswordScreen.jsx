@@ -5,7 +5,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Mail, ArrowRight, ArrowLeft } from 'lucide-react';
 import Text from '../../components/ui/Text';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
-import { requestPasswordReset } from '../../api/authPasswordApi';
+import { checkPasswordResetEmail, requestPasswordReset } from '../../api/authPasswordApi';
 
 const ForgotPasswordScreen = () => {
     const { theme } = useTheme();
@@ -32,6 +32,11 @@ const ForgotPasswordScreen = () => {
 
         setLoading(true);
         try {
+            const check = await checkPasswordResetEmail(email.trim());
+            if (!check?.exists) {
+                setErrors((prev) => ({ ...prev, email: 'No account found with this email address.' }));
+                return;
+            }
             const res = await requestPasswordReset(email.trim());
             navigate('/forgot-password-code', {
                 state: {

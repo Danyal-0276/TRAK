@@ -3,6 +3,24 @@ import { fetchWithTimeout } from './fetchWithTimeout';
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+export async function checkPasswordResetEmail(email) {
+  const url = `${AUTH_PREFIX}/password-reset/check-email/`;
+  const res = await fetchWithTimeout(
+    url,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ email: email.trim().toLowerCase() }),
+    },
+    15000
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.detail || data.email?.[0] || 'Could not verify email');
+  }
+  return data;
+}
+
 /** Password reset should return in ~1s; retry once on cold start / network blips. */
 export async function requestPasswordReset(email) {
   const url = `${AUTH_PREFIX}/password-reset/`;

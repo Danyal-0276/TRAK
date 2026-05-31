@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { View } from 'react-native';
 import TrakLogo from '../components/TrakLogo';
 import { NavigationContainer } from '@react-navigation/native';
@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeContext';
 import { defaultStackScreenOptions } from './stackScreenOptions';
 import { getInitialRouteForUser } from '../utils/authNavigation';
+import { bindPushNotificationNavigation, setPushNavigationRef } from '../notifications/pushNavigation';
 import {
     EditProfileScreen,
     PrivacyScreen,
@@ -60,6 +61,13 @@ const RootStack = ({ initialRouteName }) => (
 export default function AppNavigation() {
     const { user, bootstrapped } = useAuth();
     const { theme } = useTheme();
+    const navRef = useRef(null);
+
+    useEffect(() => {
+        if (!bootstrapped || !user) return undefined;
+        setPushNavigationRef(navRef.current);
+        bindPushNotificationNavigation();
+    }, [bootstrapped, user]);
     // Show a fast branded loader instead of a black frame.
     if (!bootstrapped) {
         return (
@@ -77,7 +85,7 @@ export default function AppNavigation() {
     }
     const initialRouteName = getInitialRouteForUser(user);
     return (
-        <NavigationContainer>
+        <NavigationContainer ref={navRef}>
             <RootStack initialRouteName={initialRouteName} />
         </NavigationContainer>
     );

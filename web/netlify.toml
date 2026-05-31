@@ -1,0 +1,15 @@
+# Netlify → TRAK web (React/Vite). API lives on Render (see config/apiBase.js).
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+  VITE_API_URL = "https://trak-backend-upip.onrender.com"
+  VITE_ENABLE_NOTIFICATIONS_WS = "true"
+
+# SPA routing (React Router)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

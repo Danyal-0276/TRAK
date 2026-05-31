@@ -2,12 +2,35 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAdminTheme } from '../useAdminTheme';
+import { useAuth } from '../../../context/AuthContext';
 import Text from '../../../components/ui/Text';
 import TrakLogo from '../../../components/TrakLogo';
 
-const Header = () => {
+const TAB_LABELS = {
+  overview: 'Overview',
+  users: 'Users',
+  admins: 'Admins',
+  articles: 'Articles',
+  feedback: 'Feedback',
+  notifications: 'Notifications',
+  settings: 'Settings',
+};
+
+function displayNameFromEmail(email) {
+  const local = String(email || '').split('@')[0] || 'Admin';
+  return local
+    .replace(/[._-]+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+const Header = ({ activeTab = 'overview' }) => {
   const { palette } = useAdminTheme();
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const email = user?.email || '';
+  const displayName = displayNameFromEmail(email);
+  const initial = displayName.charAt(0).toUpperCase() || 'A';
+  const sectionLabel = TAB_LABELS[activeTab] || 'Admin';
 
   return (
     <View
@@ -16,18 +39,30 @@ const Header = () => {
         {
           backgroundColor: palette.card,
           borderBottomColor: palette.border,
-          paddingTop: Math.max(insets.top, 12),
+          paddingTop: Math.max(insets.top, 8),
         },
       ]}
     >
-      <View style={styles.headerContent}>
-        <TrakLogo size={32} showContainer />
+      <View style={styles.row}>
+        <TrakLogo size={28} showContainer />
+
         <View style={styles.titleBlock}>
-          <Text variant="subtitle" color={palette.textPrimary} style={{ fontWeight: '700' }}>
-            TRAK Admin
+          <Text variant="subtitle" color={palette.textPrimary} style={styles.sectionTitle} numberOfLines={1}>
+            {sectionLabel}
           </Text>
-          <Text variant="caption" style={{ color: palette.textTertiary, marginTop: 2 }}>
-            News operations
+          {displayName ? (
+            <Text variant="caption" color={palette.textTertiary} numberOfLines={1}>
+              {displayName}
+            </Text>
+          ) : null}
+        </View>
+
+        <View
+          style={[styles.avatar, { backgroundColor: `${palette.primary}18` }]}
+          accessibilityLabel={email ? `${displayName}, ${email}` : displayName}
+        >
+          <Text variant="caption" color={palette.primary} style={{ fontWeight: '800', fontSize: 13 }}>
+            {initial}
           </Text>
         </View>
       </View>
@@ -39,22 +74,29 @@ const styles = StyleSheet.create({
   header: {
     borderBottomWidth: 1,
     zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  headerContent: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingHorizontal: 16,
+    paddingBottom: 10,
     gap: 12,
   },
   titleBlock: {
-    alignItems: 'flex-start',
+    flex: 1,
+    minWidth: 0,
+  },
+  sectionTitle: {
+    fontWeight: '700',
+    fontSize: 17,
+    letterSpacing: -0.2,
+  },
+  avatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });
 

@@ -13,7 +13,8 @@ import {
     ArrowLeft
 } from 'lucide-react';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
-import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, setReaction, submitArticleReport } from '../../utils/Service/api';
+import FeedbackModal from '../../components/FeedbackModal';
+import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { mapApiItem } from '../../utils/loadFeed';
@@ -48,6 +49,7 @@ const ArticleDetailScreen = () => {
     const credMeta = getFeedItemCredibilityMeta(article);
     const { success, error: notifyError, confirm } = useUIFeedback();
     const [showMoreMenu, setShowMoreMenu] = useState(false);
+    const [feedbackOpen, setFeedbackOpen] = useState(false);
 
     const [reaction, setReactionState] = useState(null);
     const [isBookmarked, setIsBookmarked] = useState(false);
@@ -122,25 +124,9 @@ const ArticleDetailScreen = () => {
         setShowMoreMenu(false);
     };
 
-    const handleReport = async () => {
+    const handleReport = () => {
         setShowMoreMenu(false);
-        const ok = await confirm({
-            title: 'Report this article?',
-            message: 'Our team will review this content.',
-            confirmText: 'Report',
-            danger: true,
-        });
-        if (!ok) return;
-        try {
-            await submitArticleReport({
-                article_id: articleKey,
-                url: article.canonical_url || article.url || '',
-                reason: 'user_report',
-            });
-            success('Report submitted. Thank you.');
-        } catch (e) {
-            notifyError(e?.message || 'Could not submit report.');
-        }
+        setFeedbackOpen(true);
     };
 
     useEffect(() => {
@@ -239,6 +225,7 @@ const ArticleDetailScreen = () => {
     );
 
     return (
+        <>
         <div style={{
             minHeight: '100vh',
             backgroundColor: colors.background,
@@ -360,7 +347,7 @@ const ArticleDetailScreen = () => {
                                         ...(article.canonical_url || article.url
                                             ? [{ label: 'Open original', onClick: handleOpenOriginal }]
                                             : []),
-                                        { label: 'Report article', onClick: handleReport, danger: true },
+                                        { label: 'Report or give feedback', onClick: handleReport, danger: true },
                                     ].map((item) => (
                                         <button
                                             key={item.label}
@@ -508,6 +495,7 @@ const ArticleDetailScreen = () => {
                     disabled={!!fetchError}
                     highlightLines={ttsHighlightLines}
                     onActiveLineIndex={setActiveTtsLineIndex}
+                    articleId={articleKey}
                 />
 
                 {/* Article Content */}
@@ -730,6 +718,13 @@ const ArticleDetailScreen = () => {
                 </div>
             </div>
         </div>
+        <FeedbackModal
+            open={feedbackOpen}
+            onClose={() => setFeedbackOpen(false)}
+            item={{ ...article, id: articleKey }}
+            type="article_report"
+        />
+        </>
     );
 };
 

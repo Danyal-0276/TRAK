@@ -55,6 +55,14 @@ export function mapApiItem(a, userKeywords = []) {
         votes: 0,
         credibility: a.credibility,
         topic_keywords: topicKeywords,
+        image_url: a.image_url || a.image || '',
+        credibility_label: cred.label_code ?? a.credibility_label,
+        credibility_label_name: cred.label || a.credibility_label_name,
+        credibility_score: cred.score ?? a.credibility_score,
+        credibility_probs: cred.probs || a.credibility_probs,
+        fact_check_verdict: a.fact_check_verdict || cred.fact_check_verdict,
+        ai_summary: a.ai_summary || a.summary || '',
+        scope: 'processed',
     };
 }
 

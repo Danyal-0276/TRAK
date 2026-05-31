@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useTheme } from '../theme/ThemeContext';
 import { getCardSummaryText } from '../utils/articleNavigation';
 import {
@@ -15,12 +15,16 @@ import {
 } from 'lucide-react';
 import { getFeedItemCredibilityMeta } from '../utils/credibilityIndicator';
 import { prefetchArticleDetail } from '../utils/articleDetailCache';
+import FeedbackModal from './FeedbackModal';
 
 export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark, layout = 'grid' }) => {
     const isMasonry = layout === 'masonry';
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
+    const [showMenu, setShowMenu] = useState(false);
+    const [feedbackOpen, setFeedbackOpen] = useState(false);
+    const menuRef = useRef(null);
     const itemId = item?.id != null ? String(item.id) : '';
     const isBookmarked = bookmarkedItems?.has(itemId) || bookmarkedItems?.has(item.id);
     const voteType = votedItems?.[itemId] ?? votedItems?.[item.id];
@@ -28,6 +32,30 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const dislikeCount = Number(item.dislike_count ?? 0);
     const cardSummary = getCardSummaryText(item);
     const credMeta = getFeedItemCredibilityMeta(item);
+    const itemUrl = item?.canonical_url || item?.url || '';
+    const credLabel = String(item.credibilityLabel || credMeta.labelKey || '').toLowerCase();
+    const isFake = !!item.isFake || credMeta.labelKey === 'fake';
+    const isLowCred = !!item.isLowCredibility || credMeta.labelKey === 'suspicious' || isFake;
+    const credBg = isFake || isLowCred ? (isDark ? '#450a0a' : colors.errorBg || '#FEE2E2') : (isDark ? '#052e16' : colors.successBg || '#DCFCE7');
+    const credFg = isFake || isLowCred ? (colors.error || '#dc2626') : (colors.success || '#16a34a');
+    const credText = isFake
+        ? 'Fake / Low credibility'
+        : credLabel === 'suspicious'
+          ? 'Suspicious'
+          : credLabel === 'real'
+            ? 'Verified / Higher credibility'
+            : credMeta.labelName || 'Credibility';
+
+    useEffect(() => {
+        if (!showMenu) return undefined;
+        const onDocClick = (e) => {
+            if (menuRef.current && !menuRef.current.contains(e.target)) {
+                setShowMenu(false);
+            }
+        };
+        document.addEventListener('mousedown', onDocClick);
+        return () => document.removeEventListener('mousedown', onDocClick);
+    }, [showMenu]);
 
     const cardBackground = isDark ? colors.surface : '#ffffff';
     const textPrimary = colors.textPrimary;
@@ -35,6 +63,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const borderColor = isDark ? colors.border || '#334155' : '#e5e7eb';
 
     return (
+        <>
         <article
             onClick={onPress}
             style={{
@@ -204,10 +233,13 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                 </div>
                             </div>
                         </div>
+                        <div ref={menuRef} style={{ position: 'relative' }}>
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
+                                setShowMenu((v) => !v);
                             }}
+                            aria-label="Article options"
                             style={{
                                 padding: '4px',
                                 border: 'none',
@@ -225,28 +257,137 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                         >
                             <MoreHorizontal size={16} color={textSecondary} />
                         </button>
+                        {showMenu ? (
+                            <div
+                                role="menu"
+                                onClick={(e) => e.stopPropagation()}
+                                style={{
+                                    position: 'absolute',
+                                    right: 0,
+                                    top: 'calc(100% + 4px)',
+                                    zIndex: 20,
+                                    minWidth: 180,
+                                    background: colors.surface,
+                                    border: `1px solid ${borderColor}`,
+                                    borderRadius: 10,
+                                    boxShadow: isDark ? '0 8px 24px rgba(0,0,0,0.35)' : '0 8px 24px rgba(0,0,0,0.12)',
+                                    overflow: 'hidden',
+                                }}
+                            >
+                                {[
+                                    {
+                                        label: 'Share',
+                                        onClick: () => {
+                                            setShowMenu(false);
+                                            const title = item?.title || 'Article';
+                                            if (navigator.share) {
+                                                navigator.share({ title, url: itemUrl || undefined, text: title }).catch(() => {});
+                                            } else if (itemUrl) {
+                                                window.open(itemUrl, '_blank', 'noopener,noreferrer');
+                                            }
+                                        },
+                                    },
+                                    ...(itemUrl
+                                        ? [{
+                                            label: 'Open original',
+                                            onClick: () => {
+                                                setShowMenu(false);
+                                                window.open(itemUrl, '_blank', 'noopener,noreferrer');
+                                            },
+                                        }]
+                                        : []),
+                                    {
+                                        label: 'Report or give feedback',
+                                        danger: true,
+                                        onClick: () => {
+                                            setShowMenu(false);
+                                            setFeedbackOpen(true);
+                                        },
+                                    },
+                                ].map((action) => (
+                                    <button
+                                        key={action.label}
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={action.onClick}
+                                        style={{
+                                            display: 'block',
+                                            width: '100%',
+                                            padding: '10px 12px',
+                                            border: 'none',
+                                            background: 'transparent',
+                                            textAlign: 'left',
+                                            fontSize: 13,
+                                            fontWeight: 500,
+                                            color: action.danger ? colors.error : textPrimary,
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        {action.label}
+                                    </button>
+                                ))}
+                            </div>
+                        ) : null}
+                        </div>
                     </div>
 
-                    {/* Category Tag */}
-                    {item.category && (
-                        <div style={{
-                            marginBottom: '10px',
-                        }}>
+                    {/* Category, credibility & trending */}
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10, alignItems: 'center' }}>
+                        {item.category ? (
                             <span style={{
                                 fontSize: '10px',
-                                fontWeight: '600',
+                                fontWeight: '700',
                                 color: textSecondary,
                                 textTransform: 'uppercase',
-                                letterSpacing: '0.5px',
-                                padding: '3px 8px',
+                                letterSpacing: '0.8px',
+                                padding: '5px 10px',
                                 backgroundColor: isDark ? colors.surfaceElevated : '#f3f4f6',
-                                borderRadius: '4px',
-                                display: 'inline-block',
+                                borderRadius: '6px',
+                                borderLeft: `3px solid ${colors.primary}`,
                             }}>
                                 {item.category}
                             </span>
-                        </div>
-                    )}
+                        ) : null}
+                        <span style={{
+                            fontSize: '11px',
+                            fontWeight: '800',
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.5px',
+                            padding: '5px 10px',
+                            borderRadius: '4px',
+                            borderLeft: `3px solid ${credFg}`,
+                            backgroundColor: credBg,
+                            color: credFg,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                        }}>
+                            {isFake || isLowCred ? (
+                                <AlertTriangle size={11} color={credFg} />
+                            ) : (
+                                <CheckCircle size={11} color={credFg} />
+                            )}
+                            {credText}
+                        </span>
+                        {item.trending ? (
+                            <span style={{
+                                fontSize: '11px',
+                                fontWeight: '800',
+                                textTransform: 'uppercase',
+                                color: colors.error || '#dc2626',
+                                backgroundColor: isDark ? '#450a0a' : colors.errorBg || '#FEE2E2',
+                                padding: '5px 10px',
+                                borderRadius: '4px',
+                                borderLeft: `3px solid ${colors.error || '#dc2626'}`,
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 4,
+                            }}>
+                                <TrendingUp size={11} color={colors.error || '#dc2626'} />
+                                Trending
+                            </span>
+                        ) : null}
+                    </div>
 
                     {/* Title */}
                     {/* Title */}
@@ -480,5 +621,12 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                 </div>
             </div>
         </article>
+        <FeedbackModal
+            open={feedbackOpen}
+            onClose={() => setFeedbackOpen(false)}
+            item={item}
+            type="article_report"
+        />
+        </>
     );
 };

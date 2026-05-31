@@ -3,6 +3,8 @@ import { Platform } from 'react-native';
 const LINK_ERROR =
   'Audio playback is not available. Rebuild the app: npm run android or npm run ios';
 
+let activeSession = null;
+
 function getModules() {
   try {
     return {
@@ -27,17 +29,70 @@ function fileUri(path) {
   return `file://${p}`;
 }
 
-/** Rough MP3 length from base64 size (fallback when FinishedPlaying never fires). */
 function estimateDurationMs(base64Len) {
   const bytes = (base64Len * 3) / 4;
   const sec = Math.max(2, Math.min(180, bytes / 12000));
   return (sec + 1.5) * 1000;
 }
 
+export function pauseNativePlayback() {
+  try {
+    const Sound = require('react-native-sound-player').default;
+    Sound.pause();
+    if (activeSession) activeSession.paused = true;
+  } catch {
+    /* ignore */
+  }
+}
+
+export function resumeNativePlayback() {
+  try {
+    const Sound = require('react-native-sound-player').default;
+    Sound.resume();
+    if (activeSession) activeSession.paused = false;
+  } catch {
+    /* ignore */
+  }
+}
+
+export async function getNativePlaybackPosition() {
+  try {
+    const Sound = require('react-native-sound-player').default;
+    const info = await Sound.getInfo();
+    return Number(info?.currentTime ?? info?.currentTime ?? 0) || 0;
+  } catch {
+    return activeSession?.elapsedSec || 0;
+  }
+}
+
+export function seekNativePlayback(seconds) {
+  try {
+    const Sound = require('react-native-sound-player').default;
+    Sound.seek(Number(seconds) || 0);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function stopNativePlayback() {
+  try {
+    const Sound = require('react-native-sound-player').default;
+    Sound.stop();
+  } catch {
+    /* native module not linked */
+  }
+  if (activeSession) {
+    activeSession.aborted = true;
+    activeSession.cleanup?.();
+    activeSession = null;
+  }
+}
+
 /**
- * Play base64 MP3/WAV from cache dir. Resolves when playback ends or on error.
+ * Play base64 MP3/WAV from cache dir. Resolves when playback ends, aborted, or errored.
+ * Supports pause/resume via Sound.pause/resume without resolving early.
  */
-export function playBase64AudioAndWait(base64Audio, format = 'mp3') {
+export function playBase64AudioAndWait(base64Audio, format = 'mp3', { isAborted, isPaused } = {}) {
   const { Blob, Sound } = getModules();
   const ext = String(format || 'mp3').toLowerCase() === 'wav' ? 'wav' : 'mp3';
   const clean = normalizeAudioBase64(base64Audio);
@@ -47,13 +102,24 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3') {
     let settled = false;
     const subs = [];
     let maxTimer;
-    let durationTimer;
+    let progressTimer;
+    let pollAbort;
+    const startedAt = Date.now();
+
+    const session = {
+      aborted: false,
+      paused: false,
+      elapsedSec: 0,
+      cleanup: null,
+    };
+    activeSession = session;
 
     const finish = (err) => {
       if (settled) return;
       settled = true;
       clearTimeout(maxTimer);
-      clearTimeout(durationTimer);
+      clearInterval(progressTimer);
+      clearInterval(pollAbort);
       subs.forEach((s) => {
         try {
           s?.remove?.();
@@ -66,11 +132,16 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3') {
       } catch {
         /* ignore */
       }
+      if (activeSession === session) activeSession = null;
       if (err) reject(err instanceof Error ? err : new Error(String(err)));
       else resolve();
     };
 
+    session.cleanup = () => finish();
+
     let playbackStarted = false;
+    let trackDuration = 0;
+
     const onReadyPlay = () => {
       if (playbackStarted) return;
       playbackStarted = true;
@@ -83,18 +154,28 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3') {
           }
         }
         Sound.play();
-        durationTimer = setTimeout(() => finish(), estimateDurationMs(clean.length));
         Sound.getInfo()
           .then((info) => {
-            if (info?.duration > 0) {
-              clearTimeout(durationTimer);
-              durationTimer = setTimeout(
-                () => finish(),
-                Math.min((info.duration + 1.5) * 1000, 180000)
-              );
-            }
+            if (info?.duration > 0) trackDuration = info.duration;
           })
           .catch(() => {});
+        progressTimer = setInterval(async () => {
+          if (session.aborted || isAborted?.()) {
+            finish();
+            return;
+          }
+          if (session.paused || isPaused?.()) return;
+          try {
+            const info = await Sound.getInfo();
+            const dur = Number(info?.duration) || trackDuration;
+            const cur = Number(info?.currentTime) || 0;
+            if (dur > 0) trackDuration = dur;
+            session.elapsedSec = cur;
+            if (dur > 0 && cur >= dur - 0.2) finish();
+          } catch {
+            session.elapsedSec = (Date.now() - startedAt) / 1000;
+          }
+        }, 250);
       } catch (e) {
         finish(e);
       }
@@ -102,7 +183,10 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3') {
 
     const attachListeners = () => {
       try {
-        subs.push(Sound.addEventListener('FinishedPlaying', () => finish()));
+        subs.push(Sound.addEventListener('FinishedPlaying', () => {
+          if (session.paused || isPaused?.()) return;
+          finish();
+        }));
         subs.push(
           Sound.addEventListener('OnSetupError', (data) =>
             finish(new Error(data?.message || 'Audio setup failed'))
@@ -112,7 +196,6 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3') {
         subs.push(Sound.addEventListener('FinishedLoading', onReadyPlay));
         subs.push(Sound.addEventListener('FinishedLoadingFile', onReadyPlay));
       } catch {
-        /* older API */
         try {
           Sound.onFinishedPlaying((success) => {
             if (success !== false) finish();
@@ -126,32 +209,39 @@ export function playBase64AudioAndWait(base64Audio, format = 'mp3') {
     attachListeners();
     maxTimer = setTimeout(() => finish(new Error('Audio playback timed out')), 180000);
 
+    const pollAbortInterval = setInterval(() => {
+      if (isAborted?.() || session.aborted) {
+        clearInterval(pollAbortInterval);
+        finish();
+      }
+    }, 200);
+    pollAbort = pollAbortInterval;
+
     const path = `${Blob.fs.dirs.CacheDir}/trak-tts-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
     const uri = fileUri(path);
 
     Blob.fs
       .writeFile(path, clean, 'base64')
       .then(() => {
+        if (isAborted?.() || session.aborted) {
+          clearInterval(pollAbortInterval);
+          finish();
+          return;
+        }
         try {
           Sound.loadUrl(uri);
         } catch {
           try {
             Sound.playUrl(uri);
-            durationTimer = setTimeout(() => finish(), estimateDurationMs(clean.length));
           } catch (playErr) {
+            clearInterval(pollAbortInterval);
             finish(playErr);
           }
         }
       })
-      .catch((err) => finish(err));
+      .catch((err) => {
+        clearInterval(pollAbortInterval);
+        finish(err);
+      });
   });
-}
-
-export function stopNativePlayback() {
-  try {
-    const Sound = require('react-native-sound-player').default;
-    Sound.stop();
-  } catch {
-    /* native module not linked */
-  }
 }

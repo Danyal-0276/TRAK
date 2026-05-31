@@ -18,6 +18,7 @@ import { useAdminPageMeta } from './adminPageMeta';
 import { deleteAdminArticle, getAdminArticles, patchAdminArticle } from '../../api/adminApi';
 import {
     getArticlesApiScope,
+    getArticlesFetchParams,
     parseArticleRouteParams,
     filterArticlesForDisplay,
 } from '../../utils/adminArticleFilters';
@@ -29,8 +30,11 @@ import ArticleInsightBadges, {
 } from './components/ArticleInsightBadges';
 import { enableAdminAppPreview } from '../../utils/adminAppPreview';
 import { normalizeArticleForDetail } from '../../utils/articleNavigation';
-import { subscribeAdminOverviewRefresh } from '../../utils/adminOverviewEvents';
+import { ARTICLES_POLL_INTERVAL_MS } from './adminTheme';
 import { isArticlesPath } from './hooks/useAdminTabActive';
+import AdminArticleReviewModal from './components/AdminArticleReviewModal';
+import AdminArticleHeroImage from './components/AdminArticleHeroImage';
+import AdminArticlesControlPanel from './components/AdminArticlesControlPanel';
 
 const AdminArticlesScreen = () => {
     const { palette, isDark, colors } = useAdminTheme();
@@ -40,12 +44,14 @@ const AdminArticlesScreen = () => {
     const articlesTabActive = isArticlesPath(pathname);
     const [searchParams, setSearchParams] = useSearchParams();
     const [articles, setArticles] = useState([]);
+    const [articleCounts, setArticleCounts] = useState(null);
     const { confirm, success, error: notifyError } = useUIFeedback();
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
     const initialRoute = parseArticleRouteParams(searchParams);
     const [pipelineFilter, setPipelineFilter] = useState(initialRoute.pipelineFilter);
     const [statusById, setStatusById] = useState({});
+    const [reviewArticle, setReviewArticle] = useState(null);
 
     const cardBackground = palette.card;
     const textPrimary = palette.textPrimary;
@@ -91,29 +97,35 @@ const AdminArticlesScreen = () => {
             pipeline_status: doc.pipeline_status,
             moderation_status: doc.moderation_status || 'review',
             canonical_url: doc.canonical_url,
+            content: doc.content || doc.description || doc.summary || '',
+            image_url: doc.image_url,
+            fact_check_provider: doc.fact_check_provider,
         };
     };
 
     const loadArticles = useCallback(
-        async (fetchScope, pipeFilter) => {
+        async (fetchScope, pipeFilter, { silent = false } = {}) => {
             try {
-                setLoading(true);
-                const serverPipeline = ['queue', 'pending', 'processing', 'failed'].includes(pipeFilter)
-                    ? pipeFilter
-                    : '';
+                if (!silent) setLoading(true);
+                const { scope, pipelineStatus, moderationStatus } = getArticlesFetchParams(pipeFilter);
                 const response = await getAdminArticles({
                     page: 1,
                     pageSize: 100,
-                    scope: fetchScope,
-                    pipelineStatus: serverPipeline,
+                    scope: fetchScope || scope,
+                    pipelineStatus,
+                    moderationStatus,
                 });
                 setArticles((response.results || []).map(mapApiDoc));
+                setArticleCounts(response.counts || null);
             } catch (error) {
                 console.error('Error loading articles:', error);
-                notifyError(error?.message || 'Could not load articles.');
-                setArticles([]);
+                if (!silent) {
+                    notifyError(error?.message || 'Could not load articles.');
+                    setArticles([]);
+                    setArticleCounts(null);
+                }
             } finally {
-                setLoading(false);
+                if (!silent) setLoading(false);
             }
         },
         [notifyError]
@@ -125,9 +137,20 @@ const AdminArticlesScreen = () => {
 
     useEffect(() => {
         if (!articlesTabActive) return undefined;
-        return subscribeAdminOverviewRefresh(() => {
-            loadArticles(apiScope, pipelineFilter);
-        });
+        const poll = () => {
+            if (document.visibilityState === 'visible') {
+                loadArticles(apiScope, pipelineFilter, { silent: true });
+            }
+        };
+        const id = window.setInterval(poll, ARTICLES_POLL_INTERVAL_MS);
+        const onVisibility = () => {
+            if (document.visibilityState === 'visible') poll();
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+        return () => {
+            window.clearInterval(id);
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
     }, [articlesTabActive, apiScope, pipelineFilter, loadArticles]);
 
     const handleDelete = async (articleId) => {
@@ -142,8 +165,8 @@ const AdminArticlesScreen = () => {
             if (!target) return;
             try {
                 await deleteAdminArticle(target.scope, articleId);
-                setArticles((prev) => prev.filter((a) => a.id !== articleId));
                 success('Article deleted.');
+                loadArticles(apiScope, pipelineFilter);
             } catch (e) {
                 notifyError(e?.message || 'Failed to delete article.');
             }
@@ -159,6 +182,7 @@ const AdminArticlesScreen = () => {
             await patchAdminArticle(target.scope, articleId, { status: nextStatus });
             setArticles((prev) => prev.map((a) => (a.id === articleId ? { ...a, moderation_status: nextStatus } : a)));
             success('Article status updated.');
+            loadArticles(apiScope, pipelineFilter);
         } catch (e) {
             setStatusById((prev) => ({ ...prev, [articleId]: previous }));
             notifyError(e?.message || 'Failed to update status.');
@@ -166,6 +190,18 @@ const AdminArticlesScreen = () => {
     };
 
     const filteredArticles = filterArticlesForDisplay(articles, pipelineFilter, searchQuery);
+
+    const handleFilterChange = (filterId) => {
+        setPipelineFilter(filterId);
+        setSearchParams((prev) => {
+            const next = new URLSearchParams(prev);
+            next.delete('scope');
+            if (filterId) next.set('pipeline', filterId);
+            else next.delete('pipeline');
+            return next;
+        });
+    };
+
     const { title, description } = useAdminPageMeta();
 
     return (
@@ -178,53 +214,16 @@ const AdminArticlesScreen = () => {
             `}</style>
             <AdminPageLayout maxWidth="1400px">
                 <AdminPageHeader title={title} description={description}>
-                    <div style={{
-                            display: 'flex',
-                            flexWrap: 'wrap',
-                            gap: '8px',
-                            marginTop: '12px',
-                        }}>
-                            {[
-                                { id: '', label: 'Any status' },
-                                { id: 'queue', label: 'Queue' },
-                                { id: 'pending', label: 'Pending' },
-                                { id: 'processing', label: 'Processing' },
-                                { id: 'done', label: 'Done (processed feed)' },
-                                { id: 'failed', label: 'Failed' },
-                            ].map((p) => {
-                                const active = pipelineFilter === p.id;
-                                return (
-                                    <button
-                                        key={p.id || 'any'}
-                                        type="button"
-                                        onClick={() => {
-                                            setPipelineFilter(p.id);
-                                            setSearchParams((prev) => {
-                                                const next = new URLSearchParams(prev);
-                                                next.delete('scope');
-                                                if (p.id) next.set('pipeline', p.id);
-                                                else next.delete('pipeline');
-                                                return next;
-                                            });
-                                        }}
-                                        style={{
-                                            padding: '6px 12px',
-                                            borderRadius: '8px',
-                                            border: `1px solid ${active ? (palette.primary) : borderColor}`,
-                                            background: active
-                                                ? (isDark ? 'rgba(129, 140, 248, 0.12)' : '#f1f5f9')
-                                                : (palette.inputBg),
-                                            color: active ? textPrimary : textSecondary,
-                                            cursor: 'pointer',
-                                            fontWeight: active ? 600 : 500,
-                                            fontSize: '12px',
-                                        }}
-                                    >
-                                        {p.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
+                    <AdminArticlesControlPanel
+                        palette={palette}
+                        isDark={isDark}
+                        loading={loading}
+                        articleCounts={articleCounts}
+                        pipelineFilter={pipelineFilter}
+                        onFilterChange={handleFilterChange}
+                        displayedCount={filteredArticles.length}
+                        searchQuery={searchQuery}
+                    />
                 </AdminPageHeader>
 
                 <div className="admin-page-body">
@@ -310,6 +309,15 @@ const AdminArticlesScreen = () => {
                         {filteredArticles.map((article) => (
                             <div
                                 key={article.id}
+                                role="button"
+                                tabIndex={0}
+                                onClick={() => setReviewArticle(article)}
+                                onKeyDown={(e) => {
+                                    if (e.key === 'Enter' || e.key === ' ') {
+                                        e.preventDefault();
+                                        setReviewArticle(article);
+                                    }
+                                }}
                                 style={{
                                     backgroundColor: cardBackground,
                                     borderRadius: '12px',
@@ -317,6 +325,7 @@ const AdminArticlesScreen = () => {
                                     padding: '20px',
                                     transition: 'all 0.2s ease',
                                     boxShadow: isDark ? '0 1px 3px rgba(0, 0, 0, 0.2)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
+                                    cursor: 'pointer',
                                 }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.borderColor = palette.textPrimary;
@@ -331,6 +340,18 @@ const AdminArticlesScreen = () => {
                                         : '0 1px 3px rgba(0, 0, 0, 0.05)';
                                 }}
                             >
+                                {article.image_url ? (
+                                    <AdminArticleHeroImage
+                                        src={article.image_url}
+                                        alt={article.title || 'Article'}
+                                        maxHeight={320}
+                                        borderRadius={8}
+                                        backgroundColor={palette.inputBg}
+                                        style={{ marginBottom: 12 }}
+                                        dynamicAspect
+                                    />
+                                ) : null}
+
                                 <div style={{
                                     display: 'flex',
                                     alignItems: 'flex-start',
@@ -348,11 +369,11 @@ const AdminArticlesScreen = () => {
                                                 width: '32px',
                                                 height: '32px',
                                                 borderRadius: '6px',
-                                                backgroundColor: palette.textPrimary,
+                                                backgroundColor: isDark ? (palette.statAccent?.sources || palette.info) : palette.textPrimary,
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 justifyContent: 'center',
-                                                color: '#ffffff',
+                                                color: isDark ? palette.textInverse : '#ffffff',
                                                 fontSize: '12px',
                                                 fontWeight: '700',
                                             }}>
@@ -461,7 +482,8 @@ const AdminArticlesScreen = () => {
                                     }}>
                                         <button
                                             type="button"
-                                            onClick={() => {
+                                            onClick={(e) => {
+                                                e.stopPropagation();
                                                 enableAdminAppPreview();
                                                 const normalized = normalizeArticleForDetail(article);
                                                 if (article.id) {
@@ -500,7 +522,10 @@ const AdminArticlesScreen = () => {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => handleDelete(article.id)}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleDelete(article.id);
+                                            }}
                                             style={{
                                                 padding: '8px 12px',
                                                 border: `1px solid #ef4444`,
@@ -547,6 +572,7 @@ const AdminArticlesScreen = () => {
                                         <select
                                             value={statusById[article.id] || (article.moderation_status || article.pipeline_status || 'review')}
                                             onChange={(e) => handleStatusChange(article.id, e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
                                             style={{ fontSize: '12px', padding: '8px 10px', borderRadius: '8px', border: `1px solid ${borderColor}`, background: cardBackground, color: textPrimary, minWidth: '120px' }}
                                         >
                                             <option value="review">review</option>
@@ -561,6 +587,27 @@ const AdminArticlesScreen = () => {
                 )}
                 </div>
             </AdminPageLayout>
+
+            <AdminArticleReviewModal
+                open={Boolean(reviewArticle)}
+                article={reviewArticle}
+                onClose={() => setReviewArticle(null)}
+                onSaved={(updated) => {
+                    setArticles((prev) =>
+                        prev.map((row) => (row.id === updated.id ? { ...row, ...updated } : row))
+                    );
+                    setStatusById((prev) => ({ ...prev, [updated.id]: updated.moderation_status }));
+                }}
+                onOpenInApp={(article) => {
+                    enableAdminAppPreview();
+                    const normalized = normalizeArticleForDetail(article);
+                    if (article.id) {
+                        navigate(`/article/${article.id}`, {
+                            state: { article: normalized, adminPreview: true },
+                        });
+                    }
+                }}
+            />
         </>
     );
 };

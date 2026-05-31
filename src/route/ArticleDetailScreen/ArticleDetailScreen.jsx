@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { shareArticle, openArticleMenu } from '../../utils/articleMenu';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
+import FeedbackModal from '../../components/FeedbackModal';
 import { FeedSkeleton } from '../../components/FeedSkeleton';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -43,7 +44,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     const { colors } = theme;
     const initialArticle = normalizeArticleForDetail(route.params?.article || {});
     const [article, setArticle] = useState(initialArticle);
-    const [reaction, setReactionState] = useState(null); // 'up' | 'down' | null
+    const [reaction, setReactionState] = useState(null);
     const [reactionPending, setReactionPending] = useState(false);
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [likeCount, setLikeCount] = useState(Number(initialArticle.like_count ?? 0));
@@ -54,6 +55,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     const [fetchError, setFetchError] = useState('');
     const articleId = String(route.params?.articleId || initialArticle.id || '');
     const [activeTtsLineIndex, setActiveTtsLineIndex] = useState(-1);
+    const [feedbackOpen, setFeedbackOpen] = useState(false);
 
     const articleBody =
         article.fullContent || article.content || article.full_content || '';
@@ -63,7 +65,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         [articleBody, listenText]
     );
 
-    // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(30)).current;
     const scaleAnim = useRef(new Animated.Value(0.95)).current;
@@ -158,7 +159,16 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 useNativeDriver: true,
             }),
         ]).start();
-    }, []);
+    }, [fadeAnim, slideAnim, scaleAnim, circle1Anim, circle2Anim]);
+
+    useFocusEffect(
+        useCallback(() => {
+            const unsub = navigation.addListener('beforeRemove', () => {
+                stopNativePlayback();
+            });
+            return unsub;
+        }, [navigation])
+    );
 
     const handleLike = async () => {
         if (reactionPending) return;
@@ -228,7 +238,9 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     };
 
     const handleMoreMenu = () => {
-        openArticleMenu({ ...article, id: articleId }, feedback);
+        openArticleMenu({ ...article, id: articleId }, feedback, {
+            onOpenFeedback: () => setFeedbackOpen(true),
+        });
     };
 
     const handleBack = () => {
@@ -240,23 +252,14 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         navigation.navigate('MainTabs', { screen: 'Home' });
     };
 
-    useFocusEffect(
-        useCallback(() => {
-            const unsub = navigation.addListener('beforeRemove', () => {
-                stopNativePlayback();
-            });
-            return unsub;
-        }, [navigation])
-    );
-
     return (
+        <>
         <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
             <StatusBar 
                 barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} 
                 backgroundColor={colors.background} 
             />
             
-            {/* Enhanced gradient background */}
             <LinearGradient
                 colors={theme.mode === 'dark' 
                     ? [colors.background, colors.backgroundSecondary, colors.background]
@@ -267,7 +270,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 style={styles.gradientBackground}
             />
             
-            {/* Animated decorative circles */}
             <Animated.View 
                 style={[
                     styles.accentCircle1, 
@@ -304,7 +306,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
             />
 
             <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]}>
-                {/* Header */}
                 <Animated.View
                     style={{
                         opacity: fadeAnim,
@@ -314,7 +315,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                     <ArticleDetailHeader onBackPress={handleBack} onMorePress={handleMoreMenu} />
                 </Animated.View>
 
-                {/* Article Content */}
                 {detailLoading ? (
                     <View style={{ padding: 16, flex: 1 }}>
                         <FeedSkeleton colors={colors} count={2} />
@@ -354,7 +354,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                             },
                         ]}
                     >
-                        {/* Source Information */}
                         <Animated.View
                             style={{
                                 opacity: fadeAnim,
@@ -382,9 +381,9 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                             colors={colors}
                             highlightLines={ttsHighlightLines}
                             onActiveLineIndex={setActiveTtsLineIndex}
+                            articleId={articleId}
                         />
 
-                        {/* Article Content */}
                         <Animated.View
                             style={{
                                 opacity: fadeAnim,
@@ -409,17 +408,16 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                             />
                         </Animated.View>
 
-                        {/* Bottom Spacer for Actions */}
                         <View style={styles.bottomSpacer} />
                     </Animated.View>
                     </View>
                 </ScrollView>
                 )}
 
-                {/* Bottom Actions */}
                 <Animated.View
+                    pointerEvents={detailLoading || (fetchError && !article.title) ? 'none' : 'auto'}
                     style={{
-                        opacity: fadeAnim,
+                        opacity: detailLoading || (fetchError && !article.title) ? 0 : fadeAnim,
                         transform: [
                             {
                                 translateY: slideAnim.interpolate({
@@ -444,6 +442,13 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 </Animated.View>
             </SafeAreaView>
         </View>
+        <FeedbackModal
+            visible={feedbackOpen}
+            onClose={() => setFeedbackOpen(false)}
+            item={{ ...article, id: articleId }}
+            type="article_report"
+        />
+        </>
     );
 };
 

@@ -4,7 +4,6 @@ import { filledActionColors } from '../../theme/buttonContrast';
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import { ArrowRight, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import Text from '../../components/ui/Text';
-import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
 import { confirmPasswordReset, confirmPasswordResetWithOtp } from '../../api/authPasswordApi';
 
 const ResetPasswordScreen = () => {
@@ -130,7 +129,6 @@ const ResetPasswordScreen = () => {
                 position: 'relative',
                 overflow: 'hidden',
             }}>
-            <NewsBackgroundAnimation />
             <div style={{
                 width: '100%',
                 maxWidth: '420px',

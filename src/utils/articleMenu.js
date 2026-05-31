@@ -1,5 +1,4 @@
 import { Linking, Platform, Share } from 'react-native';
-import { submitArticleReport } from '../api/newsApi';
 
 export async function shareArticle(item) {
   const title = String(item?.title || 'Article');
@@ -16,7 +15,8 @@ export async function shareArticle(item) {
 }
 
 /** @param {object} feedback - useFeedback() result */
-export function openArticleMenu(item, feedback) {
+export function openArticleMenu(item, feedback, options = {}) {
+  const { onOpenFeedback } = options;
   const id = item?.id != null ? String(item.id) : '';
   const url = item?.canonical_url || item?.url || '';
   const title = String(item?.title || 'Article options');
@@ -38,22 +38,12 @@ export function openArticleMenu(item, feedback) {
           ]
         : []),
       {
-        label: 'Report article',
+        label: 'Report or give feedback',
         destructive: true,
-        onPress: async () => {
-          const ok = await feedback.confirm({
-            title: 'Report this article?',
-            message: 'Our team will review this content.',
-            confirmText: 'Report',
-            danger: true,
-          });
-          if (!ok) return;
-          await submitArticleReport({
-            article_id: id,
-            url,
-            reason: 'user_report',
-          });
-          feedback.success('Report submitted. Thank you.');
+        onPress: () => {
+          if (onOpenFeedback) {
+            onOpenFeedback(item);
+          }
         },
       },
     ],

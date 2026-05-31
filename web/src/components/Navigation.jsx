@@ -3,6 +3,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, Search, Bell, User, Settings } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import Text from './ui/Text';
+import NotificationBadge from './NotificationBadge';
+import { useNotificationUnread } from '../context/NotificationUnreadContext';
 
 const Navigation = () => {
     const { theme } = useTheme();
@@ -10,6 +12,7 @@ const Navigation = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
+    const { unreadCount } = useNotificationUnread();
 
     useEffect(() => {
         const handleResize = () => {
@@ -77,11 +80,16 @@ const Navigation = () => {
                             backgroundColor: active ? colors.backgroundSecondary : 'transparent',
                         }}
                     >
-                        <Icon 
-                            size={22} 
-                            color={active ? colors.primary : colors.textSecondary}
-                            strokeWidth={active ? 2.5 : 2}
-                        />
+                        <span style={{ position: 'relative', display: 'inline-flex' }}>
+                          <Icon 
+                              size={22} 
+                              color={active ? colors.primary : colors.textSecondary}
+                              strokeWidth={active ? 2.5 : 2}
+                          />
+                          {item.path === '/notifications' ? (
+                            <NotificationBadge count={unreadCount} size="sm" style={{ top: -6, right: -10 }} />
+                          ) : null}
+                        </span>
                         <Text variant="caption" style={{
                             fontSize: '11px',
                             fontWeight: active ? 600 : 400,
