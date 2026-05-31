@@ -7,6 +7,7 @@ import {
 } from '../../utils/responsiveStyles';
 import { FileText, BarChart3, Activity, Hash } from 'lucide-react';
 import { getAdminAnalytics, getAdminModelMetrics } from '../../api/adminApi';
+import { isModelMetricsUnavailable, markModelMetricsUnavailable } from './loadAdminOverview';
 import AdminBreakdownTable from './components/AdminBreakdownTable';
 import { SkeletonStatCards, SkeletonTableRows } from '../../components/skeletons/SkeletonLayouts';
 import AdminPageLayout from './components/AdminPageLayout';
@@ -37,9 +38,12 @@ const AdminAnalyticsScreen = () => {
         const data = await getAdminAnalytics();
         if (!cancelled) setSnapshot(data);
         try {
-          const mm = await getAdminModelMetrics();
-          if (!cancelled) setModelMetrics(mm);
-        } catch {
+          if (!isModelMetricsUnavailable()) {
+            const mm = await getAdminModelMetrics();
+            if (!cancelled) setModelMetrics(mm);
+          }
+        } catch (err) {
+          if (err?.status === 404) markModelMetricsUnavailable();
           if (!cancelled) setModelMetrics(null);
         }
       } catch (e) {

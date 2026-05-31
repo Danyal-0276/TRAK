@@ -14,6 +14,7 @@ import {
     ArrowRight,
 } from 'lucide-react';
 import { getFeedItemCredibilityMeta } from '../utils/credibilityIndicator';
+import { prefetchArticleDetail } from '../utils/articleDetailCache';
 
 export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark, layout = 'grid' }) => {
     const isMasonry = layout === 'masonry';
@@ -58,7 +59,8 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                 transition: 'all 0.2s ease',
             }}
             onMouseEnter={(e) => {
-                e.currentTarget.style.boxShadow = isDark 
+                if (itemId) prefetchArticleDetail(itemId);
+                e.currentTarget.style.boxShadow = isDark
                     ? '0 4px 12px rgba(0, 0, 0, 0.3)' 
                     : '0 4px 12px rgba(0, 0, 0, 0.08)';
                 e.currentTarget.style.borderColor = isDark ? colors.borderLight : '#d1d5db';

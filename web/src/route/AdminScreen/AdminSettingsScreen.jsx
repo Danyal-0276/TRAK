@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, Trash2, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useAdminTheme } from './useAdminTheme';
@@ -24,6 +24,7 @@ const regionSelectWrapStyle = { width: REGION_SELECT_WIDTH, maxWidth: '100%', fl
 const AdminSettingsScreen = () => {
   const { palette, isDark, colors } = useAdminTheme();
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout } = useAuth();
   const { success, error: showError, confirm } = useUIFeedback();
 
@@ -83,6 +84,16 @@ const AdminSettingsScreen = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (loading || location.hash !== '#admin-sources') return;
+    const el = document.getElementById('admin-sources');
+    if (el) {
+      window.requestAnimationFrame(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }, [loading, location.hash]);
 
   const handleSettingsChange = async (updates) => {
     const pushOn =
@@ -485,7 +496,7 @@ const AdminSettingsScreen = () => {
               )}
             </section>
 
-            <section style={sectionStyle}>
+            <section id="admin-sources" style={sectionStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <div>
                   <h2 style={{ fontSize: 16, fontWeight: 700, color: textPrimary, margin: 0 }}>Manage Connection</h2>

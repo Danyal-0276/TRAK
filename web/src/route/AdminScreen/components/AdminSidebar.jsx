@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '../../../theme/ThemeContext';
 import TrakLogo from '../../../components/TrakLogo';
+import { enableAdminAppPreview } from '../../../utils/adminAppPreview';
 import './adminShell.css';
 
 const MAIN_NAV = [
@@ -121,7 +122,10 @@ export default function AdminSidebar({
           to="/newsfeed"
           className="admin-sidebar__footer-btn"
           style={{ marginBottom: 8, textDecoration: 'none' }}
-          onClick={onClose}
+          onClick={() => {
+            enableAdminAppPreview();
+            onClose();
+          }}
         >
           <Newspaper size={16} />
           View news app

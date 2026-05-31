@@ -64,6 +64,37 @@ export function SkeletonCategoryGrid({ count = 8, isDark, colors = {} }) {
     );
 }
 
+/** Category accordion row placeholders (Categories page). */
+export function SkeletonCategoryAccordion({ count = 6, isDark, colors = {} }) {
+    const cardBg = isDark ? colors.surface : '#ffffff';
+    const border = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const bar = isDark ? '#334155' : '#e5e7eb';
+    const bar2 = isDark ? '#475569' : '#f1f5f9';
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {Array.from({ length: count }).map((_, i) => (
+                <div
+                    key={i}
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 12,
+                        padding: '16px 20px',
+                        borderRadius: 12,
+                        border: `1px solid ${border}`,
+                        backgroundColor: cardBg,
+                    }}
+                >
+                    <div className="trak-sk-pulse" style={{ width: 28, height: 28, borderRadius: 8, backgroundColor: bar, flexShrink: 0 }} />
+                    <div className="trak-sk-pulse" style={{ flex: 1, height: 14, borderRadius: 4, backgroundColor: bar }} />
+                    <div className="trak-sk-pulse" style={{ width: 56, height: 22, borderRadius: 999, backgroundColor: bar2 }} />
+                    <div className="trak-sk-pulse" style={{ width: 18, height: 18, borderRadius: 4, backgroundColor: bar2 }} />
+                </div>
+            ))}
+        </div>
+    );
+}
+
 export function SkeletonFeedCard({ cardBg, border, bar1, bar2 }) {
     return (
         <div

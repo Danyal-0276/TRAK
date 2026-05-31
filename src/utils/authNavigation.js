@@ -3,9 +3,20 @@
  * @param {{ user?: object, is_new_user?: boolean, onboarding_complete?: boolean }} session
  * @param {{ fromSignup?: boolean }} [options]
  */
+export function isAdminUser(userOrSession) {
+  const user = userOrSession?.user ?? userOrSession;
+  return user?.role === 'admin';
+}
+
+/** Root stack route after session restore (logged-in users enter MainAppStack). */
+export function getInitialRouteForUser(user) {
+  if (!user) return 'OpeningScreen';
+  return 'NewsFeed';
+}
+
 export function getPostAuthRouteName(session, { fromSignup = false } = {}) {
   const user = session?.user;
-  if (user?.role === 'admin') return 'AdminScreen';
+  if (isAdminUser(user)) return 'NewsFeed';
 
   if (!fromSignup) {
     return 'NewsFeed';

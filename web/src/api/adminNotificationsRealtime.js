@@ -6,8 +6,13 @@ function wsBase() {
   return API_BASE.replace('http://', 'ws://');
 }
 
+/** WebSocket needs ASGI (daphne). Off unless VITE_ENABLE_NOTIFICATIONS_WS=true in .env */
+export function isAdminNotificationsWsEnabled() {
+  return import.meta.env.VITE_ENABLE_NOTIFICATIONS_WS === 'true';
+}
+
 export function openAdminNotificationsSocket(onMessage) {
-  if (import.meta.env.DEV && import.meta.env.VITE_ENABLE_NOTIFICATIONS_WS !== 'true') {
+  if (!isAdminNotificationsWsEnabled()) {
     return null;
   }
   const token = getAccessToken();

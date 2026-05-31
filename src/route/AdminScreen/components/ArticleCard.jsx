@@ -130,7 +130,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   categoryText: { fontSize: 10, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  title: { fontSize: 16, fontWeight: '600', lineHeight: 22, marginBottom: 8 },
+  title: { fontWeight: '600', lineHeight: 22, marginBottom: 8 },
   excerpt: { lineHeight: 18, marginBottom: 12 },
   footer: {
     flexDirection: 'row',

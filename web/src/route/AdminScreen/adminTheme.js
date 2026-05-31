@@ -102,6 +102,12 @@ const LIGHT = {
     users: GREY[800],
     credibility: GREY[600],
   },
+  buttonPrimaryBg: '#0a0a0a',
+  buttonPrimaryText: '#ffffff',
+  buttonSecondaryBg: 'transparent',
+  buttonSecondaryText: GREY[900],
+  buttonSecondaryBorder: GREY[300],
+  inputText: GREY[900],
 };
 
 const DARK = {
@@ -158,6 +164,12 @@ const DARK = {
     users: GREY[200],
     credibility: GREY[400],
   },
+  buttonPrimaryBg: GREY[100],
+  buttonPrimaryText: GREY[900],
+  buttonSecondaryBg: 'transparent',
+  buttonSecondaryText: GREY[100],
+  buttonSecondaryBorder: GREY[600],
+  inputText: GREY[100],
 };
 
 export function getAdminDashboardPalette(_colors, isDark = false) {

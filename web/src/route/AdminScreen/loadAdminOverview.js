@@ -7,6 +7,9 @@ import {
 import { buildDashboardStatCards, isAnalyticsPayload } from './dashboardChartUtils';
 import { MOCK_ANALYTICS } from './mockAdminData';
 
+/** Avoid polling model-metrics after 404 (file not trained yet). */
+let modelMetricsUnavailable = false;
+
 /**
  * Same admin API bundle as mobile AdminScreen.loadData (overview slice).
  * Real data from Django `/api/admin/*`; mock analytics/keywords only when analytics API fails.
@@ -43,10 +46,15 @@ export async function loadAdminOverview({ cacheBust = false, requireAnalytics = 
     articles = [];
   }
 
-  try {
-    modelMetrics = await getAdminModelMetrics();
-  } catch {
-    modelMetrics = null;
+  if (!modelMetricsUnavailable) {
+    try {
+      modelMetrics = await getAdminModelMetrics();
+    } catch (err) {
+      if (err?.status === 404) {
+        modelMetricsUnavailable = true;
+      }
+      modelMetrics = null;
+    }
   }
 
   if (!serverAnalytics) {
@@ -71,4 +79,12 @@ export async function loadAdminOverview({ cacheBust = false, requireAnalytics = 
 export function buildOverviewStatCards({ serverAnalytics, palette }) {
   if (!palette) return [];
   return buildDashboardStatCards(serverAnalytics, palette);
+}
+
+export function isModelMetricsUnavailable() {
+  return modelMetricsUnavailable;
+}
+
+export function markModelMetricsUnavailable() {
+  modelMetricsUnavailable = true;
 }

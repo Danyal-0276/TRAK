@@ -7,6 +7,8 @@ import SearchBar from '../components/SearchBar';
 import ArticleCard from '../components/ArticleCard';
 import Text from '../../../components/ui/Text';
 import EmptyState from '../components/EmptyState';
+import AdminListRowSkeleton from '../components/skeletons/AdminListRowSkeleton';
+import { ADMIN_TEXT_STYLE } from '../adminTypography';
 
 const PIPELINES = [
   { id: '', label: 'Any status' },
@@ -48,7 +50,7 @@ const ArticlesTab = ({
             <FileText size={20} color={palette.primary} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text variant="title" color={palette.textPrimary} style={styles.sectionTitle}>
+            <Text variant="subtitle" color={palette.textPrimary} style={ADMIN_TEXT_STYLE.sectionTitle}>
               Articles Management
             </Text>
             <Text variant="caption" color={palette.textSecondary} style={{ marginTop: 4, lineHeight: 18 }}>
@@ -70,11 +72,8 @@ const ArticlesTab = ({
               >
                 <Text
                   variant="caption"
-                  style={{
-                    color: active ? palette.textPrimary : palette.textTertiary,
-                    fontWeight: active ? '700' : '500',
-                    fontSize: 12,
-                  }}
+                  color={active ? palette.textPrimary : palette.textTertiary}
+                  style={active ? ADMIN_TEXT_STYLE.chipActive : ADMIN_TEXT_STYLE.chip}
                 >
                   {p.label}
                 </Text>
@@ -87,9 +86,7 @@ const ArticlesTab = ({
       <SearchBar value={searchQuery} onChangeText={onSearchChange} placeholder="Search articles by title, source, or category..." />
 
       {loading ? (
-        <Text variant="caption" color={palette.textSecondary} style={{ textAlign: 'center', marginTop: 24 }}>
-          Loading articles…
-        </Text>
+        <AdminListRowSkeleton palette={palette} count={6} />
       ) : articles.length === 0 ? (
         <EmptyState
           icon={FileText}
@@ -123,9 +120,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  sectionTitle: { fontSize: 22, fontWeight: '800' },
   pipelineRow: { gap: 8, paddingBottom: 12 },
   pipelineChip: { paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1 },
 });
 
-export default ArticlesTab;
+export default React.memo(ArticlesTab);

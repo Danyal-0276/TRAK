@@ -15,6 +15,15 @@ const Tab = createBottomTabNavigator();
 
 const TabNavigator = () => {
     const { isAdmin } = useAuth();
+
+    if (isAdmin) {
+        return (
+            <Tab.Navigator tabBar={() => null} screenOptions={{ headerShown: false }}>
+                <Tab.Screen name="Admin" component={AdminScreen} />
+            </Tab.Navigator>
+        );
+    }
+
     return (
         <Tab.Navigator
             tabBar={(props) => <CustomTabBar {...props} />}
@@ -25,7 +34,6 @@ const TabNavigator = () => {
             <Tab.Screen name="Notifications" component={NotificationsScreen} />
             <Tab.Screen name="Profile" component={ProfileScreen} />
             <Tab.Screen name="Settings" component={SettingsScreen} />
-            {isAdmin ? <Tab.Screen name="Admin" component={AdminScreen} /> : null}
         </Tab.Navigator>
     );
 };

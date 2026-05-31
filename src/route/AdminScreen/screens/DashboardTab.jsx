@@ -17,6 +17,9 @@ import AdminStatKpiCard from '../components/AdminStatKpiCard';
 import AdminDashboardCharts from '../components/AdminDashboardCharts';
 import AdminScrapeSourcesPanel from '../components/AdminScrapeSourcesPanel';
 import { buildDashboardStatCards, emptyAnalyticsSnapshot } from '../dashboardChartUtils';
+import AdminKpiSkeleton from '../components/skeletons/AdminKpiSkeleton';
+import AdminChartSkeleton from '../components/skeletons/AdminChartSkeleton';
+import { ADMIN_TEXT_STYLE } from '../adminTypography';
 
 const PIPELINE_BATCH_SIZE = 15;
 
@@ -68,10 +71,10 @@ const DashboardTab = ({
     <View style={[styles.container, { backgroundColor: palette.page }]}>
       <View style={styles.header}>
         <View style={{ flex: 1 }}>
-          <Text variant="caption" color={palette.textTertiary} style={styles.eyebrow}>
+          <Text variant="caption" color={palette.textTertiary} style={ADMIN_TEXT_STYLE.eyebrow}>
             ADMIN
           </Text>
-          <Text variant="title" color={palette.textPrimary} style={styles.title}>
+          <Text variant="title" color={palette.textPrimary}>
             Dashboard
           </Text>
           <Text variant="caption" color={palette.textSecondary}>
@@ -89,13 +92,9 @@ const DashboardTab = ({
       </View>
 
       {overviewLoading ? (
-        <View style={styles.skeletonGrid}>
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <View
-              key={i}
-              style={[styles.skeletonCard, { backgroundColor: palette.card, borderColor: palette.border, width: kpiWidth }]}
-            />
-          ))}
+        <View style={{ paddingHorizontal: 20 }}>
+          <AdminKpiSkeleton palette={palette} count={8} cardWidth={kpiWidth} />
+          <AdminChartSkeleton palette={palette} count={2} />
         </View>
       ) : (
         <>
@@ -118,7 +117,9 @@ const DashboardTab = ({
             </View>
           ) : null}
 
-          <AdminDashboardCharts snapshot={snapshot} palette={palette} />
+          {isOverviewActive ? (
+            <AdminDashboardCharts snapshot={snapshot} palette={palette} />
+          ) : null}
 
           <View style={styles.pipelineRowSection}>
             <View style={[styles.pipelineCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
@@ -209,8 +210,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     gap: 12,
   },
-  eyebrow: { fontWeight: '600', letterSpacing: 1, marginBottom: 4 },
-  title: { fontSize: 22, fontWeight: '800', marginBottom: 4 },
   liveRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
   liveDot: { width: 8, height: 8, borderRadius: 4 },
   statsGrid: {
@@ -220,14 +219,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: 8,
   },
-  skeletonGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingHorizontal: 20,
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  skeletonCard: { height: 108, borderRadius: 14, borderWidth: 1, marginBottom: 12 },
   errorBanner: {
     marginHorizontal: 20,
     marginBottom: 12,
@@ -251,4 +242,4 @@ const styles = StyleSheet.create({
   failureItem: { paddingBottom: 10, marginBottom: 10 },
 });
 
-export default DashboardTab;
+export default React.memo(DashboardTab);

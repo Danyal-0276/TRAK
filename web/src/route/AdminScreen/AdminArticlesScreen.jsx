@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { useAdminTheme } from './useAdminTheme';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -27,11 +27,17 @@ import ArticleInsightBadges, {
     ArticleCredibilitySourceDot,
     ArticleTopicKeywords,
 } from './components/ArticleInsightBadges';
+import { enableAdminAppPreview } from '../../utils/adminAppPreview';
+import { normalizeArticleForDetail } from '../../utils/articleNavigation';
+import { subscribeAdminOverviewRefresh } from '../../utils/adminOverviewEvents';
+import { isArticlesPath } from './hooks/useAdminTabActive';
 
 const AdminArticlesScreen = () => {
     const { palette, isDark, colors } = useAdminTheme();
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
+    const { pathname } = useLocation();
+    const articlesTabActive = isArticlesPath(pathname);
     const [searchParams, setSearchParams] = useSearchParams();
     const [articles, setArticles] = useState([]);
     const { confirm, success, error: notifyError } = useUIFeedback();
@@ -89,10 +95,18 @@ const AdminArticlesScreen = () => {
     };
 
     const loadArticles = useCallback(
-        async (fetchScope) => {
+        async (fetchScope, pipeFilter) => {
             try {
                 setLoading(true);
-                const response = await getAdminArticles({ page: 1, pageSize: 200, scope: fetchScope });
+                const serverPipeline = ['queue', 'pending', 'processing', 'failed'].includes(pipeFilter)
+                    ? pipeFilter
+                    : '';
+                const response = await getAdminArticles({
+                    page: 1,
+                    pageSize: 100,
+                    scope: fetchScope,
+                    pipelineStatus: serverPipeline,
+                });
                 setArticles((response.results || []).map(mapApiDoc));
             } catch (error) {
                 console.error('Error loading articles:', error);
@@ -106,8 +120,15 @@ const AdminArticlesScreen = () => {
     );
 
     useEffect(() => {
-        loadArticles(apiScope);
-    }, [apiScope, loadArticles]);
+        loadArticles(apiScope, pipelineFilter);
+    }, [apiScope, pipelineFilter, loadArticles]);
+
+    useEffect(() => {
+        if (!articlesTabActive) return undefined;
+        return subscribeAdminOverviewRefresh(() => {
+            loadArticles(apiScope, pipelineFilter);
+        });
+    }, [articlesTabActive, apiScope, pipelineFilter, loadArticles]);
 
     const handleDelete = async (articleId) => {
         const accepted = await confirm({
@@ -441,8 +462,15 @@ const AdminArticlesScreen = () => {
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                if (article.id) navigate(`/article/${article.id}`, { state: { article } });
-                                                else if (article.canonical_url) window.open(article.canonical_url, '_blank', 'noopener,noreferrer');
+                                                enableAdminAppPreview();
+                                                const normalized = normalizeArticleForDetail(article);
+                                                if (article.id) {
+                                                    navigate(`/article/${article.id}`, {
+                                                        state: { article: normalized, adminPreview: true },
+                                                    });
+                                                } else if (article.canonical_url) {
+                                                    window.open(article.canonical_url, '_blank', 'noopener,noreferrer');
+                                                }
                                             }}
                                             style={{
                                                 padding: '8px 12px',
@@ -480,7 +508,7 @@ const AdminArticlesScreen = () => {
                                                 fontSize: '12px',
                                                 fontWeight: '600',
                                                 color: '#ef4444',
-                                                background: '#fff5f5',
+                                                background: palette.errorBg,
                                                 cursor: 'pointer',
                                                 display: 'flex',
                                                 alignItems: 'center',

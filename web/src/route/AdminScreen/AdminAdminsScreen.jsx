@@ -86,6 +86,17 @@ export default function AdminAdminsScreen() {
 
   const { title, description } = useAdminPageMeta();
 
+  const inputStyle = {
+    width: '100%',
+    marginTop: 6,
+    padding: 10,
+    borderRadius: 8,
+    border: `1px solid ${borderColor}`,
+    background: palette.inputBg,
+    color: palette.inputText,
+    fontSize: 14,
+  };
+
   const createAdminAction = isSuperAdmin ? (
     <button
       type="button"
@@ -97,8 +108,8 @@ export default function AdminAdminsScreen() {
         padding: '12px 18px',
         borderRadius: 10,
         border: 'none',
-        background: palette.primary,
-        color: '#fff',
+        background: palette.buttonPrimaryBg,
+        color: palette.buttonPrimaryText,
         fontWeight: 600,
         cursor: 'pointer',
       }}
@@ -245,7 +256,7 @@ export default function AdminAdminsScreen() {
                 required
                 value={newEmail}
                 onChange={(e) => setNewEmail(e.target.value)}
-                style={{ width: '100%', marginTop: 6, padding: 10, borderRadius: 8, border: `1px solid ${borderColor}` }}
+                style={inputStyle}
               />
             </label>
             <label style={{ display: 'block', marginBottom: 20 }}>
@@ -256,14 +267,39 @@ export default function AdminAdminsScreen() {
                 minLength={6}
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                style={{ width: '100%', marginTop: 6, padding: 10, borderRadius: 8, border: `1px solid ${borderColor}` }}
+                style={inputStyle}
               />
             </label>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => setShowCreate(false)} disabled={creating}>
+              <button
+                type="button"
+                onClick={() => setShowCreate(false)}
+                disabled={creating}
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: 8,
+                  border: `1px solid ${palette.buttonSecondaryBorder}`,
+                  background: palette.buttonSecondaryBg,
+                  color: palette.buttonSecondaryText,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
                 Cancel
               </button>
-              <button type="submit" disabled={creating} style={{ padding: '10px 16px', background: palette.primary, color: '#fff', border: 'none', borderRadius: 8 }}>
+              <button
+                type="submit"
+                disabled={creating}
+                style={{
+                  padding: '10px 16px',
+                  background: palette.buttonPrimaryBg,
+                  color: palette.buttonPrimaryText,
+                  border: 'none',
+                  borderRadius: 8,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
                 {creating ? 'Creating…' : 'Create'}
               </button>
             </div>

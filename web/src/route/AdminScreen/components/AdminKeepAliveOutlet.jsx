@@ -7,16 +7,18 @@ import AdminProfileScreen from '../AdminProfileScreen';
 import AdminArticlesScreen from '../AdminArticlesScreen';
 import AdminNotificationsScreen from '../AdminNotificationsScreen';
 import AdminSettingsScreen from '../AdminSettingsScreen';
+import AdminUserDetailScreen from '../AdminUserDetailScreen';
 import { isDashboardPath, isArticlesPath } from '../hooks/useAdminTabActive';
 
 const PAGES = [
   { id: 'dashboard', match: isDashboardPath, Component: AdminDashboardScreen },
   { id: 'users', match: (p) => p === '/admin/users', Component: AdminUsersScreen },
+  { id: 'user-detail', match: (p) => /^\/admin\/users\/[^/]+$/.test(p), Component: AdminUserDetailScreen },
   { id: 'admins', match: (p) => p === '/admin/admins', Component: AdminAdminsScreen },
   { id: 'profile', match: (p) => p === '/admin/profile', Component: AdminProfileScreen },
   { id: 'articles', match: isArticlesPath, Component: AdminArticlesScreen },
   { id: 'notifications', match: (p) => p === '/admin/notifications', Component: AdminNotificationsScreen },
-  { id: 'settings', match: (p) => p === '/admin/settings', Component: AdminSettingsScreen },
+  { id: 'settings', match: (p) => p === '/admin/settings' || p.startsWith('/admin/settings'), Component: AdminSettingsScreen },
 ];
 
 /**

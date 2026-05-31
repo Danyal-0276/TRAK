@@ -294,7 +294,8 @@ const LoginScreen = ({ navigation }) => {
                                 setLoading(true);
                                 try {
                                     const u = await login(email, password);
-                                    const dest = u?.role === 'admin' ? 'AdminScreen' : 'NewsFeed';
+                                    await bootstrap();
+                                    const dest = getPostAuthRouteName({ user: u }, { fromSignup: false });
                                     navigation.reset({
                                         index: 0,
                                         routes: [{ name: dest }],

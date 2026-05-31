@@ -6,8 +6,10 @@ import SearchBar from '../components/SearchBar';
 import UserCard from '../components/UserCard';
 import Text from '../../../components/ui/Text';
 import EmptyState from '../components/EmptyState';
+import AdminListRowSkeleton from '../components/skeletons/AdminListRowSkeleton';
+import { ADMIN_TEXT_STYLE } from '../adminTypography';
 
-const UsersTab = ({ users, searchQuery, onSearchChange, onEdit, onDelete }) => {
+const UsersTab = ({ users, searchQuery, onSearchChange, onEdit, onDelete, loading = false }) => {
   const { palette } = useAdminTheme();
 
   return (
@@ -17,7 +19,7 @@ const UsersTab = ({ users, searchQuery, onSearchChange, onEdit, onDelete }) => {
           <View style={[styles.iconContainer, { backgroundColor: `${palette.primary}15` }]}>
             <Users size={20} color={palette.primary} />
           </View>
-          <Text variant="title" color={palette.textPrimary} style={styles.sectionTitle}>
+          <Text variant="subtitle" color={palette.textPrimary} style={ADMIN_TEXT_STYLE.sectionTitle}>
             Users Management
           </Text>
         </View>
@@ -30,7 +32,9 @@ const UsersTab = ({ users, searchQuery, onSearchChange, onEdit, onDelete }) => {
         palette={palette}
       />
 
-      {users.length === 0 ? (
+      {loading ? (
+        <AdminListRowSkeleton palette={palette} count={6} />
+      ) : users.length === 0 ? (
         <EmptyState
           icon={Users}
           title="No users found"
@@ -74,9 +78,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sectionTitle: {
-    fontWeight: '700',
-  },
 });
 
-export default UsersTab;
+export default React.memo(UsersTab);

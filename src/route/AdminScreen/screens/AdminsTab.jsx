@@ -7,6 +7,8 @@ import SearchBar from '../components/SearchBar';
 import Text from '../../../components/ui/Text';
 import EmptyState from '../components/EmptyState';
 import { useFeedback } from '../../../components/ui/FeedbackProvider';
+import AdminListRowSkeleton from '../components/skeletons/AdminListRowSkeleton';
+import { ADMIN_TEXT_STYLE } from '../adminTypography';
 
 const AdminsTab = ({
   admins,
@@ -14,9 +16,9 @@ const AdminsTab = ({
   onSearchChange,
   onDelete,
   onCreate,
+  loading = false,
 }) => {
-  const { theme } = useTheme();
-  const { colors } = theme;
+  const { palette } = useAdminTheme();
   const { isSuperAdmin } = useAuth();
   const { confirm } = useFeedback();
   const [showCreate, setShowCreate] = useState(false);
@@ -55,7 +57,7 @@ const AdminsTab = ({
           <View style={[styles.iconContainer, { backgroundColor: `${palette.primary}15` }]}>
             <Shield size={20} color={palette.primary} />
           </View>
-          <Text variant="title" color={palette.textPrimary} style={styles.sectionTitle}>
+          <Text variant="subtitle" color={palette.textPrimary} style={ADMIN_TEXT_STYLE.sectionTitle}>
             Administrators
           </Text>
         </View>
@@ -71,7 +73,9 @@ const AdminsTab = ({
 
       <SearchBar value={searchQuery} onChangeText={onSearchChange} placeholder="Search admins..." palette={palette} />
 
-      {admins.length === 0 ? (
+      {loading ? (
+        <AdminListRowSkeleton palette={palette} count={5} />
+      ) : admins.length === 0 ? (
         <EmptyState icon={Shield} title="No admins found" subtitle="No administrator accounts" />
       ) : (
         admins.map((admin) => (
@@ -164,7 +168,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 12,
   },
-  sectionTitle: { fontSize: 20, fontWeight: '700' },
   addBtn: {
     width: 40,
     height: 40,
@@ -205,4 +208,4 @@ const styles = StyleSheet.create({
   createBtn: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10, minWidth: 88, alignItems: 'center' },
 });
 
-export default AdminsTab;
+export default React.memo(AdminsTab);

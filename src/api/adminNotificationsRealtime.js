@@ -11,6 +11,9 @@ async function getToken() {
 }
 
 export async function openAdminNotificationsSocket(onMessage) {
+  if (__DEV__) {
+    return null;
+  }
   const token = await getToken();
   if (!token) return null;
   const socket = new WebSocket(

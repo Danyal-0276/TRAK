@@ -206,7 +206,7 @@ export function buildDashboardStatCards(snapshot, palette) {
       value: String(ps.queued ?? 0),
       path: '/admin/articles?pipeline=queue',
       accent: a.queue,
-      hint: `Pending ${ps.pending ?? 0} · processing ${ps.processing ?? 0}`,
+      hint: `Pending ${ps.pending ?? 0} · active ${ps.active_processing ?? ps.processing ?? 0}`,
     },
     {
       key: 'failed',
@@ -228,7 +228,7 @@ export function buildDashboardStatCards(snapshot, palette) {
       key: 'sources',
       label: 'Sources',
       value: `${conn.active ?? 0}/${conn.total ?? 0}`,
-      path: '/admin/settings',
+      path: '/admin/dashboard#dashboard-sources',
       accent: a.sources,
       hint: 'Manage scrape connections',
     },

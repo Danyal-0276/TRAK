@@ -24,6 +24,9 @@ import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
 import ArticleTtsPlayer from '../../components/ArticleTtsPlayer';
 import TrakLogo from '../../components/TrakLogo';
 import { useTheme } from '../../theme/ThemeContext';
+import { SkeletonArticleDetail } from '../../components/skeletons/SkeletonLayouts';
+import { getCachedArticleDetail, setCachedArticleDetail } from '../../utils/articleDetailCache';
+import { getUserFacingError } from '../../utils/getUserFacingError';
 
 const ArticleDetailScreen = () => {
     const navigate = useNavigate();
@@ -154,10 +157,25 @@ const ArticleDetailScreen = () => {
         const needsLoader = !fromNav.fullContent && !fromNav.content;
         if (needsLoader) setDetailLoading(true);
         setFetchError(location.state?.fetchError || '');
+        if (!needsLoader) {
+            setDetailLoading(false);
+            return undefined;
+        }
+        const cached = getCachedArticleDetail(id);
+        if (cached) {
+            const mapped = normalizeArticleForDetail(mapApiItem(cached));
+            setArticle((prev) => ({ ...prev, ...mapped, id }));
+            setLikeCount(Number(cached.like_count ?? mapped.like_count ?? 0));
+            setDislikeCount(Number(cached.dislike_count ?? mapped.dislike_count ?? 0));
+            setDetailLoading(false);
+            setFetchError('');
+            return undefined;
+        }
         (async () => {
             try {
                 const doc = await getUserArticleDetail(id);
                 if (cancelled) return;
+                setCachedArticleDetail(id, doc);
                 const mapped = normalizeArticleForDetail(mapApiItem(doc));
                 setArticle((prev) => ({ ...prev, ...mapped, id }));
                 setLikeCount(Number(doc.like_count ?? mapped.like_count ?? 0));
@@ -165,7 +183,7 @@ const ArticleDetailScreen = () => {
                 setFetchError('');
             } catch (e) {
                 if (!cancelled) {
-                    const msg = e?.message || 'Could not load this article.';
+                    const msg = getUserFacingError(e, { fallback: 'Could not load this article.' });
                     console.warn('Article fetch:', msg);
                     setFetchError(msg);
                 }
@@ -179,7 +197,7 @@ const ArticleDetailScreen = () => {
     }, [routeArticleId, location.state?.article]);
 
     useEffect(() => {
-        if (!articleKey) return;
+        if (!articleKey || detailLoading) return;
         setLikeCount(Number(article.like_count ?? article.upvotes ?? article.votes ?? 0));
         setDislikeCount(Number(article.dislike_count ?? 0));
         const cachedIds = new Set(getBookmarkIds().map(String));
@@ -197,7 +215,9 @@ const ArticleDetailScreen = () => {
             const map = mergeReactionRows(reactRes.results || [], { replace: false });
             setReactionState(map[articleKey] || null);
         })();
+    }, [articleKey, detailLoading, article.like_count, article.dislike_count, article.upvotes, article.votes]);
 
+    useEffect(() => {
         const handleScroll = () => {
             setScrollY(window.scrollY);
         };
@@ -207,7 +227,7 @@ const ArticleDetailScreen = () => {
         return () => {
             window.removeEventListener('scroll', handleScroll);
         };
-    }, [articleKey, article.like_count, article.dislike_count]);
+    }, []);
 
     const content = article.fullContent || article.content || article.full_content || '';
     const showPlaceholder = !content.trim() && !detailLoading;
@@ -498,7 +518,7 @@ const ArticleDetailScreen = () => {
                     marginBottom: '40px',
                 }}>
                     {detailLoading ? (
-                        <p style={{ color: colors.textTertiary }}>Loading article…</p>
+                        <SkeletonArticleDetail isDark={theme.mode === 'dark'} colors={colors} />
                     ) : fetchError ? (
                         <div style={{
                             padding: '16px',

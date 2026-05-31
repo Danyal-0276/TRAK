@@ -4,14 +4,10 @@
 import { ADMIN_PREFIX } from '../config/api';
 import { apiFetch } from './client';
 import { PIPELINE_RUN_TIMEOUT_MS } from './fetchWithTimeout';
+import { parseApiResponse } from '../utils/getUserFacingError';
 
 async function parseJson(res) {
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const msg = data.detail || data.message || `Request failed (${res.status})`;
-    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
-  }
-  return data;
+  return parseApiResponse(res);
 }
 
 export async function getAdminAnalytics({ cacheBust = false } = {}) {
@@ -20,12 +16,13 @@ export async function getAdminAnalytics({ cacheBust = false } = {}) {
   return parseJson(res);
 }
 
-export async function getAdminArticles({ page = 1, pageSize = 20, scope = 'all' } = {}) {
+export async function getAdminArticles({ page = 1, pageSize = 20, scope = 'all', pipelineStatus = '' } = {}) {
   const params = new URLSearchParams({
     page: String(page),
     page_size: String(pageSize),
     scope: String(scope),
   });
+  if (pipelineStatus) params.set('pipeline_status', String(pipelineStatus));
   const res = await apiFetch(`${ADMIN_PREFIX}/articles/?${params}`);
   return parseJson(res);
 }
@@ -59,6 +56,11 @@ export async function postAdminCreate(email, password) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
+  return parseJson(res);
+}
+
+export async function getAdminUserDetail(userId) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/users/${encodeURIComponent(userId)}/`);
   return parseJson(res);
 }
 

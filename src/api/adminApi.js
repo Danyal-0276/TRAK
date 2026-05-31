@@ -6,7 +6,9 @@ async function parseJson(res) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const msg = data.detail || data.message || `Request failed (${res.status})`;
-    throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    const err = new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    err.status = res.status;
+    throw err;
   }
   return data;
 }

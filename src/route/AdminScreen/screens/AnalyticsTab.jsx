@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { TrendingUp } from 'lucide-react-native';
-import { useTheme } from '../../../theme/ThemeContext';
-import { getAdminDashboardPalette } from '../adminTheme';
+import { useAdminTheme } from '../useAdminTheme';
 import { pipelineColor, credibilityColor, CRED_NAMES } from '../adminTheme';
 import StatRow from '../components/StatRow';
 import Text from '../../../components/ui/Text';
@@ -102,9 +101,7 @@ function ServerAnalyticsView({ data, palette, modelMetrics }) {
 }
 
 const AnalyticsTab = ({ serverAnalytics, modelMetrics }) => {
-  const { theme } = useTheme();
-  const isDark = theme.mode === 'dark';
-  const palette = getAdminDashboardPalette(theme.colors, isDark);
+  const { palette } = useAdminTheme();
 
   if (!serverAnalytics) {
     return (
@@ -139,4 +136,4 @@ const styles = StyleSheet.create({
   progressTrack: { flexDirection: 'row', height: 10, borderRadius: 999, overflow: 'hidden', borderWidth: 1 },
 });
 
-export default AnalyticsTab;
+export default React.memo(AnalyticsTab);

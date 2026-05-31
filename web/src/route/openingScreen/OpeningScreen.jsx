@@ -25,8 +25,6 @@ const OpeningScreen = () => {
     }, [user, loading, isAdmin, navigate]);
     const [logoScale, setLogoScale] = useState(0);
     const [logoOpacity, setLogoOpacity] = useState(0);
-    const [brandOpacity, setBrandOpacity] = useState(0);
-    const [brandY, setBrandY] = useState(20);
     const [welcomeOpacity, setWelcomeOpacity] = useState(0);
     const [welcomeY, setWelcomeY] = useState(30);
     const [buttonOpacity, setButtonOpacity] = useState(0);
@@ -41,21 +39,16 @@ const OpeningScreen = () => {
         }, 100);
 
         const timer2 = setTimeout(() => {
-            setBrandOpacity(1);
-            setBrandY(0);
-        }, 500);
-
-        const timer3 = setTimeout(() => {
             setWelcomeOpacity(1);
             setWelcomeY(0);
-        }, 800);
+        }, 650);
 
-        const timer4 = setTimeout(() => {
+        const timer3 = setTimeout(() => {
             setButtonOpacity(1);
             setButtonY(0);
-        }, 1100);
+        }, 950);
 
-        const timer5 = setTimeout(() => {
+        const timer4 = setTimeout(() => {
             setBackgroundOpacity(1);
         }, 300);
 
@@ -64,7 +57,6 @@ const OpeningScreen = () => {
             clearTimeout(timer2);
             clearTimeout(timer3);
             clearTimeout(timer4);
-            clearTimeout(timer5);
         };
     }, []);
 
@@ -117,33 +109,14 @@ const OpeningScreen = () => {
                     alignItems: 'center',
                     textAlign: 'center',
                 }}>
-                    {/* Logo Animation */}
+                    {/* Logo — full TRAK wordmark (SVG includes brand mark + name) */}
                     <div style={{
                         opacity: logoOpacity,
                         transform: `scale(${logoScale})`,
                         transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                        marginBottom: '32px',
-                        filter: 'drop-shadow(0 8px 24px rgba(255, 255, 255, 0.1))',
+                        filter: 'drop-shadow(0 8px 24px rgba(255, 255, 255, 0.12))',
                     }}>
-                        <TrakLogo size={140} />
-                    </div>
-
-                    {/* Brand Name Animation */}
-                    <div style={{
-                        opacity: brandOpacity,
-                        transform: `translateY(${brandY}px)`,
-                        transition: 'all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                    }}>
-                        <Text variant="title" style={{
-                            fontSize: '72px',
-                            fontWeight: '900',
-                            color: '#ffffff',
-                            letterSpacing: '14px',
-                            textTransform: 'uppercase',
-                            textShadow: '0 4px 20px rgba(255, 255, 255, 0.1)',
-                        }}>
-                            TRAK
-                        </Text>
+                        <TrakLogo size={220} variant="dark" />
                     </div>
                 </div>
             </div>
