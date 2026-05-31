@@ -1,20 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { MessageSquare, Flag, Clock, User, ExternalLink } from 'lucide-react';
-import { useAdminTheme } from './useAdminTheme';
+import { useLocation } from 'react-router-dom';
+import { MessageSquare, ExternalLink } from 'lucide-react';
+import { useAdminTheme } from '../useAdminTheme';
 import AdminPageLayout from './components/AdminPageLayout';
 import AdminPageHeader from './components/AdminPageHeader';
+import AdminFeedbackCard from './components/AdminFeedbackCard';
+import AdminArticleReviewModal from './components/AdminArticleReviewModal';
 import { useAdminPageMeta } from './adminPageMeta';
-import { getAdminFeedback, patchAdminFeedback } from '../../api/adminApi';
+import { getAdminFeedback, patchAdminFeedback, getAdminArticleById } from '../../api/adminApi';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 import { FEEDBACK_POLL_INTERVAL_MS } from './adminTheme';
-
-const STATUS_TABS = ['pending', 'reviewed', 'dismissed', 'all'];
+import { subscribeAdminFeedbackRefresh } from '../../utils/adminNotificationsEvents';
+import { FEEDBACK_STATUS_META } from '../../constants/feedbackCategoryMeta';
+import { enableAdminAppPreview } from '../../utils/adminAppPreview';
 
 const AdminFeedbackScreen = () => {
   const { pathname } = useLocation();
-  const navigate = useNavigate();
   const tabActive = pathname === '/admin/feedback';
   const { palette, isDark, colors } = useAdminTheme();
   const { title, description } = useAdminPageMeta();
@@ -26,6 +28,9 @@ const AdminFeedbackScreen = () => {
   const [selected, setSelected] = useState(null);
   const [adminNotes, setAdminNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [reviewArticle, setReviewArticle] = useState(null);
+  const [articleLoading, setArticleLoading] = useState(false);
+  const [articleError, setArticleError] = useState('');
 
   const cardBackground = palette.card;
   const textPrimary = palette.textPrimary;
@@ -57,19 +62,34 @@ const AdminFeedbackScreen = () => {
       if (document.visibilityState === 'visible') loadRows({ silent: true });
     };
     const id = window.setInterval(poll, FEEDBACK_POLL_INTERVAL_MS);
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') poll();
-    };
-    document.addEventListener('visibilitychange', onVisibility);
+    const unsubRefresh = subscribeAdminFeedbackRefresh(() => loadRows({ silent: true }));
+    document.addEventListener('visibilitychange', poll);
     return () => {
       window.clearInterval(id);
-      document.removeEventListener('visibilitychange', onVisibility);
+      document.removeEventListener('visibilitychange', poll);
+      unsubRefresh();
     };
   }, [tabActive, loadRows]);
 
   const openDetail = (row) => {
     setSelected(row);
     setAdminNotes(row.admin_notes || '');
+    setArticleError('');
+  };
+
+  const openArticleReview = async () => {
+    if (!selected?.article_id) return;
+    setArticleLoading(true);
+    setArticleError('');
+    try {
+      const article = await getAdminArticleById(selected.article_id);
+      setReviewArticle(article);
+    } catch (e) {
+      setArticleError(e?.message || 'Could not load article.');
+      if (selected.url) window.open(selected.url, '_blank', 'noopener,noreferrer');
+    } finally {
+      setArticleLoading(false);
+    }
   };
 
   const saveDetail = async (status) => {
@@ -83,13 +103,15 @@ const AdminFeedbackScreen = () => {
       success('Feedback updated.');
       setSelected(null);
       setRows((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
-      loadRows();
+      loadRows({ silent: true });
     } catch (e) {
       notifyError(e?.message || 'Could not update feedback.');
     } finally {
       setSaving(false);
     }
   };
+
+  const selectedStatus = selected ? FEEDBACK_STATUS_META[selected.status] : null;
 
   return (
     <AdminPageLayout maxWidth="1200px">
@@ -137,59 +159,9 @@ const AdminFeedbackScreen = () => {
             <div>No feedback in this view.</div>
           </div>
         ) : null}
-        {!loading &&
-          rows.map((row) => (
-            <button
-              key={row.id}
-              type="button"
-              onClick={() => openDetail(row)}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: 16,
-                marginBottom: 10,
-                borderRadius: 12,
-                border: `1px solid ${borderColor}`,
-                background: cardBackground,
-                cursor: 'pointer',
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-                <Flag size={14} color={palette.primary} />
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    color: palette.primary,
-                    background: `${palette.primary}15`,
-                    padding: '2px 8px',
-                    borderRadius: 6,
-                  }}
-                >
-                  {row.category_label || row.category}
-                </span>
-                <span style={{ fontSize: 12, color: textSecondary }}>{row.type?.replace(/_/g, ' ')}</span>
-                <span style={{ fontSize: 12, color: textSecondary, marginLeft: 'auto' }}>
-                  {row.created_at ? new Date(row.created_at).toLocaleString() : ''}
-                </span>
-              </div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: textPrimary, marginBottom: 4 }}>
-                {row.message || row.category_label || 'No message'}
-              </div>
-              <div style={{ fontSize: 12, color: textSecondary, display: 'flex', gap: 12 }}>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <User size={12} /> {row.reporter_email || `User #${row.user_id}`}
-                </span>
-                {row.article_id ? (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    Article {String(row.article_id).slice(0, 8)}…
-                  </span>
-                ) : null}
-              </div>
-            </button>
-          ))}
+        {!loading && rows.map((row) => (
+          <AdminFeedbackCard key={row.id} row={row} palette={palette} onClick={openDetail} />
+        ))}
       </div>
 
       {selected ? (
@@ -218,33 +190,75 @@ const AdminFeedbackScreen = () => {
           >
             <h3 style={{ margin: '0 0 8px', color: textPrimary }}>Feedback detail</h3>
             <p style={{ color: textSecondary, fontSize: 13, marginBottom: 16 }}>
-              {selected.category_label} · {selected.status}
+              {selected.category_label}
+              {selectedStatus ? (
+                <span style={{ color: selectedStatus.color, fontWeight: 700 }}> · {selectedStatus.label}</span>
+              ) : null}
             </p>
             <p style={{ color: textPrimary, lineHeight: 1.5, marginBottom: 12 }}>
               {selected.message || '(No additional message)'}
             </p>
-            <p style={{ color: textSecondary, fontSize: 13, marginBottom: 8 }}>
+            <p style={{ color: textSecondary, fontSize: 13, marginBottom: 12 }}>
               From: {selected.reporter_email || selected.user_id}
             </p>
+
             {selected.article_id ? (
-              <button
-                type="button"
-                onClick={() => navigate(`/article/${selected.article_id}`)}
+              <div
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
                   marginBottom: 16,
-                  border: 'none',
-                  background: 'transparent',
-                  color: palette.primary,
-                  cursor: 'pointer',
-                  fontWeight: 600,
+                  padding: 12,
+                  borderRadius: 10,
+                  border: `1px solid ${borderColor}`,
+                  background: palette.inputBg || palette.backgroundSecondary,
                 }}
               >
-                View article <ExternalLink size={14} />
-              </button>
+                <div style={{ fontSize: 12, color: textSecondary, marginBottom: 4 }}>Linked article</div>
+                <div style={{ fontSize: 14, fontWeight: 600, color: textPrimary, marginBottom: 10 }}>
+                  {selected.article_title || 'Article'}
+                </div>
+                <button
+                  type="button"
+                  disabled={articleLoading}
+                  onClick={openArticleReview}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 12px',
+                    borderRadius: 8,
+                    border: 'none',
+                    background: palette.primary,
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontWeight: 600,
+                    fontSize: 13,
+                  }}
+                >
+                  {articleLoading ? 'Loading…' : 'Review article'}
+                </button>
+                {articleError ? (
+                  <p style={{ color: colors.error, fontSize: 12, marginTop: 8 }}>{articleError}</p>
+                ) : null}
+                {selected.url ? (
+                  <a
+                    href={selected.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      marginLeft: 10,
+                      fontSize: 12,
+                      color: palette.primary,
+                    }}
+                  >
+                    Source <ExternalLink size={12} />
+                  </a>
+                ) : null}
+              </div>
             ) : null}
+
             <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: textSecondary, marginBottom: 8 }}>
               Admin notes
             </label>
@@ -314,6 +328,24 @@ const AdminFeedbackScreen = () => {
           </div>
         </div>
       ) : null}
+
+      <AdminArticleReviewModal
+        open={!!reviewArticle}
+        article={reviewArticle}
+        onClose={() => setReviewArticle(null)}
+        onSaved={() => loadRows({ silent: true })}
+        onOpenInApp={(article) => {
+          enableAdminAppPreview();
+          if (article?.id) {
+            window.open(`/article/${article.id}`, '_blank', 'noopener,noreferrer');
+          }
+        }}
+        feedbackBanner={
+          selected
+            ? `Reviewing article linked to report — ${selected.category_label || selected.category}`
+            : ''
+        }
+      />
     </AdminPageLayout>
   );
 };

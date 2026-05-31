@@ -25,6 +25,7 @@ export default function AdminArticleReviewModal({
   onClose,
   onSaved,
   onOpenInApp,
+  feedbackBanner = '',
 }) {
   const { palette, isDark } = useAdminTheme();
   const { success, error: notifyError } = useUIFeedback();
@@ -63,7 +64,7 @@ export default function AdminArticleReviewModal({
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 1000,
+        zIndex: feedbackBanner ? 2100 : 1000,
         backgroundColor: 'rgba(0,0,0,0.55)',
         display: 'flex',
         alignItems: 'center',
@@ -85,6 +86,20 @@ export default function AdminArticleReviewModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        {feedbackBanner ? (
+          <div
+            style={{
+              padding: '10px 20px',
+              fontSize: 12,
+              fontWeight: 600,
+              color: palette.primary,
+              background: `${palette.primary}12`,
+              borderBottom: `1px solid ${palette.border}`,
+            }}
+          >
+            {feedbackBanner}
+          </div>
+        ) : null}
         <div
           style={{
             display: 'flex',

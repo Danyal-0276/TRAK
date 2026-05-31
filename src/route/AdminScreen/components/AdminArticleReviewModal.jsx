@@ -34,6 +34,7 @@ export default function AdminArticleReviewModal({
   onClose,
   onSaved,
   onOpenInApp,
+  feedbackBanner = '',
 }) {
   const { palette, isDark } = useAdminTheme();
   const { success, error: notifyError } = useFeedback();
@@ -88,6 +89,14 @@ export default function AdminArticleReviewModal({
           </View>
           <ArticleCredibilityIndicator article={article} />
         </View>
+
+        {feedbackBanner ? (
+          <View style={[styles.feedbackBanner, { backgroundColor: `${palette.primary}12`, borderBottomColor: palette.border }]}>
+            <Text variant="caption" color={palette.primary} style={{ fontWeight: '600' }}>
+              {feedbackBanner}
+            </Text>
+          </View>
+        ) : null}
 
         <ScrollView contentContainerStyle={styles.body}>
           {article.image_url ? (
@@ -211,6 +220,7 @@ export default function AdminArticleReviewModal({
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
+  feedbackBanner: { paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1 },
   headerTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   avatar: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 12, fontWeight: '700' },

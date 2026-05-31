@@ -9,14 +9,21 @@ import {
   TextInput,
   ScrollView,
   AppState,
+  ActivityIndicator,
+  Linking,
 } from 'react-native';
-import { MessageSquare, Flag, User } from 'lucide-react-native';
+import { MessageSquare } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
 import EmptyState from '../components/EmptyState';
 import Text from '../../../components/ui/Text';
-import { getAdminFeedback, patchAdminFeedback } from '../../../api/adminApi';
+import AdminFeedbackCard from '../components/AdminFeedbackCard';
+import AdminArticleReviewModal from '../components/AdminArticleReviewModal';
+import { getAdminFeedback, patchAdminFeedback, getAdminArticleById } from '../../../api/adminApi';
 import { useFeedback } from '../../../components/ui/FeedbackProvider';
 import { FEEDBACK_POLL_INTERVAL_MS } from '../adminTheme';
+import { subscribeAdminFeedbackRefresh } from '../../../utils/adminNotificationsEvents';
+import { FEEDBACK_STATUS_META } from '../../../constants/feedbackCategoryMeta';
+import { buildArticleDetailParams } from '../../../utils/articleNavigation';
 
 const STATUS_CHIPS = [
   { key: 'pending', label: 'Pending' },
@@ -29,12 +36,15 @@ const FeedbackTab = ({ navigation }) => {
   const { palette } = useAdminTheme();
   const { success, error: notifyError } = useFeedback();
   const [rows, setRows] = useState([]);
-  const [stats, setStats] = useState({ pending: 0, reviewed: 0, dismissed: 0 });
+  const [stats, setStats] = useState({ pending: 0, reviewed: 0, dismissed: 0, total: 0 });
   const [loading, setLoading] = useState(true);
   const [statusTab, setStatusTab] = useState('pending');
   const [selected, setSelected] = useState(null);
   const [adminNotes, setAdminNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const [reviewArticle, setReviewArticle] = useState(null);
+  const [articleLoading, setArticleLoading] = useState(false);
+  const [articleError, setArticleError] = useState('');
 
   const loadRows = useCallback(async ({ silent = false } = {}) => {
     try {
@@ -42,7 +52,7 @@ const FeedbackTab = ({ navigation }) => {
       const status = statusTab === 'all' ? '' : statusTab;
       const data = await getAdminFeedback({ status, limit: 100 });
       setRows(data.results || []);
-      setStats(data.stats || {});
+      setStats(data.stats || { pending: 0, reviewed: 0, dismissed: 0, total: 0 });
     } catch {
       if (!silent) setRows([]);
     } finally {
@@ -62,9 +72,11 @@ const FeedbackTab = ({ navigation }) => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'active') loadRows({ silent: true });
     });
+    const unsubRefresh = subscribeAdminFeedbackRefresh(() => loadRows({ silent: true }));
     return () => {
       clearInterval(id);
       sub.remove();
+      unsubRefresh();
     };
   }, [loadRows]);
 
@@ -75,7 +87,7 @@ const FeedbackTab = ({ navigation }) => {
       await patchAdminFeedback(selected.id, { status, admin_notes: adminNotes });
       success('Feedback updated.');
       setSelected(null);
-      loadRows();
+      loadRows({ silent: true });
     } catch (e) {
       notifyError(e?.message || 'Could not update.');
     } finally {
@@ -83,34 +95,22 @@ const FeedbackTab = ({ navigation }) => {
     }
   };
 
-  const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}
-      onPress={() => {
-        setSelected(item);
-        setAdminNotes(item.admin_notes || '');
-      }}
-    >
-      <View style={styles.cardHeader}>
-        <Flag size={14} color={palette.primary} />
-        <Text variant="caption" color={palette.primary} style={styles.badge}>
-          {item.category_label || item.category}
-        </Text>
-        <Text variant="caption" color={palette.textTertiary} style={styles.date}>
-          {item.created_at ? new Date(item.created_at).toLocaleDateString() : ''}
-        </Text>
-      </View>
-      <Text variant="body" color={palette.textPrimary} style={styles.message} numberOfLines={2}>
-        {item.message || item.category_label}
-      </Text>
-      <View style={styles.meta}>
-        <User size={12} color={palette.textSecondary} />
-        <Text variant="caption" color={palette.textSecondary}>
-          {item.reporter_email || `User #${item.user_id}`}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
+  const openArticleReview = async () => {
+    if (!selected?.article_id) return;
+    setArticleLoading(true);
+    setArticleError('');
+    try {
+      const article = await getAdminArticleById(selected.article_id);
+      setReviewArticle(article);
+    } catch (e) {
+      setArticleError(e?.message || 'Could not load article.');
+      if (selected.url) Linking.openURL(selected.url).catch(() => {});
+    } finally {
+      setArticleLoading(false);
+    }
+  };
+
+  const selectedStatus = selected ? FEEDBACK_STATUS_META[selected.status] : null;
 
   return (
     <View style={styles.container}>
@@ -150,7 +150,17 @@ const FeedbackTab = ({ navigation }) => {
       <FlatList
         data={rows}
         keyExtractor={(item) => String(item.id)}
-        renderItem={renderItem}
+        renderItem={({ item }) => (
+          <AdminFeedbackCard
+            item={item}
+            palette={palette}
+            onPress={(row) => {
+              setSelected(row);
+              setAdminNotes(row.admin_notes || '');
+              setArticleError('');
+            }}
+          />
+        )}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={loadRows} />}
         ListEmptyComponent={
           !loading ? (
@@ -163,66 +173,103 @@ const FeedbackTab = ({ navigation }) => {
       <Modal visible={Boolean(selected)} animationType="slide" transparent onRequestClose={() => setSelected(null)}>
         <View style={styles.modalOverlay}>
           <View style={[styles.modalCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
-            <Text variant="title" color={palette.textPrimary} style={styles.modalTitle}>
-              Feedback detail
-            </Text>
-            <Text variant="caption" color={palette.textSecondary} style={{ marginBottom: 12 }}>
-              {selected?.category_label} · {selected?.status}
-            </Text>
-            <Text variant="body" color={palette.textPrimary} style={{ marginBottom: 12 }}>
-              {selected?.message || '(No additional message)'}
-            </Text>
-            <Text variant="caption" color={palette.textSecondary} style={{ marginBottom: 12 }}>
-              From: {selected?.reporter_email || selected?.user_id}
-            </Text>
-            {selected?.article_id ? (
-              <TouchableOpacity
-                onPress={() => {
-                  setSelected(null);
-                  navigation?.navigate?.('ArticleDetail', { articleId: selected.article_id });
-                }}
-                style={{ marginBottom: 12 }}
-              >
-                <Text variant="body" color={palette.primary} style={{ fontWeight: '600' }}>
-                  View article
-                </Text>
-              </TouchableOpacity>
-            ) : null}
-            <TextInput
-              value={adminNotes}
-              onChangeText={setAdminNotes}
-              multiline
-              placeholder="Admin notes"
-              placeholderTextColor={palette.textTertiary}
-              style={[
-                styles.notesInput,
-                { borderColor: palette.border, color: palette.textPrimary, backgroundColor: palette.pageAlt },
-              ]}
-            />
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[styles.actionBtn, { backgroundColor: palette.primary }]}
-                onPress={() => saveDetail('reviewed')}
-                disabled={saving}
-              >
-                <Text variant="body" color="#fff" style={{ fontWeight: '700' }}>
-                  Mark reviewed
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionBtn, { borderWidth: 1, borderColor: palette.border }]}
-                onPress={() => saveDetail('dismissed')}
-                disabled={saving}
-              >
-                <Text variant="body" color={palette.textSecondary}>Dismiss</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => setSelected(null)}>
-                <Text variant="body" color={palette.textTertiary}>Close</Text>
-              </TouchableOpacity>
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <Text variant="title" color={palette.textPrimary} style={styles.modalTitle}>
+                Feedback detail
+              </Text>
+              <Text variant="caption" color={palette.textSecondary} style={{ marginBottom: 12 }}>
+                {selected?.category_label}
+                {selectedStatus ? (
+                  <Text variant="caption" style={{ color: selectedStatus.color, fontWeight: '700' }}>
+                    {` · ${selectedStatus.label}`}
+                  </Text>
+                ) : null}
+              </Text>
+              <Text variant="body" color={palette.textPrimary} style={{ marginBottom: 12 }}>
+                {selected?.message || '(No additional message)'}
+              </Text>
+              <Text variant="caption" color={palette.textSecondary} style={{ marginBottom: 12 }}>
+                From: {selected?.reporter_email || selected?.user_id}
+              </Text>
+
+              {selected?.article_id ? (
+                <View style={[styles.articleBox, { borderColor: palette.border, backgroundColor: palette.pageAlt }]}>
+                  <Text variant="caption" color={palette.textSecondary}>Linked article</Text>
+                  <Text variant="body" color={palette.textPrimary} style={{ fontWeight: '600', marginVertical: 6 }}>
+                    {selected.article_title || 'Article'}
+                  </Text>
+                  <TouchableOpacity
+                    style={[styles.reviewBtn, { backgroundColor: palette.primary }]}
+                    onPress={openArticleReview}
+                    disabled={articleLoading}
+                  >
+                    {articleLoading ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <Text variant="body" color="#fff" style={{ fontWeight: '700' }}>
+                        Review article
+                      </Text>
+                    )}
+                  </TouchableOpacity>
+                  {articleError ? (
+                    <Text variant="caption" color={palette.error || '#ef4444'} style={{ marginTop: 8 }}>
+                      {articleError}
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+
+              <TextInput
+                value={adminNotes}
+                onChangeText={setAdminNotes}
+                multiline
+                placeholder="Admin notes"
+                placeholderTextColor={palette.textTertiary}
+                style={[
+                  styles.notesInput,
+                  { borderColor: palette.border, color: palette.textPrimary, backgroundColor: palette.pageAlt },
+                ]}
+              />
+              <View style={styles.modalActions}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { backgroundColor: palette.primary }]}
+                  onPress={() => saveDetail('reviewed')}
+                  disabled={saving}
+                >
+                  <Text variant="body" color="#fff" style={{ fontWeight: '700' }}>
+                    Mark reviewed
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionBtn, { borderWidth: 1, borderColor: palette.border }]}
+                  onPress={() => saveDetail('dismissed')}
+                  disabled={saving}
+                >
+                  <Text variant="body" color={palette.textSecondary}>Dismiss</Text>
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => setSelected(null)}>
+                  <Text variant="body" color={palette.textTertiary}>Close</Text>
+                </TouchableOpacity>
+              </View>
+            </ScrollView>
           </View>
         </View>
       </Modal>
+
+      <AdminArticleReviewModal
+        visible={Boolean(reviewArticle)}
+        article={reviewArticle}
+        onClose={() => setReviewArticle(null)}
+        onSaved={() => loadRows({ silent: true })}
+        onOpenInApp={(article) => {
+          navigation?.navigate?.('ArticleDetail', buildArticleDetailParams(article));
+        }}
+        feedbackBanner={
+          selected
+            ? `Reviewing article linked to report — ${selected.category_label || selected.category}`
+            : ''
+        }
+      />
     </View>
   );
 };
@@ -235,15 +282,11 @@ const styles = StyleSheet.create({
   chips: { maxHeight: 44, marginBottom: 12 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginRight: 8 },
   list: { paddingBottom: 24 },
-  card: { borderRadius: 12, borderWidth: 1, padding: 14, marginBottom: 10 },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
-  badge: { fontWeight: '700', textTransform: 'uppercase' },
-  date: { marginLeft: 'auto' },
-  message: { fontWeight: '600', marginBottom: 8 },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'flex-end' },
   modalCard: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 20, maxHeight: '85%' },
   modalTitle: { fontWeight: '700', marginBottom: 4 },
+  articleBox: { borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 12 },
+  reviewBtn: { paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
   notesInput: { minHeight: 80, borderWidth: 1, borderRadius: 12, padding: 12, marginBottom: 16, textAlignVertical: 'top' },
   modalActions: { gap: 10 },
   actionBtn: { paddingVertical: 12, borderRadius: 10, alignItems: 'center' },

@@ -17,3 +17,18 @@ export function subscribeAdminNotifications(handler) {
 export function isFeedbackNotificationType(type) {
   return type === 'admin_user_feedback' || type === 'admin_user_report';
 }
+
+export const ADMIN_FEEDBACK_REFRESH_EVENT = 'admin:feedback-refresh';
+
+export function dispatchAdminFeedbackRefresh(detail = {}) {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent(ADMIN_FEEDBACK_REFRESH_EVENT, { detail }));
+  }
+}
+
+export function subscribeAdminFeedbackRefresh(handler) {
+  if (typeof window === 'undefined') return () => {};
+  const listener = (e) => handler(e.detail || {});
+  window.addEventListener(ADMIN_FEEDBACK_REFRESH_EVENT, listener);
+  return () => window.removeEventListener(ADMIN_FEEDBACK_REFRESH_EVENT, listener);
+}

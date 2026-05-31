@@ -60,6 +60,7 @@ import { buildArticleDetailParams } from '../../utils/articleNavigation';
 import { getArticlesFetchParams, filterArticlesForDisplay } from '../../utils/adminArticleFilters';
 import { ADMIN_TAB_ROUTES } from '../../navigation/adminTabIds';
 import { openAdminNotificationsSocket } from '../../api/adminNotificationsRealtime';
+import { dispatchAdminFeedbackRefresh } from '../../utils/adminNotificationsEvents';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PIPELINE_BATCH_SIZE = 15;
@@ -211,6 +212,7 @@ const AdminScreen = ({ navigation }) => {
         });
         if (n.type === 'admin_user_feedback' || n.type === 'admin_user_report') {
           showSuccess(n.text || 'New user feedback');
+          dispatchAdminFeedbackRefresh({ notification: n });
         }
       });
       if (!ws) return;

@@ -495,6 +495,7 @@ const ArticleDetailScreen = () => {
                     disabled={!!fetchError}
                     highlightLines={ttsHighlightLines}
                     onActiveLineIndex={setActiveTtsLineIndex}
+                    articleId={articleKey}
                 />
 
                 {/* Article Content */}

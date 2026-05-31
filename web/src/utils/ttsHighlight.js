@@ -77,7 +77,14 @@ export function lineIndicesForSegment(lines, segmentIndex) {
   return out;
 }
 
-export function scheduleLineHighlights(lineIndices, lines, durationMs, onLine, isCancelled) {
+export function scheduleLineHighlights(
+  lineIndices,
+  lines,
+  durationMs,
+  onLine,
+  isCancelled,
+  { startLineOffset = 0, elapsedMs = 0 } = {}
+) {
   const timers = [];
   const cancel = () => timers.forEach((t) => clearTimeout(t));
 
@@ -85,14 +92,16 @@ export function scheduleLineHighlights(lineIndices, lines, durationMs, onLine, i
     return cancel;
   }
 
+  const remainingMs = Math.max(0, durationMs - (elapsedMs || 0));
   const weights = lineIndices.map((i) => Math.max(1, lines[i]?.text?.length || 1));
   const total = weights.reduce((a, b) => a + b, 0) || 1;
 
-  if (!isCancelled?.()) onLine(lineIndices[0]);
+  const startIdx = Math.max(0, Math.min(startLineOffset, lineIndices.length - 1));
+  if (!isCancelled?.()) onLine(lineIndices[startIdx]);
 
   let elapsed = 0;
-  for (let j = 1; j < lineIndices.length; j++) {
-    elapsed += Math.round((weights[j - 1] / total) * durationMs);
+  for (let j = startIdx + 1; j < lineIndices.length; j++) {
+    elapsed += Math.round((weights[j - 1] / total) * remainingMs);
     const lineIdx = lineIndices[j];
     const t = setTimeout(() => {
       if (!isCancelled?.()) onLine(lineIdx);

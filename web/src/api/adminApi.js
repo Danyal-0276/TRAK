@@ -85,6 +85,12 @@ export async function deleteAdminUser(userId) {
   return parseJson(res);
 }
 
+export async function getAdminArticleById(articleId) {
+  const params = new URLSearchParams({ id: String(articleId) });
+  const res = await apiFetch(`${ADMIN_PREFIX}/articles/lookup/?${params}`);
+  return parseJson(res);
+}
+
 export async function patchAdminArticle(scope, articleId, payload) {
   const res = await apiFetch(`${ADMIN_PREFIX}/articles/${encodeURIComponent(scope)}/${encodeURIComponent(articleId)}/`, {
     method: 'PATCH',

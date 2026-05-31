@@ -381,6 +381,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                             colors={colors}
                             highlightLines={ttsHighlightLines}
                             onActiveLineIndex={setActiveTtsLineIndex}
+                            articleId={articleId}
                         />
 
                         <Animated.View

@@ -9,6 +9,7 @@ import { DASHBOARD_POLL_INTERVAL_MS } from '../adminTheme';
 import { dispatchAdminOverviewRefresh } from '../../../utils/adminOverviewEvents';
 import {
   dispatchAdminNotification,
+  dispatchAdminFeedbackRefresh,
   isFeedbackNotificationType,
 } from '../../../utils/adminNotificationsEvents';
 import { isDashboardPath } from '../hooks/useAdminTabActive';
@@ -50,6 +51,7 @@ export default function AdminShell() {
       setUnreadAlerts((prev) => prev + 1);
       if (isFeedbackNotificationType(n.type)) {
         info(n.text || 'New user feedback received');
+        dispatchAdminFeedbackRefresh({ notification: n });
       }
     },
     [info]

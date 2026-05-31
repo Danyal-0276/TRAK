@@ -134,6 +134,12 @@ export async function patchAdminFeedback(feedbackId, payload) {
   return parseJson(res);
 }
 
+export async function getAdminArticleById(articleId) {
+  const params = new URLSearchParams({ id: String(articleId) });
+  const res = await apiFetch(`${ADMIN_PREFIX}/articles/lookup/?${params}`, {}, API_BASE);
+  return parseJson(res);
+}
+
 export async function patchAdminArticle(scope, articleId, payload) {
   const res = await apiFetch(
     `${ADMIN_PREFIX}/articles/${encodeURIComponent(scope)}/${encodeURIComponent(articleId)}/`,
