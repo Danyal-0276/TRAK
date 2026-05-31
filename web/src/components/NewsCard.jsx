@@ -176,7 +176,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                 <span style={{
                                     fontSize: '12px',
                                     fontWeight: '700',
-                                    color: '#ffffff',
+                                    color: colors.textOnPrimary || (isDark ? '#0a0a0a' : '#ffffff'),
                                     letterSpacing: '0.5px',
                                 }}>
                                     {item.source?.substring(0, 2).toUpperCase() || 'N'}
