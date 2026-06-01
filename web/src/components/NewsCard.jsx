@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { getFeedItemCredibilityMeta } from '../utils/credibilityIndicator';
 import { prefetchArticleDetail } from '../utils/articleDetailCache';
+import { getUserArticleImageProxyUrl, resolveArticleImageUrl } from '../utils/articleMedia';
+import ArticleCardImage from './ArticleCardImage';
 import FeedbackModal from './FeedbackModal';
 
 export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark, layout = 'grid' }) => {
@@ -45,6 +47,8 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
           : credLabel === 'real'
             ? 'Verified / Higher credibility'
             : credMeta.labelName || 'Credibility';
+    const cardImage = resolveArticleImageUrl(item);
+    const imagePlaceholderBg = isDark ? colors.surfaceElevated || colors.backgroundSecondary : '#f3f4f6';
 
     useEffect(() => {
         if (!showMenu) return undefined;
@@ -99,24 +103,22 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                 e.currentTarget.style.borderColor = borderColor;
             }}
             >
-                {/* Image */}
-                {item.image && (
+                {/* Hero image (same pattern as admin article cards) */}
+                {cardImage ? (
                     <div style={{
                         width: '100%',
-                        height: '180px',
-                        backgroundColor: '#f3f4f6',
                         position: 'relative',
                         overflow: 'hidden',
+                        backgroundColor: imagePlaceholderBg,
                     }}>
-                        <img 
-                            src={item.image} 
-                            alt={item.title}
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                                display: 'block',
-                            }}
+                        <ArticleCardImage
+                            src={cardImage}
+                            alt={item.title || 'Article'}
+                            maxHeight={isMasonry ? 280 : 220}
+                            borderRadius={0}
+                            dynamicAspect
+                            backgroundColor={imagePlaceholderBg}
+                            getProxyUrl={getUserArticleImageProxyUrl}
                         />
                         {item.trending && (
                             <div style={{
@@ -142,7 +144,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             </div>
                         )}
                     </div>
-                )}
+                ) : null}
 
                 <div style={{
                     padding: isMasonry ? '16px' : '20px',

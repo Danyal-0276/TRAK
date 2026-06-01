@@ -36,6 +36,8 @@ const AdminFeedbackScreen = () => {
   const textPrimary = palette.textPrimary;
   const textSecondary = palette.textSecondary;
   const borderColor = palette.border;
+  const primaryButtonBg = palette.buttonPrimaryBg || palette.primary;
+  const primaryButtonText = palette.buttonPrimaryText || '#ffffff';
 
   const loadRows = useCallback(async ({ silent = false } = {}) => {
     if (!tabActive) return;
@@ -113,6 +115,23 @@ const AdminFeedbackScreen = () => {
 
   const selectedStatus = selected ? FEEDBACK_STATUS_META[selected.status] : null;
 
+  useEffect(() => {
+    if (!selected) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const previousPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPaddingRight;
+    };
+  }, [selected]);
+
   return (
     <AdminPageLayout maxWidth="1200px">
       <AdminPageHeader title={title} description={description}>
@@ -130,9 +149,9 @@ const AdminFeedbackScreen = () => {
               style={{
                 padding: '10px 16px',
                 borderRadius: 10,
-                border: `1px solid ${statusTab === key ? palette.primary : borderColor}`,
-                background: statusTab === key ? `${palette.primary}18` : cardBackground,
-                color: statusTab === key ? palette.primary : textSecondary,
+                border: `1px solid ${statusTab === key ? (isDark ? palette.textSecondary : primaryButtonBg) : borderColor}`,
+                background: statusTab === key ? (isDark ? palette.inputBg : `${primaryButtonBg}18`) : cardBackground,
+                color: statusTab === key ? textPrimary : textSecondary,
                 fontWeight: 600,
                 cursor: 'pointer',
               }}
@@ -227,11 +246,12 @@ const AdminFeedbackScreen = () => {
                     padding: '8px 12px',
                     borderRadius: 8,
                     border: 'none',
-                    background: palette.primary,
-                    color: '#fff',
-                    cursor: 'pointer',
+                    background: primaryButtonBg,
+                    color: primaryButtonText,
+                    cursor: articleLoading ? 'not-allowed' : 'pointer',
                     fontWeight: 600,
                     fontSize: 13,
+                    opacity: articleLoading ? 0.7 : 1,
                   }}
                 >
                   {articleLoading ? 'Loading…' : 'Review article'}
@@ -250,7 +270,8 @@ const AdminFeedbackScreen = () => {
                       gap: 4,
                       marginLeft: 10,
                       fontSize: 12,
-                      color: palette.primary,
+                      color: textPrimary,
+                      textDecoration: 'underline',
                     }}
                   >
                     Source <ExternalLink size={12} />
@@ -272,7 +293,7 @@ const AdminFeedbackScreen = () => {
                 padding: 12,
                 borderRadius: 10,
                 border: `1px solid ${borderColor}`,
-                background: isDark ? colors.background : '#fff',
+                background: palette.inputBg || colors.background,
                 color: textPrimary,
                 marginBottom: 16,
               }}
@@ -286,10 +307,11 @@ const AdminFeedbackScreen = () => {
                   padding: '10px 16px',
                   borderRadius: 10,
                   border: 'none',
-                  background: palette.primary,
-                  color: '#fff',
+                  background: primaryButtonBg,
+                  color: primaryButtonText,
                   fontWeight: 600,
-                  cursor: 'pointer',
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  opacity: saving ? 0.7 : 1,
                 }}
               >
                 Mark reviewed
@@ -301,11 +323,12 @@ const AdminFeedbackScreen = () => {
                 style={{
                   padding: '10px 16px',
                   borderRadius: 10,
-                  border: `1px solid ${borderColor}`,
-                  background: 'transparent',
-                  color: textSecondary,
+                  border: `1px solid ${palette.buttonSecondaryBorder || borderColor}`,
+                  background: palette.buttonSecondaryBg || 'transparent',
+                  color: palette.buttonSecondaryText || textPrimary,
                   fontWeight: 600,
-                  cursor: 'pointer',
+                  cursor: saving ? 'not-allowed' : 'pointer',
+                  opacity: saving ? 0.7 : 1,
                 }}
               >
                 Dismiss
@@ -316,9 +339,10 @@ const AdminFeedbackScreen = () => {
                 style={{
                   padding: '10px 16px',
                   borderRadius: 10,
-                  border: 'none',
+                  border: `1px solid ${borderColor}`,
                   background: 'transparent',
                   color: textSecondary,
+                  fontWeight: 600,
                   cursor: 'pointer',
                 }}
               >

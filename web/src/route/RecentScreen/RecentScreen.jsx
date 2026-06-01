@@ -17,6 +17,11 @@ function recencySortKey(item) {
 const RecentScreen = () => {
     const navigate = useNavigate();
     const { theme } = useTheme();
+    const isDark = theme.mode === 'dark';
+    const { colors } = theme;
+    const pageBg = colors.background;
+    const headingColor = colors.textPrimary;
+    const subColor = colors.textSecondary;
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
     const [votedItems, setVotedItems] = useState({});
     const [newsData, setNewsData] = useState([]);
@@ -89,21 +94,36 @@ const RecentScreen = () => {
     };
 
     return (
+        <div style={{
+            minHeight: '100vh',
+            backgroundColor: pageBg,
+        }}>
         <div style={{ padding: '24px', maxWidth: '1200px', margin: '0 auto' }}>
-            <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px' }}>Recent</h1>
-            <p style={{ color: '#64748b', marginBottom: '24px' }}>Latest processed articles</p>
+            <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px', color: headingColor }}>Recent</h1>
+            <p style={{ color: subColor, marginBottom: '24px' }}>Latest processed articles</p>
 
             {loading ? (
-                <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(theme.mode === 'dark', theme.colors)} />
+                <MasonryFeedSkeleton count={6} gap={24} {...getSkeletonFeedProps(isDark, colors)} />
             ) : loadError ? (
                 <div style={{ textAlign: 'center', padding: 48 }}>
-                    <p style={{ color: '#64748b', marginBottom: 16 }}>{loadError}</p>
-                    <button type="button" onClick={loadNews} style={{ padding: '10px 20px', cursor: 'pointer' }}>
+                    <p style={{ color: subColor, marginBottom: 16 }}>{loadError}</p>
+                    <button
+                        type="button"
+                        onClick={loadNews}
+                        style={{
+                            padding: '10px 20px',
+                            cursor: 'pointer',
+                            borderRadius: 8,
+                            border: `1px solid ${colors.border}`,
+                            background: colors.surface,
+                            color: headingColor,
+                        }}
+                    >
                         Retry
                     </button>
                 </div>
             ) : newsData.length === 0 ? (
-                <p style={{ textAlign: 'center', color: '#64748b', padding: 48 }}>No recent articles yet.</p>
+                <p style={{ textAlign: 'center', color: subColor, padding: 48 }}>No recent articles yet.</p>
             ) : (
                 <>
                     <MasonryFeed gap={24}>
@@ -122,10 +142,11 @@ const RecentScreen = () => {
                     </MasonryFeed>
                     <div ref={scrollSentinelRef} style={{ height: 1 }} aria-hidden />
                     {loadingMore ? (
-                        <p style={{ textAlign: 'center', color: '#64748b', padding: 16 }}>Loading more…</p>
+                        <p style={{ textAlign: 'center', color: subColor, padding: 16 }}>Loading more…</p>
                     ) : null}
                 </>
             )}
+        </div>
         </div>
     );
 };

@@ -21,9 +21,9 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f9fafb;
+  background-color: var(--trak-page-bg, #f5f5f5);
   line-height: 1.5;
-  color: #111827;
+  color: var(--trak-page-fg, #111827);
   font-weight: 400;
 }
 
@@ -74,8 +74,17 @@ textarea:focus-visible {
 }
 
 /* Smooth transitions */
-button, a, input, textarea, div {
+button:not(.header-icon-btn),
+a,
+input,
+textarea,
+div {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button.header-icon-btn {
+  transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+    color var(--trak-transition-duration, 0.2s) var(--trak-transition-ease, ease);
 }
 
 /* Professional animations */

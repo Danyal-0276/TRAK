@@ -60,6 +60,40 @@
   box-shadow: 0 1px 2px var(--admin-shadow-light, rgba(0, 0, 0, 0.04));
 }
 
+.admin-data-table {
+  background: var(--admin-card);
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.admin-data-table__head {
+  background: var(--admin-page-alt);
+  border-bottom: 1px solid var(--admin-border);
+  color: var(--admin-text-secondary);
+}
+
+.admin-data-row {
+  background: var(--admin-card);
+  color: var(--admin-text-primary);
+  border-bottom: 1px solid var(--admin-border);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.admin-data-row:last-child {
+  border-bottom: none;
+}
+
+.admin-data-row:hover {
+  background: var(--admin-card-hover);
+}
+
+.admin-data-row:focus-visible {
+  outline: 2px solid var(--admin-text-secondary);
+  outline-offset: -2px;
+}
+
 @media (max-width: 640px) {
   .admin-page-header__title {
     font-size: 22px;

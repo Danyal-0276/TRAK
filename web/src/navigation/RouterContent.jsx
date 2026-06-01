@@ -30,10 +30,13 @@ import BookmarksScreen from '../route/BookmarksScreen/BookmarksScreen';
 import RecentScreen from '../route/RecentScreen/RecentScreen';
 import ProtectedRoute from '../components/ProtectedRoute';
 import UserOnlyRoute from '../components/UserOnlyRoute';
+import { useTheme } from '../theme/ThemeContext';
 
 const RouterContent = () => {
   const location = useLocation();
   const { isDesktop } = useResponsive();
+  const { theme } = useTheme();
+  const { colors } = theme;
   const isAuthPage = ['/', '/login', '/signup', '/verify-email', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'].includes(location.pathname);
   const isAdminPage = location.pathname.startsWith('/admin');
   const isMainAppPage = !isAuthPage && !isAdminPage;
@@ -44,12 +47,12 @@ const RouterContent = () => {
       style={{
         minHeight: '100vh',
         width: '100%',
-        backgroundColor: isAuthPage ? '#ffffff' : '#f9fafb',
+        backgroundColor: colors.background,
         paddingTop: '0',
         marginTop: '0',
         paddingRight: isMainAppPage && isDesktop ? '280px' : '0',
         paddingLeft: '0',
-        transition: 'padding 0.3s ease',
+        transition: 'padding 0.3s ease, background-color var(--trak-transition-duration, 0s) var(--trak-transition-ease, ease)',
       }}
     >
       <Routes>

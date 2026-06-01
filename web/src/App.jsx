@@ -4,8 +4,8 @@ import { AuthProvider } from './context/AuthContext';
 import { NotificationUnreadProvider } from './context/NotificationUnreadContext';
 import { UserKeywordsProvider } from './context/UserKeywordsContext';
 import { FeedCacheProvider } from './context/FeedCacheContext';
+import { ChatBotProvider } from './context/ChatBotContext';
 import AppRouter from './navigation/AppRouter';
-import ChatBotWidget from './components/ChatBotWidget';
 import { UIFeedbackProvider } from './components/ui/UIFeedback';
 import { GlobalSkeletonStyles } from './components/skeletons/SkeletonLayouts';
 import './App.css';
@@ -19,6 +19,7 @@ const App = () => {
           <NotificationUnreadProvider>
           <UserKeywordsProvider>
           <FeedCacheProvider>
+          <ChatBotProvider>
           <div style={{ 
             minHeight: '100vh', 
             width: '100%',
@@ -26,8 +27,8 @@ const App = () => {
             padding: 0,
           }} className="app-container">
             <AppRouter />
-            <ChatBotWidget />
           </div>
+          </ChatBotProvider>
           </FeedCacheProvider>
           </UserKeywordsProvider>
           </NotificationUnreadProvider>

@@ -14,13 +14,26 @@ import {
 } from 'lucide-react';
 import { getProfile, updateProfile } from '../../utils/Service/api';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 import { SkeletonPageBlocks } from '../../components/skeletons/SkeletonLayouts';
 
 const EditProfileScreen = () => {
     const navigate = useNavigate();
     const { theme } = useTheme();
+    const { colors } = theme;
     const isDark = theme.mode === 'dark';
     const fileInputRef = useRef(null);
+
+    const backgroundColor = colors.background;
+    const cardBackground = colors.surface;
+    const textPrimary = colors.textPrimary;
+    const textSecondary = colors.textSecondary;
+    const textTertiary = colors.textTertiary || colors.textSecondary;
+    const borderColor = colors.border;
+    const inputBg = isDark ? colors.surfaceElevated || colors.backgroundSecondary : colors.surface;
+    const hoverBg = isDark ? colors.surfaceElevated : colors.backgroundSecondary;
+    const action = filledActionColors(colors, isDark);
+    const focusRing = isDark ? '0 0 0 3px rgba(129, 140, 248, 0.22)' : '0 0 0 3px rgba(15, 23, 42, 0.1)';
     
     const [formData, setFormData] = useState({
         name: '',
@@ -180,10 +193,10 @@ const EditProfileScreen = () => {
                 gap: '8px',
                 fontSize: '14px',
                 fontWeight: '600',
-                color: '#0f172a',
+                color: textPrimary,
                 marginBottom: '8px',
             }}>
-                {Icon && <Icon size={16} color="#64748b" />}
+                {Icon && <Icon size={16} color={textSecondary} />}
                 {label}
                 {required && <span style={{ color: '#ef4444' }}>*</span>}
             </label>
@@ -198,19 +211,19 @@ const EditProfileScreen = () => {
                     padding: '12px 16px',
                     fontSize: '15px',
                     fontWeight: '500',
-                    color: '#0f172a',
-                    border: errors[field] ? '2px solid #ef4444' : '1px solid #e5e7eb',
+                    color: textPrimary,
+                    border: errors[field] ? '2px solid #ef4444' : `1px solid ${borderColor}`,
                     borderRadius: '8px',
-                    backgroundColor: '#ffffff',
+                    backgroundColor: inputBg,
                     outline: 'none',
                     transition: 'all 0.2s ease',
                 }}
                 onFocus={(e) => {
-                    e.target.style.borderColor = errors[field] ? '#ef4444' : '#0f172a';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(15, 23, 42, 0.1)';
+                    e.target.style.borderColor = errors[field] ? '#ef4444' : colors.primary;
+                    e.target.style.boxShadow = focusRing;
                 }}
                 onBlur={(e) => {
-                    e.target.style.borderColor = errors[field] ? '#ef4444' : '#e5e7eb';
+                    e.target.style.borderColor = errors[field] ? '#ef4444' : borderColor;
                     e.target.style.boxShadow = 'none';
                 }}
             />
@@ -230,7 +243,7 @@ const EditProfileScreen = () => {
             {maxLength && (
                 <div style={{
                     fontSize: '12px',
-                    color: '#9ca3af',
+                    color: textTertiary,
                     marginTop: '4px',
                     textAlign: 'right',
                 }}>
@@ -241,9 +254,11 @@ const EditProfileScreen = () => {
     );
 
     return (
-        <div style={{
+        <div
+            className="edit-profile-screen"
+            style={{
             minHeight: '100vh',
-            backgroundColor: '#ffffff',
+            backgroundColor,
             paddingTop: '0',
             marginTop: '0',
             position: 'relative',
@@ -274,19 +289,19 @@ const EditProfileScreen = () => {
                             transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#f9fafb';
+                            e.currentTarget.style.backgroundColor = hoverBg;
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = 'transparent';
                         }}
                     >
-                        <ArrowLeft size={20} color="#0f172a" />
+                        <ArrowLeft size={20} color={textPrimary} />
                     </button>
                     <div>
                         <h1 style={{
                             fontSize: '28px',
                             fontWeight: '700',
-                            color: '#0f172a',
+                            color: textPrimary,
                             margin: '0 0 4px 0',
                             letterSpacing: '-0.5px',
                         }}>
@@ -294,7 +309,7 @@ const EditProfileScreen = () => {
                         </h1>
                         <p style={{
                             fontSize: '15px',
-                            color: '#64748b',
+                            color: textSecondary,
                             margin: '0',
                         }}>
                             Update your profile information
@@ -303,7 +318,7 @@ const EditProfileScreen = () => {
                 </div>
 
                 {profileLoading ? (
-                    <SkeletonPageBlocks isDark={isDark} colors={theme.colors} minHeight="520px" />
+                    <SkeletonPageBlocks isDark={isDark} colors={colors} minHeight="520px" />
                 ) : null}
 
                 {!profileLoading && (
@@ -312,8 +327,8 @@ const EditProfileScreen = () => {
                 {showSuccess && (
                     <div style={{
                         padding: '16px',
-                        backgroundColor: '#f0fdf4',
-                        border: '1px solid #86efac',
+                        backgroundColor: isDark ? 'rgba(22, 163, 74, 0.15)' : '#f0fdf4',
+                        border: `1px solid ${isDark ? 'rgba(134, 239, 172, 0.45)' : '#86efac'}`,
                         borderRadius: '8px',
                         marginBottom: '24px',
                         display: 'flex',
@@ -324,7 +339,7 @@ const EditProfileScreen = () => {
                         <span style={{
                             fontSize: '14px',
                             fontWeight: '500',
-                            color: '#166534',
+                            color: isDark ? '#86efac' : '#166534',
                         }}>
                             Profile updated successfully!
                         </span>
@@ -335,8 +350,8 @@ const EditProfileScreen = () => {
                 {errors.general && (
                     <div style={{
                         padding: '16px',
-                        backgroundColor: '#fef2f2',
-                        border: '1px solid #fecaca',
+                        backgroundColor: isDark ? 'rgba(239, 68, 68, 0.12)' : '#fef2f2',
+                        border: `1px solid ${isDark ? 'rgba(248, 113, 113, 0.45)' : '#fecaca'}`,
                         borderRadius: '8px',
                         marginBottom: '24px',
                         display: 'flex',
@@ -347,7 +362,7 @@ const EditProfileScreen = () => {
                         <span style={{
                             fontSize: '14px',
                             fontWeight: '500',
-                            color: '#991b1b',
+                            color: isDark ? '#fca5a5' : '#991b1b',
                         }}>
                             {errors.general}
                         </span>
@@ -356,11 +371,12 @@ const EditProfileScreen = () => {
 
                 {/* Profile Card */}
                 <div style={{
-                    backgroundColor: '#ffffff',
+                    backgroundColor: cardBackground,
                     borderRadius: '12px',
-                    border: '1px solid #e5e7eb',
+                    border: `1px solid ${borderColor}`,
                     padding: '32px',
                     marginBottom: '24px',
+                    boxShadow: isDark ? '0 1px 3px rgba(0,0,0,0.25)' : '0 1px 3px rgba(0,0,0,0.06)',
                 }}>
                     {/* Avatar Section */}
                     <div style={{
@@ -377,7 +393,7 @@ const EditProfileScreen = () => {
                                 width: '120px',
                                 height: '120px',
                                 borderRadius: '12px',
-                                backgroundColor: avatarPreview ? 'transparent' : '#0f172a',
+                                backgroundColor: avatarPreview ? 'transparent' : action.background,
                                 display: 'flex',
                                 justifyContent: 'center',
                                 alignItems: 'center',
@@ -398,7 +414,7 @@ const EditProfileScreen = () => {
                                     <span style={{
                                         fontSize: '48px',
                                         fontWeight: '700',
-                                        color: '#ffffff',
+                                        color: action.foreground,
                                         letterSpacing: '0.5px',
                                     }}>
                                         {formData.name.charAt(0).toUpperCase()}
@@ -414,8 +430,8 @@ const EditProfileScreen = () => {
                                     width: '36px',
                                     height: '36px',
                                     borderRadius: '8px',
-                                    backgroundColor: '#0f172a',
-                                    border: '3px solid #ffffff',
+                                    backgroundColor: action.background,
+                                    border: `3px solid ${cardBackground}`,
                                     display: 'flex',
                                     justifyContent: 'center',
                                     alignItems: 'center',
@@ -423,13 +439,13 @@ const EditProfileScreen = () => {
                                     transition: 'all 0.2s ease',
                                 }}
                                 onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#1e293b';
+                                    e.currentTarget.style.opacity = '0.88';
                                 }}
                                 onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = '#0f172a';
+                                    e.currentTarget.style.opacity = '1';
                                 }}
                             >
-                                <Camera size={16} color="#ffffff" />
+                                <Camera size={16} color={action.foreground} />
                             </button>
                             <input
                                 ref={fileInputRef}
@@ -443,22 +459,22 @@ const EditProfileScreen = () => {
                             onClick={() => fileInputRef.current?.click()}
                             style={{
                                 padding: '8px 16px',
-                                border: '1px solid #e5e7eb',
-                                background: '#ffffff',
+                                border: `1px solid ${borderColor}`,
+                                background: inputBg,
                                 borderRadius: '8px',
                                 cursor: 'pointer',
                                 fontSize: '14px',
                                 fontWeight: '600',
-                                color: '#0f172a',
+                                color: textPrimary,
                                 transition: 'all 0.2s ease',
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = '#0f172a';
-                                e.currentTarget.style.backgroundColor = '#f9fafb';
+                                e.currentTarget.style.borderColor = colors.primary;
+                                e.currentTarget.style.backgroundColor = hoverBg;
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = '#e5e7eb';
-                                e.currentTarget.style.backgroundColor = '#ffffff';
+                                e.currentTarget.style.borderColor = borderColor;
+                                e.currentTarget.style.backgroundColor = inputBg;
                             }}
                         >
                             Change Photo
@@ -522,10 +538,10 @@ const EditProfileScreen = () => {
                             gap: '8px',
                             fontSize: '14px',
                             fontWeight: '600',
-                            color: '#0f172a',
+                            color: textPrimary,
                             marginBottom: '8px',
                         }}>
-                            <FileText size={16} color="#64748b" />
+                            <FileText size={16} color={textSecondary} />
                             Bio
                         </label>
                         <textarea
@@ -539,21 +555,21 @@ const EditProfileScreen = () => {
                                 padding: '12px 16px',
                                 fontSize: '15px',
                                 fontWeight: '500',
-                                color: '#0f172a',
-                                border: errors.bio ? '2px solid #ef4444' : '1px solid #e5e7eb',
+                                color: textPrimary,
+                                border: errors.bio ? '2px solid #ef4444' : `1px solid ${borderColor}`,
                                 borderRadius: '8px',
-                                backgroundColor: '#ffffff',
+                                backgroundColor: inputBg,
                                 outline: 'none',
                                 resize: 'vertical',
                                 fontFamily: 'inherit',
                                 transition: 'all 0.2s ease',
                             }}
                             onFocus={(e) => {
-                                e.target.style.borderColor = errors.bio ? '#ef4444' : '#0f172a';
-                                e.target.style.boxShadow = '0 0 0 3px rgba(15, 23, 42, 0.1)';
+                                e.target.style.borderColor = errors.bio ? '#ef4444' : colors.primary;
+                                e.target.style.boxShadow = focusRing;
                             }}
                             onBlur={(e) => {
-                                e.target.style.borderColor = errors.bio ? '#ef4444' : '#e5e7eb';
+                                e.target.style.borderColor = errors.bio ? '#ef4444' : borderColor;
                                 e.target.style.boxShadow = 'none';
                             }}
                         />
@@ -572,7 +588,7 @@ const EditProfileScreen = () => {
                         )}
                         <div style={{
                             fontSize: '12px',
-                            color: '#9ca3af',
+                            color: textTertiary,
                             marginTop: '4px',
                             textAlign: 'right',
                         }}>
@@ -591,22 +607,22 @@ const EditProfileScreen = () => {
                         style={{
                             flex: 1,
                             padding: '14px 24px',
-                            border: '1px solid #e5e7eb',
-                            background: '#ffffff',
+                            border: `1px solid ${borderColor}`,
+                            background: cardBackground,
                             borderRadius: '8px',
                             cursor: 'pointer',
                             fontSize: '15px',
                             fontWeight: '600',
-                            color: '#0f172a',
+                            color: textPrimary,
                             transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = '#d1d5db';
-                            e.currentTarget.style.backgroundColor = '#f9fafb';
+                            e.currentTarget.style.borderColor = colors.primary;
+                            e.currentTarget.style.backgroundColor = hoverBg;
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = '#e5e7eb';
-                            e.currentTarget.style.backgroundColor = '#ffffff';
+                            e.currentTarget.style.borderColor = borderColor;
+                            e.currentTarget.style.backgroundColor = cardBackground;
                         }}
                     >
                         Cancel
@@ -618,12 +634,12 @@ const EditProfileScreen = () => {
                             flex: 1,
                             padding: '14px 24px',
                             border: 'none',
-                            background: isSaving ? '#94a3b8' : '#0f172a',
+                            background: isSaving ? textTertiary : action.background,
                             borderRadius: '8px',
                             cursor: isSaving ? 'not-allowed' : 'pointer',
                             fontSize: '15px',
                             fontWeight: '600',
-                            color: '#ffffff',
+                            color: action.foreground,
                             transition: 'all 0.2s ease',
                             display: 'flex',
                             alignItems: 'center',
@@ -632,14 +648,16 @@ const EditProfileScreen = () => {
                         }}
                         onMouseEnter={(e) => {
                             if (!isSaving) {
-                                e.currentTarget.style.backgroundColor = '#1e293b';
+                                e.currentTarget.style.opacity = '0.9';
                                 e.currentTarget.style.transform = 'translateY(-1px)';
-                                e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+                                e.currentTarget.style.boxShadow = isDark
+                                    ? '0 4px 12px rgba(0, 0, 0, 0.35)'
+                                    : '0 4px 12px rgba(0, 0, 0, 0.15)';
                             }
                         }}
                         onMouseLeave={(e) => {
                             if (!isSaving) {
-                                e.currentTarget.style.backgroundColor = '#0f172a';
+                                e.currentTarget.style.opacity = '1';
                                 e.currentTarget.style.transform = 'translateY(0)';
                                 e.currentTarget.style.boxShadow = 'none';
                             }
@@ -650,7 +668,7 @@ const EditProfileScreen = () => {
                                 <div style={{
                                     width: '16px',
                                     height: '16px',
-                                    border: '2px solid #ffffff',
+                                    border: `2px solid ${action.foreground}`,
                                     borderTop: '2px solid transparent',
                                     borderRadius: '50%',
                                     animation: 'spin 0.8s linear infinite',
@@ -672,6 +690,11 @@ const EditProfileScreen = () => {
                 @keyframes spin {
                     0% { transform: rotate(0deg); }
                     100% { transform: rotate(360deg); }
+                }
+                .edit-profile-screen input::placeholder,
+                .edit-profile-screen textarea::placeholder {
+                    color: ${textSecondary};
+                    opacity: 0.75;
                 }
             `}</style>
         </div>

@@ -47,6 +47,8 @@ export function mapApiItem(a) {
     dislike_count: dislikes,
     upvotes: likes,
     topic_keywords: a.topic_keywords || [],
+    image_url: a.image_url || null,
+    image: (a.image_url || a.image || a.thumbnail_url || '').trim() || undefined,
   };
 }
 

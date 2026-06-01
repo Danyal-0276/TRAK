@@ -52,6 +52,11 @@ const AdminSettingsScreen = () => {
   const borderColor = palette.border;
   const primary = palette.primary;
   const errorColor = palette.error;
+  const primaryButtonBg = palette.buttonPrimaryBg || primary;
+  const primaryButtonText = palette.buttonPrimaryText || '#ffffff';
+  const secondaryButtonBg = palette.buttonSecondaryBg || 'transparent';
+  const secondaryButtonText = palette.buttonSecondaryText || textPrimary;
+  const secondaryButtonBorder = palette.buttonSecondaryBorder || borderColor;
 
   const applySettingsFromApi = (updated) => {
     setSettings({
@@ -245,9 +250,9 @@ const AdminSettingsScreen = () => {
   const pillButtonStyle = {
     padding: '8px 16px',
     borderRadius: 8,
-    border: 'none',
-    background: primary,
-    color: '#fff',
+    border: `1px solid ${secondaryButtonBorder}`,
+    background: primaryButtonBg,
+    color: primaryButtonText,
     fontSize: 13,
     fontWeight: 600,
     cursor: 'pointer',
@@ -364,7 +369,8 @@ const AdminSettingsScreen = () => {
                   type="button"
                   style={{
                     ...pillButtonStyle,
-                    background: listPanel === 'category' ? palette.textTertiary : primary,
+                    background: listPanel === 'category' ? secondaryButtonBg : primaryButtonBg,
+                    color: listPanel === 'category' ? secondaryButtonText : primaryButtonText,
                   }}
                   onClick={() => toggleListPanel('category')}
                 >
@@ -396,7 +402,7 @@ const AdminSettingsScreen = () => {
                   onKeyDown={(e) => e.key === 'Enter' && handleAddCategory()}
                 />
                 <button type="button" style={iconBtnStyle(primary)} onClick={handleAddCategory} aria-label="Add category">
-                  <Plus size={18} color="#fff" />
+                  <Plus size={18} color={primaryButtonText} />
                 </button>
               </div>
               {categories.length > 0 ? (
@@ -485,7 +491,7 @@ const AdminSettingsScreen = () => {
                           onClick={() => handleAddSubcategory(selectedCategory.slug)}
                           aria-label="Add subcategory"
                         >
-                          <Plus size={16} color="#fff" />
+                          <Plus size={16} color={primaryButtonText} />
                         </button>
                       </div>
                     </div>
@@ -508,7 +514,8 @@ const AdminSettingsScreen = () => {
                   type="button"
                   style={{
                     ...pillButtonStyle,
-                    background: listPanel === 'connection' ? palette.textTertiary : primary,
+                    background: listPanel === 'connection' ? secondaryButtonBg : primaryButtonBg,
+                    color: listPanel === 'connection' ? secondaryButtonText : primaryButtonText,
                   }}
                   onClick={() => toggleListPanel('connection')}
                 >
@@ -547,7 +554,7 @@ const AdminSettingsScreen = () => {
                   onKeyDown={(e) => e.key === 'Enter' && handleAddConnection()}
                 />
                 <button type="button" style={iconBtnStyle(primary)} onClick={handleAddConnection} aria-label="Add connection">
-                  <Plus size={18} color="#fff" />
+                  <Plus size={18} color={primaryButtonText} />
                 </button>
               </div>
               {connections.length === 0 && listPanel !== 'connection' ? (

@@ -252,6 +252,11 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         navigation.navigate('MainTabs', { screen: 'Home' });
     };
 
+    const handleHome = () => {
+        stopNativePlayback();
+        navigation.navigate('MainTabs', { screen: 'Home' });
+    };
+
     return (
         <>
         <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
@@ -312,7 +317,11 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                         transform: [{ translateY: slideAnim }],
                     }}
                 >
-                    <ArticleDetailHeader onBackPress={handleBack} onMorePress={handleMoreMenu} />
+                    <ArticleDetailHeader
+                        onBackPress={handleBack}
+                        onHomePress={handleHome}
+                        onMorePress={handleMoreMenu}
+                    />
                 </Animated.View>
 
                 {detailLoading ? (

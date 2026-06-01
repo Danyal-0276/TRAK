@@ -23,12 +23,28 @@ function reporterInitials(row) {
   return 'U';
 }
 
+function reporterAvatarColors(palette) {
+  if (palette.isDark) {
+    return {
+      background: palette.surfaceElevated || palette.inputBg || '#262626',
+      color: palette.textPrimary || '#fafafa',
+      border: palette.border,
+    };
+  }
+  return {
+    background: palette.textPrimary || '#0a0a0a',
+    color: palette.textInverse || '#ffffff',
+    border: palette.border,
+  };
+}
+
 export default function AdminFeedbackCard({ row, palette, onClick }) {
   const cat = getFeedbackCategoryMeta(row.category);
   const status = FEEDBACK_STATUS_META[row.status] || FEEDBACK_STATUS_META.pending;
   const Icon = ICONS[cat.icon] || MessageSquare;
   const message = row.message || row.category_label || 'No message provided';
   const articleTitle = row.article_title || row.meta?.post_title;
+  const avatarColors = reporterAvatarColors(palette);
 
   return (
     <button
@@ -111,13 +127,15 @@ export default function AdminFeedbackCard({ row, palette, onClick }) {
                   width: 22,
                   height: 22,
                   borderRadius: 999,
-                  background: palette.textPrimary,
-                  color: palette.textInverse || '#fff',
+                  background: avatarColors.background,
+                  color: avatarColors.color,
+                  border: `1px solid ${avatarColors.border}`,
                   fontSize: 10,
                   fontWeight: 800,
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  flexShrink: 0,
                 }}
               >
                 {reporterInitials(row)}

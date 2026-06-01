@@ -1,0 +1,22 @@
+/* Header utility icons — ghost buttons (not filled pills) */
+.header-icon-btn {
+  background-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.header-icon-btn svg {
+  fill: none !important;
+  stroke: currentColor;
+}
+
+.header-theme-toggle {
+  color: var(--trak-textPrimary, #0a0a0a);
+}
+
+.header-theme-toggle:hover {
+  background-color: var(--trak-surfaceHover, #fafafa) !important;
+}
+
+html[data-theme='dark'] .header-theme-toggle:hover {
+  background-color: var(--trak-surfaceHover, #1a1a1a) !important;
+}

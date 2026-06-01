@@ -16,6 +16,7 @@ import { getCardSummaryText } from '../../utils/articleNavigation';
 import { openArticleDetail } from '../../utils/openArticleDetail';
 import { useFeedCache } from '../../context/FeedCacheContext';
 import { filterFeedByUserKeywords } from '../../utils/feedKeywordMatch';
+import { resolveArticleImageUrl } from '../../utils/articleMedia';
 
 const NewsFeedScreen = () => {
     const { theme } = useTheme();
@@ -61,9 +62,12 @@ const NewsFeedScreen = () => {
             const likes = Number(item.like_count ?? item.upvotes ?? 0);
             const dislikes = Number(item.dislike_count ?? 0);
             const summaryText = getCardSummaryText(item);
+            const imageUrl = resolveArticleImageUrl(item);
             return {
                 ...item,
                 id: aid,
+                image_url: item.image_url || imageUrl || null,
+                image: imageUrl || undefined,
                 description: summaryText,
                 excerpt: item.excerpt || item.summary || summaryText,
                 summary: item.summary || item.excerpt || summaryText,

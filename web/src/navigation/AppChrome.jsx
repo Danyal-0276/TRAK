@@ -22,9 +22,18 @@ export default function AppChrome() {
   const location = useLocation();
   const isAuthPage = AUTH_PATHS.has(location.pathname);
   const isAdminPage = location.pathname.startsWith('/admin');
+  const isArticlePage = location.pathname.startsWith('/article/');
 
   if (isAuthPage || isAdminPage) {
     return null;
+  }
+
+  if (isArticlePage) {
+    return (
+      <>
+        <AppSidebar />
+      </>
+    );
   }
 
   return (

@@ -1,0 +1,180 @@
+/* Smooth light ↔ dark — all color changes start on the same frame */
+@property --trak-page-bg {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #f5f5f5;
+}
+
+@property --trak-page-fg {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #111827;
+}
+
+@property --trak-background {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #f5f5f5;
+}
+
+@property --trak-backgroundSecondary {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #f8fafc;
+}
+
+@property --trak-surface {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ffffff;
+}
+
+@property --trak-textPrimary {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #0a0a0a;
+}
+
+@property --trak-textSecondary {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #525252;
+}
+
+@property --trak-border {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #e5e5e5;
+}
+
+:root {
+  --trak-transition-duration: 1.15s;
+  --trak-transition-ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  background-color: var(--trak-page-bg, #f5f5f5);
+  color: var(--trak-page-fg, #111827);
+}
+
+/* CSS variables on :root — same duration as painted UI */
+html.theme-transitioning:not(.trak-view-transition) {
+  transition:
+    --trak-page-bg var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-page-fg var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-background var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-backgroundSecondary var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-backgroundTertiary var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-backgroundElevated var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-surface var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-surfaceElevated var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-surfaceHover var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-textPrimary var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-textSecondary var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-textTertiary var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-border var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-borderLight var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-borderDark var(--trak-transition-duration) var(--trak-transition-ease),
+    --trak-primary var(--trak-transition-duration) var(--trak-transition-ease);
+}
+
+/* Inline React styles — same timing; no delay */
+html.theme-transitioning:not(.trak-view-transition),
+html.theme-transitioning:not(.trak-view-transition) *:not(img):not(video):not(canvas):not(picture):not([data-no-theme-transition]),
+html.theme-transitioning:not(.trak-view-transition) *:not(img):not(video):not(canvas):not(picture):not([data-no-theme-transition])::before,
+html.theme-transitioning:not(.trak-view-transition) *:not(img):not(video):not(canvas):not(picture):not([data-no-theme-transition])::after {
+  transition-delay: 0s !important;
+  transition-duration: var(--trak-transition-duration) !important;
+  transition-timing-function: var(--trak-transition-ease) !important;
+  transition-property:
+    background-color,
+    color,
+    border-color,
+    outline-color,
+    fill,
+    stroke,
+    box-shadow,
+    -webkit-box-shadow !important;
+}
+
+/* Lucide icons: inherit transitioning color from parent */
+html.theme-transitioning:not(.trak-view-transition) svg.lucide {
+  stroke: currentColor !important;
+  fill: none !important;
+}
+
+html.theme-transitioning .header-theme-toggle svg {
+  transition: opacity var(--trak-transition-duration) var(--trak-transition-ease),
+    stroke var(--trak-transition-duration) var(--trak-transition-ease) !important;
+}
+
+/* View Transitions — single cross-fade; disable per-element transitions underneath */
+html.theme-transitioning.trak-view-transition,
+html.theme-transitioning.trak-view-transition *:not(.trak-logo):not(.trak-logo *),
+html.theme-transitioning.trak-view-transition *:not(.trak-logo):not(.trak-logo *)::before,
+html.theme-transitioning.trak-view-transition *:not(.trak-logo):not(.trak-logo *)::after {
+  transition: none !important;
+}
+
+html.theme-transitioning .trak-logo img {
+  transition: opacity var(--trak-transition-duration) var(--trak-transition-ease) !important;
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--trak-transition-duration);
+  animation-timing-function: var(--trak-transition-ease);
+  animation-fill-mode: both;
+}
+
+::view-transition-group(root) {
+  animation-duration: var(--trak-transition-duration);
+  animation-timing-function: var(--trak-transition-ease);
+}
+
+::view-transition-old(root) {
+  animation-name: trak-theme-fade-out;
+  z-index: 1;
+}
+
+::view-transition-new(root) {
+  animation-name: trak-theme-fade-in;
+  z-index: 2;
+}
+
+@keyframes trak-theme-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+@keyframes trak-theme-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html.theme-transitioning,
+  html.theme-transitioning *,
+  html.theme-transitioning *::before,
+  html.theme-transitioning *::after {
+    transition: none !important;
+  }
+
+  ::view-transition-old(root),
+  ::view-transition-new(root),
+  ::view-transition-group(root) {
+    animation: none !important;
+  }
+}

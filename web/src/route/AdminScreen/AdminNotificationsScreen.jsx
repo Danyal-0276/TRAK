@@ -49,6 +49,8 @@ const AdminNotificationsScreen = () => {
   const textPrimary = palette.textPrimary;
   const textSecondary = palette.textSecondary;
   const borderColor = palette.border;
+  const primaryButtonBg = palette.buttonPrimaryBg || palette.primary;
+  const primaryButtonText = palette.buttonPrimaryText || '#ffffff';
 
   const prependRow = useCallback((n) => {
     if (!n?.id) return;
@@ -111,6 +113,23 @@ const AdminNotificationsScreen = () => {
     return subscribeAdminNotifications((n) => prependRow(n));
   }, [prependRow]);
 
+  useEffect(() => {
+    if (!selected) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const previousPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPaddingRight;
+    };
+  }, [selected]);
+
   const counts = useMemo(() => countNotificationsByFilter(rows), [rows]);
   const filtered = useMemo(
     () => rows.filter((n) => matchesNotificationFilter(n, activeTab)),
@@ -146,9 +165,9 @@ const AdminNotificationsScreen = () => {
               style={{
                 padding: '10px 16px',
                 borderRadius: 10,
-                border: `1px solid ${activeTab === key ? palette.primary : borderColor}`,
-                background: activeTab === key ? `${palette.primary}18` : cardBackground,
-                color: activeTab === key ? palette.primary : textSecondary,
+                border: `1px solid ${activeTab === key ? (isDark ? palette.textSecondary : palette.primary) : borderColor}`,
+                background: activeTab === key ? (isDark ? palette.inputBg : `${palette.primary}18`) : cardBackground,
+                color: activeTab === key ? textPrimary : textSecondary,
                 fontWeight: 600,
                 cursor: 'pointer',
               }}
@@ -258,9 +277,9 @@ const AdminNotificationsScreen = () => {
                   style={{
                     padding: '10px 16px',
                     borderRadius: 10,
-                    border: 'none',
-                    background: palette.primary,
-                    color: '#fff',
+                    border: `1px solid ${palette.buttonSecondaryBorder || borderColor}`,
+                    background: primaryButtonBg,
+                    color: primaryButtonText,
                     fontWeight: 600,
                     cursor: 'pointer',
                   }}

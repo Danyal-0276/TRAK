@@ -4,7 +4,7 @@ import { ChevronLeft, MoreHorizontal } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import TrakLogo from '../../../components/TrakLogo';
 
-export const ArticleDetailHeader = ({ onBackPress, onMorePress }) => {
+export const ArticleDetailHeader = ({ onBackPress, onHomePress, onMorePress }) => {
     const { theme } = useTheme();
     const { colors } = theme;
 
@@ -19,18 +19,25 @@ export const ArticleDetailHeader = ({ onBackPress, onMorePress }) => {
                 },
             ]}
         >
-            <TouchableOpacity
-                style={[styles.iconButton, { backgroundColor: colors.backgroundSecondary }]}
-                onPress={onBackPress}
-                activeOpacity={0.7}
-                accessibilityLabel="Go back"
-                accessibilityRole="button"
-            >
-                <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.25} />
-            </TouchableOpacity>
-
-            <View style={styles.logoCenter} pointerEvents="none">
-                <TrakLogo size={28} />
+            <View style={styles.leftGroup}>
+                <TouchableOpacity
+                    style={styles.logoButton}
+                    onPress={onHomePress}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Go to home"
+                    accessibilityRole="button"
+                >
+                    <TrakLogo size={28} />
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.iconButton, { backgroundColor: colors.backgroundSecondary }]}
+                    onPress={onBackPress}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Go back"
+                    accessibilityRole="button"
+                >
+                    <ChevronLeft size={22} color={colors.textPrimary} strokeWidth={2.25} />
+                </TouchableOpacity>
             </View>
 
             <TouchableOpacity
@@ -65,12 +72,17 @@ const styles = StyleSheet.create({
             },
         }),
     },
-    logoCenter: {
-        position: 'absolute',
-        left: 0,
-        right: 0,
+    leftGroup: {
+        flexDirection: 'row',
         alignItems: 'center',
+        gap: 4,
+        zIndex: 1,
+    },
+    logoButton: {
+        paddingHorizontal: 4,
+        paddingVertical: 6,
         justifyContent: 'center',
+        alignItems: 'center',
     },
     iconButton: {
         width: 40,

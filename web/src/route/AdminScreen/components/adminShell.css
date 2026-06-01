@@ -177,8 +177,9 @@
   justify-content: center;
   font-size: 14px;
   font-weight: 700;
-  background: var(--admin-brand-icon-bg);
-  color: var(--admin-primary);
+  background: var(--admin-nav-hover);
+  color: var(--admin-text-primary);
+  border: 1px solid var(--admin-border);
   flex-shrink: 0;
 }
 

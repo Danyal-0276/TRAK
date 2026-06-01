@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { useAdminTheme } from './useAdminTheme';
 import { useResponsive } from '../../hooks/useResponsive';
-import { getResponsiveGridColumns, getResponsiveGap } from '../../utils/responsiveStyles';
+import { MasonryFeed } from '../../components/MasonryFeed';
 import {
     FileText,
     Search,
@@ -24,7 +24,6 @@ import {
 } from '../../utils/adminArticleFilters';
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 import ArticleInsightBadges, {
-    ArticleCredibilityIndicator,
     ArticleCredibilitySourceDot,
     ArticleTopicKeywords,
 } from './components/ArticleInsightBadges';
@@ -99,6 +98,7 @@ const AdminArticlesScreen = () => {
             canonical_url: doc.canonical_url,
             content: doc.content || doc.description || doc.summary || '',
             image_url: doc.image_url,
+            image: doc.image_url || undefined,
             fact_check_provider: doc.fact_check_provider,
         };
     };
@@ -301,11 +301,7 @@ const AdminArticlesScreen = () => {
                         </p>
                     </div>
                 ) : (
-                    <div style={{
-                        display: 'grid',
-                        gridTemplateColumns: getResponsiveGridColumns(isMobile, isTablet, 350),
-                        gap: getResponsiveGap(isMobile, isTablet),
-                    }}>
+                    <MasonryFeed gap={isMobile ? 16 : 24}>
                         {filteredArticles.map((article) => (
                             <div
                                 key={article.id}
@@ -320,12 +316,15 @@ const AdminArticlesScreen = () => {
                                 }}
                                 style={{
                                     backgroundColor: cardBackground,
-                                    borderRadius: '12px',
+                                    borderRadius: '16px',
                                     border: `1px solid ${borderColor}`,
-                                    padding: '20px',
+                                    padding: 0,
+                                    overflow: 'hidden',
                                     transition: 'all 0.2s ease',
                                     boxShadow: isDark ? '0 1px 3px rgba(0, 0, 0, 0.2)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
                                     cursor: 'pointer',
+                                    width: '100%',
+                                    display: 'block',
                                 }}
                                 onMouseEnter={(e) => {
                                     e.currentTarget.style.borderColor = palette.textPrimary;
@@ -344,71 +343,66 @@ const AdminArticlesScreen = () => {
                                     <AdminArticleHeroImage
                                         src={article.image_url}
                                         alt={article.title || 'Article'}
-                                        maxHeight={320}
-                                        borderRadius={8}
+                                        maxHeight={220}
+                                        borderRadius={0}
                                         backgroundColor={palette.inputBg}
-                                        style={{ marginBottom: 12 }}
+                                        style={{ marginBottom: 0 }}
                                         dynamicAspect
                                     />
                                 ) : null}
 
+                                <div style={{ padding: '16px' }}>
                                 <div style={{
                                     display: 'flex',
-                                    alignItems: 'flex-start',
-                                    justifyContent: 'space-between',
-                                    marginBottom: '12px',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    marginBottom: '10px',
                                 }}>
-                                    <div style={{ flex: 1 }}>
+                                    <div style={{
+                                        width: '32px',
+                                        height: '32px',
+                                        borderRadius: '6px',
+                                        backgroundColor: isDark ? (palette.statAccent?.sources || palette.info) : palette.textPrimary,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        color: isDark ? palette.textInverse : '#ffffff',
+                                        fontSize: '12px',
+                                        fontWeight: '700',
+                                        flexShrink: 0,
+                                    }}>
+                                        {article.source?.substring(0, 2).toUpperCase() || 'N'}
+                                    </div>
+                                    <div style={{ flex: 1, minWidth: 0 }}>
                                         <div style={{
                                             display: 'flex',
                                             alignItems: 'center',
-                                            gap: '8px',
-                                            marginBottom: '8px',
+                                            gap: '4px',
+                                            fontSize: '13px',
+                                            fontWeight: '600',
+                                            color: textPrimary,
                                         }}>
-                                            <div style={{
-                                                width: '32px',
-                                                height: '32px',
-                                                borderRadius: '6px',
-                                                backgroundColor: isDark ? (palette.statAccent?.sources || palette.info) : palette.textPrimary,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                justifyContent: 'center',
-                                                color: isDark ? palette.textInverse : '#ffffff',
-                                                fontSize: '12px',
-                                                fontWeight: '700',
+                                            <span style={{
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
                                             }}>
-                                                {article.source?.substring(0, 2).toUpperCase() || 'N'}
-                                            </div>
-                                            <div>
-                                                <div style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '4px',
-                                                    fontSize: '13px',
-                                                    fontWeight: '600',
-                                                    color: textPrimary,
-                                                }}>
-                                                    <span>{article.source || 'Source'}</span>
-                                                    <ArticleCredibilitySourceDot article={article} size={12} />
-                                                </div>
-                                                <div style={{
-                                                    fontSize: '11px',
-                                                    color: textSecondary,
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    gap: '4px',
-                                                }}>
-                                                    <Clock size={10} color={textSecondary} />
-                                                    {article.time || '2h ago'}
-                                                </div>
-                                            </div>
+                                                {article.source || 'Source'}
+                                            </span>
+                                            <ArticleCredibilitySourceDot article={article} size={12} />
+                                        </div>
+                                        <div style={{
+                                            fontSize: '11px',
+                                            color: textSecondary,
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: '4px',
+                                        }}>
+                                            <Clock size={10} color={textSecondary} />
+                                            {article.time || '—'}
                                         </div>
                                     </div>
-                                    <ArticleCredibilityIndicator article={article} />
-                                </div>
-
-                                {article.category && (
-                                    <div style={{ marginBottom: '10px' }}>
+                                    {article.category ? (
                                         <span style={{
                                             fontSize: '10px',
                                             fontWeight: '600',
@@ -421,17 +415,19 @@ const AdminArticlesScreen = () => {
                                             display: 'inline-flex',
                                             alignItems: 'center',
                                             gap: '4px',
+                                            flexShrink: 0,
                                         }}>
                                             <Tag size={10} />
                                             {article.category}
                                         </span>
-                                    </div>
-                                )}
+                                    ) : null}
+                                </div>
 
                                 <ArticleInsightBadges
                                     article={article}
                                     textSecondary={textSecondary}
                                     borderColor={borderColor}
+                                    compact
                                 />
 
                                 <ArticleTopicKeywords
@@ -439,14 +435,16 @@ const AdminArticlesScreen = () => {
                                     textSecondary={textSecondary}
                                     isDark={isDark}
                                     borderColor={borderColor}
+                                    max={3}
                                 />
 
                                 <h3 style={{
-                                    fontSize: '16px',
+                                    fontSize: '18px',
                                     fontWeight: '600',
                                     color: textPrimary,
                                     margin: '0 0 8px 0',
                                     lineHeight: '1.4',
+                                    letterSpacing: '-0.2px',
                                 }}>
                                     {article.title || 'Article Title'}
                                 </h3>
@@ -455,7 +453,7 @@ const AdminArticlesScreen = () => {
                                     <p style={{
                                         fontSize: '13px',
                                         color: textSecondary,
-                                        margin: '0 0 16px 0',
+                                        margin: '0 0 12px 0',
                                         lineHeight: '1.5',
                                         display: '-webkit-box',
                                         WebkitLineClamp: 2,
@@ -468,11 +466,10 @@ const AdminArticlesScreen = () => {
 
                                 <div style={{
                                     display: 'flex',
-                                    alignItems: 'flex-end',
-                                    justifyContent: 'space-between',
+                                    flexDirection: 'column',
+                                    gap: '10px',
                                     paddingTop: '12px',
                                     borderTop: `1px solid ${borderColor}`,
-                                    gap: '12px',
                                 }}>
                                     <div style={{
                                         display: 'flex',
@@ -495,7 +492,7 @@ const AdminArticlesScreen = () => {
                                                 }
                                             }}
                                             style={{
-                                                padding: '8px 12px',
+                                                padding: '6px 10px',
                                                 border: `1px solid ${palette.textPrimary}`,
                                                 background: isDark ? 'rgba(129,140,248,0.12)' : '#f8fafc',
                                                 borderRadius: '6px',
@@ -504,7 +501,7 @@ const AdminArticlesScreen = () => {
                                                 display: 'flex',
                                                 alignItems: 'center',
                                                 gap: '4px',
-                                                fontSize: '12px',
+                                                fontSize: '11px',
                                                 fontWeight: '600',
                                                 color: textPrimary,
                                             }}
@@ -527,10 +524,10 @@ const AdminArticlesScreen = () => {
                                                 handleDelete(article.id);
                                             }}
                                             style={{
-                                                padding: '8px 12px',
+                                                padding: '6px 10px',
                                                 border: `1px solid #ef4444`,
                                                 borderRadius: '6px',
-                                                fontSize: '12px',
+                                                fontSize: '11px',
                                                 fontWeight: '600',
                                                 color: '#ef4444',
                                                 background: palette.errorBg,
@@ -549,10 +546,10 @@ const AdminArticlesScreen = () => {
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                                 style={{
-                                                    padding: '8px 12px',
+                                                    padding: '6px 10px',
                                                     border: `1px solid ${borderColor}`,
                                                     borderRadius: '6px',
-                                                    fontSize: '12px',
+                                                    fontSize: '11px',
                                                     fontWeight: '600',
                                                     color: textPrimary,
                                                     textDecoration: 'none',
@@ -573,7 +570,7 @@ const AdminArticlesScreen = () => {
                                             value={statusById[article.id] || (article.moderation_status || article.pipeline_status || 'review')}
                                             onChange={(e) => handleStatusChange(article.id, e.target.value)}
                                             onClick={(e) => e.stopPropagation()}
-                                            style={{ fontSize: '12px', padding: '8px 10px', borderRadius: '8px', border: `1px solid ${borderColor}`, background: cardBackground, color: textPrimary, minWidth: '120px' }}
+                                            style={{ fontSize: '11px', padding: '6px 8px', borderRadius: '6px', border: `1px solid ${borderColor}`, background: cardBackground, color: textPrimary, minWidth: '100px', flex: 1 }}
                                         >
                                             <option value="review">review</option>
                                             <option value="approved">approved</option>
@@ -581,9 +578,10 @@ const AdminArticlesScreen = () => {
                                         </select>
                                     </div>
                                 </div>
+                                </div>
                             </div>
                         ))}
-                    </div>
+                    </MasonryFeed>
                 )}
                 </div>
             </AdminPageLayout>

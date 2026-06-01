@@ -28,11 +28,17 @@ import { useTheme } from '../../theme/ThemeContext';
 import { SkeletonArticleDetail } from '../../components/skeletons/SkeletonLayouts';
 import { getCachedArticleDetail, setCachedArticleDetail } from '../../utils/articleDetailCache';
 import { getUserFacingError } from '../../utils/getUserFacingError';
+import { useResponsive } from '../../hooks/useResponsive';
+
+const ARTICLE_HEADER_HEIGHT = 56;
 
 const ArticleDetailScreen = () => {
     const navigate = useNavigate();
     const { theme } = useTheme();
     const { colors } = theme;
+    const { isDesktop, isMobile } = useResponsive();
+    const headerPadX = isMobile ? 16 : 24;
+    const headerPadRight = headerPadX + (isDesktop ? 280 : 0);
     const location = useLocation();
     const { id: routeArticleId } = useParams();
 
@@ -229,30 +235,52 @@ const ArticleDetailScreen = () => {
         <div style={{
             minHeight: '100vh',
             backgroundColor: colors.background,
-            paddingTop: '64px',
+            paddingTop: `${ARTICLE_HEADER_HEIGHT}px`,
         }}>
-            {/* Header */}
+            {/* Header — logo flush left of content area; article body stays centered below */}
             <header style={{
                 position: 'fixed',
                 top: 0,
                 left: 0,
                 right: 0,
+                height: `${ARTICLE_HEADER_HEIGHT}px`,
+                boxSizing: 'border-box',
                 backgroundColor: colors.surface,
                 borderBottom: `1px solid ${colors.border}`,
                 zIndex: 1000,
-                padding: '12px 24px',
+                padding: `0 ${headerPadRight}px 0 ${headerPadX}px`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
                 boxShadow: scrollY > 10 ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
-                transform: 'translateY(0)',
                 transition: 'box-shadow 0.2s ease',
             }}>
-                <div style={{
-                    maxWidth: '900px',
-                    margin: '0 auto',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    position: 'relative',
-                }}>
+                    <button
+                        type="button"
+                        onClick={() => navigate('/newsfeed')}
+                        aria-label="Go to home"
+                        style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '6px',
+                            margin: 0,
+                            border: 'none',
+                            background: 'transparent',
+                            cursor: 'pointer',
+                            borderRadius: '6px',
+                            transition: 'all 0.2s ease',
+                            flexShrink: 0,
+                        }}
+                        onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
+                        }}
+                        onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'transparent';
+                        }}
+                    >
+                        <TrakLogo size={28} />
+                    </button>
                     <button
                         type="button"
                         onClick={() => navigate(-1)}
@@ -266,6 +294,7 @@ const ArticleDetailScreen = () => {
                             cursor: 'pointer',
                             borderRadius: '6px',
                             transition: 'all 0.2s ease',
+                            flexShrink: 0,
                         }}
                         onMouseEnter={(e) => {
                             e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
@@ -283,19 +312,8 @@ const ArticleDetailScreen = () => {
                             Back
                         </span>
                     </button>
-                    <div
-                        style={{
-                            position: 'absolute',
-                            left: '50%',
-                            top: '50%',
-                            transform: 'translate(-50%, -50%)',
-                            pointerEvents: 'none',
-                        }}
-                        aria-hidden
-                    >
-                        <TrakLogo size={28} />
-                    </div>
-                    <div style={{ position: 'relative' }}>
+                    <div style={{ flex: 1, minWidth: 8 }} />
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
                         <button
                             type="button"
                             aria-label="More options"
@@ -374,7 +392,6 @@ const ArticleDetailScreen = () => {
                             </>
                         ) : null}
                     </div>
-                </div>
             </header>
 
             {/* Main Content */}
@@ -552,7 +569,7 @@ const ArticleDetailScreen = () => {
                 right: 0,
                 backgroundColor: colors.background,
                 borderTop: `1px solid ${colors.border}`,
-                padding: '16px 24px',
+                padding: `16px ${headerPadRight}px 16px ${headerPadX}px`,
                 zIndex: 1000,
             }}>
                 <div style={{
@@ -560,9 +577,10 @@ const ArticleDetailScreen = () => {
                     margin: '0 auto',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
+                    justifyContent: 'flex-end',
+                    gap: '12px',
                 }}>
-                    {/* Vote Buttons */}
+                    {/* Vote + bookmark + share — aligned right */}
                     <div style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -660,12 +678,6 @@ const ArticleDetailScreen = () => {
                         </button>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                    }}>
                         <button
                             onClick={handleBookmark}
                             style={{
@@ -714,7 +726,6 @@ const ArticleDetailScreen = () => {
                         >
                             <Share2 size={18} color={colors.textTertiary} strokeWidth={2} />
                         </button>
-                    </div>
                 </div>
             </div>
         </div>
