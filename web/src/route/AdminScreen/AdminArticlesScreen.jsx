@@ -56,6 +56,8 @@ const AdminArticlesScreen = () => {
     const textPrimary = palette.textPrimary;
     const textSecondary = palette.textSecondary;
     const borderColor = palette.border;
+    const sourceAvatarBg = isDark ? '#ffffff' : palette.textPrimary;
+    const sourceAvatarText = isDark ? '#0a0a0a' : '#ffffff';
 
     const apiScope = useMemo(() => getArticlesApiScope(pipelineFilter), [pipelineFilter]);
 
@@ -362,11 +364,11 @@ const AdminArticlesScreen = () => {
                                         width: '32px',
                                         height: '32px',
                                         borderRadius: '6px',
-                                        backgroundColor: isDark ? (palette.statAccent?.sources || palette.info) : palette.textPrimary,
+                                        backgroundColor: sourceAvatarBg,
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        color: isDark ? palette.textInverse : '#ffffff',
+                                        color: sourceAvatarText,
                                         fontSize: '12px',
                                         fontWeight: '700',
                                         flexShrink: 0,

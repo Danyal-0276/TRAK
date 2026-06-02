@@ -104,6 +104,8 @@ export function emptyAnalyticsSnapshot() {
     pipeline_summary: {
       pending: 0,
       processing: 0,
+      active_processing: 0,
+      stale_processing: 0,
       done: 0,
       failed: 0,
       queued: 0,
@@ -225,7 +227,7 @@ export function buildDashboardStatCards(snapshot, palette) {
       value: String(ps.queued ?? 0),
       path: '/admin/articles?pipeline=queue',
       accent: a.queue,
-      hint: `Pending ${ps.pending ?? 0} · active ${ps.active_processing ?? ps.processing ?? 0}`,
+      hint: `Pending ${ps.pending ?? 0} · processing ${ps.processing ?? 0}`,
     },
     {
       key: 'failed',

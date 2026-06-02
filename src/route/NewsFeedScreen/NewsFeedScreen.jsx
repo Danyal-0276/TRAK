@@ -19,12 +19,14 @@ import { useFocusEffect } from '@react-navigation/native';
 import LinearGradient from 'react-native-linear-gradient';
 import { FeedHeader } from './components/FeedHeader';
 import { TabBar } from './components/TabBar';
-import { NewsCard } from '../../components/NewsCard';
+import ArticleFeedList from '../../components/ArticleFeedList';
 import { FeedSkeleton } from '../../components/FeedSkeleton';
-import ChatBotWidget from '../../components/ChatBotWidget';
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { loadHomeBootstrap } from '../../utils/loadHomeBootstrap';
 import { useTheme } from '../../theme/ThemeContext';
+import { getRefreshControlProps } from '../../theme/refreshControl';
+import { useFilledActionColors } from '../../theme/buttonContrast';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { resetTabBarVisibility } from '../../navigation/tabBarVisibility';
 import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
@@ -139,6 +141,8 @@ const SkeletonCard = ({ colors }) => {
 const NewsFeedScreen = ({ navigation }) => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const feedback = useFeedback();
+    const actionColors = useFilledActionColors();
     const cachedHome = getHomeFeedCache();
     const hasCachedHome = isFeedCacheFresh(cachedHome) && Array.isArray(cachedHome?.newsData) && cachedHome.newsData.length > 0;
 
@@ -173,12 +177,12 @@ const NewsFeedScreen = ({ navigation }) => {
         setSkipEntryAnim(true);
     }, [activeTab]);
 
-    const { translateY: headerTranslateY, handleScroll, showHeader, headerHidden } = useCollapsibleHeader({
+    const { translateY: headerTranslateY, handleScroll, showHeader } = useCollapsibleHeader({
         hideOffset: TOTAL_HEADER_HEIGHT,
         hideThreshold: 50,
     });
 
-    const topChromeColor = headerHidden ? colors.background : colors.surface;
+    const topChromeColor = colors.surface;
 
     const feedModeRef = useRef(hasCachedHome ? cachedHome.feedMode || 'explore' : 'explore');
     const initialLoadRef = useRef(hasCachedHome);
@@ -289,11 +293,15 @@ const NewsFeedScreen = ({ navigation }) => {
 
         const reactionMap = await mergeReactionRows(reactRes.results || [], { replace: false }).catch(() => ({}));
         setVotedItems(reactionMap);
+        const idSet = new Set(ids);
         setNewsData((prev) =>
-            prev.map((n) => ({
-                ...n,
-                userReaction: reactionMap[String(n.id)] || null,
-            }))
+            prev.map((n) => {
+                const nid = String(n.id);
+                const userReaction = reactionMap[nid] || null;
+                const isBookmarked = idSet.has(nid);
+                if (n.userReaction === userReaction && !!n.isBookmarked === isBookmarked) return n;
+                return { ...n, userReaction, isBookmarked };
+            })
         );
     }, []);
 
@@ -334,17 +342,24 @@ const NewsFeedScreen = ({ navigation }) => {
         }, [syncInteractionsFromServer, loadNews])
     );
 
+    const cacheSaveTimerRef = useRef(null);
     useEffect(() => {
         if (!newsData.length) return;
-        saveHomeFeedCache({
-            newsData,
-            votedItems,
-            bookmarkIds: Array.from(bookmarkedItems),
-            feedKeywords,
-            feedMode: feedModeRef.current,
-            activeTab,
-            scrollY: scrollYByTab.current[activeTab] || 0,
-        });
+        if (cacheSaveTimerRef.current) clearTimeout(cacheSaveTimerRef.current);
+        cacheSaveTimerRef.current = setTimeout(() => {
+            saveHomeFeedCache({
+                newsData,
+                votedItems,
+                bookmarkIds: Array.from(bookmarkedItems),
+                feedKeywords,
+                feedMode: feedModeRef.current,
+                activeTab,
+                scrollY: scrollYByTab.current[activeTab] || 0,
+            });
+        }, 450);
+        return () => {
+            if (cacheSaveTimerRef.current) clearTimeout(cacheSaveTimerRef.current);
+        };
     }, [newsData, votedItems, bookmarkedItems, feedKeywords, activeTab]);
 
     useEffect(() => {
@@ -356,7 +371,12 @@ const NewsFeedScreen = ({ navigation }) => {
         if (!hasCachedHome || !cachedHome?.scrollY) return;
         const tabKey = cachedHome.activeTab || 'For you';
         const timer = setTimeout(() => {
-            scrollRefs.current[tabKey]?.scrollTo({ y: cachedHome.scrollY, animated: false });
+            const ref = scrollRefs.current[tabKey];
+            if (ref?.scrollToOffset) {
+                ref.scrollToOffset({ offset: cachedHome.scrollY, animated: false });
+            } else {
+                ref?.scrollTo?.({ y: cachedHome.scrollY, animated: false });
+            }
         }, 0);
         return () => clearTimeout(timer);
     }, [hasCachedHome, cachedHome]);
@@ -389,7 +409,8 @@ const NewsFeedScreen = ({ navigation }) => {
     };
 
     const handleVote = async (itemId, type) => {
-        const id = String(itemId);
+        const id = String(itemId || '').trim();
+        if (!id) return;
         let newVote = null;
         let previousVote = null;
 
@@ -408,12 +429,17 @@ const NewsFeedScreen = ({ navigation }) => {
                 if (previousVote === 'down') dislikes -= 1;
                 if (newVote === 'up') likes += 1;
                 if (newVote === 'down') dislikes += 1;
+                const isBm =
+                    bookmarkedItems.has(id) ||
+                    bookmarkedItems.has(n.id) ||
+                    (n.canonical_url && bookmarkedItems.has(n.canonical_url));
                 return {
                     ...n,
                     like_count: Math.max(0, likes),
                     dislike_count: Math.max(0, dislikes),
                     upvotes: Math.max(0, likes),
                     userReaction: newVote,
+                    isBookmarked: isBm,
                 };
             })
         );
@@ -442,15 +468,17 @@ const NewsFeedScreen = ({ navigation }) => {
                               }
                     )
                 );
-            } catch {
+            } catch (err) {
                 setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
                 setReactionForArticle(id, previousVote || null).catch(() => {});
+                feedback?.error?.(err?.message || 'Could not save reaction');
             }
         }, 280);
     };
 
     const handleBookmark = async (itemId) => {
-        const id = String(itemId);
+        const id = String(itemId || '').trim();
+        if (!id) return;
         const wasBookmarked = bookmarkedItems.has(id);
         setBookmarkedItems(prev => {
             const next = new Set(prev);
@@ -459,6 +487,13 @@ const NewsFeedScreen = ({ navigation }) => {
             setBookmarkIds(Array.from(next)).catch(() => {});
             return next;
         });
+        setNewsData((prev) =>
+            prev.map((n) => {
+                if (String(n.id) !== id) return n;
+                const nextBm = !n.isBookmarked;
+                return { ...n, isBookmarked: nextBm };
+            })
+        );
 
         try {
             const article = newsData.find((n) => String(n.id) === id);
@@ -469,6 +504,7 @@ const NewsFeedScreen = ({ navigation }) => {
             }
         } catch (error) {
             console.error('Error bookmarking:', error);
+            feedback?.error?.(error?.message || 'Could not update bookmark');
             setBookmarkedItems(prev => {
                 const rollback = new Set(prev);
                 if (rollback.has(id)) rollback.delete(id);
@@ -481,10 +517,18 @@ const NewsFeedScreen = ({ navigation }) => {
 
     const hasFeedPersonalization = feedKeywords.length > 0;
 
+    const newsByTab = useMemo(() => {
+        const out = {};
+        FEED_TAB_ROUTES.forEach((route) => {
+            out[route.key] = filterNewsForTab(route.key, newsData, bookmarkedItems);
+        });
+        return out;
+    }, [newsData, bookmarkedItems]);
+
     const renderFeedScene = useCallback(
         ({ route }) => {
             const tabKey = route.key;
-            const tabNews = filterNewsForTab(tabKey, newsData, bookmarkedItems);
+            const tabNews = newsByTab[tabKey] || [];
             const onFeedScroll = (event) => {
                 scrollYByTab.current[tabKey] = event.nativeEvent.contentOffset.y;
                 if (tabKey === activeTab) {
@@ -492,82 +536,77 @@ const NewsFeedScreen = ({ navigation }) => {
                 }
             };
 
+            const listHeader = (
+                <View style={{ height: TOTAL_HEADER_HEIGHT + insets.top + 8 }} />
+            );
+
+            const listEmpty = loading ? (
+                <FeedSkeleton colors={colors} count={5} />
+            ) : (
+                <View style={{ paddingHorizontal: 24, paddingTop: 24, alignItems: 'center' }}>
+                    {tabKey === 'For you' && !hasFeedPersonalization ? (
+                        <>
+                            <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
+                                Choose your interests
+                            </Text>
+                            <Text style={{ color: colors.textSecondary, fontSize: 15, textAlign: 'center', marginBottom: 20, lineHeight: 22 }}>
+                                Select news categories to see a personalized For You feed.
+                            </Text>
+                            <TouchableOpacity
+                                onPress={() => navigation.navigate('TagSelection', { fromSettings: true })}
+                                style={{ backgroundColor: actionColors.background, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12 }}
+                                activeOpacity={0.85}
+                            >
+                                <Text style={{ color: actionColors.foreground, fontWeight: '700', fontSize: 15 }}>Pick categories</Text>
+                            </TouchableOpacity>
+                        </>
+                    ) : tabKey === 'For you' && hasFeedPersonalization ? (
+                        <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center', lineHeight: 22 }}>
+                            No articles match your interests yet. Try adding more categories or keywords, then pull to refresh.
+                        </Text>
+                    ) : (
+                        <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center' }}>
+                            {tabKey === 'Bookmarks' ? 'No bookmarked articles yet.' : 'No articles to show.'}
+                        </Text>
+                    )}
+                </View>
+            );
+
             return (
                 <View style={styles.feedScene}>
-                <Animated.ScrollView
-                    ref={(r) => {
+                <ArticleFeedList
+                    animated
+                    listRef={(r) => {
                         scrollRefs.current[tabKey] = r;
                     }}
+                    keyPrefix={tabKey}
                     style={[styles.feed, { backgroundColor: 'transparent' }]}
                     contentContainerStyle={[styles.feedContent, { backgroundColor: 'transparent', paddingTop: 8 }]}
-                    showsVerticalScrollIndicator={false}
+                    data={loading || tabNews.length === 0 ? [] : tabNews}
+                    onArticlePress={handleArticlePress}
+                    onVote={handleVote}
+                    onBookmark={handleBookmark}
+                    ListHeaderComponent={listHeader}
+                    ListEmptyComponent={listEmpty}
+                    ListFooterComponent={<View style={styles.endPadding} />}
                     onScroll={onFeedScroll}
                     scrollEventThrottle={16}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
                             onRefresh={handleRefresh}
-                            tintColor={colors.primary}
-                            colors={[colors.primary]}
-                            progressViewOffset={TOTAL_HEADER_HEIGHT + insets.top}
+                            {...getRefreshControlProps(colors, theme.mode, {
+                                progressViewOffset: TOTAL_HEADER_HEIGHT + insets.top,
+                            })}
                         />
                     }
-                >
-                    <View style={{ height: TOTAL_HEADER_HEIGHT + insets.top + 8 }} />
-
-                    {loading ? (
-                        <FeedSkeleton colors={colors} count={5} />
-                    ) : tabNews.length === 0 ? (
-                        <View style={{ paddingHorizontal: 24, paddingTop: 24, alignItems: 'center' }}>
-                            {tabKey === 'For you' && !hasFeedPersonalization ? (
-                                <>
-                                    <Text style={{ color: colors.textPrimary, fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
-                                        Choose your interests
-                                    </Text>
-                                    <Text style={{ color: colors.textSecondary, fontSize: 15, textAlign: 'center', marginBottom: 20, lineHeight: 22 }}>
-                                        Select news categories to see a personalized For You feed.
-                                    </Text>
-                                    <TouchableOpacity
-                                        onPress={() => navigation.navigate('TagSelection', { fromSettings: true })}
-                                        style={{ backgroundColor: colors.primary, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12 }}
-                                        activeOpacity={0.85}
-                                    >
-                                        <Text style={{ color: colors.surface, fontWeight: '700', fontSize: 15 }}>Pick categories</Text>
-                                    </TouchableOpacity>
-                                </>
-                            ) : tabKey === 'For you' && hasFeedPersonalization ? (
-                                <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center', lineHeight: 22 }}>
-                                    No articles match your interests yet. Try adding more categories or keywords, then pull to refresh.
-                                </Text>
-                            ) : (
-                                <Text style={{ color: colors.textSecondary, fontSize: 16, textAlign: 'center' }}>
-                                    {tabKey === 'Bookmarks' ? 'No bookmarked articles yet.' : 'No articles to show.'}
-                                </Text>
-                            )}
-                        </View>
-                    ) : (
-                        tabNews.map((item, index) => (
-                            <NewsCard
-                                key={`${tabKey}-${item.id}`}
-                                item={item}
-                                onPress={() => handleArticlePress(item)}
-                                votedItems={votedItems}
-                                bookmarkedItems={bookmarkedItems}
-                                onVote={handleVote}
-                                onBookmark={handleBookmark}
-                                index={index}
-                                animateEntry={!skipEntryAnim && index < 6}
-                            />
-                        ))
-                    )}
-                    <View style={styles.endPadding} />
-                </Animated.ScrollView>
+                />
                 </View>
             );
         },
         [
             activeTab,
-            bookmarkedItems,
+            actionColors,
             colors,
             handleArticlePress,
             handleBookmark,
@@ -578,10 +617,8 @@ const NewsFeedScreen = ({ navigation }) => {
             insets.top,
             loading,
             navigation,
-            newsData,
+            newsByTab,
             refreshing,
-            skipEntryAnim,
-            votedItems,
         ]
     );
 
@@ -638,11 +675,12 @@ const NewsFeedScreen = ({ navigation }) => {
                     renderTabBar={() => null}
                     swipeEnabled
                     animationEnabled
+                    lazy
+                    lazyPreloadDistance={0}
                     sceneContainerStyle={styles.feedSceneContainer}
                     style={styles.feedPager}
                 />
             </View>
-            <ChatBotWidget />
         </View>
     );
 };

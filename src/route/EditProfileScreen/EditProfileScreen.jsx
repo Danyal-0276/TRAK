@@ -221,7 +221,13 @@ export default function EditProfileScreen({ navigation }) {
         <ProfileImagePicker profilePic={profilePic} setProfilePic={setProfilePic} name={name} />
         <ProfileInput label="Full Name" value={name} onChangeText={setName} />
         <ProfileInput label="Username" value={username} onChangeText={setUsername} autoCapitalize="none" />
-        <ProfileInput label="Email" value={email} onChangeText={setEmail} keyboardType="email-address" />
+        <ProfileInput
+          label="Email"
+          value={email}
+          editable={false}
+          hint="Your sign-in email cannot be changed here."
+          keyboardType="email-address"
+        />
         <ProfileInput label="Phone" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
         <ProfileInput label="Bio" value={bio} onChangeText={setBio} multiline />
         <SaveButton onPress={handleSave} loading={isSaving} />

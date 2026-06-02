@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState, useEffect } from 'react';
+import React, { createContext, useContext, useMemo, useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightColors } from './colors/lightColors';
 import { darkColors } from './colors/darkColors';
@@ -78,10 +78,18 @@ export const ThemeProvider = ({ initialMode = 'light', children }) => {
     [mode, palette]
   );
 
-  const toggleTheme = () => setMode((m) => (m === 'light' ? 'dark' : 'light'));
+  const toggleTheme = useCallback(
+    () => setMode((m) => (m === 'light' ? 'dark' : 'light')),
+    []
+  );
+
+  const contextValue = useMemo(
+    () => ({ theme, toggleTheme }),
+    [theme, toggleTheme]
+  );
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+    <ThemeContext.Provider value={contextValue}>
       {children}
     </ThemeContext.Provider>
   );

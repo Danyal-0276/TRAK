@@ -1,6 +1,7 @@
 import 'react-native-reanimated';
 import 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import AppNavigation from './src/navigation/AppNavigation';
 import SplashScreen from 'react-native-splash-screen';
 import CustomSplashScreen from './src/components/SplashScreen';
@@ -63,6 +64,7 @@ const App = () => {
     }
 
     return (
+        <GestureHandlerRootView style={{ flex: 1 }}>
         <ThemeProvider>
             <FeedbackProvider>
                 <SafeAreaProvider>
@@ -74,6 +76,7 @@ const App = () => {
                 </SafeAreaProvider>
             </FeedbackProvider>
         </ThemeProvider>
+        </GestureHandlerRootView>
     );
 };
 

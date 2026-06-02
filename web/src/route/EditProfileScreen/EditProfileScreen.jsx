@@ -73,6 +73,7 @@ const EditProfileScreen = () => {
     }, []);
 
     const handleChange = (field, value) => {
+        if (field === 'email') return;
         setFormData(prev => ({ ...prev, [field]: value }));
         // Clear error when user starts typing
         if (errors[field]) {
@@ -102,9 +103,7 @@ const EditProfileScreen = () => {
         }
 
         if (!formData.email.trim()) {
-            newErrors.email = 'Email is required';
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            newErrors.email = 'Please enter a valid email address';
+            newErrors.email = 'No email on file';
         }
 
         if (!formData.phone.trim()) {
@@ -185,7 +184,17 @@ const EditProfileScreen = () => {
         }
     };
 
-    const renderInputField = ({ label, icon: Icon, field, type = 'text', placeholder, maxLength, required = false }) => (
+    const renderInputField = ({
+        label,
+        icon: Icon,
+        field,
+        type = 'text',
+        placeholder,
+        maxLength,
+        required = false,
+        readOnly = false,
+        hint,
+    }) => (
         <div style={{ marginBottom: '20px' }}>
             <label style={{
                 display: 'flex',
@@ -203,8 +212,9 @@ const EditProfileScreen = () => {
             <input
                 type={type}
                 value={formData[field]}
-                onChange={(e) => handleChange(field, e.target.value)}
-                placeholder={placeholder}
+                readOnly={readOnly}
+                onChange={readOnly ? undefined : (e) => handleChange(field, e.target.value)}
+                placeholder={readOnly ? (formData[field] || '—') : placeholder}
                 maxLength={maxLength}
                 style={{
                     width: '100%',
@@ -214,11 +224,13 @@ const EditProfileScreen = () => {
                     color: textPrimary,
                     border: errors[field] ? '2px solid #ef4444' : `1px solid ${borderColor}`,
                     borderRadius: '8px',
-                    backgroundColor: inputBg,
+                    backgroundColor: readOnly ? (isDark ? colors.backgroundSecondary : colors.backgroundSecondary) : inputBg,
                     outline: 'none',
                     transition: 'all 0.2s ease',
+                    cursor: readOnly ? 'not-allowed' : 'text',
+                    opacity: readOnly ? 0.85 : 1,
                 }}
-                onFocus={(e) => {
+                onFocus={readOnly ? undefined : (e) => {
                     e.target.style.borderColor = errors[field] ? '#ef4444' : colors.primary;
                     e.target.style.boxShadow = focusRing;
                 }}
@@ -227,6 +239,9 @@ const EditProfileScreen = () => {
                     e.target.style.boxShadow = 'none';
                 }}
             />
+            {hint ? (
+                <p style={{ margin: '6px 0 0', fontSize: 12, color: textSecondary, lineHeight: 1.4 }}>{hint}</p>
+            ) : null}
             {errors[field] && (
                 <div style={{
                     display: 'flex',
@@ -518,8 +533,8 @@ const EditProfileScreen = () => {
                         icon: Mail,
                         field: "email",
                         type: "email",
-                        placeholder: "Enter your email",
-                        required: true,
+                        readOnly: true,
+                        hint: 'Your sign-in email cannot be changed here.',
                     })}
 
                     {renderInputField({

@@ -1,69 +1,108 @@
-// src/route/NotificationsScreen/components/NotificationList.jsx
-import React from "react";
-import { FlatList, Text, View, StyleSheet } from "react-native";
-import { useTheme } from "../../../theme/ThemeContext";
-import NotificationCard from "./NotificationCard";
-
-const NotificationList = ({ data, onMarkAsRead, onNotificationPress, onListScroll }) => {
-  const { theme } = useTheme();
-  const { colors } = theme;
-
-  return (
-    <FlatList
-      data={data}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item, index }) => (
-        <NotificationCard 
-          item={item} 
-          index={index} 
-          onMarkAsRead={onMarkAsRead}
-          onNotificationPress={onNotificationPress}
-        />
-      )}
-      contentContainerStyle={styles.container}
-      ListEmptyComponent={
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyEmoji}>🎉</Text>
-          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>All caught up!</Text>
-          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            You're all up to date! New notifications will appear here
-          </Text>
-        </View>
-      }
-      showsVerticalScrollIndicator={false}
-      scrollEventThrottle={16}
-      onScroll={onListScroll}
-    />
-  );
-};
-
-const styles = StyleSheet.create({
-  container: {
-    paddingVertical: 16,
-    paddingBottom: 32,
-  },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 100,
-    paddingHorizontal: 40,
-  },
-  emptyEmoji: {
-    fontSize: 64,
-    marginBottom: 20,
-  },
-  emptyTitle: {
-    fontSize: 24,
-    fontWeight: "800",
-    marginBottom: 12,
-    textAlign: "center",
-  },
-  emptySubtitle: {
-    fontSize: 16,
-    textAlign: "center",
-    lineHeight: 24,
-    fontWeight: "500",
-  },
-});
-
-export default NotificationList;
+// src/route/NotificationsScreen/components/NotificationList.jsx
+import React, { useCallback } from "react";
+import { FlatList, Text, View, StyleSheet, Platform } from "react-native";
+import { useTheme } from "../../../theme/ThemeContext";
+import NotificationCard from "./NotificationCard";
+
+const LIST_PERF = {
+  initialNumToRender: 10,
+  maxToRenderPerBatch: 8,
+  windowSize: 5,
+  updateCellsBatchingPeriod: 50,
+  removeClippedSubviews: Platform.OS === "android",
+};
+
+const NotificationList = ({
+  data,
+  onMarkAsRead,
+  onNotificationPress,
+  bottomInset = 0,
+  refreshControl,
+}) => {
+  const { theme } = useTheme();
+  const { colors } = theme;
+
+  const renderItem = useCallback(
+    ({ item }) => (
+      <NotificationCard
+        item={item}
+        onMarkAsRead={onMarkAsRead}
+        onNotificationPress={onNotificationPress}
+      />
+    ),
+    [onMarkAsRead, onNotificationPress]
+  );
+
+  const keyExtractor = useCallback(
+    (item, index) => (item?.id ? String(item.id) : `notification-${index}`),
+    []
+  );
+
+  return (
+    <FlatList
+      style={styles.list}
+      data={data}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
+      contentContainerStyle={[
+        styles.container,
+        data.length === 0 ? styles.emptyContainer : null,
+        { paddingBottom: bottomInset },
+      ]}
+      ListEmptyComponent={
+        <View style={styles.emptyInner}>
+          <Text style={styles.emptyEmoji}>🔔</Text>
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>
+            No notifications here
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
+            Save topics and keywords in Settings to get article alerts.
+          </Text>
+        </View>
+      }
+      showsVerticalScrollIndicator={false}
+      keyboardShouldPersistTaps="handled"
+      nestedScrollEnabled
+      refreshControl={refreshControl}
+      {...LIST_PERF}
+    />
+  );
+};
+
+const styles = StyleSheet.create({
+  list: {
+    flex: 1,
+  },
+  container: {
+    paddingTop: 12,
+    paddingHorizontal: 0,
+    flexGrow: 1,
+  },
+  emptyContainer: {
+    flexGrow: 1,
+    justifyContent: "center",
+  },
+  emptyInner: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 48,
+    paddingHorizontal: 32,
+  },
+  emptyEmoji: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  emptyTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+    marginBottom: 8,
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    fontSize: 15,
+    textAlign: "center",
+    lineHeight: 22,
+  },
+});
+
+export default NotificationList;

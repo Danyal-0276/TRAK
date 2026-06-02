@@ -161,9 +161,9 @@ export default function FeedbackModal({
                 disabled={loading}
               >
                 {loading ? (
-                  <ActivityIndicator color={action.color} />
+                  <ActivityIndicator color={action.foreground} />
                 ) : (
-                  <Text style={[styles.submitText, { color: action.color }]}>Submit feedback</Text>
+                  <Text style={[styles.submitText, { color: action.foreground }]}>Submit feedback</Text>
                 )}
               </TouchableOpacity>
             </View>

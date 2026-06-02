@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, memo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Linking, Pressable, Image } from 'react-native';
 import { Eye, Trash2, Clock, Tag } from 'lucide-react-native';
 import Text from '../../../components/ui/Text';
@@ -7,20 +7,22 @@ import ArticleInsightBadges, {
   ArticleCredibilitySourceDot,
   ArticleTopicKeywords,
 } from './ArticleInsightBadges';
-import { cardMediaDimensionsFromLoad } from '../../../utils/adminArticleCardMedia';
+import { useAdminTheme } from '../useAdminTheme';
 
-const ArticleCard = ({ article, onEdit, onDelete, onView, onReview, palette }) => {
+const HERO_HEIGHT = 168;
+
+const ArticleCard = ({ article, onEdit, onDelete, onView, onReview, palette: paletteProp }) => {
+  const { palette: themePalette } = useAdminTheme();
+  const palette = paletteProp || themePalette;
   const [imageHidden, setImageHidden] = useState(false);
-  const [mediaDims, setMediaDims] = useState(null);
-  const cardBg = palette?.card || '#fff';
-  const border = palette?.border || '#e5e7eb';
-  const textPrimary = palette?.textPrimary || '#0a0a0a';
-  const textSecondary = palette?.textSecondary || '#525252';
-  const textTertiary = palette?.textTertiary || '#737373';
-  const primary = palette?.primary || '#2563eb';
-  const isDark = palette?.isDark;
-  const avatarBg = isDark ? (palette?.statAccent?.sources || palette?.info || primary) : primary;
-  const avatarText = isDark ? (palette?.textInverse || '#0a0a0a') : '#fff';
+  const cardBg = palette.card;
+  const border = palette.border;
+  const textPrimary = palette.textPrimary;
+  const textSecondary = palette.textSecondary;
+  const textTertiary = palette.textTertiary;
+  const avatarBg = palette.textPrimary;
+  const avatarText = palette.textInverse;
+  const isDark = palette.isDark;
   const sourceLabel = article.source || article.source_key || 'Source';
   const initials = String(sourceLabel).substring(0, 2).toUpperCase() || 'N';
   const summary = article.ai_summary || article.excerpt || article.description;
@@ -31,13 +33,6 @@ const ArticleCard = ({ article, onEdit, onDelete, onView, onReview, palette }) =
     else if (article.canonical_url) Linking.openURL(article.canonical_url);
   };
 
-  const handleImageLoad = (e) => {
-    const { width, height } = e.nativeEvent?.source || {};
-    if (width && height) {
-      setMediaDims(cardMediaDimensionsFromLoad(width, height));
-    }
-  };
-
   return (
     <Pressable
       onPress={() => onReview?.(article)}
@@ -46,16 +41,8 @@ const ArticleCard = ({ article, onEdit, onDelete, onView, onReview, palette }) =
       {article.image_url && !imageHidden ? (
         <Image
           source={{ uri: article.image_url }}
-          style={[
-            styles.hero,
-            {
-              backgroundColor: palette?.inputBg || '#f3f4f6',
-              aspectRatio: mediaDims?.aspectRatio ?? 16 / 9,
-              maxHeight: mediaDims?.maxHeight ?? 320,
-            },
-          ]}
+          style={[styles.hero, { backgroundColor: palette.inputBg, height: HERO_HEIGHT }]}
           resizeMode="cover"
-          onLoad={handleImageLoad}
           onError={() => setImageHidden(true)}
         />
       ) : null}
@@ -84,7 +71,7 @@ const ArticleCard = ({ article, onEdit, onDelete, onView, onReview, palette }) =
       </View>
 
       {article.category ? (
-        <View style={[styles.categoryPill, { backgroundColor: palette?.pageAlt || '#f3f4f6' }]}>
+        <View style={[styles.categoryPill, { backgroundColor: palette.pageAlt }]}>
           <Tag size={10} color={textSecondary} />
           <Text variant="caption" color={textSecondary} style={styles.categoryText}>
             {article.category}
@@ -110,9 +97,9 @@ const ArticleCard = ({ article, onEdit, onDelete, onView, onReview, palette }) =
         </Text>
       ) : null}
 
-      <View style={[styles.footer, { borderTopColor: palette?.borderLight || border }]}>
+      <View style={[styles.footer, { borderTopColor: palette.borderLight }]}>
         <TouchableOpacity
-          style={[styles.footerBtn, { borderColor: border, backgroundColor: palette?.pageAlt }]}
+          style={[styles.footerBtn, { borderColor: border, backgroundColor: palette.pageAlt }]}
           onPress={(e) => {
             e?.stopPropagation?.();
             handleView();
@@ -124,11 +111,11 @@ const ArticleCard = ({ article, onEdit, onDelete, onView, onReview, palette }) =
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.footerBtn, styles.deleteBtn, { borderColor: '#ef4444', backgroundColor: palette?.errorBg || '#fff5f5' }]}
+          style={[styles.footerBtn, styles.deleteBtn, { borderColor: palette.error, backgroundColor: palette.errorBg }]}
           onPress={() => onDelete?.(article)}
         >
-          <Trash2 size={12} color="#ef4444" />
-          <Text variant="caption" style={{ color: '#ef4444', fontWeight: '600', marginLeft: 4 }}>
+          <Trash2 size={12} color={palette.error} />
+          <Text variant="caption" style={{ color: palette.error, fontWeight: '600', marginLeft: 4 }}>
             Delete
           </Text>
         </TouchableOpacity>
@@ -201,4 +188,14 @@ const styles = StyleSheet.create({
   deleteBtn: { borderColor: '#ef4444' },
 });
 
-export default ArticleCard;
+function articleCardPropsEqual(prev, next) {
+  if (prev.article !== next.article) return false;
+  if (prev.palette !== next.palette) return false;
+  return (
+    prev.onView === next.onView &&
+    prev.onReview === next.onReview &&
+    prev.onDelete === next.onDelete
+  );
+}
+
+export default memo(ArticleCard, articleCardPropsEqual);

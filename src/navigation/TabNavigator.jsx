@@ -7,7 +7,7 @@ import {
     NotificationsScreen,
     ProfileScreen,
     SearchScreen,
-    SettingsScreen,
+    ChatScreen,
     AdminScreen,
 } from './config/screenImports';
 
@@ -33,7 +33,7 @@ const TabNavigator = () => {
             <Tab.Screen name="Search" component={SearchScreen} />
             <Tab.Screen name="Notifications" component={NotificationsScreen} />
             <Tab.Screen name="Profile" component={ProfileScreen} />
-            <Tab.Screen name="Settings" component={SettingsScreen} />
+            <Tab.Screen name="Chat" component={ChatScreen} initialParams={{ embeddedInTab: true }} />
         </Tab.Navigator>
     );
 };

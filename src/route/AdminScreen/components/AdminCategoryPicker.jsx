@@ -7,10 +7,11 @@ export default function AdminCategoryPicker({ categories, value, onChange, color
   const [open, setOpen] = useState(false);
   const selected = categories.find((c) => c.slug === value);
 
-  const border = colors.border || '#e5e5e5';
-  const bg = colors.inputBg || colors.backgroundSecondary || '#f8fafc';
-  const textPrimary = colors.textPrimary || '#0a0a0a';
-  const primary = colors.primary || '#2563eb';
+  const border = colors.border;
+  const bg = colors.inputBg || colors.backgroundSecondary;
+  const textPrimary = colors.textPrimary;
+  const primary = colors.primary;
+  const cardBg = colors.card || colors.surface;
 
   return (
     <>
@@ -22,12 +23,12 @@ export default function AdminCategoryPicker({ categories, value, onChange, color
         <Text variant="body" color={selected ? textPrimary : colors.textTertiary} style={{ flex: 1 }}>
           {selected ? selected.name : 'Choose a category…'}
         </Text>
-        <ChevronDown size={18} color={colors.textSecondary || '#64748b'} />
+        <ChevronDown size={18} color={colors.textSecondary} />
       </TouchableOpacity>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
         <TouchableOpacity style={styles.overlay} activeOpacity={1} onPress={() => setOpen(false)}>
-          <View style={[styles.sheet, { backgroundColor: colors.card || '#fff', borderColor: border }]}>
+          <View style={[styles.sheet, { backgroundColor: cardBg, borderColor: border }]}>
             <Text variant="subtitle" color={textPrimary} style={{ fontWeight: '700', marginBottom: 12 }}>
               Select category
             </Text>

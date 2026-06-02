@@ -11,6 +11,8 @@ export default function ProfileInput({
   multiline = false,
   keyboardType = "default",
   autoCapitalize = "sentences",
+  editable = true,
+  hint,
 }) {
   const { theme } = useTheme();
   const { colors, spacing, radius } = theme;
@@ -51,22 +53,28 @@ export default function ProfileInput({
             styles.input, 
             { 
               color: colors.textPrimary,
-              backgroundColor: colors.surface,
+              backgroundColor: editable ? colors.surface : colors.backgroundSecondary,
             },
             multiline && { height: 100, textAlignVertical: "top" }
           ]}
           value={value}
-          onChangeText={onChangeText}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
+          editable={editable}
+          onChangeText={editable ? onChangeText : undefined}
+          onFocus={editable ? handleFocus : undefined}
+          onBlur={editable ? handleBlur : undefined}
           multiline={multiline}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
-          placeholder={`Enter your ${label.toLowerCase()}`}
+          placeholder={editable ? `Enter your ${label.toLowerCase()}` : value || '—'}
           placeholderTextColor={colors.textTertiary}
           cursorColor={colors.primary}
         />
       </Animated.View>
+      {hint ? (
+        <Text variant="caption" color={colors.textSecondary} style={{ marginTop: 6, lineHeight: 18 }}>
+          {hint}
+        </Text>
+      ) : null}
     </View>
   );
 }

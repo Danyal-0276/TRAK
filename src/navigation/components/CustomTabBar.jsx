@@ -42,6 +42,13 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
     }, [state.index]);
 
     useEffect(() => {
+        const activeRoute = state.routes[state.index]?.name;
+        if (activeRoute === 'Chat' || activeRoute === 'Notifications') {
+            resetTabBarVisibility();
+        }
+    }, [state.index, state.routes]);
+
+    useEffect(() => {
         if (!tabWidth) return;
         Animated.spring(activePillX, {
             toValue: state.index * tabWidth,
@@ -56,7 +63,10 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
     const renderTabIcon = (routeName, isFocused) => {
         const IconComponent = iconMap[routeName] || iconMap.Home;
         // Light theme: active pill is white — icon must be dark, not white.
-        const activeIconColor = isDark ? colors.textPrimary : (colors.primary || '#0a0a0a');
+        // Dark theme: same — bright pill with dark icon for readable contrast.
+        const activeIconColor = isDark
+          ? (colors.textOnPrimary || '#0a0a0a')
+          : (colors.primary || '#0a0a0a');
         const inactiveIconColor = isDark ? colors.textTertiary : 'rgba(255,255,255,0.55)';
         return (
             <IconComponent
@@ -102,7 +112,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             bottom: 0,
             left: 0,
             borderRadius: radius.pill,
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.14)' : '#ffffff',
+            backgroundColor: isDark ? 'rgba(250, 250, 250, 0.95)' : '#ffffff',
         },
         tabItem: {
             flex: 1,

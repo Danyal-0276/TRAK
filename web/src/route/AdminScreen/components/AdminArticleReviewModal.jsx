@@ -55,8 +55,8 @@ export default function AdminArticleReviewModal({
 
   if (!open || !article) return null;
 
-  const avatarBg = isDark ? palette.inputBg : palette.textPrimary;
-  const avatarText = isDark ? palette.textPrimary : '#ffffff';
+  const avatarBg = isDark ? '#ffffff' : palette.textPrimary;
+  const avatarText = isDark ? '#0a0a0a' : '#ffffff';
   const primaryButtonBg = palette.buttonPrimaryBg || palette.primary;
   const primaryButtonText = palette.buttonPrimaryText || (isDark ? palette.textPrimary : '#ffffff');
 

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
-    ScrollView,
     StyleSheet,
     RefreshControl,
     StatusBar,
@@ -9,8 +8,10 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NewsCard } from '../../components/NewsCard';
+import { ChevronLeft } from 'lucide-react-native';
+import ArticleFeedList from '../../components/ArticleFeedList';
 import { useTheme } from '../../theme/ThemeContext';
+import { getRefreshControlProps } from '../../theme/refreshControl';
 import { addBookmark, getUserArticleDetail, listBookmarks, removeBookmark, setReaction } from '../../utils/Service/api';
 import Text from '../../components/ui/Text';
 import { buildArticleDetailParams } from '../../utils/articleNavigation';
@@ -59,7 +60,11 @@ const BookmarksScreen = ({ navigation }) => {
             );
             const idSet = new Set((detailed || []).map((item) => String(item.id)));
             setBookmarkedItems(idSet);
-            setNewsData((detailed || []).filter(Boolean));
+            setNewsData(
+                (detailed || [])
+                    .filter(Boolean)
+                    .map((n) => ({ ...n, isBookmarked: true }))
+            );
         } catch (e) {
             console.warn(e);
             setNewsData([]);
@@ -77,13 +82,20 @@ const BookmarksScreen = ({ navigation }) => {
     };
 
     const handleVote = async (itemId, type) => {
-        const previousVote = votedItems[itemId];
+        const id = String(itemId);
+        const previousVote = votedItems[id];
         const newVote = previousVote === type ? null : type;
-        setVotedItems((prev) => ({ ...prev, [itemId]: newVote }));
+        setVotedItems((prev) => ({ ...prev, [id]: newVote }));
+        setNewsData((prev) =>
+            prev.map((n) => (String(n.id) === id ? { ...n, userReaction: newVote } : n))
+        );
         try {
-            await setReaction(itemId, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
+            await setReaction(id, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
         } catch {
-            setVotedItems((prev) => ({ ...prev, [itemId]: previousVote }));
+            setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
+            setNewsData((prev) =>
+                prev.map((n) => (String(n.id) === id ? { ...n, userReaction: previousVote } : n))
+            );
         }
     };
 
@@ -103,12 +115,19 @@ const BookmarksScreen = ({ navigation }) => {
         <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
             <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             <View style={[styles.header, { borderBottomColor: colors.borderLight, backgroundColor: colors.surface }]}>
+                <TouchableOpacity
+                    onPress={() => navigation.goBack()}
+                    style={styles.backBtn}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                    <ChevronLeft size={24} color={colors.textPrimary} />
+                </TouchableOpacity>
                 <View style={styles.headerText}>
                     <Text variant="title" style={{ color: colors.textPrimary }}>
                         Bookmarks
                     </Text>
                     <Text variant="caption" color={colors.textSecondary}>
-                        Saved articles (synced with backend)
+                        Saved articles synced with your account
                     </Text>
                 </View>
             </View>
@@ -117,8 +136,17 @@ const BookmarksScreen = ({ navigation }) => {
                     <ActivityIndicator color={colors.primary} size="large" />
                 </View>
             ) : (
-                <ScrollView
+                <ArticleFeedList
+                    data={newsData}
                     contentContainerStyle={styles.list}
+                    onArticlePress={handleArticlePress}
+                    onVote={handleVote}
+                    onBookmark={handleBookmark}
+                    ListEmptyComponent={
+                        <Text variant="body" color={colors.textSecondary} style={styles.empty}>
+                            No bookmarks yet. Save articles from the feed to see them here.
+                        </Text>
+                    }
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -127,29 +155,10 @@ const BookmarksScreen = ({ navigation }) => {
                                 await loadNews();
                                 setRefreshing(false);
                             }}
-                            tintColor={colors.primary}
+                            {...getRefreshControlProps(colors, theme.mode)}
                         />
                     }
-                >
-                    {newsData.length === 0 ? (
-                        <Text variant="body" color={colors.textSecondary} style={styles.empty}>
-                            No bookmarks yet. Save articles from the feed to see them here.
-                        </Text>
-                    ) : (
-                        newsData.map((item, index) => (
-                            <NewsCard
-                                key={item.id}
-                                item={item}
-                                onPress={() => handleArticlePress(item)}
-                                votedItems={votedItems}
-                                bookmarkedItems={bookmarkedItems}
-                                onVote={handleVote}
-                                onBookmark={handleBookmark}
-                                index={index}
-                            />
-                        ))
-                    )}
-                </ScrollView>
+                />
             )}
         </SafeAreaView>
     );
@@ -160,12 +169,18 @@ const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingHorizontal: 12,
+        paddingHorizontal: 8,
         paddingVertical: 12,
-        borderBottomWidth: 1,
-        gap: 8,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        gap: 4,
     },
-    headerText: { flex: 1 },
+    backBtn: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    headerText: { flex: 1, paddingRight: 12 },
     list: { paddingBottom: 120 },
     centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     empty: { textAlign: 'center', marginTop: 48, paddingHorizontal: 24 },

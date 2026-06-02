@@ -8,6 +8,7 @@ import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { getUserKeywords, loadUserKeywords } from '../../utils/userKeywordsStorage';
 import { getUserKeywordsFromServer } from '../../utils/Service/api';
 import { loadTagsWithSubcategories } from '../../utils/platformTaxonomy';
+import { filledActionColors } from '../../theme/buttonContrast';
 
 const TagSelectionScreen = () => {
     const { theme } = useTheme();
@@ -116,6 +117,7 @@ const TagSelectionScreen = () => {
     const textSecondary = colors.textSecondary;
     const borderColor = colors.border;
     const cardBackground = colors.surface;
+    const action = filledActionColors(colors, isDark);
 
     return (
         <div style={{
@@ -291,13 +293,13 @@ const TagSelectionScreen = () => {
                                             width: '18px',
                                             height: '18px',
                                             borderRadius: '4px',
-                                            backgroundColor: isDark ? colors.primary : '#000000',
+                                            backgroundColor: action.background,
                                             display: 'flex',
                                             alignItems: 'center',
                                             justifyContent: 'center',
                                             flexShrink: 0,
                                         }}>
-                                            <Check size={12} color="#ffffff" />
+                                            <Check size={12} color={action.foreground} />
                                         </div>
                                     )}
                                 </button>
@@ -364,8 +366,8 @@ const TagSelectionScreen = () => {
                         style={{
                             width: '100%',
                             padding: '14px 24px',
-                            backgroundColor: selectedTags.length > 0 ? (isDark ? colors.primary : '#000000') : (isDark ? '#475569' : '#d1d5db'),
-                            color: '#ffffff',
+                            backgroundColor: selectedTags.length > 0 ? action.background : (isDark ? '#475569' : '#d1d5db'),
+                            color: selectedTags.length > 0 ? action.foreground : (isDark ? '#94a3b8' : '#6b7280'),
                             border: 'none',
                             borderRadius: '10px',
                             fontSize: '15px',
@@ -375,12 +377,14 @@ const TagSelectionScreen = () => {
                         }}
                         onMouseEnter={(e) => {
                             if (selectedTags.length > 0) {
-                                e.currentTarget.style.backgroundColor = colors.primary;
+                                e.currentTarget.style.backgroundColor = action.background;
+                                e.currentTarget.style.color = action.foreground;
                             }
                         }}
                         onMouseLeave={(e) => {
                             if (selectedTags.length > 0) {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.primary : '#000000';
+                                e.currentTarget.style.backgroundColor = action.background;
+                                e.currentTarget.style.color = action.foreground;
                             }
                         }}
                     >

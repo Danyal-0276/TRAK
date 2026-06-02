@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
-import { Settings as SettingsIcon, Plus, Trash2, X, Newspaper, Moon, Sun } from 'lucide-react-native';
+import { Settings as SettingsIcon, Plus, Trash2, X, Newspaper, Moon, Sun, Image } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
 import ToggleSwitch from '../components/ToggleSwitch';
 import SettingRow from '../components/SettingRow';
@@ -42,6 +42,7 @@ const SettingsTab = ({
   onDeleteAllConnections,
   onLogout,
   onViewNewsApp,
+  onViewPicsApp,
   darkTheme,
   onToggleTheme,
 }) => {
@@ -413,6 +414,16 @@ const SettingsTab = ({
           <Newspaper size={18} color={palette.textPrimary} />
           <Text variant="body" color={palette.textPrimary} style={{ fontWeight: '600', marginLeft: 10 }}>
             View news app
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.previewBtn, { borderColor: palette.border, backgroundColor: palette.inputBg, marginTop: 10 }]}
+          onPress={onViewPicsApp}
+          activeOpacity={0.8}
+        >
+          <Image size={18} color={palette.textPrimary} />
+          <Text variant="body" color={palette.textPrimary} style={{ fontWeight: '600', marginLeft: 10 }}>
+            View pics app
           </Text>
         </TouchableOpacity>
       </View>

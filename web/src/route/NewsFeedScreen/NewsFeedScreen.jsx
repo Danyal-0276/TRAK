@@ -24,7 +24,7 @@ const NewsFeedScreen = () => {
     const isDark = theme.mode === 'dark';
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const rawTab = searchParams.get('tab');
     const normalizedTab =
         rawTab === 'Following' || rawTab === 'Recent' ? 'For you' : rawTab || 'For you';
@@ -252,12 +252,27 @@ const NewsFeedScreen = () => {
     }, [loadNews, hasCachedHome]);
 
     useEffect(() => {
-        if (rawTab) {
-            const t =
-                rawTab === 'Following' || rawTab === 'Recent' ? 'For you' : rawTab;
-            if (['For you', 'Bookmarks', 'Trending'].includes(t)) setActiveTab(t);
+        const t =
+            rawTab === 'Following' || rawTab === 'Recent'
+                ? 'For you'
+                : rawTab || 'For you';
+        if (['For you', 'Bookmarks', 'Trending'].includes(t)) {
+            setActiveTab(t);
         }
     }, [rawTab]);
+
+    const handleTabChange = useCallback(
+        (tab) => {
+            setActiveTab(tab);
+            if (tab === 'For you') {
+                setSearchParams({}, { replace: true });
+            } else {
+                setSearchParams({ tab }, { replace: true });
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+        [setSearchParams]
+    );
 
     const handleArticlePress = (article) => {
         openArticleDetail(navigate, article);
@@ -405,7 +420,7 @@ const NewsFeedScreen = () => {
                     {['For you', 'Bookmarks', 'Trending'].map((tab) => (
                         <button
                             key={tab}
-                            onClick={() => setActiveTab(tab)}
+                            onClick={() => handleTabChange(tab)}
                             style={{
                                 padding: isMobile ? '8px 12px' : '10px 16px',
                                 border: 'none',

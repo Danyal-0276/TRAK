@@ -20,7 +20,7 @@ import AdminFeedbackCard from '../components/AdminFeedbackCard';
 import AdminArticleReviewModal from '../components/AdminArticleReviewModal';
 import { getAdminFeedback, patchAdminFeedback, getAdminArticleById } from '../../../api/adminApi';
 import { useFeedback } from '../../../components/ui/FeedbackProvider';
-import { FEEDBACK_POLL_INTERVAL_MS } from '../adminTheme';
+import { FEEDBACK_POLL_INTERVAL_MS, adminFilledButtonColors } from '../adminTheme';
 import { subscribeAdminFeedbackRefresh } from '../../../utils/adminNotificationsEvents';
 import { FEEDBACK_STATUS_META } from '../../../constants/feedbackCategoryMeta';
 import { buildArticleDetailParams } from '../../../utils/articleNavigation';
@@ -32,8 +32,9 @@ const STATUS_CHIPS = [
   { key: 'all', label: 'All' },
 ];
 
-const FeedbackTab = ({ navigation }) => {
+const FeedbackTab = ({ navigation, isActive = true }) => {
   const { palette } = useAdminTheme();
+  const actionBtn = adminFilledButtonColors(palette);
   const { success, error: notifyError } = useFeedback();
   const [rows, setRows] = useState([]);
   const [stats, setStats] = useState({ pending: 0, reviewed: 0, dismissed: 0, total: 0 });
@@ -65,6 +66,7 @@ const FeedbackTab = ({ navigation }) => {
   }, [loadRows]);
 
   useEffect(() => {
+    if (!isActive) return undefined;
     const poll = () => {
       if (AppState.currentState === 'active') loadRows({ silent: true });
     };
@@ -78,7 +80,7 @@ const FeedbackTab = ({ navigation }) => {
       sub.remove();
       unsubRefresh();
     };
-  }, [loadRows]);
+  }, [loadRows, isActive]);
 
   const saveDetail = async (status) => {
     if (!selected?.id) return;
@@ -199,14 +201,14 @@ const FeedbackTab = ({ navigation }) => {
                     {selected.article_title || 'Article'}
                   </Text>
                   <TouchableOpacity
-                    style={[styles.reviewBtn, { backgroundColor: palette.primary }]}
+                    style={[styles.reviewBtn, { backgroundColor: actionBtn.background }]}
                     onPress={openArticleReview}
                     disabled={articleLoading}
                   >
                     {articleLoading ? (
-                      <ActivityIndicator color="#fff" size="small" />
+                      <ActivityIndicator color={actionBtn.foreground} size="small" />
                     ) : (
-                      <Text variant="body" color="#fff" style={{ fontWeight: '700' }}>
+                      <Text variant="body" color={actionBtn.foreground} style={{ fontWeight: '700' }}>
                         Review article
                       </Text>
                     )}
@@ -232,11 +234,11 @@ const FeedbackTab = ({ navigation }) => {
               />
               <View style={styles.modalActions}>
                 <TouchableOpacity
-                  style={[styles.actionBtn, { backgroundColor: palette.primary }]}
+                  style={[styles.actionBtn, { backgroundColor: actionBtn.background }]}
                   onPress={() => saveDetail('reviewed')}
                   disabled={saving}
                 >
-                  <Text variant="body" color="#fff" style={{ fontWeight: '700' }}>
+                  <Text variant="body" color={actionBtn.foreground} style={{ fontWeight: '700' }}>
                     Mark reviewed
                   </Text>
                 </TouchableOpacity>

@@ -20,8 +20,10 @@ import { buildDashboardStatCards, emptyAnalyticsSnapshot } from '../dashboardCha
 import AdminKpiSkeleton from '../components/skeletons/AdminKpiSkeleton';
 import AdminChartSkeleton from '../components/skeletons/AdminChartSkeleton';
 import { ADMIN_TEXT_STYLE } from '../adminTypography';
+import { adminFilledButtonColors } from '../adminTheme';
 
 const PIPELINE_BATCH_SIZE = 15;
+const SCRAPE_ONLY_LIMIT = 40;
 
 const STAT_ICONS = {
   raw: FileText,
@@ -46,14 +48,19 @@ const DashboardTab = ({
   onManageSettings,
   refreshing = false,
   onRunPipeline,
-  pipelineRunning = false,
+  onRunScrape,
+  onRunScrapeAndPipeline,
+  activePipelineAction = null,
   pipelineProgress = 0,
   pipelineRunPhase = 'idle',
   pipelineRunLabel = '',
   liveUpdatedLabel = '',
 }) => {
+  const actionBtn = adminFilledButtonColors(palette);
   const snapshot = chartData || emptyAnalyticsSnapshot();
   const kpiWidth = Dimensions.get('window').width >= 520 ? '23%' : '48%';
+  const pipelineBusy = Boolean(activePipelineAction);
+  const isActionRunning = (id) => activePipelineAction === id;
 
   const statCards = (statCardsProp?.length
     ? statCardsProp
@@ -136,16 +143,70 @@ const DashboardTab = ({
               <View style={styles.pipelineRow}>
                 <TouchableOpacity
                   onPress={onRunPipeline}
-                  disabled={pipelineRunning}
-                  style={[styles.runBtn, { backgroundColor: palette.primary, opacity: pipelineRunning ? 0.9 : 1 }]}
+                  disabled={pipelineBusy}
+                  style={[
+                    styles.runBtn,
+                    {
+                      backgroundColor: actionBtn.background,
+                      opacity: pipelineBusy && !isActionRunning('batch') ? 0.55 : 1,
+                    },
+                  ]}
                 >
-                  {pipelineRunning ? (
-                    <ActivityIndicator color="#fff" size="small" />
+                  {isActionRunning('batch') ? (
+                    <ActivityIndicator color={actionBtn.foreground} size="small" />
                   ) : (
                     <>
-                      <Play size={16} color="#fff" fill="#fff" />
-                      <Text variant="body" style={styles.runBtnText}>
+                      <Play size={16} color={actionBtn.foreground} fill={actionBtn.foreground} />
+                      <Text variant="body" style={[styles.runBtnText, { color: actionBtn.foreground }]}>
                         Run batch ({PIPELINE_BATCH_SIZE})
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={onRunScrape}
+                  disabled={pipelineBusy}
+                  style={[
+                    styles.runBtn,
+                    {
+                      backgroundColor: palette.card,
+                      borderWidth: 1,
+                      borderColor: palette.border,
+                      opacity: pipelineBusy && !isActionRunning('scrape') ? 0.55 : 1,
+                    },
+                  ]}
+                >
+                  {isActionRunning('scrape') ? (
+                    <ActivityIndicator color={palette.textPrimary} size="small" />
+                  ) : (
+                    <>
+                      <Play size={16} color={palette.textPrimary} />
+                      <Text variant="body" style={[styles.runBtnText, { color: palette.textPrimary }]}>
+                        Run scrape ({SCRAPE_ONLY_LIMIT} max)
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={onRunScrapeAndPipeline}
+                  disabled={pipelineBusy}
+                  style={[
+                    styles.runBtn,
+                    {
+                      backgroundColor: palette.inputBg || palette.pageAlt,
+                      borderWidth: 1,
+                      borderColor: palette.border,
+                      opacity: pipelineBusy && !isActionRunning('scrape_pipeline') ? 0.55 : 1,
+                    },
+                  ]}
+                >
+                  {isActionRunning('scrape_pipeline') ? (
+                    <ActivityIndicator color={palette.textPrimary} size="small" />
+                  ) : (
+                    <>
+                      <Play size={16} color={palette.textPrimary} />
+                      <Text variant="body" style={[styles.runBtnText, { color: palette.textPrimary }]}>
+                        Run scrape + pipeline
                       </Text>
                     </>
                   )}
@@ -238,7 +299,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 10,
   },
-  runBtnText: { color: '#fff', fontWeight: '700' },
+  runBtnText: { fontWeight: '700' },
   failureItem: { paddingBottom: 10, marginBottom: 10 },
 });
 

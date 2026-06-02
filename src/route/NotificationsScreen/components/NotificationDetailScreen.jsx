@@ -16,7 +16,9 @@ import LinearGradient from "react-native-linear-gradient";
 import { MessageCircle, Heart, UserPlus, Hash, Settings, X } from "lucide-react-native";
 import { useTheme } from "../../../theme/ThemeContext";
 import Text from "../../../components/ui/Text";
-import { getIcon } from "../utils/getIcon";
+import { getNotificationTypeLabel, getNotificationIconColor } from "../utils/notificationDisplay";
+import NotificationAvatar from "./NotificationAvatar";
+import { useFilledActionColors } from "../../../theme/buttonContrast";
 import * as notificationsApi from "../../../api/notificationsApi";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -26,6 +28,8 @@ const NotificationDetailScreen = () => {
   const { notificationId, onMarkAsRead } = route.params || {};
   const { theme } = useTheme();
   const { colors } = theme;
+  const isDark = theme.mode === 'dark';
+  const actionColors = useFilledActionColors();
   const [notification, setNotification] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
@@ -119,17 +123,7 @@ const NotificationDetailScreen = () => {
     }
   };
 
-  const getIconColor = (type) => {
-    const colors = {
-      "mention": "#FF6B6B",
-      "keyword": "#4ECDC4", 
-      "like": "#FF9A8B",
-      "comment": "#A78BFA",
-      "follow": "#60A5FA",
-      "default": "#6B7280"
-    };
-    return colors[type] || colors.default;
-  };
+  const getIconColor = getNotificationIconColor;
 
   if (loading) {
     return (
@@ -147,11 +141,14 @@ const NotificationDetailScreen = () => {
         <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
         <Text variant="title" color={colors.textPrimary} style={styles.errorText}>Notification not found</Text>
         <TouchableOpacity 
-          style={[styles.errorButton, { backgroundColor: colors.primary }]} 
+          style={[styles.errorButton, {
+            backgroundColor: actionColors.background,
+            shadowColor: colors.shadowDark || '#000',
+          }]} 
           onPress={() => navigation.goBack()}
           activeOpacity={0.8}
         >
-          <Text variant="body" color={colors.surface} style={styles.errorButtonText}>Go Back</Text>
+          <Text variant="body" color={actionColors.foreground} style={styles.errorButtonText}>Go Back</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -175,9 +172,9 @@ const NotificationDetailScreen = () => {
       
       {/* Gradient background */}
       <LinearGradient
-        colors={theme.mode === 'dark' 
+        colors={isDark
           ? [colors.background, colors.backgroundSecondary, colors.background]
-          : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
+          : [colors.background, colors.backgroundSecondary, colors.backgroundTertiary, colors.backgroundSecondary, colors.background]
         }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -189,7 +186,7 @@ const NotificationDetailScreen = () => {
         style={[
           styles.accentCircle1, 
           { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.12' : '0.05'})`,
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.05)',
             opacity: circle1Anim,
             transform: [
               {
@@ -207,7 +204,7 @@ const NotificationDetailScreen = () => {
         style={[
           styles.accentCircle2, 
           { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.10' : '0.04'})`,
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)',
             opacity: circle2Anim,
             transform: [
               {
@@ -225,7 +222,7 @@ const NotificationDetailScreen = () => {
         style={[
           styles.accentCircle3, 
           { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.08' : '0.03'})`,
+            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.03)',
             opacity: circle3Anim,
             transform: [
               {
@@ -289,25 +286,15 @@ const NotificationDetailScreen = () => {
               }
             ]}
           >
-            <LinearGradient
-              colors={[iconColor, `${iconColor}DD`]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <NotificationAvatar
+              item={notification}
+              size={64}
               style={styles.iconGradient}
-            >
-              {getIcon(notification.type, notification.keyword)}
-            </LinearGradient>
+            />
             
             <View style={styles.headerText}>
               <Text variant="title" style={[styles.notificationTitle, { color: colors.textPrimary }]}>
-                {notification.type === 'keyword_match' && 'Keyword alert'}
-                {notification.type === 'welcome_back' && 'Welcome back'}
-                {notification.type === 'mention' && 'Mention'}
-                {notification.type === 'keyword' && 'Keyword Alert'}
-                {notification.type === 'like' && 'Like'}
-                {notification.type === 'comment' && 'Comment'}
-                {notification.type === 'follow' && 'New Follower'}
-                {!['keyword_match', 'welcome_back', 'mention', 'keyword', 'like', 'comment', 'follow'].includes(notification.type) && 'Notification'}
+                {getNotificationTypeLabel(notification.type)}
               </Text>
               <Text variant="caption" color={colors.textSecondary} style={styles.notificationTime}>
                 {notification.time}
@@ -393,39 +380,39 @@ const NotificationDetailScreen = () => {
             <View style={styles.actions}>
               {isArticleAlert ? (
                 <TouchableOpacity
-                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                  style={[styles.actionButton, { backgroundColor: actionColors.background }]}
                   activeOpacity={0.8}
                   onPress={openArticle}
                 >
-                  <Hash size={18} color={colors.surface} />
-                  <Text variant="body" color={colors.surface} style={styles.actionButtonText}>View article</Text>
+                  <Hash size={18} color={actionColors.foreground} />
+                  <Text variant="body" color={actionColors.foreground} style={styles.actionButtonText}>View article</Text>
                 </TouchableOpacity>
               ) : null}
               {notification.type === "mention" && (
                 <TouchableOpacity 
-                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                  style={[styles.actionButton, { backgroundColor: actionColors.background }]}
                   activeOpacity={0.8}
                 >
-                  <MessageCircle size={18} color={colors.surface} />
-                  <Text variant="body" color={colors.surface} style={styles.actionButtonText}>Reply</Text>
+                  <MessageCircle size={18} color={actionColors.foreground} />
+                  <Text variant="body" color={actionColors.foreground} style={styles.actionButtonText}>Reply</Text>
                 </TouchableOpacity>
               )}
               {notification.type === "comment" && (
                 <TouchableOpacity 
-                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                  style={[styles.actionButton, { backgroundColor: actionColors.background }]}
                   activeOpacity={0.8}
                 >
-                  <MessageCircle size={18} color={colors.surface} />
-                  <Text variant="body" color={colors.surface} style={styles.actionButtonText}>View Thread</Text>
+                  <MessageCircle size={18} color={actionColors.foreground} />
+                  <Text variant="body" color={actionColors.foreground} style={styles.actionButtonText}>View Thread</Text>
                 </TouchableOpacity>
               )}
               {notification.type === "follow" && (
                 <TouchableOpacity 
-                  style={[styles.actionButton, { backgroundColor: colors.primary }]}
+                  style={[styles.actionButton, { backgroundColor: actionColors.background }]}
                   activeOpacity={0.8}
                 >
-                  <UserPlus size={18} color={colors.surface} />
-                  <Text variant="body" color={colors.surface} style={styles.actionButtonText}>Follow Back</Text>
+                  <UserPlus size={18} color={actionColors.foreground} />
+                  <Text variant="body" color={actionColors.foreground} style={styles.actionButtonText}>Follow Back</Text>
                 </TouchableOpacity>
               )}
               
@@ -570,11 +557,6 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   iconGradient: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: "center",
-    alignItems: "center",
     marginRight: 16,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },

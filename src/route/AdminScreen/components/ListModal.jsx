@@ -2,9 +2,13 @@ import React from 'react';
 import { Modal, View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { X } from 'lucide-react-native';
 import { useFeedback } from '../../../components/ui/FeedbackProvider';
+import { useAdminTheme } from '../useAdminTheme';
+import { adminFilledButtonColors } from '../adminTheme';
 
 const ListModal = ({ visible, onClose, title, items, onDeleteItem, onDeleteAll, itemType }) => {
   const { confirm } = useFeedback();
+  const { palette } = useAdminTheme();
+  const actionBtn = adminFilledButtonColors(palette);
 
   const handleDeleteItem = async (item) => {
     const accepted = await confirm({
@@ -27,28 +31,33 @@ const ListModal = ({ visible, onClose, title, items, onDeleteItem, onDeleteAll, 
   };
 
   return (
-    <Modal visible={visible} transparent={true} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
-        <View style={styles.listModalContent}>
+        <View style={[styles.listModalContent, { backgroundColor: palette.card }]}>
           <View style={styles.listModalHeader}>
-            <Text style={styles.listModalTitle}>{title}</Text>
-            <TouchableOpacity style={styles.deleteAllButton} onPress={handleDeleteAll}>
-              <Text style={styles.deleteAllButtonText}>Delete</Text>
+            <Text style={[styles.listModalTitle, { color: palette.textPrimary }]}>{title}</Text>
+            <TouchableOpacity
+              style={[styles.deleteAllButton, { backgroundColor: actionBtn.background }]}
+              onPress={handleDeleteAll}
+            >
+              <Text style={[styles.deleteAllButtonText, { color: actionBtn.foreground }]}>Delete</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.listModalClose} onPress={onClose}>
-              <X size={24} color="#000" />
+              <X size={24} color={palette.textPrimary} />
             </TouchableOpacity>
           </View>
 
           <ScrollView style={styles.listModalScroll}>
             {items.length === 0 ? (
               <View style={styles.emptyListState}>
-                <Text style={styles.emptyListText}>No {itemType}s added yet</Text>
+                <Text style={[styles.emptyListText, { color: palette.textTertiary }]}>
+                  No {itemType}s added yet
+                </Text>
               </View>
             ) : (
               items.map((item) => (
-                <View key={item.id} style={styles.listItem}>
-                  <Text style={styles.listItemText}>{item.name}</Text>
+                <View key={item.id} style={[styles.listItem, { borderBottomColor: palette.borderLight }]}>
+                  <Text style={[styles.listItemText, { color: palette.textPrimary }]}>{item.name}</Text>
                   <TouchableOpacity
                     style={styles.listItemDelete}
                     onPress={() => handleDeleteItem(item)}
@@ -77,7 +86,6 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   listModalContent: {
-    backgroundColor: '#fff',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingTop: 20,
@@ -92,11 +100,9 @@ const styles = StyleSheet.create({
   listModalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#000',
     flex: 1,
   },
   deleteAllButton: {
-    backgroundColor: '#000',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
@@ -105,7 +111,6 @@ const styles = StyleSheet.create({
   deleteAllButtonText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#fff',
   },
   listModalClose: {
     padding: 4,
@@ -120,11 +125,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
   },
   listItemText: {
     fontSize: 16,
-    color: '#000',
     fontWeight: '500',
   },
   listItemDelete: {
@@ -149,7 +152,6 @@ const styles = StyleSheet.create({
   },
   emptyListText: {
     fontSize: 15,
-    color: '#999',
   },
 });
 

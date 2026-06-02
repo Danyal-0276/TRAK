@@ -29,6 +29,8 @@ import { SkeletonArticleDetail } from '../../components/skeletons/SkeletonLayout
 import { getCachedArticleDetail, setCachedArticleDetail } from '../../utils/articleDetailCache';
 import { getUserFacingError } from '../../utils/getUserFacingError';
 import { useResponsive } from '../../hooks/useResponsive';
+import ArticleCardImage from '../../components/ArticleCardImage';
+import { resolveArticleImageUrl, getUserArticleImageProxyUrl } from '../../utils/articleMedia';
 
 const ARTICLE_HEADER_HEIGHT = 56;
 
@@ -222,6 +224,7 @@ const ArticleDetailScreen = () => {
     }, []);
 
     const content = article.fullContent || article.content || article.full_content || '';
+    const heroImage = resolveArticleImageUrl(article);
     const showPlaceholder = !content.trim() && !detailLoading;
     const [activeTtsLineIndex, setActiveTtsLineIndex] = useState(-1);
     const listenText = getArticleListenText(article);
@@ -494,6 +497,19 @@ const ArticleDetailScreen = () => {
                         </span>
                     </div>
                 )}
+
+                {heroImage ? (
+                    <div style={{ marginBottom: '24px' }}>
+                        <ArticleCardImage
+                            src={heroImage}
+                            alt={article.title || 'Article'}
+                            maxHeight={420}
+                            borderRadius={14}
+                            backgroundColor={colors.backgroundSecondary}
+                            getProxyUrl={getUserArticleImageProxyUrl}
+                        />
+                    </div>
+                ) : null}
 
                 {/* Title */}
                 <h1 style={{

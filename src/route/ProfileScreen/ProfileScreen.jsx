@@ -3,17 +3,16 @@ import { useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ScrollView, StatusBar, StyleSheet, Animated, View, TouchableOpacity, Modal, Pressable, Image } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import ProfileHeader from "./components/ProfileHeader";
 import ProfileActions from "./components/ProfileActions";
 import BookmarkList from "./components/BookmarkList";
 import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
-import { addBookmark, confirmProfileVerification, getProfile, getUserArticleDetail, listBookmarks, removeBookmark, requestProfileVerification, setReaction } from "../../utils/Service/api";
-import { resolveArticleSource } from "../../utils/articleSource";
-import ChatBotWidget from "../../components/ChatBotWidget";
+import { addBookmark, confirmProfileVerification, getProfile, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, requestProfileVerification, setReaction } from "../../utils/Service/api";
 import { buildArticleDetailParams } from "../../utils/articleNavigation";
+import { mapApiItem } from "../../utils/loadFeed";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
 import Text from "../../components/ui/Text";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
@@ -27,11 +26,13 @@ function stripLastLogin(obj) {
   return rest;
 }
 
-const UserProfileScreen = ({ navigation }) => {
+const UserProfileScreen = ({ navigation: navigationProp }) => {
+  const navigation = useNavigation();
+  const stackNavigation = navigation.getParent() ?? navigationProp ?? navigation;
   const { theme } = useTheme();
   const { colors } = theme;
   const { logout, isAdmin, user } = useAuth();
-  const { confirm } = useFeedback();
+  const { confirm, error: showError } = useFeedback();
   const [bookmarks, setBookmarks] = useState([]);
   const [profile, setProfile] = useState(() => stripLastLogin(user || null));
   const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
@@ -42,7 +43,7 @@ const UserProfileScreen = ({ navigation }) => {
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [devCodeHint, setDevCodeHint] = useState("");
   const [verifyMessage, setVerifyMessage] = useState("");
-  const [stats, setStats] = useState({ following: 0, followers: 0, saved: 0 });
+  const [stats, setStats] = useState({ liked: 0, disliked: 0, saved: 0 });
   const [avatarActionOpen, setAvatarActionOpen] = useState(false);
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
   const [uiReady, setUiReady] = useState(false);
@@ -70,7 +71,10 @@ const UserProfileScreen = ({ navigation }) => {
         if (Array.isArray(cachedRows) && cachedRows.length) {
           setBookmarks(cachedRows);
           setBookmarkedItems(new Set(cachedRows.map((b) => String(b.id))));
-          setStats((prev) => ({ ...prev, saved: cachedRows.length }));
+          setStats((prev) => ({
+        ...prev,
+        saved: cachedRows.length,
+      }));
         }
       }
     } catch (_) {
@@ -83,45 +87,90 @@ const UserProfileScreen = ({ navigation }) => {
       const p = stripLastLogin(await getProfile());
       setProfile(p);
       await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(p));
-      setStats((prev) => ({
-        ...prev,
-        following: Number(p?.following_count || 0),
-        followers: Number(p?.followers_count || 0),
-      }));
     } catch {
       setProfile(null);
     }
+
+    let liked = 0;
+    let disliked = 0;
+    try {
+      const reactPayload = await listReactions();
+      const reactions = reactPayload.results || [];
+      liked = reactions.filter((r) => String(r.reaction || '').toLowerCase() === 'like').length;
+      disliked = reactions.filter((r) => String(r.reaction || '').toLowerCase() === 'dislike').length;
+      const reactionMap = {};
+      for (const r of reactions) {
+        const aid = String(r.article_id ?? '').trim();
+        const react = String(r.reaction || '').toLowerCase();
+        if (!aid) continue;
+        if (react === 'like') reactionMap[aid] = 'up';
+        else if (react === 'dislike') reactionMap[aid] = 'down';
+      }
+      setVotedItems(reactionMap);
+    } catch {
+      liked = 0;
+      disliked = 0;
+    }
+
     try {
       const response = await listBookmarks();
       const rows = response.results || [];
-      const quickRows = rows.map((r) => {
-        const aid = String(r.article_id || r.id || "");
-        return {
-          id: aid,
-          article_id: aid,
-          title: r.title || "Saved article",
-          source: resolveArticleSource(r),
-          excerpt: r.excerpt || "",
-          content: "",
-          fullContent: "",
-          canonical_url: r.url || r.canonical_url || "",
-          url: r.url || r.canonical_url || "",
-          date: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
-          time: r.created_at ? new Date(r.created_at).toLocaleString() : "Recently",
-          category: "Saved",
-          readTime: 4,
-          votes: 0,
-          like_count: 0,
-          dislike_count: 0,
-        };
-      });
-      setBookmarks(quickRows);
-      setBookmarkedItems(new Set(quickRows.map((b) => String(b.id))));
-      setStats((prev) => ({ ...prev, saved: quickRows.length }));
-      await AsyncStorage.setItem(PROFILE_BOOKMARKS_CACHE_KEY, JSON.stringify(quickRows));
+      const detailed = await Promise.all(
+        rows.map(async (row) => {
+          const aid = String(row.article_id ?? row.id ?? '').trim();
+          if (!aid) return null;
+          try {
+            const full = await getUserArticleDetail(aid);
+            const mapped = mapApiItem({ ...full, id: aid });
+            return {
+              ...mapped,
+              id: aid,
+              description: mapped.excerpt || mapped.summary || '',
+              excerpt: mapped.excerpt || mapped.summary || '',
+              content: mapped.content || mapped.fullContent || '',
+              fullContent: mapped.fullContent || mapped.content || '',
+              canonical_url: mapped.canonical_url || row.url || row.canonical_url || '',
+              url: mapped.canonical_url || row.url || '',
+              category: full.topic_keywords?.[0] || mapped.category || 'Saved',
+              time: full.published_at
+                ? new Date(full.published_at).toLocaleString()
+                : (row.created_at ? new Date(row.created_at).toLocaleString() : mapped.time || 'Recently'),
+              date: full.published_at
+                ? new Date(full.published_at).toLocaleString()
+                : (row.created_at ? new Date(row.created_at).toLocaleString() : 'Recently'),
+              image: full.image || full.image_url || mapped.image,
+              image_url: full.image_url || full.image || mapped.image_url,
+            };
+          } catch {
+            return {
+              id: aid,
+              title: row.title || 'Saved article',
+              source: 'TRAK',
+              excerpt: '',
+              description: '',
+              content: '',
+              canonical_url: row.url || row.canonical_url || '',
+              url: row.url || row.canonical_url || '',
+              category: 'Saved',
+              time: row.created_at ? new Date(row.created_at).toLocaleString() : 'Recently',
+              date: row.created_at ? new Date(row.created_at).toLocaleString() : 'Recently',
+              like_count: 0,
+              dislike_count: 0,
+              upvotes: 0,
+              votes: 0,
+            };
+          }
+        })
+      );
+      const bookmarkedArticles = detailed.filter(Boolean);
+      setBookmarks(bookmarkedArticles);
+      setBookmarkedItems(new Set(bookmarkedArticles.map((b) => String(b.id))));
+      setStats({ liked, disliked, saved: bookmarkedArticles.length });
+      await AsyncStorage.setItem(PROFILE_BOOKMARKS_CACHE_KEY, JSON.stringify(bookmarkedArticles));
     } catch {
       setBookmarks([]);
       setBookmarkedItems(new Set());
+      setStats((prev) => ({ ...prev, liked, disliked, saved: 0 }));
     } finally {
       setUiReady(true);
     }
@@ -199,8 +248,9 @@ const UserProfileScreen = ({ navigation }) => {
     );
     try {
       await setReaction(id, newVote === "up" ? "like" : newVote === "down" ? "dislike" : "none");
-    } catch {
+    } catch (err) {
       setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
+      showError?.(err?.message || 'Could not save reaction');
     }
   };
 
@@ -219,8 +269,9 @@ const UserProfileScreen = ({ navigation }) => {
     try {
       if (exists) await removeBookmark(id);
       else await addBookmark(id, item?.title || "", item?.canonical_url || item?.url || "");
-    } catch {
+    } catch (err) {
       await loadProfileData();
+      showError?.(err?.message || 'Could not update bookmark');
     }
   };
 
@@ -322,6 +373,15 @@ const UserProfileScreen = ({ navigation }) => {
           phoneVerified={phoneVerified}
           dateJoined={profile?.date_joined}
           stats={stats}
+          onStatPress={(key) => {
+            if (key === 'liked') {
+              stackNavigation.navigate('ReactionArticles', { reaction: 'like' });
+            } else if (key === 'disliked') {
+              stackNavigation.navigate('ReactionArticles', { reaction: 'dislike' });
+            } else if (key === 'saved') {
+              stackNavigation.navigate('Bookmarks');
+            }
+          }}
           onLongPressAvatar={() => setAvatarActionOpen(true)}
           onPressAvatar={() => {
             if (profile?.avatar_image) setAvatarPreviewOpen(true);
@@ -332,9 +392,9 @@ const UserProfileScreen = ({ navigation }) => {
         <BookmarkList
           bookmarks={bookmarks}
           onPressArticle={(article) => {
-            navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
+            stackNavigation.navigate('ArticleDetail', buildArticleDetailParams(article));
           }}
-          onViewAll={() => navigation.navigate('Bookmarks')}
+          onViewAll={() => stackNavigation.navigate('Bookmarks')}
           votedItems={votedItems}
           bookmarkedItems={bookmarkedItems}
           onVote={handleVote}
@@ -376,7 +436,6 @@ const UserProfileScreen = ({ navigation }) => {
         </Pressable>
       </Modal>
     </SafeAreaView>
-    <ChatBotWidget />
   </>
   );
 };

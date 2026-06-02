@@ -116,6 +116,8 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
   const feedbackStatus = feedbackStatusPieData(snapshot, palette);
   const feedbackCategories = feedbackCategoryBarData(snapshot);
   const ps = snapshot?.pipeline_summary || {};
+  const inFlight = Number(ps.active_processing ?? ps.processing) || 0;
+  const workers = Number(ps.pipeline_workers) || 1;
 
   const tip = {
     borderRadius: 10,
@@ -132,7 +134,7 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
   const pipelineSegments = [
     { n: ps.done, color: palette.pipeline.done, label: 'Done' },
     { n: ps.pending, color: palette.pipeline.pending, label: 'Pending' },
-    { n: ps.processing, color: palette.pipeline.processing, label: 'Processing' },
+    { n: inFlight, color: palette.pipeline.processing, label: 'Processing' },
     { n: ps.failed, color: palette.pipeline.failed, label: 'Failed' },
     { n: ps.unknown, color: palette.pipeline.unknown, label: 'Unknown' },
   ].filter((x) => x.n > 0);
@@ -153,6 +155,7 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
             <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: palette.textPrimary }}>Pipeline progress</h3>
             <p style={{ margin: '4px 0 0', fontSize: 12, color: palette.textSecondary }}>
               {ps.completion_pct ?? 0}% of raw corpus complete · {ps.queued ?? 0} in queue
+              {workers > 1 ? ` · up to ${workers} at once` : ''}
             </p>
           </div>
           <div

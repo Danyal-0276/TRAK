@@ -1,12 +1,12 @@
 import { StyleSheet } from 'react-native';
-import { Home, Search, Bell, User, Settings, Shield } from 'lucide-react-native';
+import { Home, Search, Bell, User, MessageCircle, Shield } from 'lucide-react-native';
 
 export const iconMap = {
     Home: Home,
     Search: Search,
     Notifications: Bell,
     Profile: User,
-    Settings: Settings,
+    Chat: MessageCircle,
     Admin: Shield,
 };
 

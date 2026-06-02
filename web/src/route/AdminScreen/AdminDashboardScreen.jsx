@@ -18,9 +18,17 @@ import {
   RefreshCw,
   CheckCircle2,
 } from 'lucide-react';
-import { postAdminPipelineRun } from '../../api/adminApi';
+import {
+  postAdminPipelineRun,
+  postAdminScrapeRun,
+  postAdminScrapeAndPipelineRun,
+} from '../../api/adminApi';
 import { loadAdminOverview, buildOverviewStatCards } from './loadAdminOverview';
-import { emptyAnalyticsSnapshot, enrichAnalyticsSnapshot, isAnalyticsPayload } from './dashboardChartUtils';
+import {
+  emptyAnalyticsSnapshot,
+  enrichAnalyticsSnapshot,
+  isAnalyticsPayload,
+} from './dashboardChartUtils';
 import { subscribeAdminOverviewRefresh, dispatchAdminOverviewRefresh } from '../../utils/adminOverviewEvents';
 import AdminDashboardCharts from './components/AdminDashboardCharts';
 import AdminScrapeSourcesPanel from './components/AdminScrapeSourcesPanel';
@@ -29,6 +37,8 @@ import AdminPipelineProgressBar from './components/AdminPipelineProgressBar';
 import { SkeletonStatCards } from '../../components/skeletons/SkeletonLayouts';
 
 const PIPELINE_BATCH_SIZE = 15;
+const SCRAPE_ONLY_LIMIT = 40;
+const SCRAPE_AND_PIPELINE = { scrapeLimit: 40, pipelineLimit: 200 };
 
 function scrollToAdminSection(hash) {
   const id = String(hash || '').replace(/^#/, '');
@@ -38,7 +48,7 @@ function scrollToAdminSection(hash) {
   });
 }
 
-const STAT_ICONS = {
+  const STAT_ICONS = {
   raw: FileText,
   processed: CheckCircle2,
   queue: Activity,
@@ -57,7 +67,7 @@ const AdminDashboardScreen = () => {
   const [snapshot, setSnapshot] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [pipelineBusy, setPipelineBusy] = useState(false);
+  const [activePipelineAction, setActivePipelineAction] = useState(null);
   const [pipelineProgress, setPipelineProgress] = useState(0);
   const [pipelineRunPhase, setPipelineRunPhase] = useState('idle');
   const [pipelineRunLabel, setPipelineRunLabel] = useState('');
@@ -72,6 +82,12 @@ const AdminDashboardScreen = () => {
   useEffect(() => {
     hasSnapshotRef.current = Boolean(snapshot);
   }, [snapshot]);
+
+  useEffect(() => {
+    if (pipelineRunPhase !== 'running' || !snapshot?.pipeline_summary) return;
+    const queued = snapshot.pipeline_summary.queued ?? 0;
+    setPipelineRunLabel(`Processing queue · ${queued} in queue…`);
+  }, [snapshot, pipelineRunPhase]);
 
   const loadStats = useCallback(async ({ silent = false, manual = false } = {}) => {
     const isInitial = !hasSnapshotRef.current;
@@ -170,43 +186,84 @@ const AdminDashboardScreen = () => {
     setPipelineRunLabel('');
   };
 
-  const runPipeline = async () => {
-    if (pipelineBusy) return;
-    setPipelineBusy(true);
+  const runAdminAction = async ({ actionId, runner, startLabel, successLabel }) => {
+    if (activePipelineAction) return;
+    setActivePipelineAction(actionId);
     setPipelineRunPhase('running');
     setPipelineProgress(4);
-    setPipelineRunLabel('Starting batch…');
+    setPipelineRunLabel(startLabel);
 
     const maxSimulated = 90;
-    const tick = window.setInterval(() => {
-      setPipelineProgress((prev) => {
-        if (prev >= maxSimulated) return prev;
-        const bump = Math.max(2, (maxSimulated - prev) * 0.12);
-        return Math.min(maxSimulated, prev + bump);
-      });
-    }, 280);
-
+    let tick;
+    let poll;
     try {
-      const result = await postAdminPipelineRun(PIPELINE_BATCH_SIZE);
-      window.clearInterval(tick);
-      const ok = result?.processed_ok ?? 0;
+      tick = window.setInterval(() => {
+        setPipelineProgress((prev) => {
+          if (prev >= maxSimulated) return prev;
+          const bump = Math.max(2, (maxSimulated - prev) * 0.12);
+          return Math.min(maxSimulated, prev + bump);
+        });
+      }, 280);
+      poll = window.setInterval(() => {
+        loadStats({ silent: true });
+      }, 4000);
+      const result = await runner();
+      const ok = result?.processed_ok ?? result?.delta?.processed_total ?? 0;
       const err = result?.errors ?? 0;
       setPipelineProgress(100);
       setPipelineRunPhase('success');
-      setPipelineRunLabel(`Done · ${ok} processed${err ? ` · ${err} errors` : ''}`);
+      setPipelineRunLabel(successLabel(ok, err, result));
       dispatchAdminOverviewRefresh({ silent: true });
       await loadStats({ silent: true });
       window.setTimeout(resetPipelineRunUi, 2200);
     } catch (e) {
-      window.clearInterval(tick);
       setPipelineProgress(100);
       setPipelineRunPhase('error');
       setPipelineRunLabel(e?.message || 'Pipeline run failed');
       window.setTimeout(resetPipelineRunUi, 2800);
     } finally {
-      setPipelineBusy(false);
+      if (tick) window.clearInterval(tick);
+      if (poll) window.clearInterval(poll);
+      setActivePipelineAction(null);
     }
   };
+
+  const pipelineActionBusy = Boolean(activePipelineAction);
+  const pipelineButtonLabel = (actionId, idleLabel) =>
+    activePipelineAction === actionId ? 'Running…' : idleLabel;
+
+  const runPipeline = async () =>
+    runAdminAction({
+      actionId: 'batch',
+      runner: () => postAdminPipelineRun(PIPELINE_BATCH_SIZE, { drainQueue: true }),
+      startLabel: 'Processing queue until empty…',
+      successLabel: (ok, err, result) => {
+        const left = result?.pending_remaining ?? result?.after?.raw_pending;
+        return `Done · ${ok} processed${err ? ` · ${err} errors` : ''}${left === 0 ? ' · queue empty' : left != null ? ` · ${left} still in queue` : ''}`;
+      },
+    });
+
+  const runScrapeOnly = async () =>
+    runAdminAction({
+      actionId: 'scrape',
+      runner: () => postAdminScrapeRun(SCRAPE_ONLY_LIMIT),
+      startLabel: `Scraping up to ${SCRAPE_ONLY_LIMIT} new articles…`,
+      successLabel: (_ok, _err, result) =>
+        `Done · ${result?.delta?.raw_total ?? 0} raw added`,
+    });
+
+  const runScrapeAndPipeline = async () =>
+    runAdminAction({
+      actionId: 'scrape_pipeline',
+      runner: () => postAdminScrapeAndPipelineRun(SCRAPE_AND_PIPELINE),
+      startLabel: 'Scraping then running pipeline…',
+      successLabel: (ok, err, result) => {
+        const processed = result?.pipeline?.processed_ok ?? ok;
+        const errs = result?.pipeline?.errors ?? err;
+        const left = result?.pipeline?.pending_remaining ?? result?.after?.raw_pending;
+        return `Done · ${result?.delta?.raw_total ?? 0} scraped · ${processed} processed${errs ? ` · ${errs} errors` : ''}${left === 0 ? ' · queue empty' : left != null ? ` · ${left} still in queue` : ''}`;
+      },
+    });
 
   const showPipelineProgress = pipelineRunPhase !== 'idle';
 
@@ -367,8 +424,10 @@ const AdminDashboardScreen = () => {
                   AI pipeline
                 </h2>
                 <p style={{ fontSize: 13, color: palette.textSecondary, margin: '0 0 18px', lineHeight: 1.45 }}>
-                  Run fake detection, fact-check, summary, and keywords on pending raw articles.
-                  <strong style={{ color: palette.textPrimary }}> {chartData?.pipeline_summary?.queued ?? 0}</strong>{' '}
+                  Run fake detection, fact-check, summary, and keywords on pending raw articles.{' '}
+                  <strong style={{ color: palette.textPrimary }}>
+                    {chartData?.pipeline_summary?.queued ?? 0}
+                  </strong>{' '}
                   in queue.
                 </p>
                 <div
@@ -382,7 +441,7 @@ const AdminDashboardScreen = () => {
                   <button
                     type="button"
                     onClick={runPipeline}
-                    disabled={pipelineBusy}
+                    disabled={pipelineActionBusy}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
@@ -394,15 +453,59 @@ const AdminDashboardScreen = () => {
                       color: palette.buttonPrimaryText,
                       fontWeight: 700,
                       fontSize: 14,
-                      cursor: pipelineBusy ? 'wait' : 'pointer',
-                      opacity: pipelineBusy ? 0.92 : 1,
+                      cursor: pipelineActionBusy ? 'wait' : 'pointer',
+                      opacity: activePipelineAction && activePipelineAction !== 'batch' ? 0.55 : 1,
                       boxShadow: `0 4px 14px ${palette.shadow}`,
                       transition: 'background 0.25s ease, color 0.25s ease',
                       flexShrink: 0,
                     }}
                   >
                     <Play size={18} fill="currentColor" />
-                    {pipelineBusy ? 'Running…' : `Run batch (${PIPELINE_BATCH_SIZE})`}
+                    {pipelineButtonLabel('batch', `Run batch (${PIPELINE_BATCH_SIZE})`)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={runScrapeOnly}
+                    disabled={pipelineActionBusy}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px 18px',
+                      border: `1px solid ${palette.border}`,
+                      borderRadius: 10,
+                      background: palette.card,
+                      color: palette.textPrimary,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: pipelineActionBusy ? 'wait' : 'pointer',
+                      opacity: activePipelineAction && activePipelineAction !== 'scrape' ? 0.55 : 1,
+                    }}
+                  >
+                    <Play size={18} />
+                    {pipelineButtonLabel('scrape', `Run scrape (${SCRAPE_ONLY_LIMIT} max)`)}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={runScrapeAndPipeline}
+                    disabled={pipelineActionBusy}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '12px 18px',
+                      border: `1px solid ${palette.border}`,
+                      borderRadius: 10,
+                      background: isDark ? palette.inputBg : palette.pageAlt,
+                      color: palette.textPrimary,
+                      fontWeight: 700,
+                      fontSize: 14,
+                      cursor: pipelineActionBusy ? 'wait' : 'pointer',
+                      opacity: activePipelineAction && activePipelineAction !== 'scrape_pipeline' ? 0.55 : 1,
+                    }}
+                  >
+                    <Play size={18} />
+                    {pipelineButtonLabel('scrape_pipeline', 'Run scrape + pipeline')}
                   </button>
 
                   {showPipelineProgress ? (

@@ -36,7 +36,6 @@ export function ActionButtons({ onSkip, onContinue, keywordCount }) {
             <Button
                 title={`Continue (${keywordCount})`}
                 variant="primary"
-                primaryColors={[colors.primary, colors.primary]}
                 onPress={onContinue}
                 disabled={isDisabled}
                 style={{

@@ -25,9 +25,10 @@ import CategoriesScreen from '../route/CategoriesScreen/CategoriesScreen';
 import AboutScreen from '../route/AboutScreen/AboutScreen';
 import HelpScreen from '../route/HelpScreen/HelpScreen';
 import ArticleDetailScreen from '../route/ArticleDetailScreen/ArticleDetailScreen';
-import TrendingScreen from '../route/TrendingScreen/TrendingScreen';
 import BookmarksScreen from '../route/BookmarksScreen/BookmarksScreen';
+import ReactionArticlesScreen from '../route/ReactionArticlesScreen/ReactionArticlesScreen';
 import RecentScreen from '../route/RecentScreen/RecentScreen';
+import PicsScreen from '../route/PicsScreen/PicsScreen';
 import ProtectedRoute from '../components/ProtectedRoute';
 import UserOnlyRoute from '../components/UserOnlyRoute';
 import { useTheme } from '../theme/ThemeContext';
@@ -81,9 +82,12 @@ const RouterContent = () => {
         <Route path="/categories" element={<UserOnlyRoute><CategoriesScreen /></UserOnlyRoute>} />
         <Route path="/about" element={<UserOnlyRoute><AboutScreen /></UserOnlyRoute>} />
         <Route path="/help" element={<UserOnlyRoute><HelpScreen /></UserOnlyRoute>} />
-        <Route path="/trending" element={<UserOnlyRoute><TrendingScreen /></UserOnlyRoute>} />
+        <Route path="/trending" element={<Navigate to="/newsfeed?tab=Trending" replace />} />
         <Route path="/bookmarks" element={<UserOnlyRoute><BookmarksScreen /></UserOnlyRoute>} />
+        <Route path="/liked" element={<UserOnlyRoute><ReactionArticlesScreen reaction="like" /></UserOnlyRoute>} />
+        <Route path="/disliked" element={<UserOnlyRoute><ReactionArticlesScreen reaction="dislike" /></UserOnlyRoute>} />
         <Route path="/recent" element={<UserOnlyRoute><RecentScreen /></UserOnlyRoute>} />
+        <Route path="/pics" element={<UserOnlyRoute><PicsScreen /></UserOnlyRoute>} />
         <Route path="/article/:id" element={<UserOnlyRoute><ArticleDetailScreen /></UserOnlyRoute>} />
         
         {/* Admin-only panel (same as mobile — no newsfeed chrome) */}

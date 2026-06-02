@@ -1,8 +1,12 @@
 import React, { createContext, useContext, useMemo, useRef, useState } from 'react';
+import { useTheme } from '../../theme/ThemeContext';
 
 const UIFeedbackContext = createContext(null);
 
 export const UIFeedbackProvider = ({ children }) => {
+  const { theme } = useTheme();
+  const isDark = theme?.mode === 'dark';
+  const colors = theme?.colors || {};
   const [toasts, setToasts] = useState([]);
   const [dialog, setDialog] = useState(null);
   const resolverRef = useRef(null);
@@ -66,12 +70,60 @@ export const UIFeedbackProvider = ({ children }) => {
         ))}
       </div>
       {dialog ? (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 3100, background: 'rgba(15,23,42,0.36)', display: 'grid', placeItems: 'center' }}>
-          <div style={{ width: 340, background: '#fff', border: '1px solid #dbe4f0', borderRadius: 14, padding: 16, boxShadow: '0 20px 45px rgba(15,23,42,0.25)' }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginBottom: 8 }}>{dialog.title}</div>
-            <div style={{ fontSize: 13, color: '#64748b', marginBottom: 14 }}>{dialog.message}</div>
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 3100,
+            background: isDark ? 'rgba(2,6,23,0.64)' : 'rgba(15,23,42,0.36)',
+            display: 'grid',
+            placeItems: 'center',
+            padding: 16,
+          }}
+        >
+          <div
+            style={{
+              width: 340,
+              maxWidth: '100%',
+              background: isDark ? colors.surface || '#0f172a' : '#fff',
+              border: `1px solid ${isDark ? colors.border || '#334155' : '#dbe4f0'}`,
+              borderRadius: 14,
+              padding: 16,
+              boxShadow: isDark ? '0 20px 45px rgba(2,6,23,0.6)' : '0 20px 45px rgba(15,23,42,0.25)',
+            }}
+          >
+            <div
+              style={{
+                fontSize: 16,
+                fontWeight: 700,
+                color: isDark ? colors.textPrimary || '#f8fafc' : '#0f172a',
+                marginBottom: 8,
+              }}
+            >
+              {dialog.title}
+            </div>
+            <div
+              style={{
+                fontSize: 13,
+                color: isDark ? colors.textSecondary || '#94a3b8' : '#64748b',
+                marginBottom: 14,
+              }}
+            >
+              {dialog.message}
+            </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button onClick={() => closeDialog(false)} style={{ border: '1px solid #cbd5e1', borderRadius: 8, background: '#fff', padding: '7px 12px', cursor: 'pointer' }}>
+              <button
+                onClick={() => closeDialog(false)}
+                style={{
+                  border: `1px solid ${isDark ? colors.border || '#334155' : '#cbd5e1'}`,
+                  borderRadius: 8,
+                  background: isDark ? colors.backgroundSecondary || '#111827' : '#fff',
+                  color: isDark ? colors.textPrimary || '#f8fafc' : '#0f172a',
+                  padding: '7px 12px',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
                 {dialog.cancelText}
               </button>
               <button

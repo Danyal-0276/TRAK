@@ -4,10 +4,13 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { useTheme } from '../../../theme/ThemeContext';
+import { filledActionColors } from '../../../theme/buttonContrast';
 
 export function ContinueButton({ onPress, selectedCount, loading = false, labelPrefix = 'Continue' }) {
     const { theme } = useTheme();
     const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
     const isDisabled = selectedCount === 0 || loading;
     
     return (
@@ -16,7 +19,7 @@ export function ContinueButton({ onPress, selectedCount, loading = false, labelP
                 style={[
                     styles.continueButton,
                     {
-                        backgroundColor: isDisabled ? colors.textTertiary : colors.primary,
+                        backgroundColor: isDisabled ? colors.textTertiary : action.background,
                         shadowColor: colors.shadowDark || '#000',
                         opacity: isDisabled ? 0.7 : 1,
                     }
@@ -29,15 +32,15 @@ export function ContinueButton({ onPress, selectedCount, loading = false, labelP
                     <View style={styles.loadingContainer}>
                         <ActivityIndicator 
                             size="small" 
-                            color={colors.textInverse || colors.surface}
+                            color={action.foreground}
                             style={styles.spinner}
                         />
-                        <Text style={[styles.continueButtonText, { color: colors.textInverse || colors.surface }]}>
+                        <Text style={[styles.continueButtonText, { color: action.foreground }]}>
                             Loading...
                         </Text>
                     </View>
                 ) : (
-                    <Text style={[styles.continueButtonText, { color: colors.textInverse || colors.surface }]}>
+                    <Text style={[styles.continueButtonText, { color: action.foreground }]}>
                         {labelPrefix} ({selectedCount})
                     </Text>
                 )}

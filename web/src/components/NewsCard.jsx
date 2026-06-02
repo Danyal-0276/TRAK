@@ -13,7 +13,7 @@ import {
     Clock,
     ArrowRight,
 } from 'lucide-react';
-import { getFeedItemCredibilityMeta } from '../utils/credibilityIndicator';
+import { getFeedItemCredibilityMeta, LABEL_STYLES } from '../utils/credibilityIndicator';
 import { prefetchArticleDetail } from '../utils/articleDetailCache';
 import { getUserArticleImageProxyUrl, resolveArticleImageUrl } from '../utils/articleMedia';
 import ArticleCardImage from './ArticleCardImage';
@@ -37,9 +37,19 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const itemUrl = item?.canonical_url || item?.url || '';
     const credLabel = String(item.credibilityLabel || credMeta.labelKey || '').toLowerCase();
     const isFake = !!item.isFake || credMeta.labelKey === 'fake';
-    const isLowCred = !!item.isLowCredibility || credMeta.labelKey === 'suspicious' || isFake;
-    const credBg = isFake || isLowCred ? (isDark ? '#450a0a' : colors.errorBg || '#FEE2E2') : (isDark ? '#052e16' : colors.successBg || '#DCFCE7');
-    const credFg = isFake || isLowCred ? (colors.error || '#dc2626') : (colors.success || '#16a34a');
+    const isSuspicious =
+        !!item.isLowCredibility ||
+        credMeta.labelKey === 'suspicious' ||
+        credLabel === 'suspicious';
+    const credPalette = isFake
+        ? LABEL_STYLES.fake
+        : isSuspicious
+            ? LABEL_STYLES.suspicious
+            : credMeta.labelKey === 'real'
+                ? LABEL_STYLES.real
+                : LABEL_STYLES.unknown;
+    const credBg = credPalette.bg;
+    const credFg = credPalette.color;
     const credText = isFake
         ? 'Fake / Low credibility'
         : credLabel === 'suspicious'
@@ -364,7 +374,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             alignItems: 'center',
                             gap: 4,
                         }}>
-                            {isFake || isLowCred ? (
+                            {isFake || isSuspicious ? (
                                 <AlertTriangle size={11} color={credFg} />
                             ) : (
                                 <CheckCircle size={11} color={credFg} />

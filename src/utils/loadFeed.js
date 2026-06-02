@@ -1,5 +1,5 @@
 import { mockApi } from './Service/mockApi';
-import { fetchExplore, fetchExplorePage, fetchFeed } from '../api/newsApi';
+import { fetchExplore, fetchExplorePage, fetchFeed, fetchPicsPage } from '../api/newsApi';
 import { getAccessToken } from '../api/client';
 import { loadUserKeywords } from './userKeywordsStorage';
 import { filterFeedByUserKeywords } from './feedKeywordMatch';
@@ -27,8 +27,14 @@ export function mapApiItem(a, userKeywords = []) {
     const topicKeywords = a.topic_keywords || [];
     const matchedKeywords = computeMatchedKeywords(topicKeywords, userKeywords);
     const categoryLabel = matchedKeywords[0] || labelStr || 'news';
+    const cid = a.id ?? a._id;
+    const url = String(a.canonical_url || a.url || '').trim();
+    const id =
+        cid != null && String(cid).trim()
+            ? String(cid).trim()
+            : url;
     return {
-        id: a.id || a._id,
+        id,
         source: a.source || a.source_key || '',
         canonical_url: a.canonical_url || a.url || '',
         url: a.url || a.canonical_url || '',
@@ -56,6 +62,7 @@ export function mapApiItem(a, userKeywords = []) {
         credibility: a.credibility,
         topic_keywords: topicKeywords,
         image_url: a.image_url || a.image || '',
+        image: (a.image_url || a.image || a.thumbnail_url || '').trim() || undefined,
         credibility_label: cred.label_code ?? a.credibility_label,
         credibility_label_name: cred.label || a.credibility_label_name,
         credibility_score: cred.score ?? a.credibility_score,
@@ -116,6 +123,23 @@ export async function loadExplorePage(options = {}) {
     }
     const userKeywords = await loadUserKeywords();
     const json = await fetchExplorePage(limit, q, cursor);
+    return {
+        items: (json.results || []).map((a) => mapApiItem(a, userKeywords)),
+        nextCursor: json.next_cursor || null,
+        hasMore: Boolean(json.has_more),
+    };
+}
+
+export async function loadPicsPage(options = {}) {
+    const q = options.q || '';
+    const cursor = options.cursor || '';
+    const limit = Math.max(1, Number(options.limit || 30));
+    const token = await getAccessToken();
+    if (!token) {
+        return { items: [], nextCursor: null, hasMore: false };
+    }
+    const userKeywords = await loadUserKeywords();
+    const json = await fetchPicsPage(limit, q, cursor);
     return {
         items: (json.results || []).map((a) => mapApiItem(a, userKeywords)),
         nextCursor: json.next_cursor || null,

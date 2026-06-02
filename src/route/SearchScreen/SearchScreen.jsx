@@ -16,19 +16,21 @@ import {
   Share,
 } from "react-native";
 import { TabView } from "react-native-tab-view";
+import { ScrollView as GHScrollView } from "react-native-gesture-handler";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
 import SearchBar from "./components/SearchBar";
 import DiscoverScreenHeader from "./components/DiscoverScreenHeader";
-import { useCollapsibleHeader } from "../../hooks/useCollapsibleHeader";
+import { useFilledActionColors } from "../../theme/buttonContrast";
 import Tabs from "./components/tabs";
 import { buildArticleDetailParams } from "../../utils/articleNavigation";
 import TrendingTopics from "./components/TrendingTopics";
-import { NewsCard } from "../../components/NewsCard";
+import ArticleFeedList from "../../components/ArticleFeedList";
 import { FeedSkeleton } from "../../components/FeedSkeleton";
-import ChatBotWidget from "../../components/ChatBotWidget";
 import { useArticleInteractions } from "../../hooks/useArticleInteractions";
+import { useCollapsibleHeader } from "../../hooks/useCollapsibleHeader";
 import { useTheme } from "../../theme/ThemeContext";
+import { getRefreshControlProps } from "../../theme/refreshControl";
 import { loadExplorePage } from "../../utils/loadFeed";
 import Text from "../../components/ui/Text";
 import { Search } from "lucide-react-native";
@@ -37,6 +39,15 @@ import { resetTabBarVisibility } from "../../navigation/tabBarVisibility";
 
 const { width, height } = Dimensions.get('window');
 const PAGER_LAYOUT = { width };
+const AnimatedDiscoverScrollView = Animated.createAnimatedComponent(GHScrollView);
+
+function buildDiscoverNewsByTab(allNews, searchQuery, routes) {
+  const out = {};
+  routes.forEach((route) => {
+    out[route.key] = filterDiscoverNews(allNews, searchQuery, route.key);
+  });
+  return out;
+}
 const DISCOVER_PAGE_SIZE = 30;
 const DISCOVER_PREFETCH_PX = 900;
 const DISCOVER_CACHE_TTL_MS = 10 * 60 * 1000;
@@ -195,6 +206,7 @@ const SkeletonCard = ({ colors }) => {
 const SearchScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { colors } = theme;
+  const actionColors = useFilledActionColors();
   const insets = useSafeAreaInsets();
   const feedback = useFeedback();
   const [allNews, setAllNews] = useState([]);
@@ -342,18 +354,6 @@ const SearchScreen = ({ navigation }) => {
   }, [searchQuery, loadFirstPage]);
 
   useEffect(() => {
-    // Proactive fetch of page 2 in "All" so first scroll feels instant.
-    if (loading || loadingMore || !hasMore) return;
-    if (activeTab !== "All") return;
-    if (searchQuery.trim()) return;
-    if (prefetchAttemptsRef.current >= 2) return;
-    if (allNews.length > 0 && allNews.length < DISCOVER_PAGE_SIZE * 2) {
-      prefetchAttemptsRef.current += 1;
-      loadMorePage();
-    }
-  }, [activeTab, allNews.length, hasMore, loadMorePage, loading, loadingMore, searchQuery]);
-
-  useEffect(() => {
     // Entrance animations
     Animated.parallel([
       Animated.timing(fadeAnim, {
@@ -496,17 +496,82 @@ const SearchScreen = ({ navigation }) => {
     setActiveTab(category);
   };
 
+  const discoverNewsByTab = useMemo(
+    () => buildDiscoverNewsByTab(allNews, searchQuery, DISCOVER_TAB_ROUTES),
+    [allNews, searchQuery]
+  );
+
   const renderDiscoverScene = useCallback(
     ({ route }) => {
       const tabKey = route.key;
-      const tabNews = filterDiscoverNews(allNews, searchQuery, tabKey);
+      const tabNews = discoverNewsByTab[tabKey] || [];
       const showTrending = tabKey === "All" && !searchQuery.trim();
+
+      const listHeader = (
+        <>
+          {showTrending ? (
+            <TrendingTopics
+              topics={trendingTopics}
+              onTopicPress={handleTopicPress}
+              searchQuery={searchQuery}
+            />
+          ) : null}
+        </>
+      );
+
+      const listEmpty = loading ? (
+        <FeedSkeleton colors={colors} count={5} />
+      ) : (
+        <>
+          <View style={[styles.iconContainer, { backgroundColor: colors.primary + "15" }]}>
+            <Search size={48} color={colors.primary} strokeWidth={2} />
+          </View>
+          <Text variant="title" color={colors.textPrimary} style={styles.noResultsText}>
+            No news found
+          </Text>
+          <Text variant="body" color={colors.textSecondary} style={styles.noResultsSub}>
+            {searchQuery.trim()
+              ? "Try searching with different keywords"
+              : "No articles in this category"}
+          </Text>
+          {(searchQuery.trim() || tabKey !== "All") && (
+            <TouchableOpacity
+              style={[styles.clearButton, { backgroundColor: actionColors.background }]}
+              onPress={handleClearSearch}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.clearButtonText, { color: actionColors.foreground }]}>
+                Clear & Show All
+              </Text>
+            </TouchableOpacity>
+          )}
+        </>
+      );
+
+      const listFooter = (
+        <>
+          {loadingMore && tabKey === activeTab ? (
+            <View style={{ paddingVertical: 16, alignItems: "center" }}>
+              <ActivityIndicator size="small" color={colors.primary} />
+            </View>
+          ) : null}
+          <View style={styles.endPadding} />
+        </>
+      );
 
       return (
         <View style={styles.discoverScene}>
-        <Animated.ScrollView
+        <ArticleFeedList
+          animated
+          keyPrefix={tabKey}
           style={styles.contentArea}
-          showsVerticalScrollIndicator={false}
+          data={loading || tabNews.length === 0 ? [] : tabNews}
+          onArticlePress={handleArticlePress}
+          onVote={handleVote}
+          onBookmark={handleBookmark}
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={listEmpty}
+          ListFooterComponent={listFooter}
           onScroll={handleScrollForTab(tabKey)}
           scrollEventThrottle={16}
           onScrollBeginDrag={() => {
@@ -523,76 +588,18 @@ const SearchScreen = ({ navigation }) => {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              colors={[colors.primary]}
-              tintColor={colors.primary}
+              {...getRefreshControlProps(colors, theme.mode)}
             />
           }
-        >
-          {loading ? (
-            <FeedSkeleton colors={colors} count={5} />
-          ) : tabNews.length === 0 ? (
-            <>
-              <View style={[styles.iconContainer, { backgroundColor: colors.primary + "15" }]}>
-                <Search size={48} color={colors.primary} strokeWidth={2} />
-              </View>
-              <Text variant="title" color={colors.textPrimary} style={styles.noResultsText}>
-                No news found
-              </Text>
-              <Text variant="body" color={colors.textSecondary} style={styles.noResultsSub}>
-                {searchQuery.trim()
-                  ? "Try searching with different keywords"
-                  : "No articles in this category"}
-              </Text>
-              {(searchQuery.trim() || tabKey !== "All") && (
-                <TouchableOpacity
-                  style={[styles.clearButton, { backgroundColor: colors.primary }]}
-                  onPress={handleClearSearch}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[styles.clearButtonText, { color: colors.textInverse || "#FFFFFF" }]}>
-                    Clear & Show All
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </>
-          ) : (
-            <>
-              {showTrending ? (
-                <TrendingTopics
-                  topics={trendingTopics}
-                  onTopicPress={handleTopicPress}
-                  searchQuery={searchQuery}
-                />
-              ) : null}
-              {tabNews.map((item, index) => (
-                <NewsCard
-                  key={`${tabKey}-${item.id}`}
-                  item={item}
-                  onPress={() => handleArticlePress(item)}
-                  votedItems={votedItems}
-                  bookmarkedItems={bookmarkedItems}
-                  onVote={handleVote}
-                  onBookmark={handleBookmark}
-                  index={index}
-                />
-              ))}
-              {loadingMore && tabKey === activeTab ? (
-                <View style={{ paddingVertical: 16, alignItems: "center" }}>
-                  <ActivityIndicator size="small" color={colors.primary} />
-                </View>
-              ) : null}
-              <View style={styles.endPadding} />
-            </>
-          )}
-        </Animated.ScrollView>
+        />
         </View>
       );
     },
     [
       activeTab,
-      allNews,
-      bookmarkedItems,
+      actionColors,
       colors,
+      discoverNewsByTab,
       handleArticlePress,
       handleBookmark,
       handleClearSearch,
@@ -606,7 +613,6 @@ const SearchScreen = ({ navigation }) => {
       searchQuery,
       topSectionHeight,
       trendingTopics,
-      votedItems,
     ]
   );
 
@@ -729,11 +735,12 @@ const SearchScreen = ({ navigation }) => {
           renderTabBar={() => null}
           swipeEnabled
           animationEnabled
+          lazy
+          lazyPreloadDistance={0}
           sceneContainerStyle={styles.discoverSceneContainer}
           style={styles.discoverPager}
         />
       </SafeAreaView>
-      <ChatBotWidget />
     </View>
   );
 };

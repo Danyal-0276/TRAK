@@ -282,7 +282,11 @@ const TagSelectionScreen = ({ navigation, route }) => {
         try {
             // Simulate API call
             await new Promise(resolve => setTimeout(resolve, 500));
-            navigation.navigate('KeywordSelection', { selectedTags, fromSettings });
+            const keywordScreen =
+                fromSettings && route?.name === 'SettingsTagSelection'
+                    ? 'SettingsKeywordSelection'
+                    : 'KeywordSelection';
+            navigation.navigate(keywordScreen, { selectedTags, fromSettings });
         } catch (error) {
             console.error('Error:', error);
         } finally {

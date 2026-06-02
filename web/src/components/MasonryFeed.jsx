@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useResponsive } from '../hooks/useResponsive';
 
 /** Match column breakpoints to a ~1200px content column (max 3 across at full width). */

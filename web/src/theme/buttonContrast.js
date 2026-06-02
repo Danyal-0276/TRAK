@@ -3,13 +3,17 @@
  */
 export function filledActionColors(colors, isDark) {
   if (isDark) {
+    const foreground = colors.textOnPrimary || colors.background || '#0a0a0a';
     return {
       background: colors.textPrimary || '#fafafa',
-      foreground: colors.textOnPrimary || colors.background || '#0a0a0a',
+      foreground,
+      color: foreground,
     };
   }
+  const foreground = colors.textOnPrimary || '#ffffff';
   return {
     background: colors.primary || '#0a0a0a',
-    foreground: colors.textOnPrimary || '#ffffff',
+    foreground,
+    color: foreground,
   };
 }
