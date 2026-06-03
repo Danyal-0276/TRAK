@@ -96,7 +96,7 @@ const NotificationsScreen = () => {
 
   return (
     <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
+      style={[styles.container, { backgroundColor: colors.surface }]}
       edges={["top"]}
     >
       <StatusBar
@@ -142,7 +142,7 @@ const NotificationsScreen = () => {
         <NotificationTabBar index={tabIndex} onIndexChange={setTabIndex} />
       </View>
 
-      <View style={styles.listArea}>
+      <View style={[styles.listArea, { backgroundColor: colors.background }]}>
         <NotificationTabs
           notifications={notifications}
           onMarkAsRead={markAsRead}

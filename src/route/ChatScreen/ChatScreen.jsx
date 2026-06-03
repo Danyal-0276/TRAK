@@ -6,12 +6,13 @@ import {
   StyleSheet,
   TextInput,
   ScrollView,
-  KeyboardAvoidingView,
+  Keyboard,
   Platform,
   LayoutAnimation,
   UIManager,
   Linking,
   StatusBar,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -21,9 +22,19 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { useAuth } from '../../context/AuthContext';
 import { filledActionColors } from '../../theme/buttonContrast';
-import { resetTabBarVisibility } from '../../navigation/tabBarVisibility';
+import { resetTabBarVisibility, setTabBarHidden } from '../../navigation/tabBarVisibility';
 
 const TAB_BAR_CLEARANCE = 96;
+const COMPOSER_ESTIMATE = 150;
+
+function getKeyboardInset(e) {
+  const coords = e?.endCoordinates;
+  if (!coords) return 0;
+  const reported = coords.height ?? 0;
+  const windowHeight = Dimensions.get('window').height;
+  const fromScreenY = coords.screenY != null ? windowHeight - coords.screenY : 0;
+  return Math.max(reported, fromScreenY, 0);
+}
 
 const QUICK_PROMPTS = [
   'Top tech headlines',
@@ -54,12 +65,58 @@ const ChatScreen = () => {
     { role: 'bot', text: 'Hey! I am TRAK AI. Ask me about latest news.' },
   ]);
   const scrollRef = useRef(null);
+  const [keyboardInset, setKeyboardInset] = useState(0);
+  const [composerHeight, setComposerHeight] = useState(COMPOSER_ESTIMATE);
 
   useEffect(() => {
     if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
       UIManager.setLayoutAnimationEnabledExperimental(true);
     }
   }, []);
+
+  const scrollToLatest = React.useCallback(() => {
+    requestAnimationFrame(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    });
+  }, []);
+
+  const restoreKeyboardLayout = React.useCallback(() => {
+    setKeyboardInset(0);
+    if (embeddedInTab) setTabBarHidden(false);
+  }, [embeddedInTab]);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onShow = (e) => {
+      const height = getKeyboardInset(e);
+      if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
+      setKeyboardInset(height);
+      if (embeddedInTab) setTabBarHidden(true);
+      scrollToLatest();
+    };
+    const onHide = () => {
+      if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
+      restoreKeyboardLayout();
+    };
+
+    const showSub = Keyboard.addListener(showEvent, onShow);
+    const hideSub = Keyboard.addListener(hideEvent, onHide);
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+      restoreKeyboardLayout();
+    };
+  }, [embeddedInTab, scrollToLatest, restoreKeyboardLayout]);
+
+  useEffect(() => {
+    if (keyboardInset > 0) scrollToLatest();
+  }, [keyboardInset, scrollToLatest]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -140,58 +197,56 @@ const ChatScreen = () => {
   const isDark = theme.mode === 'dark';
   const action = filledActionColors(colors, isDark);
   const tabBarPad = embeddedInTab ? TAB_BAR_CLEARANCE + Math.max(insets.bottom, 8) : Math.max(insets.bottom, 12);
+  const composerBottomPad = keyboardInset > 0 ? 10 : tabBarPad;
+  const scrollPadBottom = composerHeight + (keyboardInset > 0 ? keyboardInset : tabBarPad);
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.background }]}
-      edges={embeddedInTab ? ['top'] : ['top', 'bottom']}
-    >
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
-
-      <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
-        {!embeddedInTab ? (
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView edges={['top']} style={{ backgroundColor: colors.surface }}>
+        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.surface} />
+        <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
+          {!embeddedInTab ? (
+            <TouchableOpacity
+              onPress={() => navigation.goBack()}
+              style={styles.backBtn}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <ChevronLeft size={24} color={colors.textPrimary} />
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.backBtn} />
+          )}
+          <View style={styles.headerLeft}>
+            <Sparkles size={18} color={colors.textPrimary} />
+            <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>TRAK AI Assistant</Text>
+          </View>
           <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backBtn}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={async () => {
+              const accepted = await confirm({
+                title: 'Clear chat history?',
+                message: 'This cannot be undone.',
+                confirmText: 'Clear',
+                danger: true,
+              });
+              if (!accepted) return;
+              await clearChatHistory();
+              setMessages([{ role: 'bot', text: 'History cleared. Ask me anything new.' }]);
+            }}
+            style={styles.iconBtn}
           >
-            <ChevronLeft size={24} color={colors.textPrimary} />
+            <Trash2 size={20} color={colors.textSecondary} />
           </TouchableOpacity>
-        ) : (
-          <View style={styles.backBtn} />
-        )}
-        <View style={styles.headerLeft}>
-          <Sparkles size={18} color={colors.textPrimary} />
-          <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>TRAK AI Assistant</Text>
         </View>
-        <TouchableOpacity
-          onPress={async () => {
-            const accepted = await confirm({
-              title: 'Clear chat history?',
-              message: 'This cannot be undone.',
-              confirmText: 'Clear',
-              danger: true,
-            });
-            if (!accepted) return;
-            await clearChatHistory();
-            setMessages([{ role: 'bot', text: 'History cleared. Ask me anything new.' }]);
-          }}
-          style={styles.iconBtn}
-        >
-          <Trash2 size={20} color={colors.textSecondary} />
-        </TouchableOpacity>
-      </View>
+      </SafeAreaView>
 
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? insets.top : 0}
-      >
+      <View style={[styles.flex, styles.chatStage, { backgroundColor: colors.background }]}>
         <ScrollView
           ref={scrollRef}
           style={styles.messages}
-          contentContainerStyle={styles.messagesContent}
+          contentContainerStyle={[styles.messagesContent, { paddingBottom: scrollPadBottom }]}
           keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive"
+          onContentSizeChange={scrollToLatest}
         >
           {messages.map((m, i) => (
             <View key={`${m.role}-${i}`} style={[styles.msgWrap, m.role === 'user' ? styles.userWrap : styles.botWrap]}>
@@ -228,44 +283,68 @@ const ChatScreen = () => {
           ) : null}
         </ScrollView>
 
-        <View style={styles.quickRow}>
-          {QUICK_PROMPTS.map((p) => (
-            <TouchableOpacity
-              key={p}
-              style={[styles.quickChip, { borderColor: colors.border, backgroundColor: colors.surface }]}
-              onPress={() => sendMessage(p)}
-            >
-              <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{p}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        <View
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h > 0 && Math.abs(h - composerHeight) > 2) setComposerHeight(h);
+          }}
+          style={[
+            styles.composerDock,
+            {
+              bottom: keyboardInset,
+              paddingBottom: composerBottomPad,
+              backgroundColor: colors.background,
+            },
+          ]}
+        >
+          <View style={styles.quickRow}>
+            {QUICK_PROMPTS.map((p) => (
+              <TouchableOpacity
+                key={p}
+                style={[styles.quickChip, { borderColor: colors.border, backgroundColor: colors.backgroundSecondary }]}
+                onPress={() => sendMessage(p)}
+              >
+                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{p}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        <View style={[styles.inputRow, { borderTopColor: colors.border, backgroundColor: colors.surface, paddingBottom: tabBarPad }]}>
-          <TextInput
-            value={input}
-            onChangeText={setInput}
-            placeholder="Ask about latest news..."
-            placeholderTextColor={colors.textTertiary}
-            style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.background }]}
-            onSubmitEditing={() => sendMessage()}
-            multiline
-          />
-          <TouchableOpacity
-            style={[styles.sendBtn, { backgroundColor: action.background }]}
-            disabled={loading}
-            onPress={() => sendMessage()}
-          >
-            <Send size={18} color={action.foreground} />
-          </TouchableOpacity>
+          <View style={styles.inputRow}>
+            <TextInput
+              value={input}
+              onChangeText={setInput}
+              placeholder="Ask about latest news..."
+              placeholderTextColor={colors.textTertiary}
+              style={[styles.input, { color: colors.textPrimary, borderColor: colors.border, backgroundColor: colors.background }]}
+              onSubmitEditing={() => sendMessage()}
+              onFocus={scrollToLatest}
+              multiline
+            />
+            <TouchableOpacity
+              style={[styles.sendBtn, { backgroundColor: action.background }]}
+              disabled={loading}
+              onPress={() => sendMessage()}
+            >
+              <Send size={18} color={action.foreground} />
+            </TouchableOpacity>
+          </View>
         </View>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </View>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flex: { flex: 1 },
+  chatStage: {
+    overflow: 'hidden',
+  },
+  composerDock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -283,14 +362,13 @@ const styles = StyleSheet.create({
   userWrap: { alignSelf: 'flex-end' },
   botWrap: { alignSelf: 'flex-start' },
   msg: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, fontSize: 15, lineHeight: 22 },
-  quickRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 10, flexWrap: 'wrap' },
+  quickRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8, flexWrap: 'wrap' },
   quickChip: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: 12,
-    paddingTop: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingTop: 4,
     gap: 10,
   },
   input: {

@@ -66,6 +66,16 @@ function filterNewsForTab(tabKey, newsData, bookmarkedItems) {
     return newsData;
 }
 
+/** FlatList uses scrollToOffset; ScrollView uses scrollTo. */
+function restoreScrollPosition(ref, scrollY) {
+    if (!ref || scrollY == null || scrollY <= 0) return;
+    if (typeof ref.scrollToOffset === 'function') {
+        ref.scrollToOffset({ offset: scrollY, animated: false });
+    } else if (typeof ref.scrollTo === 'function') {
+        ref.scrollTo({ y: scrollY, animated: false });
+    }
+}
+
 // Skeleton Card Component
 const SkeletonCard = ({ colors }) => {
     const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -230,9 +240,9 @@ const NewsFeedScreen = ({ navigation }) => {
             setVotedItems(cached.votedItems || {});
             setBookmarkedItems(new Set((cached.bookmarkIds || []).map(String)));
             const tabKey = cached.activeTab || 'For you';
-            if (cached.scrollY && scrollRefs.current[tabKey]) {
-                scrollRefs.current[tabKey].scrollTo({ y: cached.scrollY, animated: false });
-            }
+            requestAnimationFrame(() => {
+                restoreScrollPosition(scrollRefs.current[tabKey], cached.scrollY);
+            });
             if (!silent) setLoading(false);
             return;
         }
@@ -320,9 +330,9 @@ const NewsFeedScreen = ({ navigation }) => {
                 feedModeRef.current = cached.feedMode || 'explore';
                 setLoading(false);
                 const tabKey = cached.activeTab || 'For you';
-                if (cached.scrollY && scrollRefs.current[tabKey]) {
+                if (cached.scrollY) {
                     requestAnimationFrame(() => {
-                        scrollRefs.current[tabKey]?.scrollTo({ y: cached.scrollY, animated: false });
+                        restoreScrollPosition(scrollRefs.current[tabKey], cached.scrollY);
                     });
                 }
                 return;
@@ -371,12 +381,7 @@ const NewsFeedScreen = ({ navigation }) => {
         if (!hasCachedHome || !cachedHome?.scrollY) return;
         const tabKey = cachedHome.activeTab || 'For you';
         const timer = setTimeout(() => {
-            const ref = scrollRefs.current[tabKey];
-            if (ref?.scrollToOffset) {
-                ref.scrollToOffset({ offset: cachedHome.scrollY, animated: false });
-            } else {
-                ref?.scrollTo?.({ y: cachedHome.scrollY, animated: false });
-            }
+            restoreScrollPosition(scrollRefs.current[tabKey], cachedHome.scrollY);
         }, 0);
         return () => clearTimeout(timer);
     }, [hasCachedHome, cachedHome]);
