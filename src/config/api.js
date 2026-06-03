@@ -13,7 +13,11 @@ const devApiBase =
         default: 'http://127.0.0.1:8000',
     }) || 'http://127.0.0.1:8000';
 
-const defaultApiBase = typeof __DEV__ !== 'undefined' && __DEV__ ? devApiBase : RENDER_API_BASE;
+// Release: set API_BASE in api.local.js (see api.local.example.js / TRAK/.env.example).
+const defaultApiBase =
+    typeof __DEV__ !== 'undefined' && __DEV__
+        ? devApiBase
+        : RENDER_API_BASE || devApiBase;
 
 let localOverride = {};
 try {
