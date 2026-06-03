@@ -1,13 +1,15 @@
 import { Platform } from 'react-native';
-import { RENDER_API_BASE } from '../../config/apiBase';
 
-// Copy to api.local.js (gitignored) to override API_BASE in dev.
+// Copy to api.local.js (gitignored). Values mirror TRAK/.env.example at repo root.
 
-/** true = Render (production API). false = local Django on your PC. */
+/** true = deployed API. false = local Django on your PC. */
 const USE_RENDER = false;
 
+/** Production Django API — set TRAK/.env.example → VITE_API_URL (same host). */
+const PRODUCTION_API_BASE = 'https://trak-backend-upip.onrender.com';
+
 /** Your PC Wi-Fi IPv4 (ipconfig) — phone and PC must be on the same network. */
-const DEV_LAN_HOST = '192.168.1.8';
+const DEV_LAN_HOST = '192.168.100.100';
 
 /**
  * USB debugging (recommended): run `adb reverse tcp:8000 tcp:8000`, set true.
@@ -28,7 +30,7 @@ const LOCAL_API_BASE = Platform.select({
   default: 'http://127.0.0.1:8000',
 });
 
-export const API_BASE = USE_RENDER ? RENDER_API_BASE : LOCAL_API_BASE;
+export const API_BASE = USE_RENDER ? PRODUCTION_API_BASE : LOCAL_API_BASE;
 
 // Backend: python manage.py runserver 0.0.0.0:8000
 // MongoDB must be running. Match DEV_LAN_HOST to your PC IP if using Wi-Fi.
