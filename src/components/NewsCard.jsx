@@ -1,29 +1,36 @@
 // ============================================
 // FILE: components/NewsCard.jsx
 // ============================================
-import React, { useRef, useEffect, memo, useState } from 'react';
+import React, { useRef, useEffect, memo, useState, useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
+import { TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-handler';
+import ArticleInteractionBar from './ArticleInteractionBar';
 import { resolveArticleSource } from '../utils/articleSource';
 import { shareArticle, openArticleMenu } from '../utils/articleMenu';
 import { useFeedback } from './ui/FeedbackProvider';
 import {
-    ChevronUp,
-    ChevronDown,
-    Bookmark,
-    Share2,
-    MoreHorizontal,
     TrendingUp,
     CheckCircle,
     Clock,
+    MoreHorizontal,
 } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeContext';
 import FeedbackModal from './FeedbackModal';
+import ArticleCardImage from './ArticleCardImage';
+import { resolveArticleImageUrl } from '../utils/articleMedia';
+import {
+    resolveCardArticleId,
+    resolveArticleVote,
+    resolveArticleBookmarked,
+} from '../utils/articleCardInteraction';
 
 function NewsCardInner({
     item,
     onPress,
     votedItems,
     bookmarkedItems,
+    userVote: userVoteProp,
+    isBookmarked: isBookmarkedProp,
     onVote,
     onBookmark,
     index = 0,
@@ -33,17 +40,17 @@ function NewsCardInner({
     const feedback = useFeedback();
     const [feedbackOpen, setFeedbackOpen] = useState(false);
     const { colors } = theme;
-    const safeId = item?.id != null ? String(item.id) : `news-${index}`;
+    const articleId = resolveCardArticleId(item, index);
+    const canInteract = !articleId.startsWith('news-');
     const safeSource = resolveArticleSource(item);
     const safeTitle = String(item?.title || 'Untitled');
     const safeExcerpt = String(item?.excerpt || item?.summary || '');
     const safeCategory = String(item?.category || 'General');
     const likeCount = Number(item?.like_count ?? item?.upvotes ?? 0);
     const dislikeCount = Number(item?.dislike_count ?? 0);
-    const initialReaction = item?.userReaction || null;
-    const currentReaction = (votedItems && votedItems[safeId] !== undefined) ? votedItems[safeId] : initialReaction;
-    const isBookmarked =
-        bookmarkedItems?.has?.(item?.id) || bookmarkedItems?.has?.(String(item?.id));
+    const currentReaction = resolveArticleVote(item, articleId, votedItems, userVoteProp);
+    const isDark = theme.mode === 'dark';
+    const isBookmarked = resolveArticleBookmarked(item, articleId, bookmarkedItems, isBookmarkedProp);
     const fadeAnim = useRef(new Animated.Value(animateEntry ? 0 : 1)).current;
     const slideAnim = useRef(new Animated.Value(animateEntry ? 20 : 0)).current;
 
@@ -70,19 +77,19 @@ function NewsCardInner({
         ]).start();
     }, [animateEntry, index, fadeAnim, slideAnim]);
 
-    const cardStyles = StyleSheet.create({
+    const cardStyles = useMemo(() => StyleSheet.create({
         container: {
             marginBottom: 8,
             marginHorizontal: 4,
         },
         card: {
             backgroundColor: colors.surface,
-            padding: 22,
             marginHorizontal: 2,
             marginVertical: 4,
             borderRadius: 16,
             borderWidth: 1,
             borderColor: colors.borderLight,
+            overflow: 'hidden',
             ...Platform.select({
                 ios: {
                     shadowColor: colors.shadowDark || '#000',
@@ -247,7 +254,9 @@ function NewsCardInner({
             gap: 4,
         },
         voteButton: {
-            padding: 6,
+            paddingVertical: 6,
+            paddingHorizontal: 8,
+            borderRadius: 6,
         },
         voteCountSmall: {
             fontSize: 13,
@@ -262,162 +271,140 @@ function NewsCardInner({
             gap: 12,
         },
         actionButton: {
-            padding: 6,
+            paddingVertical: 6,
+            paddingHorizontal: 8,
+            borderRadius: 6,
         },
-    });
+        actionsOuter: {
+            paddingHorizontal: 22,
+            paddingBottom: 22,
+        },
+        cardBody: {
+            padding: 22,
+        },
+        heroImage: {
+            width: '100%',
+            borderRadius: 0,
+        },
+    }), [theme.mode]);
 
     const credLabel = String(item.credibilityLabel || '').toLowerCase();
     const isFake = !!item.isFake;
-    const isLowCred = !!item.isLowCredibility;
-    const credBg = isFake || isLowCred ? colors.errorBg : colors.successBg;
-    const credFg = isFake || isLowCred ? colors.error : colors.success;
+    const isSuspicious = !!item.isLowCredibility || credLabel === 'suspicious';
+    const credPalette = isFake
+        ? { bg: colors.errorBg, color: colors.error }
+        : isSuspicious
+            ? { bg: 'rgba(245, 158, 11, 0.12)', color: '#f59e0b' }
+            : credLabel === 'real'
+                ? { bg: colors.successBg, color: colors.success }
+                : { bg: colors.backgroundSecondary, color: colors.textSecondary };
+    const credBg = credPalette.bg;
+    const credFg = credPalette.color;
     const credText = isFake ? 'Fake / Low credibility' : credLabel === 'real' ? 'Verified / Higher credibility' : credLabel || 'Credibility';
+    const cardImage = resolveArticleImageUrl(item);
+
+    const CardWrapper = animateEntry ? Animated.View : View;
 
     return (
         <>
-        <Animated.View
+        <CardWrapper
             style={[
                 cardStyles.container,
-                {
-                    opacity: fadeAnim,
-                    transform: [{ translateY: slideAnim }],
-                },
+                animateEntry
+                    ? {
+                          opacity: fadeAnim,
+                          transform: [{ translateY: slideAnim }],
+                      }
+                    : null,
             ]}
         >
-            <TouchableOpacity
-                onPress={onPress}
-                activeOpacity={0.95}
-            >
-                <View style={cardStyles.card}>
-                {/* Header */}
-                <View style={cardStyles.header}>
-                    <View style={cardStyles.sourceContainer}>
-                        <View style={[
-                            cardStyles.sourceIcon,
-                            { backgroundColor: item.trending ? colors.primary : colors.textSecondary }
-                        ]}>
-                            <Text style={cardStyles.sourceIconText}>
-                                {safeSource.substring(0, 2).toUpperCase()}
-                            </Text>
-                        </View>
-                        <View style={cardStyles.sourceInfo}>
-                            <View style={cardStyles.sourceNameRow}>
-                                <Text style={cardStyles.sourceName} numberOfLines={1}>{safeSource}</Text>
-                                {item.verified && (
-                                    <CheckCircle size={14} color={colors.verified} fill={colors.verified} />
-                                )}
+            <View style={cardStyles.card}>
+                <TouchableOpacity onPress={onPress} activeOpacity={0.95}>
+                    {cardImage ? (
+                        <ArticleCardImage
+                            src={cardImage}
+                            alt={safeTitle}
+                            height={168}
+                            borderRadius={0}
+                            backgroundColor={colors.borderLight}
+                            style={cardStyles.heroImage}
+                        />
+                    ) : null}
+                    <View style={cardStyles.cardBody}>
+                        <View style={cardStyles.header}>
+                            <View style={cardStyles.sourceContainer}>
+                                <View style={[
+                                    cardStyles.sourceIcon,
+                                    { backgroundColor: item.trending ? colors.primary : colors.textSecondary }
+                                ]}>
+                                    <Text style={cardStyles.sourceIconText}>
+                                        {safeSource.substring(0, 2).toUpperCase()}
+                                    </Text>
+                                </View>
+                                <View style={cardStyles.sourceInfo}>
+                                    <View style={cardStyles.sourceNameRow}>
+                                        <Text style={cardStyles.sourceName} numberOfLines={1}>{safeSource}</Text>
+                                        {item.verified && (
+                                            <CheckCircle size={14} color={colors.verified} fill={colors.verified} />
+                                        )}
+                                    </View>
+                                    <View style={cardStyles.timeRow}>
+                                        <Clock size={12} color={colors.textSecondary} />
+                                        <Text style={cardStyles.timeText}>{item.time}</Text>
+                                        <Text style={cardStyles.dot}>•</Text>
+                                        <Text style={cardStyles.readTime}>{item.readTime} min read</Text>
+                                    </View>
+                                </View>
                             </View>
-                            <View style={cardStyles.timeRow}>
-                                <Clock size={12} color={colors.textSecondary} />
-                                <Text style={cardStyles.timeText}>{item.time}</Text>
-                                <Text style={cardStyles.dot}>•</Text>
-                                <Text style={cardStyles.readTime}>{item.readTime} min read</Text>
+                            <GHTouchableOpacity
+                                style={cardStyles.moreButton}
+                                onPress={() => openArticleMenu(item, feedback, { onOpenFeedback: () => setFeedbackOpen(true) })}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                activeOpacity={0.7}
+                                accessibilityLabel="More options"
+                            >
+                                <MoreHorizontal size={20} color={colors.textSecondary} />
+                            </GHTouchableOpacity>
+                        </View>
+
+                        <Text style={cardStyles.title}>{safeTitle}</Text>
+
+                        {safeExcerpt ? (
+                            <Text style={cardStyles.excerpt}>{safeExcerpt}</Text>
+                        ) : null}
+
+                        <View style={cardStyles.metaRow}>
+                            <View style={cardStyles.categoryBadge}>
+                                <Text style={cardStyles.categoryText}>{safeCategory}</Text>
                             </View>
+                            <View style={[cardStyles.credibilityBadge, { backgroundColor: credBg, borderLeftColor: credFg }]}>
+                                <CheckCircle size={11} color={credFg} />
+                                <Text style={[cardStyles.credibilityText, { color: credFg }]}>{credText}</Text>
+                            </View>
+                            {item.trending && (
+                                <View style={cardStyles.trendingBadge}>
+                                    <TrendingUp size={11} color={colors.error} strokeWidth={3} />
+                                    <Text style={cardStyles.trendingText}>Trending</Text>
+                                </View>
+                            )}
                         </View>
                     </View>
-                    <TouchableOpacity
-                        style={cardStyles.moreButton}
-                        onPress={(e) => {
-                            e.stopPropagation();
-                            openArticleMenu(item, feedback, { onOpenFeedback: () => setFeedbackOpen(true) });
-                        }}
-                        accessibilityLabel="More options"
-                    >
-                        <MoreHorizontal size={20} color={colors.textSecondary} />
-                    </TouchableOpacity>
-                </View>
+                </TouchableOpacity>
 
-                {/* Title */}
-                <Text style={cardStyles.title}>{safeTitle}</Text>
-
-                {/* Excerpt */}
-                {safeExcerpt ? (
-                    <Text style={cardStyles.excerpt}>{safeExcerpt}</Text>
-                ) : null}
-
-                {/* Category & Trending */}
-                <View style={cardStyles.metaRow}>
-                    <View style={cardStyles.categoryBadge}>
-                        <Text style={cardStyles.categoryText}>{safeCategory}</Text>
-                    </View>
-                    <View style={[cardStyles.credibilityBadge, { backgroundColor: credBg, borderLeftColor: credFg }]}>
-                        <CheckCircle size={11} color={credFg} />
-                        <Text style={[cardStyles.credibilityText, { color: credFg }]}>{credText}</Text>
-                    </View>
-                    {item.trending && (
-                        <View style={cardStyles.trendingBadge}>
-                            <TrendingUp size={11} color={colors.error} strokeWidth={3} />
-                            <Text style={cardStyles.trendingText}>Trending</Text>
-                        </View>
-                    )}
-                </View>
-
-                {/* Actions */}
-                <View style={cardStyles.actionsContainer}>
-                    <View style={cardStyles.actionsLeft}>
-                        <View style={cardStyles.voteSection}>
-                            <TouchableOpacity
-                                style={cardStyles.voteButton}
-                                onPress={(e) => {
-                                    e.stopPropagation();
-                                    onVote(safeId, 'up');
-                                }}
-                            >
-                                <ChevronUp
-                                    size={18}
-                                    color={currentReaction === 'up' ? colors.primary : colors.textSecondary}
-                                    strokeWidth={2.5}
-                                />
-                            </TouchableOpacity>
-                            <Text style={cardStyles.voteCountSmall}>{likeCount}</Text>
-
-                            <TouchableOpacity
-                                style={cardStyles.voteButton}
-                                onPress={(e) => {
-                                    e.stopPropagation();
-                                    onVote(safeId, 'down');
-                                }}
-                            >
-                                <ChevronDown
-                                    size={18}
-                                    color={currentReaction === 'down' ? colors.error : colors.textSecondary}
-                                    strokeWidth={2.5}
-                                />
-                            </TouchableOpacity>
-                            <Text style={cardStyles.voteCountSmall}>{dislikeCount}</Text>
-                        </View>
-                    </View>
-
-                    <View style={cardStyles.actionsRight}>
-                        <TouchableOpacity
-                            style={cardStyles.actionButton}
-                            onPress={(e) => {
-                                e.stopPropagation();
-                                onBookmark(safeId);
-                            }}
-                        >
-                            <Bookmark
-                                size={18}
-                                color={isBookmarked ? colors.primary : colors.textSecondary}
-                                fill={isBookmarked ? colors.primary : 'transparent'}
-                                strokeWidth={2}
-                            />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={cardStyles.actionButton}
-                            onPress={(e) => {
-                                e.stopPropagation();
-                                shareArticle(item);
-                            }}
-                        >
-                            <Share2 size={18} color={colors.textSecondary} strokeWidth={2} />
-                        </TouchableOpacity>
-                    </View>
+                <View style={cardStyles.actionsOuter} pointerEvents="box-none">
+                    <ArticleInteractionBar
+                        articleId={canInteract ? articleId : ''}
+                        likeCount={likeCount}
+                        dislikeCount={dislikeCount}
+                        voteType={currentReaction}
+                        isBookmarked={isBookmarked}
+                        onVote={onVote}
+                        onBookmark={onBookmark}
+                        onShare={() => shareArticle(item)}
+                    />
                 </View>
             </View>
-        </TouchableOpacity>
-        </Animated.View>
+        </CardWrapper>
         <FeedbackModal
             visible={feedbackOpen}
             onClose={() => setFeedbackOpen(false)}
@@ -429,20 +416,12 @@ function NewsCardInner({
 }
 
 function propsAreEqual(prev, next) {
-    const id = String(prev.item?.id);
-    const prevVote = prev.votedItems?.[id] ?? prev.item?.userReaction;
-    const nextVote = next.votedItems?.[id] ?? next.item?.userReaction;
-    const prevBm = prev.bookmarkedItems?.has?.(id) || prev.bookmarkedItems?.has?.(prev.item?.id);
-    const nextBm = next.bookmarkedItems?.has?.(id) || next.bookmarkedItems?.has?.(next.item?.id);
-    return (
-        id === String(next.item?.id) &&
-        prevVote === nextVote &&
-        prevBm === nextBm &&
-        prev.item?.like_count === next.item?.like_count &&
-        prev.item?.dislike_count === next.item?.dislike_count &&
-        prev.item?.title === next.item?.title &&
-        prev.item?.excerpt === next.item?.excerpt
-    );
+    if (prev.item !== next.item) return false;
+    if (prev.onPress !== next.onPress) return false;
+    if (prev.onVote !== next.onVote) return false;
+    if (prev.onBookmark !== next.onBookmark) return false;
+    if (prev.animateEntry !== next.animateEntry) return false;
+    return true;
 }
 
 export const NewsCard = memo(NewsCardInner, propsAreEqual);

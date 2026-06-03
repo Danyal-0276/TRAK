@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
-    ScrollView,
     StyleSheet,
     RefreshControl,
     StatusBar,
@@ -9,9 +8,11 @@ import {
     TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { NewsCard } from '../../components/NewsCard';
+import ArticleFeedList from '../../components/ArticleFeedList';
 import { useTheme } from '../../theme/ThemeContext';
+import { getRefreshControlProps } from '../../theme/refreshControl';
 import { loadFeedItems } from '../../utils/loadFeed';
+import { addBookmark, removeBookmark, setReaction } from '../../utils/Service/api';
 import Text from '../../components/ui/Text';
 import { buildArticleDetailParams } from '../../utils/articleNavigation';
 
@@ -62,27 +63,49 @@ const RecentScreen = ({ navigation }) => {
     };
 
     const handleVote = async (itemId, type) => {
-        const previousVote = votedItems[itemId];
+        const id = String(itemId);
+        const previousVote = votedItems[id];
         const newVote = previousVote === type ? null : type;
-        setVotedItems((prev) => ({ ...prev, [itemId]: newVote }));
+        setVotedItems((prev) => ({ ...prev, [id]: newVote }));
+        setNewsData((prev) =>
+            prev.map((n) => (String(n.id) === id ? { ...n, userReaction: newVote } : n))
+        );
         try {
-            await mockApi.voteArticle(itemId, newVote);
+            await setReaction(id, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
         } catch {
-            setVotedItems((prev) => ({ ...prev, [itemId]: previousVote }));
+            setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
+            setNewsData((prev) =>
+                prev.map((n) => (String(n.id) === id ? { ...n, userReaction: previousVote } : n))
+            );
         }
     };
 
     const handleBookmark = async (itemId) => {
+        const id = String(itemId);
+        const wasBookmarked = bookmarkedItems.has(id);
         setBookmarkedItems((prev) => {
             const next = new Set(prev);
-            if (next.has(itemId)) next.delete(itemId);
-            else next.add(itemId);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
             return next;
         });
+        setNewsData((prev) =>
+            prev.map((n) => (String(n.id) === id ? { ...n, isBookmarked: !n.isBookmarked } : n))
+        );
         try {
-            await mockApi.bookmarkArticle(itemId);
+            const item = newsData.find((n) => String(n.id) === id);
+            if (wasBookmarked) await removeBookmark(id);
+            else await addBookmark(id, item?.title || '', item?.canonical_url || item?.url || '');
         } catch {
-            /* ignore */
+            setBookmarkedItems((prev) => {
+                const next = new Set(prev);
+                if (wasBookmarked) next.add(id);
+                else next.delete(id);
+                return next;
+            });
+            setNewsData((prev) =>
+                prev.map((n) => (String(n.id) === id ? { ...n, isBookmarked: wasBookmarked } : n))
+            );
         }
     };
 
@@ -104,8 +127,12 @@ const RecentScreen = ({ navigation }) => {
                     <ActivityIndicator color={colors.primary} size="large" />
                 </View>
             ) : (
-                <ScrollView
+                <ArticleFeedList
+                    data={newsData}
                     contentContainerStyle={styles.list}
+                    onArticlePress={handleArticlePress}
+                    onVote={handleVote}
+                    onBookmark={handleBookmark}
                     refreshControl={
                         <RefreshControl
                             refreshing={refreshing}
@@ -114,23 +141,10 @@ const RecentScreen = ({ navigation }) => {
                                 await loadNews();
                                 setRefreshing(false);
                             }}
-                            tintColor={colors.primary}
+                            {...getRefreshControlProps(colors, theme.mode)}
                         />
                     }
-                >
-                    {newsData.map((item, index) => (
-                        <NewsCard
-                            key={item.id}
-                            item={item}
-                            onPress={() => handleArticlePress(item)}
-                            votedItems={votedItems}
-                            bookmarkedItems={bookmarkedItems}
-                            onVote={handleVote}
-                            onBookmark={handleBookmark}
-                            index={index}
-                        />
-                    ))}
-                </ScrollView>
+                />
             )}
         </SafeAreaView>
     );

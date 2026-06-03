@@ -10,7 +10,7 @@ import {
   NotificationsScreen,
   ProfileScreen,
   SearchScreen,
-  SettingsScreen,
+  ChatScreen,
   AdminScreen,
 } from './config/screenImports';
 
@@ -19,7 +19,7 @@ const TAB_COMPONENTS = {
   Search: SearchScreen,
   Notifications: NotificationsScreen,
   Profile: ProfileScreen,
-  Settings: SettingsScreen,
+  Chat: ChatScreen,
   Admin: AdminScreen,
 };
 
@@ -32,7 +32,7 @@ function buildRoutes(isAdmin) {
     { key: 'Search', title: 'Search' },
     { key: 'Notifications', title: 'Notifications' },
     { key: 'Profile', title: 'Profile' },
-    { key: 'Settings', title: 'Settings' },
+    { key: 'Chat', title: 'Chat' },
   ];
 }
 

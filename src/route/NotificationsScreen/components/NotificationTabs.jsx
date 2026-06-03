@@ -1,146 +1,337 @@
-// src/route/NotificationsScreen/components/NotificationTabs.jsx - Simple Version
-import React, { useState } from "react";
-import { Dimensions, View, TouchableOpacity, StyleSheet, Text } from "react-native";
-import { TabView } from "react-native-tab-view";
+// src/route/NotificationsScreen/components/NotificationTabs.jsx
+
+import React, { useMemo, useState } from "react";
+
+import { Dimensions, View, StyleSheet, RefreshControl, Text, TouchableOpacity } from "react-native";
+
 import NotificationList from "./NotificationList";
+
 import { useTheme } from "../../../theme/ThemeContext";
+import { getRefreshControlProps } from "../../../theme/refreshControl";
+
+
 
 const initialLayout = { width: Dimensions.get("window").width };
 
-const SimpleTabBar = ({ navigationState, onIndexChange, colors }) => {
-  const tabWidth = initialLayout.width / navigationState.routes.length;
-  const indicatorLeft = navigationState.index * tabWidth;
+
+
+const TAB_ROUTES = [
+
+  { key: "all", title: "All" },
+
+  { key: "keywords", title: "Keywords" },
+
+  { key: "system", title: "System" },
+
+];
+
+
+
+export function NotificationTabBar({ index, onIndexChange }) {
+
+  const { theme } = useTheme();
+
+  const { colors } = theme;
+
+  const tabWidth = initialLayout.width / TAB_ROUTES.length;
+
+  const indicatorLeft = index * tabWidth;
+
+
 
   return (
-    <View style={[styles.tabBar, { backgroundColor: colors.surface, shadowColor: colors.shadow }]}>
+
+    <View
+
+      style={[
+
+        styles.tabBar,
+
+        {
+
+          backgroundColor: colors.surface,
+
+          borderBottomColor: colors.border,
+
+        },
+
+      ]}
+
+    >
+
       <View style={styles.tabContainer}>
-        {navigationState.routes.map((route, i) => (
-          <TouchableOpacity
-            key={route.key}
-            onPress={() => onIndexChange(i)}
-            style={[styles.tab, { width: tabWidth }]}
-          >
-            <Text style={[
-              styles.tabLabel,
-              navigationState.index === i 
-                ? { color: colors.textPrimary } 
-                : { color: colors.textSecondary }
-            ]}>
-              {route.title}
-            </Text>
-          </TouchableOpacity>
+
+        {TAB_ROUTES.map((route, i) => (
+
+          <View key={route.key} style={[styles.tab, { width: tabWidth }]}>
+
+            <NotificationTabLabel
+
+              title={route.title}
+
+              active={index === i}
+
+              onPress={() => onIndexChange(i)}
+
+            />
+
+          </View>
+
         ))}
+
       </View>
-      
-      {/* Simple indicator without animation */}
+
+
+
       <View style={[styles.indicator, { left: indicatorLeft, width: tabWidth }]}>
+
         <View style={[styles.indicatorInner, { backgroundColor: colors.primary }]} />
+
       </View>
+
     </View>
+
   );
-};
 
-const NotificationTabs = ({ notifications, onMarkAsRead, onNotificationPress, onListScroll }) => {
+}
+
+
+
+function NotificationTabLabel({ title, active, onPress }) {
+
   const { theme } = useTheme();
-  const { colors } = theme;
-  const [index, setIndex] = useState(0);
-  const [routes] = useState([
-    { key: "all", title: "All" },
-    { key: "keywords", title: "Keywords" },
-    { key: "system", title: "System" },
-  ]);
 
-  const renderScene = ({ route }) => {
-    switch (route.key) {
-      case 'all':
-        return (
-          <NotificationList
-            data={notifications}
-            onMarkAsRead={onMarkAsRead}
-            onNotificationPress={onNotificationPress}
-            onListScroll={onListScroll}
-          />
-        );
-      case 'keywords':
-        return (
-          <NotificationList
-            data={notifications.filter((n) => n.type === 'keyword_match')}
-            onMarkAsRead={onMarkAsRead}
-            onNotificationPress={onNotificationPress}
-            onListScroll={onListScroll}
-          />
-        );
-      case 'system':
-        return (
-          <NotificationList
-            data={notifications.filter((n) =>
-              ['system', 'welcome_back'].includes(n.type)
-            )}
-            onMarkAsRead={onMarkAsRead}
-            onNotificationPress={onNotificationPress}
-            onListScroll={onListScroll}
-          />
-        );
-      default:
-        return null;
+  const { colors } = theme;
+
+  return (
+
+    <TouchableOpacity onPress={onPress} style={styles.tabTouch} activeOpacity={0.7}>
+
+      <Text
+
+        style={[
+
+          styles.tabLabel,
+
+          active
+
+            ? { color: colors.textPrimary, fontWeight: "700" }
+
+            : { color: colors.textSecondary, fontWeight: "600" },
+
+        ]}
+
+      >
+
+        {title}
+
+      </Text>
+
+    </TouchableOpacity>
+
+  );
+
+}
+
+
+
+function filterNotifications(notifications, tabKey) {
+
+  if (tabKey === "keywords") {
+
+    return notifications.filter(
+
+      (n) => n.type === "keyword_match" || n.type === "keyword"
+
+    );
+
+  }
+
+  if (tabKey === "system") {
+
+    return notifications.filter((n) =>
+
+      ["system", "welcome_back"].includes(n.type)
+
+    );
+
+  }
+
+  return notifications;
+
+}
+
+
+
+const NotificationTabs = ({
+
+  notifications,
+
+  onMarkAsRead,
+
+  onNotificationPress,
+
+  onRefresh,
+
+  index,
+
+  onIndexChange,
+
+  bottomInset = 0,
+
+}) => {
+
+  const { theme } = useTheme();
+
+  const { colors } = theme;
+
+  const [internalIndex, setInternalIndex] = useState(0);
+
+  const [refreshing, setRefreshing] = useState(false);
+
+  const activeIndex = index ?? internalIndex;
+
+  const setActiveIndex = onIndexChange ?? setInternalIndex;
+
+  const tabKey = TAB_ROUTES[activeIndex]?.key ?? "all";
+
+
+
+  const filtered = useMemo(
+
+    () => filterNotifications(notifications, tabKey),
+
+    [notifications, tabKey]
+
+  );
+
+
+
+  const handleRefresh = async () => {
+
+    if (!onRefresh) return;
+
+    setRefreshing(true);
+
+    try {
+
+      await onRefresh();
+
+    } finally {
+
+      setRefreshing(false);
+
     }
+
   };
 
+
+
   return (
-    <View style={[styles.container, { backgroundColor: colors.backgroundSecondary }]}>
-      <TabView
-        navigationState={{ index, routes }}
-        renderScene={renderScene}
-        onIndexChange={setIndex}
-        initialLayout={initialLayout}
-        renderTabBar={(props) => (
-          <SimpleTabBar
-            {...props}
-            onIndexChange={setIndex}
-            colors={colors}
+
+    <View style={[styles.container, { backgroundColor: colors.background }]}>
+
+      <NotificationList
+
+        data={filtered}
+
+        onMarkAsRead={onMarkAsRead}
+
+        onNotificationPress={onNotificationPress}
+
+        bottomInset={bottomInset}
+
+        refreshControl={
+
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            {...getRefreshControlProps(colors, theme.mode)}
           />
-        )}
-        lazy
-        removeClippedSubviews
-        sceneContainerStyle={{ backgroundColor: colors.backgroundSecondary }}
+
+        }
+
       />
+
     </View>
+
   );
+
 };
 
+
+
 const styles = StyleSheet.create({
+
   container: {
+
     flex: 1,
+
   },
+
   tabBar: {
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 8,
+
+    width: "100%",
+
+    borderBottomWidth: StyleSheet.hairlineWidth,
+
   },
+
   tabContainer: {
+
     flexDirection: "row",
+
   },
+
   tab: {
+
     alignItems: "center",
-    paddingVertical: 16,
+
   },
+
+  tabTouch: {
+
+    paddingVertical: 14,
+
+    width: "100%",
+
+    alignItems: "center",
+
+  },
+
   tabLabel: {
+
     fontSize: 16,
-    fontWeight: "600",
+
     textAlign: "center",
+
   },
+
   indicator: {
+
     position: "absolute",
+
     bottom: 0,
+
     height: 3,
+
     alignItems: "center",
+
   },
+
   indicatorInner: {
+
     width: "60%",
+
     height: 3,
+
     borderRadius: 2,
+
   },
+
 });
 
+
+
 export default NotificationTabs;
+

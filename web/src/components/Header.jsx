@@ -1,8 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Bell, Menu, X } from 'lucide-react';
+import { Search, Bell, Menu, X, Bot } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
+import ThemeIcon from '../theme/ThemeIcon';
+import TrakLogo from './TrakLogo';
+import ThemeToggle from './ThemeToggle';
+import './headerIconButtons.css';
 import { useAuth } from '../context/AuthContext';
+import { useChatBot } from '../context/ChatBotContext';
 import { useResponsive } from '../hooks/useResponsive';
 import Text from './ui/Text';
 import NotificationBadge from './NotificationBadge';
@@ -10,10 +15,11 @@ import { useNotificationUnread } from '../context/NotificationUnreadContext';
 import { getProfile } from '../utils/Service/api';
 
 const Header = () => {
-    const { theme } = useTheme();
+    const { theme, toggleTheme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
     const { user } = useAuth();
+    const { toggleChat, open: chatOpen, hasUnread: chatUnread } = useChatBot();
     const { isMobile, isTablet, isDesktop } = useResponsive();
     const navigate = useNavigate();
     const location = useLocation();
@@ -77,6 +83,29 @@ const Header = () => {
 
     const contentOffset = isDesktop ? 'max(0px, calc((100% - 1200px) / 2))' : 0;
 
+    const iconBtnStyle = (active) => ({
+        width: '40px',
+        height: '40px',
+        borderRadius: '10px',
+        border: 'none',
+        backgroundColor: active
+            ? (isDark ? colors.surface : '#f3f4f6')
+            : 'transparent',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'all 0.2s ease',
+        position: 'relative',
+    });
+
+    const iconBtnHover = (e, active) => {
+        if (!active) e.currentTarget.style.backgroundColor = isDark ? colors.surface : '#f9fafb';
+    };
+    const iconBtnLeave = (e, active) => {
+        if (!active) e.currentTarget.style.backgroundColor = 'transparent';
+    };
+
     const rightActions = (
         <div style={{
             display: 'flex',
@@ -93,48 +122,61 @@ const Header = () => {
                 zIndex: 2,
             }),
         }}>
+            <ThemeToggle isDark={isDark} colors={colors} onClick={toggleTheme} />
+
+            {user ? (
+                <button
+                    type="button"
+                    className="header-icon-btn"
+                    onClick={toggleChat}
+                    title="TRAK AI Assistant"
+                    aria-label="Open TRAK AI chat"
+                    style={iconBtnStyle(chatOpen)}
+                    onMouseEnter={(e) => iconBtnHover(e, chatOpen)}
+                    onMouseLeave={(e) => iconBtnLeave(e, chatOpen)}
+                >
+                    <ThemeIcon icon={Bot} size={20} color={chatOpen ? colors.primary : colors.textSecondary} />
+                    {chatUnread ? (
+                        <span
+                            style={{
+                                position: 'absolute',
+                                top: 8,
+                                right: 8,
+                                width: 8,
+                                height: 8,
+                                borderRadius: '50%',
+                                background: colors.error || '#ef4444',
+                                border: `2px solid ${isDark ? colors.background : '#ffffff'}`,
+                            }}
+                        />
+                    ) : null}
+                </button>
+            ) : null}
+
             <button
+                type="button"
+                className="header-icon-btn"
                 onClick={() => navigate('/notifications')}
-                style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '10px',
-                    border: 'none',
-                    backgroundColor: location.pathname === '/notifications'
-                        ? (isDark ? colors.surface : '#f3f4f6')
-                        : 'transparent',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.2s ease',
-                    position: 'relative',
-                }}
-                onMouseEnter={(e) => {
-                    if (location.pathname !== '/notifications') {
-                        e.currentTarget.style.backgroundColor = isDark ? colors.surface : '#f9fafb';
-                    }
-                }}
-                onMouseLeave={(e) => {
-                    if (location.pathname !== '/notifications') {
-                        e.currentTarget.style.backgroundColor = 'transparent';
-                    }
-                }}
+                style={iconBtnStyle(location.pathname === '/notifications')}
+                onMouseEnter={(e) => iconBtnHover(e, location.pathname === '/notifications')}
+                onMouseLeave={(e) => iconBtnLeave(e, location.pathname === '/notifications')}
             >
-                <Bell size={20} color={location.pathname === '/notifications'
+                <ThemeIcon icon={Bell} size={20} color={location.pathname === '/notifications'
                     ? (isDark ? colors.primary : '#000000')
                     : (isDark ? colors.textSecondary : '#6b7280')} />
                 <NotificationBadge count={unreadCount} />
             </button>
 
             <button
+                type="button"
                 onClick={() => navigate('/profile')}
                 style={{
                     width: '40px',
                     height: '40px',
                     borderRadius: '50%',
                     border: `2px solid ${isDark ? colors.border || '#334155' : '#e5e7eb'}`,
-                    backgroundColor: isDark ? colors.surface : '#ffffff',
+                    backgroundColor: isDark ? colors.surfaceElevated || colors.surface : '#ffffff',
+                    boxShadow: isDark ? '0 0 0 1px rgba(255,255,255,0.06) inset' : 'none',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -153,7 +195,18 @@ const Header = () => {
                 }}
             >
                 {avatarPreview ? (
-                    <img src={avatarPreview} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                    <img
+                        src={avatarPreview}
+                        alt="Profile"
+                        style={{
+                            width: '100%',
+                            height: '100%',
+                            borderRadius: '50%',
+                            objectFit: 'cover',
+                            display: 'block',
+                            backgroundColor: isDark ? colors.surfaceElevated || colors.surface : '#ffffff',
+                        }}
+                    />
                 ) : (
                     <Text variant="body" style={{
                         fontSize: '16px',
@@ -173,8 +226,8 @@ const Header = () => {
             top: 0,
             left: 0,
             right: 0,
-            backgroundColor: isDark ? colors.background : '#ffffff',
-            borderBottom: `1px solid ${isDark ? colors.border || '#334155' : '#e5e7eb'}`,
+            backgroundColor: colors.background,
+            borderBottom: `1px solid ${colors.border}`,
             zIndex: 1000,
             boxShadow: isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
             paddingRight: isDesktop ? '280px' : 0,
@@ -227,13 +280,9 @@ const Header = () => {
                             alignItems: 'center',
                             justifyContent: 'center',
                         }}>
-                            <img
-                                src={isDark ? '/images/whiteLogo.svg' : '/images/blackLogo.svg'}
+                            <TrakLogo
+                                size={isMobile ? 20 : 24}
                                 alt="TRAK Logo"
-                                style={{
-                                    width: isMobile ? '20px' : '24px',
-                                    height: isMobile ? '20px' : '24px',
-                                }}
                             />
                         </div>
                         {!isMobile && (
@@ -354,7 +403,12 @@ const Header = () => {
                             display: 'flex',
                             alignItems: 'center',
                         }}>
-                            <Search size={18} color={isDark ? colors.textTertiary || '#94A3B8' : '#9ca3af'} style={{ position: 'absolute', left: '16px', pointerEvents: 'none' }} />
+                            <ThemeIcon
+                                icon={Search}
+                                size={18}
+                                color={colors.textTertiary || colors.textSecondary}
+                                style={{ position: 'absolute', left: '16px', pointerEvents: 'none' }}
+                            />
                             <input
                                 type="text"
                                 placeholder="Search articles..."
@@ -363,13 +417,13 @@ const Header = () => {
                                 style={{
                                     width: '100%',
                                     padding: '10px 16px 10px 44px',
-                                    backgroundColor: isDark ? colors.surface : '#f9fafb',
-                                    border: `1px solid ${isDark ? colors.border || '#334155' : '#e5e7eb'}`,
+                                    backgroundColor: colors.surface,
+                                    border: `1px solid ${colors.border}`,
                                     borderRadius: '10px',
                                     fontSize: '14px',
                                     outline: 'none',
-                                    transition: 'all 0.2s ease',
-                                    color: isDark ? colors.textPrimary : '#111827',
+                                    transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+                                    color: colors.textPrimary,
                                 }}
                                 onFocus={(e) => {
                                     e.target.style.backgroundColor = isDark ? colors.backgroundElevated || '#334155' : '#ffffff';
@@ -410,7 +464,7 @@ const Header = () => {
                             e.currentTarget.style.backgroundColor = 'transparent';
                         }}
                     >
-                        <Search size={20} color={isDark ? colors.textSecondary : '#6b7280'} />
+                        <ThemeIcon icon={Search} size={20} color={colors.textSecondary} />
                     </button>
                 )}
 
@@ -433,9 +487,9 @@ const Header = () => {
                         }}
                     >
                         {showMobileMenu ? (
-                            <X size={20} color={isDark ? colors.textPrimary : '#000000'} />
+                            <ThemeIcon icon={X} size={20} color={colors.textPrimary} />
                         ) : (
-                            <Menu size={20} color={isDark ? colors.textSecondary : '#6b7280'} />
+                            <ThemeIcon icon={Menu} size={20} color={colors.textSecondary} />
                         )}
                     </button>
                 )}

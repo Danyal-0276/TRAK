@@ -8,7 +8,9 @@ import {
     ArticleDetailScreen,
     TrendingScreen,
     BookmarksScreen,
+    ReactionArticlesScreen,
     RecentScreen,
+    PicsScreen,
     TermsScreen,
     TagSelectionScreen,
     KeywordSelectionScreen,
@@ -31,6 +33,7 @@ function AdminAppStack() {
         <Stack.Navigator screenOptions={defaultStackScreenOptions}>
             <Stack.Screen name="AdminHome" component={AdminScreen} />
             <Stack.Screen name="NewsFeedPreview" component={NewsFeedScreen} options={{ title: 'News app' }} />
+            <Stack.Screen name="PicsPreview" component={PicsScreen} options={{ title: 'Pics app' }} />
             <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} options={articleDetailOptions} />
         </Stack.Navigator>
     );
@@ -48,7 +51,9 @@ const MainAppStack = () => {
             <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} options={articleDetailOptions} />
             <Stack.Screen name="Trending" component={TrendingScreen} />
             <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
+            <Stack.Screen name="ReactionArticles" component={ReactionArticlesScreen} />
             <Stack.Screen name="Recent" component={RecentScreen} />
+            <Stack.Screen name="Pics" component={PicsScreen} />
             <Stack.Screen name="TermsScreen" component={TermsScreen} />
             <Stack.Screen name="TagSelection" component={TagSelectionScreen} />
             <Stack.Screen name="KeywordSelection" component={KeywordSelectionScreen} />

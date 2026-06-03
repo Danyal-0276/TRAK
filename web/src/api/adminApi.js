@@ -34,11 +34,29 @@ export function getAdminArticleImageProxyUrl(imageUrl) {
   return `${ADMIN_PREFIX}/articles/image-proxy/?${params.toString()}`;
 }
 
-export async function postAdminPipelineRun(limit = 10) {
+export async function postAdminPipelineRun(limit = 10, { drainQueue = true } = {}) {
   const res = await apiFetch(`${ADMIN_PREFIX}/pipeline/run/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ limit, drain_queue: drainQueue }),
+  }, PIPELINE_RUN_TIMEOUT_MS);
+  return parseJson(res);
+}
+
+export async function postAdminScrapeRun(limit = 40) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/scrape/run/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ limit }),
+  }, PIPELINE_RUN_TIMEOUT_MS);
+  return parseJson(res);
+}
+
+export async function postAdminScrapeAndPipelineRun({ scrapeLimit = 40, pipelineLimit = 200 } = {}) {
+  const res = await apiFetch(`${ADMIN_PREFIX}/scrape-and-pipeline/run/`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ scrape_limit: scrapeLimit, pipeline_limit: pipelineLimit }),
   }, PIPELINE_RUN_TIMEOUT_MS);
   return parseJson(res);
 }

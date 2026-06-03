@@ -135,6 +135,9 @@ export const loginWithFirebase = (idToken) =>
 
 export const authRequest = async (path, options = {}) => {
   const access = await getAccessToken();
+  if (!access) {
+    throw new Error('Please sign in to use this feature.');
+  }
   const doReq = (token) =>
     fetch(`${API_BASE_URL}${path}`, {
       ...options,

@@ -26,6 +26,8 @@ import {
   patchAdminUser,
   postAdminCreate,
   postAdminPipelineRun,
+  postAdminScrapeRun,
+  postAdminScrapeAndPipelineRun,
   createAdminCategory,
   deleteAdminCategory,
   addAdminSubcategory,
@@ -35,6 +37,7 @@ import {
 } from '../../api/adminApi';
 import { loadAdminOverview } from './loadAdminOverview';
 import { DASHBOARD_POLL_INTERVAL_MS, ARTICLES_POLL_INTERVAL_MS } from './adminTheme';
+import { analyticsSnapshotSignature } from './analyticsSnapshotSig';
 import {
   buildDashboardStatCards,
   KPI_TAB_NAV,
@@ -64,6 +67,8 @@ import { dispatchAdminFeedbackRefresh } from '../../utils/adminNotificationsEven
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const PIPELINE_BATCH_SIZE = 15;
+const SCRAPE_ONLY_LIMIT = 40;
+const SCRAPE_AND_PIPELINE = { scrapeLimit: 40, pipelineLimit: 200 };
 
 function mapAdminArticleRow(doc) {
   const dateStr = doc.fetched_at || doc.processed_at || '';
@@ -130,7 +135,7 @@ const AdminScreen = ({ navigation }) => {
   const [apiArticles, setApiArticles] = useState([]);
   const [serverAnalytics, setServerAnalytics] = useState(null);
   const [modelMetrics, setModelMetrics] = useState(null);
-  const [pipelineRunning, setPipelineRunning] = useState(false);
+  const [activePipelineAction, setActivePipelineAction] = useState(null);
   const [pipelineProgress, setPipelineProgress] = useState(0);
   const [pipelineRunPhase, setPipelineRunPhase] = useState('idle');
   const [pipelineRunLabel, setPipelineRunLabel] = useState('');
@@ -144,6 +149,7 @@ const AdminScreen = ({ navigation }) => {
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [analyticsError, setAnalyticsError] = useState(null);
   const hasSnapshotRef = useRef(false);
+  const analyticsSigRef = useRef('');
   const [notifications, setNotifications] = useState([]);
   const [settings, setSettings] = useState({});
   const [categories, setCategories] = useState([]);
@@ -284,7 +290,13 @@ const AdminScreen = ({ navigation }) => {
         (data.users?.length ?? 0) > 0 ||
         (data.connections?.length ?? connectionsRef.current.length) > 0;
       if (hasKpis) {
-        setServerAnalytics({ ...enriched, _refreshedAt: Date.now() });
+        const nextPayload = { ...enriched, _refreshedAt: Date.now() };
+        const sig = analyticsSnapshotSignature(nextPayload);
+        if (sig !== analyticsSigRef.current) {
+          analyticsSigRef.current = sig;
+          setServerAnalytics(nextPayload);
+          setLiveUpdatedAt(new Date());
+        }
         setAnalyticsError(
           data.serverAnalytics ? null : data.analyticsError || 'Using article and settings counts (analytics API unavailable).'
         );
@@ -294,7 +306,6 @@ const AdminScreen = ({ navigation }) => {
       }
       if (data.modelMetrics) setModelMetrics(data.modelMetrics);
       if (data.connections?.length) updateConnectionsIfChanged(data.connections);
-      setLiveUpdatedAt(new Date());
     } catch (e) {
       setAnalyticsError(e?.message || 'Failed to load analytics.');
       if (manual || !silent) setServerAnalytics(null);
@@ -465,40 +476,83 @@ const AdminScreen = ({ navigation }) => {
     setPipelineRunLabel('');
   };
 
-  const runPipeline = async () => {
-    if (pipelineRunning) return;
-    setPipelineRunning(true);
+  useEffect(() => {
+    if (pipelineRunPhase !== 'running' || !serverAnalytics?.pipeline_summary) return;
+    const queued = serverAnalytics.pipeline_summary.queued ?? 0;
+    setPipelineRunLabel(`Processing queue · ${queued} in queue…`);
+  }, [serverAnalytics, pipelineRunPhase]);
+
+  const runAdminAction = async ({ actionId, runner, startLabel, successLabel }) => {
+    if (activePipelineAction) return;
+    setActivePipelineAction(actionId);
     setPipelineRunPhase('running');
     setPipelineProgress(4);
-    setPipelineRunLabel('Starting batch…');
+    setPipelineRunLabel(startLabel);
     const maxSimulated = 90;
-    const tick = setInterval(() => {
-      setPipelineProgress((prev) => {
-        if (prev >= maxSimulated) return prev;
-        return Math.min(maxSimulated, prev + Math.max(2, (maxSimulated - prev) * 0.12));
-      });
-    }, 280);
+    let tick;
+    let poll;
     try {
-      const result = await postAdminPipelineRun(PIPELINE_BATCH_SIZE);
-      clearInterval(tick);
-      const ok = result?.processed_ok ?? 0;
+      tick = setInterval(() => {
+        setPipelineProgress((prev) => {
+          if (prev >= maxSimulated) return prev;
+          return Math.min(maxSimulated, prev + Math.max(2, (maxSimulated - prev) * 0.12));
+        });
+      }, 280);
+      poll = setInterval(() => {
+        loadOverview({ silent: true });
+      }, 10_000);
+      const result = await runner();
+      const ok = result?.processed_ok ?? result?.delta?.processed_total ?? 0;
       const err = result?.errors ?? 0;
       setPipelineProgress(100);
       setPipelineRunPhase('success');
-      setPipelineRunLabel(`Done · ${ok} processed${err ? ` · ${err} errors` : ''}`);
+      setPipelineRunLabel(successLabel(ok, err, result));
       await loadOverview({ silent: true });
       await loadArticles();
       setTimeout(resetPipelineRunUi, 2200);
     } catch (e) {
-      clearInterval(tick);
       setPipelineProgress(100);
       setPipelineRunPhase('error');
       setPipelineRunLabel(e?.message || 'Run failed');
       setTimeout(resetPipelineRunUi, 2800);
     } finally {
-      setPipelineRunning(false);
+      if (tick) clearInterval(tick);
+      if (poll) clearInterval(poll);
+      setActivePipelineAction(null);
     }
   };
+
+  const runPipeline = async () =>
+    runAdminAction({
+      actionId: 'batch',
+      runner: () => postAdminPipelineRun(PIPELINE_BATCH_SIZE, { drainQueue: true }),
+      startLabel: 'Processing queue until empty…',
+      successLabel: (ok, err, result) => {
+        const left = result?.pending_remaining ?? result?.after?.raw_pending;
+        return `Done · ${ok} processed${err ? ` · ${err} errors` : ''}${left === 0 ? ' · queue empty' : left != null ? ` · ${left} still in queue` : ''}`;
+      },
+    });
+
+  const runScrapeOnly = async () =>
+    runAdminAction({
+      actionId: 'scrape',
+      runner: () => postAdminScrapeRun(SCRAPE_ONLY_LIMIT),
+      startLabel: `Scraping up to ${SCRAPE_ONLY_LIMIT} new articles…`,
+      successLabel: (_ok, _err, result) => `Done · ${result?.delta?.raw_total ?? 0} raw added`,
+    });
+
+  const runScrapeAndPipeline = async () =>
+    runAdminAction({
+      actionId: 'scrape_pipeline',
+      runner: () => postAdminScrapeAndPipelineRun(SCRAPE_AND_PIPELINE),
+      startLabel: 'Scraping then running pipeline…',
+      successLabel: (ok, err, result) => {
+        const processed = result?.pipeline?.processed_ok ?? ok;
+        const errs = result?.pipeline?.errors ?? err;
+        const left = result?.pipeline?.pending_remaining ?? result?.after?.raw_pending;
+        return `Done · ${result?.delta?.raw_total ?? 0} scraped · ${processed} processed${errs ? ` · ${errs} errors` : ''}${left === 0 ? ' · queue empty' : left != null ? ` · ${left} still in queue` : ''}`;
+      },
+    });
 
   const handleKpiPress = (key) => {
     const nav = KPI_TAB_NAV[key];
@@ -523,16 +577,27 @@ const AdminScreen = ({ navigation }) => {
     }
   };
 
-  const chartData = enrichAnalyticsSnapshot(serverAnalytics, apiArticles, {
-    users,
-    connections,
-  });
+  const chartData = useMemo(
+    () =>
+      enrichAnalyticsSnapshot(serverAnalytics, apiArticles, {
+        users,
+        connections,
+      }),
+    [serverAnalytics, apiArticles, users, connections]
+  );
   const hasAnalytics =
     isAnalyticsPayload(serverAnalytics) &&
     (Number(chartData.raw_total) > 0 ||
       Number(chartData.processed_total) > 0 ||
       apiArticles.length > 0);
-  const statCards = buildDashboardStatCards(chartData, adminPalette);
+  const statCards = useMemo(
+    () => buildDashboardStatCards(chartData, adminPalette),
+    [chartData, adminPalette]
+  );
+  const unreadAlertsCount = useMemo(
+    () => notifications.filter((n) => !n.read).length,
+    [notifications]
+  );
   const liveUpdatedLabel = liveUpdatedAt
     ? liveUpdatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     : serverAnalytics?.generated_at
@@ -766,7 +831,10 @@ const AdminScreen = ({ navigation }) => {
     }
   };
 
-  const filteredArticles = filterArticlesForDisplay(apiArticles, articlePipelineFilter, searchQuery);
+  const filteredArticles = useMemo(
+    () => filterArticlesForDisplay(apiArticles, articlePipelineFilter, searchQuery),
+    [apiArticles, articlePipelineFilter, searchQuery]
+  );
 
   const renderAdminScene = ({ route }) => {
     const scroll = (content) => (
@@ -796,7 +864,9 @@ const AdminScreen = ({ navigation }) => {
               onManageSettings={() => setActiveTab('settings')}
               refreshing={refreshing}
               onRunPipeline={runPipeline}
-              pipelineRunning={pipelineRunning}
+              onRunScrape={runScrapeOnly}
+              onRunScrapeAndPipeline={runScrapeAndPipeline}
+              activePipelineAction={activePipelineAction}
               pipelineProgress={pipelineProgress}
               pipelineRunPhase={pipelineRunPhase}
               pipelineRunLabel={pipelineRunLabel}
@@ -828,7 +898,7 @@ const AdminScreen = ({ navigation }) => {
           />
         );
       case 'articles':
-        return scroll(
+        return (
           <ArticlesTab
             articles={filteredArticles}
             searchQuery={searchQuery}
@@ -846,7 +916,7 @@ const AdminScreen = ({ navigation }) => {
           />
         );
       case 'feedback':
-        return scroll(<FeedbackTab navigation={navigation} />);
+        return scroll(<FeedbackTab navigation={navigation} isActive={activeTab === 'feedback'} />);
       case 'notifications':
         return scroll(
           <NotificationsTab
@@ -891,6 +961,7 @@ const AdminScreen = ({ navigation }) => {
             onDeleteAllConnections={handleDeleteAllConnections}
             onLogout={handleLogout}
             onViewNewsApp={() => navigation.navigate('NewsFeedPreview')}
+            onViewPicsApp={() => navigation.navigate('PicsPreview')}
             darkTheme={theme.mode === 'dark'}
             onToggleTheme={toggleTheme}
           />
@@ -928,7 +999,7 @@ const AdminScreen = ({ navigation }) => {
       <TabNavigation
         activeTab={activeTab}
         onTabChange={setActiveTab}
-        unreadAlerts={notifications.filter((n) => !n.read).length}
+        unreadAlerts={unreadAlertsCount}
       />
 
       <Animated.View
@@ -950,9 +1021,10 @@ const AdminScreen = ({ navigation }) => {
           swipeEnabled={false}
           animationEnabled={false}
           lazy
-          lazyPreloadDistance={1}
+          lazyPreloadDistance={0}
           removeClippedSubviews
           style={{ flex: 1 }}
+          sceneContainerStyle={{ flex: 1 }}
         />
       </Animated.View>
 

@@ -12,13 +12,12 @@ import {
     X,
     Clock
 } from 'lucide-react';
-import * as notificationsApi from '../../api/notificationsApi';
-import { openNotificationsSocket, isNotificationsWsEnabled, NOTIFICATIONS_POLL_FALLBACK_MS } from '../../api/notificationsRealtime';
 import {
-  dispatchNotificationRead,
-  dispatchAllNotificationsRead,
-  dispatchNotificationsRefresh,
-} from '../../utils/userNotificationsEvents';
+    getNotificationSourceName,
+    getNotificationSourceInitial,
+    isArticleKeywordNotification,
+} from '../../utils/notificationDisplay';
+import { useNotifications } from '../../context/NotificationUnreadContext';
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 
 const NotificationsScreen = () => {
@@ -26,60 +25,31 @@ const NotificationsScreen = () => {
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
-    const [notifications, setNotifications] = useState([]);
+    const {
+        notifications,
+        loading,
+        hydrated,
+        unreadCount,
+        markAllAsRead,
+        ensureNotificationsLoaded,
+    } = useNotifications();
     const [filteredNotifications, setFilteredNotifications] = useState([]);
     const [activeTab, setActiveTab] = useState('All');
-    const [loading, setLoading] = useState(true);
     const [selectedNotification, setSelectedNotification] = useState(null);
-    const socketRef = React.useRef(null);
-    const reconnectRef = React.useRef(null);
+    const openedRef = React.useRef(false);
 
     useEffect(() => {
-        loadNotifications();
-        let pollId = null;
-        const connect = () => {
-            const ws = openNotificationsSocket((payload) => {
-                if (payload?.type !== 'notification.created' || !payload.notification?.id) return;
-                const incoming = notificationsApi.normalizeNotification(payload.notification);
-                setNotifications((prev) => {
-                    if (prev.some((n) => String(n.id) === String(incoming.id))) return prev;
-                    return [incoming, ...prev];
-                });
-            });
-            if (!ws) return;
-            socketRef.current = ws;
-            ws.onclose = () => {
-                reconnectRef.current = setTimeout(connect, 2500);
-            };
-        };
-        connect();
-        if (!isNotificationsWsEnabled()) {
-            pollId = setInterval(() => loadNotifications({ silent: true }), NOTIFICATIONS_POLL_FALLBACK_MS);
-        }
-        return () => {
-            if (pollId) clearInterval(pollId);
-            if (socketRef.current) socketRef.current.close();
-            if (reconnectRef.current) clearTimeout(reconnectRef.current);
-        };
-    }, []);
+        if (openedRef.current) return;
+        openedRef.current = true;
+        (async () => {
+            await ensureNotificationsLoaded({ runBackfill: true });
+            await markAllAsRead();
+        })();
+    }, [ensureNotificationsLoaded, markAllAsRead]);
 
     useEffect(() => {
         filterNotifications();
     }, [activeTab, notifications]);
-
-    const loadNotifications = async ({ silent = false } = {}) => {
-        try {
-            if (!silent) setLoading(true);
-            const data = await notificationsApi.getNotifications();
-            setNotifications(data);
-            setFilteredNotifications(data);
-            dispatchNotificationsRefresh();
-        } catch (error) {
-            console.error("Error loading notifications:", error);
-        } finally {
-            if (!silent) setLoading(false);
-        }
-    };
 
     const filterNotifications = () => {
         if (activeTab === 'All') {
@@ -97,32 +67,7 @@ const NotificationsScreen = () => {
         }
     };
 
-    const markAsRead = async (notificationId) => {
-        try {
-            await notificationsApi.markAsRead(notificationId);
-            setNotifications(prev => 
-                prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-            );
-            dispatchNotificationRead(notificationId);
-        } catch (error) {
-            console.error("Error marking as read:", error);
-        }
-    };
-
-    const markAllAsRead = async () => {
-        try {
-            await notificationsApi.markAllAsRead();
-            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-            dispatchAllNotificationsRead();
-        } catch (error) {
-            console.error("Error marking all as read:", error);
-        }
-    };
-
     const handleNotificationClick = (notification) => {
-        if (!notification.read) {
-            markAsRead(notification.id);
-        }
         const articleId = notification.meta?.article_id;
         if (articleId && (notification.type === 'keyword_match' || notification.type === 'keyword')) {
             navigate(`/article/${encodeURIComponent(String(articleId))}`);
@@ -166,19 +111,62 @@ const NotificationsScreen = () => {
             case 'follow':
                 return '#8b5cf6';
             case 'keyword':
+            case 'keyword_match':
                 return '#f59e0b';
             default:
                 return '#64748b';
         }
     };
 
-    const unreadCount = notifications.filter(n => !n.read).length;
+    const isKeywordNotification = isArticleKeywordNotification;
+    const textSecondary = colors.textSecondary;
+
+    const getNotificationAvatar = (notification, variant = 'list') => {
+        const isDetail = variant === 'detail';
+        const sourceLabel = getNotificationSourceName(notification);
+        const sourceInitial = getNotificationSourceInitial(notification);
+        const markStyle = {
+            width: isDetail ? '48px' : '40px',
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: isDetail ? '15px' : '13px',
+            fontWeight: 600,
+            color: textSecondary,
+            letterSpacing: '0.2px',
+        };
+
+        if (isKeywordNotification(notification)) {
+            return (
+                <span style={markStyle} title={sourceLabel}>
+                    {sourceInitial}
+                </span>
+            );
+        }
+
+        return (
+            <div style={{
+                width: isDetail ? '48px' : '40px',
+                height: isDetail ? '48px' : '40px',
+                borderRadius: isDetail ? '12px' : '10px',
+                backgroundColor: getNotificationColor(notification.type) + '20',
+                display: 'flex',
+                justifyContent: 'center',
+                alignItems: 'center',
+                flexShrink: 0,
+            }}>
+                {getNotificationIcon(notification.type)}
+            </div>
+        );
+    };
+
     const importantCount = notifications.filter(n => n.important).length;
+    const showLoading = loading && !hydrated;
 
     const backgroundColor = colors.background;
     const cardBackground = colors.surface;
     const textPrimary = colors.textPrimary;
-    const textSecondary = colors.textSecondary;
     const borderColor = colors.border;
 
     return (
@@ -383,17 +371,7 @@ const NotificationsScreen = () => {
                             gap: '16px',
                             marginBottom: '20px',
                         }}>
-                            <div style={{
-                                width: '48px',
-                                height: '48px',
-                                borderRadius: '12px',
-                                backgroundColor: getNotificationColor(selectedNotification.type) + '20',
-                                display: 'flex',
-                                justifyContent: 'center',
-                                alignItems: 'center',
-                            }}>
-                                {getNotificationIcon(selectedNotification.type)}
-                            </div>
+                            {getNotificationAvatar(selectedNotification, 'detail')}
                             <div style={{ flex: 1 }}>
                                 <div style={{
                                     fontSize: '16px',
@@ -486,7 +464,7 @@ const NotificationsScreen = () => {
                 ) : null}
 
                 {/* Notifications List */}
-                {loading ? (
+                {showLoading ? (
                     <SkeletonListRows rows={10} isDark={isDark} colors={colors} />
                 ) : filteredNotifications.length === 0 ? (
                     <div style={{
@@ -557,19 +535,7 @@ const NotificationsScreen = () => {
                                     display: 'flex',
                                     gap: '16px',
                                 }}>
-                                    {/* Icon */}
-                                    <div style={{
-                                        width: '40px',
-                                        height: '40px',
-                                        borderRadius: '10px',
-                                        backgroundColor: getNotificationColor(notification.type) + '20',
-                                        display: 'flex',
-                                        justifyContent: 'center',
-                                        alignItems: 'center',
-                                        flexShrink: 0,
-                                    }}>
-                                        {getNotificationIcon(notification.type)}
-                                    </div>
+                                    {getNotificationAvatar(notification)}
 
                                     {/* Content */}
                                     <div style={{ flex: 1, minWidth: 0 }}>

@@ -26,6 +26,7 @@ import Animated, {
 import LinearGradient from "react-native-linear-gradient";
 import { Dimensions } from "react-native";
 import { useTheme } from "../../../theme/ThemeContext";
+import { useFilledActionColors } from "../../../theme/buttonContrast";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 const COLLAPSED_WIDTH = 50;
@@ -34,6 +35,7 @@ const EXPANDED_WIDTH = SCREEN_WIDTH * 0.9;
 const SearchBar = forwardRef(({ onSearch, initialQuery = "", embedded = false }, ref) => {
   const { theme } = useTheme();
   const { colors } = theme;
+  const actionColors = useFilledActionColors();
   const [focused, setFocused] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [query, setQuery] = useState(initialQuery);
@@ -361,9 +363,9 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "", embedded = false },
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={confirmClearHistory}
-                style={[styles.alertButton, { backgroundColor: colors.primary }]}
+                style={[styles.alertButton, { backgroundColor: actionColors.background }]}
               >
-                <Text style={{ color: colors.textInverse }}>Clear All</Text>
+                <Text style={{ color: actionColors.foreground }}>Clear All</Text>
               </TouchableOpacity>
             </View>
           </RNAnimated.View>

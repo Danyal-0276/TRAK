@@ -18,7 +18,12 @@ const AboutScreen = () => {
   const isDark = theme.mode === 'dark';
 
   const accent = colors.primary;
-  const accentSoft = colors.primary ? `${colors.primary}18` : isDark ? 'rgba(129,140,248,0.14)' : '#eff6ff';
+  const iconTileBg = isDark ? colors.backgroundTertiary : accent;
+  const iconTileFg = isDark ? colors.textPrimary : '#fff';
+  const avatarBg = isDark ? colors.backgroundTertiary : accent;
+  const avatarFg = isDark ? colors.textPrimary : '#fff';
+  const accentSoft = isDark ? 'rgba(255,255,255,0.06)' : colors.primary ? `${colors.primary}18` : '#eff6ff';
+  const cardBg = isDark ? colors.surfaceElevated : colors.surface;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top', 'left', 'right']}>
@@ -27,17 +32,36 @@ const AboutScreen = () => {
         showsVerticalScrollIndicator={false}
       >
         {/* Hero */}
-        <View style={[styles.hero, { borderColor: colors.borderLight, backgroundColor: colors.surface }]}>
+        <View style={[styles.hero, { borderColor: colors.borderLight, backgroundColor: cardBg }]}>
           <View style={[styles.heroGlow, { backgroundColor: accentSoft }]} />
           <View style={styles.heroRow}>
-            <View style={[styles.heroIcon, { backgroundColor: accent }]}>
-              <Newspaper size={26} color="#fff" strokeWidth={2} />
+            <View
+              style={[
+                styles.heroIcon,
+                {
+                  backgroundColor: iconTileBg,
+                  borderWidth: isDark ? 1 : 0,
+                  borderColor: colors.borderLight,
+                },
+              ]}
+            >
+              <Newspaper size={26} color={iconTileFg} strokeWidth={2} />
             </View>
             <View style={styles.heroCopy}>
               <View style={styles.heroTitleRow}>
-                <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>TRAK</Text>
-                <View style={[styles.versionPill, { backgroundColor: accentSoft, borderColor: colors.borderLight }]}>
-                  <Text style={[styles.versionText, { color: accent }]}>v{ABOUT_META.version}</Text>
+                <Text style={[styles.heroTitle, { color: colors.textPrimary }]}>About TRAK</Text>
+                <View
+                  style={[
+                    styles.versionPill,
+                    {
+                      backgroundColor: isDark ? colors.backgroundTertiary : accentSoft,
+                      borderColor: colors.borderLight,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.versionText, { color: isDark ? colors.textSecondary : accent }]}>
+                    v{ABOUT_META.version}
+                  </Text>
                 </View>
               </View>
               <Text style={[styles.tagline, { color: colors.textPrimary }]}>{ABOUT_META.tagline}</Text>
@@ -51,7 +75,7 @@ const AboutScreen = () => {
           {ABOUT_STATS.map((stat) => (
             <View
               key={stat.label}
-              style={[styles.statCard, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}
+              style={[styles.statCard, { backgroundColor: cardBg, borderColor: colors.borderLight }]}
             >
               <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{stat.label}</Text>
               <Text style={[styles.statValue, { color: colors.textPrimary }]} numberOfLines={1}>
@@ -66,7 +90,7 @@ const AboutScreen = () => {
         {ABOUT_FEATURES.map((feature) => (
           <View
             key={feature.key}
-            style={[styles.featureCard, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}
+            style={[styles.featureCard, { backgroundColor: cardBg, borderColor: colors.borderLight }]}
           >
             <Text style={styles.featureEmoji}>{feature.emoji}</Text>
             <Text style={[styles.featureTitle, { color: colors.textPrimary }]}>{feature.title}</Text>
@@ -76,16 +100,25 @@ const AboutScreen = () => {
 
         {/* Team */}
         <View style={styles.teamHeader}>
-          <Users size={20} color={accent} strokeWidth={2.25} />
+          <Users size={20} color={isDark ? colors.textSecondary : accent} strokeWidth={2.25} />
           <Text style={[styles.sectionTitle, { color: colors.textPrimary, marginBottom: 0 }]}>Built by</Text>
         </View>
         {ABOUT_TEAM.map((member) => (
           <View
             key={member.name}
-            style={[styles.teamCard, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}
+            style={[styles.teamCard, { backgroundColor: cardBg, borderColor: colors.borderLight }]}
           >
-            <View style={[styles.avatar, { backgroundColor: accent }]}>
-              <Text style={styles.avatarText}>{member.initials}</Text>
+            <View
+              style={[
+                styles.avatar,
+                {
+                  backgroundColor: avatarBg,
+                  borderWidth: isDark ? 1 : 0,
+                  borderColor: colors.borderLight,
+                },
+              ]}
+            >
+              <Text style={[styles.avatarText, { color: avatarFg }]}>{member.initials}</Text>
             </View>
             <View style={styles.teamCopy}>
               <Text style={[styles.memberName, { color: colors.textPrimary }]}>{member.name}</Text>
@@ -95,7 +128,7 @@ const AboutScreen = () => {
         ))}
 
         {/* Footer */}
-        <View style={[styles.footer, { backgroundColor: colors.surface, borderColor: colors.borderLight }]}>
+        <View style={[styles.footer, { backgroundColor: cardBg, borderColor: colors.borderLight }]}>
           <View style={styles.footerRow}>
             <Heart size={16} color="#ef4444" fill="#ef4444" />
             <Text style={[styles.footerTitle, { color: colors.textPrimary }]}>Made with care</Text>
@@ -251,7 +284,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: {
-    color: '#fff',
     fontSize: 18,
     fontWeight: '800',
   },

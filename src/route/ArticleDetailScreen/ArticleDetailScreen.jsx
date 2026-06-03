@@ -30,6 +30,8 @@ import { mapApiItem } from '../../utils/loadFeed';
 import { normalizeArticleForDetail, getArticleListenText } from '../../utils/articleNavigation';
 import { buildHighlightLinesFromContent } from '../../utils/ttsHighlight';
 import ArticleTtsPlayer from '../../components/ArticleTtsPlayer';
+import ArticleCardImage from '../../components/ArticleCardImage';
+import { resolveArticleImageUrl } from '../../utils/articleMedia';
 import { stopNativePlayback } from '../../utils/articleTts';
 import { getAccessToken } from '../../api/client';
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
@@ -59,6 +61,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
 
     const articleBody =
         article.fullContent || article.content || article.full_content || '';
+    const heroImage = resolveArticleImageUrl(article);
     const listenText = getArticleListenText(article);
     const { lines: ttsHighlightLines } = useMemo(
         () => buildHighlightLinesFromContent(articleBody, listenText),
@@ -252,6 +255,11 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         navigation.navigate('MainTabs', { screen: 'Home' });
     };
 
+    const handleHome = () => {
+        stopNativePlayback();
+        navigation.navigate('MainTabs', { screen: 'Home' });
+    };
+
     return (
         <>
         <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
@@ -312,7 +320,11 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                         transform: [{ translateY: slideAnim }],
                     }}
                 >
-                    <ArticleDetailHeader onBackPress={handleBack} onMorePress={handleMoreMenu} />
+                    <ArticleDetailHeader
+                        onBackPress={handleBack}
+                        onHomePress={handleHome}
+                        onMorePress={handleMoreMenu}
+                    />
                 </Animated.View>
 
                 {detailLoading ? (
@@ -375,6 +387,17 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                                 readTime={article.readTime}
                             />
                         </Animated.View>
+
+                        {heroImage ? (
+                            <ArticleCardImage
+                                src={heroImage}
+                                alt={article.title || 'Article'}
+                                height={220}
+                                borderRadius={14}
+                                backgroundColor={colors.borderLight}
+                                style={styles.heroImage}
+                            />
+                        ) : null}
 
                         <ArticleTtsPlayer
                             text={listenText}
@@ -490,6 +513,9 @@ const styles = StyleSheet.create({
     },
     articleContainer: {
         padding: 24,
+    },
+    heroImage: {
+        marginBottom: 20,
     },
     bottomSpacer: {
         height: 20,

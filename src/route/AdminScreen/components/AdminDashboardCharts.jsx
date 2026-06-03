@@ -66,7 +66,10 @@ function useChartConfig(palette) {
       fillShadowGradientFromOpacity: 1,
       fillShadowGradientToOpacity: 1,
       decimalPlaces: 0,
-      color: (opacity = 1) => `rgba(37, 99, 235, ${opacity})`,
+      color: (opacity = 1) =>
+        palette.isDark
+          ? `rgba(212, 212, 212, ${opacity})`
+          : `rgba(37, 99, 235, ${opacity})`,
       labelColor: () => palette.textTertiary,
       propsForBackgroundLines: { stroke: palette.borderLight, strokeWidth: 1 },
       propsForLabels: { fontSize: 10 },
@@ -110,6 +113,8 @@ export default function AdminDashboardCharts({ snapshot, palette }) {
     fill: palette.chart.procBar,
   }));
   const ps = snapshot?.pipeline_summary || {};
+  const inFlight = Number(ps.active_processing ?? ps.processing) || 0;
+  const workers = Number(ps.pipeline_workers) || 1;
 
   const activityChart = useMemo(() => {
     if (!activity.length) return null;
@@ -142,7 +147,7 @@ export default function AdminDashboardCharts({ snapshot, palette }) {
   const pipelineSegments = [
     { n: ps.done, color: palette.pipeline.done, label: 'Done' },
     { n: ps.pending, color: palette.pipeline.pending, label: 'Pending' },
-    { n: ps.processing, color: palette.pipeline.processing, label: 'Processing' },
+    { n: inFlight, color: palette.pipeline.processing, label: 'Processing' },
     { n: ps.failed, color: palette.pipeline.failed, label: 'Failed' },
     { n: ps.unknown, color: palette.pipeline.unknown, label: 'Unknown' },
   ].filter((x) => x.n > 0);
@@ -157,6 +162,7 @@ export default function AdminDashboardCharts({ snapshot, palette }) {
             </Text>
             <Text variant="caption" color={palette.textSecondary} style={{ marginTop: 4 }}>
               {ps.completion_pct ?? 0}% of raw corpus complete · {ps.queued ?? 0} in queue
+              {workers > 1 ? ` · up to ${workers} at once` : ''}
             </Text>
           </View>
           <Text style={{ fontSize: 22, fontWeight: '800', color: palette.primary }}>{ps.completion_pct ?? 0}%</Text>
@@ -189,10 +195,7 @@ export default function AdminDashboardCharts({ snapshot, palette }) {
             data={activityChart}
             width={chartWidth}
             height={CHART_HEIGHT}
-            chartConfig={{
-              ...baseConfig,
-              color: (opacity = 1) => `rgba(96, 165, 250, ${opacity})`,
-            }}
+            chartConfig={baseConfig}
             bezier
             style={styles.chart}
             withDots={false}

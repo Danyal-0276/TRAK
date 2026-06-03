@@ -16,6 +16,7 @@ import { getCardSummaryText } from '../../utils/articleNavigation';
 import { openArticleDetail } from '../../utils/openArticleDetail';
 import { useFeedCache } from '../../context/FeedCacheContext';
 import { filterFeedByUserKeywords } from '../../utils/feedKeywordMatch';
+import { resolveArticleImageUrl } from '../../utils/articleMedia';
 
 const NewsFeedScreen = () => {
     const { theme } = useTheme();
@@ -23,7 +24,7 @@ const NewsFeedScreen = () => {
     const isDark = theme.mode === 'dark';
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
-    const [searchParams] = useSearchParams();
+    const [searchParams, setSearchParams] = useSearchParams();
     const rawTab = searchParams.get('tab');
     const normalizedTab =
         rawTab === 'Following' || rawTab === 'Recent' ? 'For you' : rawTab || 'For you';
@@ -61,9 +62,12 @@ const NewsFeedScreen = () => {
             const likes = Number(item.like_count ?? item.upvotes ?? 0);
             const dislikes = Number(item.dislike_count ?? 0);
             const summaryText = getCardSummaryText(item);
+            const imageUrl = resolveArticleImageUrl(item);
             return {
                 ...item,
                 id: aid,
+                image_url: item.image_url || imageUrl || null,
+                image: imageUrl || undefined,
                 description: summaryText,
                 excerpt: item.excerpt || item.summary || summaryText,
                 summary: item.summary || item.excerpt || summaryText,
@@ -248,12 +252,27 @@ const NewsFeedScreen = () => {
     }, [loadNews, hasCachedHome]);
 
     useEffect(() => {
-        if (rawTab) {
-            const t =
-                rawTab === 'Following' || rawTab === 'Recent' ? 'For you' : rawTab;
-            if (['For you', 'Bookmarks', 'Trending'].includes(t)) setActiveTab(t);
+        const t =
+            rawTab === 'Following' || rawTab === 'Recent'
+                ? 'For you'
+                : rawTab || 'For you';
+        if (['For you', 'Bookmarks', 'Trending'].includes(t)) {
+            setActiveTab(t);
         }
     }, [rawTab]);
+
+    const handleTabChange = useCallback(
+        (tab) => {
+            setActiveTab(tab);
+            if (tab === 'For you') {
+                setSearchParams({}, { replace: true });
+            } else {
+                setSearchParams({ tab }, { replace: true });
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        },
+        [setSearchParams]
+    );
 
     const handleArticlePress = (article) => {
         openArticleDetail(navigate, article);
@@ -401,7 +420,7 @@ const NewsFeedScreen = () => {
                     {['For you', 'Bookmarks', 'Trending'].map((tab) => (
                         <button
                             key={tab}
-                            onClick={() => setActiveTab(tab)}
+                            onClick={() => handleTabChange(tab)}
                             style={{
                                 padding: isMobile ? '8px 12px' : '10px 16px',
                                 border: 'none',

@@ -29,7 +29,6 @@ import { getAccessToken } from '../../api/client';
 import { loadUserKeywords, setUserKeywords, invalidateUserKeywordsCache } from '../../utils/userKeywordsStorage';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { loadTagsWithSubcategories, taxonomyTermsFromMap } from '../../utils/platformTaxonomy';
-import { goToMainTab } from '../../navigation/goToMainTab';
 
 const { width, height } = Dimensions.get('window');
 
@@ -44,7 +43,7 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
     const { fromSettings = false } = route.params || {};
     const selectedTags = Array.isArray(route.params?.selectedTags) ? route.params.selectedTags : [];
     const keywordsLoaded = useRef(false);
-    const goToSettings = () => goToMainTab(navigation, 'Settings');
+    const goToSettings = () => navigation.navigate('SettingsScreen');
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;

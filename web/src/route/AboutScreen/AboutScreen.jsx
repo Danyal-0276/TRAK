@@ -16,12 +16,27 @@ const AboutScreen = () => {
   const { isMobile } = useResponsive();
 
   const backgroundColor = colors.background;
-  const cardBackground = colors.surface;
+  const cardBackground = isDark ? colors.surfaceElevated : colors.surface;
   const textPrimary = colors.textPrimary;
   const textSecondary = colors.textSecondary;
   const borderColor = colors.border;
   const accent = colors.primary;
-  const accentSoft = isDark ? 'rgba(129, 140, 248, 0.14)' : '#eff6ff';
+  const iconTileBg = isDark ? colors.backgroundTertiary : colors.primary;
+  const iconTileFg = isDark ? colors.textPrimary : colors.textOnPrimary;
+  const avatarBg = isDark ? colors.backgroundTertiary : colors.primary;
+  const avatarFg = isDark ? colors.textPrimary : colors.textOnPrimary;
+  const accentSoft = isDark ? 'rgba(255, 255, 255, 0.06)' : '#eff6ff';
+  const versionPillStyle = isDark
+    ? {
+        color: colors.textSecondary,
+        background: colors.backgroundTertiary,
+        border: `1px solid ${borderColor}`,
+      }
+    : {
+        color: colors.primary,
+        background: '#dbeafe',
+        border: '1px solid #bfdbfe',
+      };
 
   return (
     <div
@@ -48,7 +63,7 @@ const AboutScreen = () => {
             borderRadius: 20,
             border: `1px solid ${borderColor}`,
             background: isDark
-              ? `linear-gradient(145deg, ${colors.surface} 0%, ${colors.background} 100%)`
+              ? `linear-gradient(145deg, ${colors.surfaceElevated} 0%, ${colors.background} 100%)`
               : 'linear-gradient(145deg, #ffffff 0%, #f1f5f9 100%)',
             position: 'relative',
             overflow: 'hidden',
@@ -72,14 +87,15 @@ const AboutScreen = () => {
                 width: 56,
                 height: 56,
                 borderRadius: 16,
-                backgroundColor: accent,
+                backgroundColor: iconTileBg,
+                border: isDark ? `1px solid ${borderColor}` : 'none',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 flexShrink: 0,
               }}
             >
-              <Newspaper size={28} color="#fff" strokeWidth={2} />
+              <Newspaper size={28} color={iconTileFg} strokeWidth={2} />
             </div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 8 }}>
@@ -98,11 +114,9 @@ const AboutScreen = () => {
                   style={{
                     fontSize: 12,
                     fontWeight: 700,
-                    color: colors.primary,
-                    background: isDark ? 'rgba(129, 140, 248, 0.2)' : '#dbeafe',
-                    border: `1px solid ${isDark ? 'rgba(129, 140, 248, 0.35)' : '#bfdbfe'}`,
                     padding: '4px 10px',
                     borderRadius: 999,
+                    ...versionPillStyle,
                   }}
                 >
                   v{ABOUT_META.version}
@@ -208,7 +222,7 @@ const AboutScreen = () => {
         {/* Team */}
         <section style={{ marginBottom: 32 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
-            <Users size={22} color={accent} strokeWidth={2.25} />
+            <Users size={22} color={isDark ? colors.textSecondary : accent} strokeWidth={2.25} />
             <h2 style={{ fontSize: 20, fontWeight: 700, color: textPrimary, margin: 0 }}>Built by</h2>
           </div>
           <div
@@ -234,8 +248,9 @@ const AboutScreen = () => {
                     width: 64,
                     height: 64,
                     borderRadius: 16,
-                    backgroundColor: accent,
-                    color: '#fff',
+                    backgroundColor: avatarBg,
+                    color: avatarFg,
+                    border: isDark ? `1px solid ${borderColor}` : 'none',
                     fontSize: 22,
                     fontWeight: 800,
                     display: 'flex',
@@ -261,7 +276,7 @@ const AboutScreen = () => {
             padding: 24,
             borderRadius: 16,
             border: `1px solid ${borderColor}`,
-            background: isDark ? colors.surfaceElevated : '#ffffff',
+            background: cardBackground,
             textAlign: 'center',
           }}
         >

@@ -1,12 +1,14 @@
 import React, { createContext, useContext, useMemo, useRef, useState } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View, Pressable } from 'react-native';
 import { useTheme } from '../../theme/ThemeContext';
+import { filledActionColors } from '../../theme/buttonContrast';
 
 const FeedbackContext = createContext(null);
 
 export const FeedbackProvider = ({ children }) => {
   const { theme } = useTheme();
   const colors = theme?.colors || {};
+  const actionColors = filledActionColors(colors, theme?.mode === 'dark');
   const [toast, setToast] = useState(null);
   const [dialog, setDialog] = useState(null);
   const [actionSheet, setActionSheet] = useState(null);
@@ -87,11 +89,16 @@ export const FeedbackProvider = ({ children }) => {
               <TouchableOpacity
                 style={[
                   styles.confirmBtn,
-                  dialog?.danger ? { backgroundColor: colors.error || '#dc2626' } : { backgroundColor: colors.primary || '#0f172a' },
+                  dialog?.danger
+                    ? { backgroundColor: colors.error || '#dc2626' }
+                    : { backgroundColor: actionColors.background },
                 ]}
                 onPress={() => closeDialog(true)}
               >
-                <Text style={[styles.confirmTxt, { color: colors.textInverse || '#fff' }]}>{dialog?.confirmText}</Text>
+                <Text style={[
+                  styles.confirmTxt,
+                  { color: dialog?.danger ? '#ffffff' : actionColors.foreground },
+                ]}>{dialog?.confirmText}</Text>
               </TouchableOpacity>
             </View>
           </View>

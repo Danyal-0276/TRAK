@@ -21,6 +21,7 @@ import { getAccessToken } from "../../api/client";
 import { trackKeywords } from "../../api/newsApi";
 import { loadUserKeywords, setUserKeywords } from "../../utils/userKeywordsStorage";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
+import { useFilledActionColors } from "../../theme/buttonContrast";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -28,6 +29,7 @@ const CategoriesScreen = ({ navigation }) => {
   const { theme } = useTheme();
   const { error } = useFeedback();
   const { colors, spacing } = theme;
+  const actionColors = useFilledActionColors();
   const insets = useSafeAreaInsets();
   const [categories, setCategories] = useState([]);
   const [newCategory, setNewCategory] = useState("");
@@ -328,15 +330,15 @@ const CategoriesScreen = ({ navigation }) => {
               onSubmitEditing={addCategory}
             />
             <TouchableOpacity 
-              style={[styles.addButton, { backgroundColor: colors.primary }]}
+              style={[styles.addButton, { backgroundColor: actionColors.background }]}
               onPress={addCategory}
               activeOpacity={0.8}
               disabled={loading || !newCategory.trim()}
             >
               {loading ? (
-                <ActivityIndicator size="small" color={colors.surface} />
+                <ActivityIndicator size="small" color={actionColors.foreground} />
               ) : (
-                <Plus size={18} color={colors.surface} />
+                <Plus size={18} color={actionColors.foreground} />
               )}
             </TouchableOpacity>
           </Animated.View>
@@ -443,9 +445,9 @@ const CategoriesScreen = ({ navigation }) => {
                       disabled={loading}
                     >
                       {loading ? (
-                        <ActivityIndicator size="small" color={colors.surface} />
+                        <ActivityIndicator size="small" color="#ffffff" />
                       ) : (
-                        <Text variant="body" color={colors.surface} style={styles.alertBtnText}>
+                        <Text variant="body" color="#ffffff" style={styles.alertBtnText}>
                           Delete
                         </Text>
                       )}

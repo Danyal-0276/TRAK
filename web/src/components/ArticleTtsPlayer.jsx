@@ -7,6 +7,7 @@ import {
   playArticleTtsStreaming,
   createTtsSessionId,
   getNativePlaybackPosition,
+  unlockWebAudioPlayback,
 } from '../utils/articleTts';
 import {
   lineIndicesForSegment,
@@ -169,6 +170,8 @@ export default function ArticleTtsPlayer({
     }
 
     if (statusRef.current === 'loading') return;
+
+    unlockWebAudioPlayback();
 
     cancelledRef.current = false;
     audioStartedRef.current = false;

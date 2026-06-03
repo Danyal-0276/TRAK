@@ -1,20 +1,18 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useResponsive } from '../hooks/useResponsive';
 
-/** Match column breakpoints to a ~1200px content column (4-across at full width). */
+/** Match column breakpoints to a ~1200px content column (max 3 across at full width). */
 export function columnCountForWidth(width) {
   if (width <= 0) return 1;
   if (width < 560) return 1;
   if (width < 840) return 2;
-  if (width < 1120) return 3;
-  return 4;
+  return 3;
 }
 
-function columnCountForViewport(isMobile, isTablet, isLargeDesktop, override) {
+function columnCountForViewport(isMobile, isTablet, _isLargeDesktop, override) {
   if (override != null) return override;
   if (isMobile) return 1;
   if (isTablet) return 2;
-  if (isLargeDesktop) return 4;
   return 3;
 }
 

@@ -13,6 +13,7 @@ import {
   Moon,
   Sun,
   MessageSquare,
+  Image,
 } from 'lucide-react';
 import { useTheme } from '../../../theme/ThemeContext';
 import TrakLogo from '../../../components/TrakLogo';
@@ -138,6 +139,18 @@ export default function AdminSidebar({
         >
           <Newspaper size={16} />
           View news app
+        </NavLink>
+        <NavLink
+          to="/pics"
+          className="admin-sidebar__footer-btn"
+          style={{ marginBottom: 8, textDecoration: 'none' }}
+          onClick={() => {
+            enableAdminAppPreview();
+            onClose();
+          }}
+        >
+          <Image size={16} />
+          View pics app
         </NavLink>
         <button type="button" className="admin-sidebar__footer-btn admin-sidebar__footer-btn--danger" onClick={onLogout}>
           <LogOut size={16} />

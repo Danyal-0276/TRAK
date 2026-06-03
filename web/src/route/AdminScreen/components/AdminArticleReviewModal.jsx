@@ -36,10 +36,29 @@ export default function AdminArticleReviewModal({
     if (article) setStatus(article.moderation_status || 'review');
   }, [article]);
 
+  useEffect(() => {
+    if (!open) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    const previousPaddingRight = document.body.style.paddingRight;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+
+    document.body.style.overflow = 'hidden';
+    if (scrollbarWidth > 0) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.paddingRight = previousPaddingRight;
+    };
+  }, [open]);
+
   if (!open || !article) return null;
 
-  const avatarBg = isDark ? palette.statAccent?.sources || palette.info : palette.textPrimary;
-  const avatarText = isDark ? palette.textInverse : '#ffffff';
+  const avatarBg = isDark ? '#ffffff' : palette.textPrimary;
+  const avatarText = isDark ? '#0a0a0a' : '#ffffff';
+  const primaryButtonBg = palette.buttonPrimaryBg || palette.primary;
+  const primaryButtonText = palette.buttonPrimaryText || (isDark ? palette.textPrimary : '#ffffff');
 
   const handleSave = async () => {
     setSaving(true);
@@ -122,6 +141,7 @@ export default function AdminArticleReviewModal({
                   borderRadius: 8,
                   backgroundColor: avatarBg,
                   color: avatarText,
+                  border: `1px solid ${palette.border}`,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -274,9 +294,9 @@ export default function AdminArticleReviewModal({
               style={{
                 padding: '8px 16px',
                 borderRadius: 8,
-                border: 'none',
-                backgroundColor: palette.primary,
-                color: isDark ? palette.textInverse : '#fff',
+                border: `1px solid ${palette.buttonSecondaryBorder || palette.border}`,
+                backgroundColor: primaryButtonBg,
+                color: primaryButtonText,
                 fontWeight: 600,
                 cursor: saving ? 'wait' : 'pointer',
               }}

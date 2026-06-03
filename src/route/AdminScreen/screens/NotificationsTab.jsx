@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Bell, ExternalLink } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
+import { adminFilledButtonColors } from '../adminTheme';
 import AdminNotificationCard from '../components/AdminNotificationCard';
 import EmptyState from '../components/EmptyState';
 import Text from '../../../components/ui/Text';
@@ -26,6 +27,7 @@ import {
 
 const NotificationsTab = ({ notifications, onSwitchTab, loading = false, onNotificationRead }) => {
   const { palette } = useAdminTheme();
+  const actionBtn = adminFilledButtonColors(palette);
   const [activeTab, setActiveTab] = useState('all');
   const [selected, setSelected] = useState(null);
 
@@ -149,13 +151,13 @@ const NotificationsTab = ({ notifications, onSwitchTab, loading = false, onNotif
               <View style={styles.modalActions}>
                 {selected?.meta?.feedback_id && onSwitchTab ? (
                   <TouchableOpacity
-                    style={[styles.actionBtn, { backgroundColor: palette.primary }]}
+                    style={[styles.actionBtn, { backgroundColor: actionBtn.background }]}
                     onPress={() => {
                       setSelected(null);
                       onSwitchTab('feedback');
                     }}
                   >
-                    <Text variant="body" color="#fff" style={{ fontWeight: '700' }}>
+                    <Text variant="body" color={actionBtn.foreground} style={{ fontWeight: '700' }}>
                       Open feedback
                     </Text>
                   </TouchableOpacity>

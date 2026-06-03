@@ -1,4 +1,8 @@
 import { authRequest } from '../utils/Service/api';
+import {
+  getNotificationSourceName,
+  isArticleKeywordNotification,
+} from '../utils/notificationDisplay';
 
 function timeAgo(iso) {
   if (!iso) return '';
@@ -14,17 +18,48 @@ function timeAgo(iso) {
 }
 
 export function normalizeNotification(row) {
+  if (!row || typeof row !== 'object') {
+    return {
+      id: '',
+      type: 'system',
+      text: '',
+      details: '',
+      read: true,
+      meta: {},
+      time: '',
+      user: 'TRAK',
+      sourceName: 'TRAK',
+      postTitle: null,
+    };
+  }
+
+  const isKeyword = isArticleKeywordNotification(row);
+  const sourceName = getNotificationSourceName(row);
   return {
     ...row,
     time: timeAgo(row.created_at),
-    user: row.meta?.actor || 'TRAK',
+    user: isKeyword ? sourceName : (row.meta?.actor || 'TRAK'),
+    sourceName,
     postTitle: row.meta?.post_title || null,
   };
 }
 
-export async function getNotifications() {
-  const res = await authRequest('/api/notifications/');
+export async function getUnreadCount() {
+  return authRequest('/api/notifications/unread-count/');
+}
+
+export async function getNotifications({ limit = 80 } = {}) {
+  const params = new URLSearchParams({ limit: String(limit) });
+  const res = await authRequest(`/api/notifications/?${params}`);
   return (res.results || []).map(normalizeNotification);
+}
+
+/** Match recent articles to this user's saved topics and create alerts. */
+export async function backfillKeywordNotifications({ hours = 168, limit = 200 } = {}) {
+  return authRequest('/api/notifications/backfill-keywords/', {
+    method: 'POST',
+    body: JSON.stringify({ hours, limit }),
+  });
 }
 
 export async function markAsRead(notificationId) {

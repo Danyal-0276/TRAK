@@ -7,6 +7,7 @@ import { ArrowLeft, Plus, X, ArrowRight } from 'lucide-react';
 import { getUserKeywords, setUserKeywords } from '../../utils/userKeywordsStorage';
 import { newsTagsWithSubcategories } from '../TagSelectionScreen/constants/newsCategories';
 import { trackKeywords } from '../../utils/Service/api';
+import { filledActionColors } from '../../theme/buttonContrast';
 
 const KeywordSelectionScreen = () => {
     const { theme } = useTheme();
@@ -25,6 +26,7 @@ const KeywordSelectionScreen = () => {
     
     const selectedTags = location.state?.selectedTags || [];
     const fromSettings = Boolean(location.state?.fromSettings);
+    const action = filledActionColors(colors, isDark);
 
     const addKeyword = () => {
         const trimmedKeyword = keywordInput.trim();
@@ -182,8 +184,8 @@ const KeywordSelectionScreen = () => {
                             onClick={handleKeywordSubmit}
                             style={{
                                 padding: '12px 20px',
-                                backgroundColor: isDark ? colors.primary : '#000000',
-                                color: '#ffffff',
+                                backgroundColor: action.background,
+                                color: action.foreground,
                                 border: 'none',
                                 borderRadius: '8px',
                                 fontSize: '14px',
@@ -195,10 +197,12 @@ const KeywordSelectionScreen = () => {
                                 transition: 'all 0.2s ease',
                             }}
                             onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = colors.primary;
+                                e.currentTarget.style.backgroundColor = action.background;
+                                e.currentTarget.style.color = action.foreground;
                             }}
                             onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = isDark ? colors.primary : '#000000';
+                                e.currentTarget.style.backgroundColor = action.background;
+                                e.currentTarget.style.color = action.foreground;
                             }}
                         >
                             <Plus size={16} />
@@ -335,8 +339,8 @@ const KeywordSelectionScreen = () => {
                         style={{
                             flex: 1,
                             padding: '14px 24px',
-                            backgroundColor: isDark ? colors.primary : '#000000',
-                            color: '#ffffff',
+                            backgroundColor: action.background,
+                            color: action.foreground,
                             border: 'none',
                             borderRadius: '10px',
                             fontSize: '15px',
@@ -349,10 +353,12 @@ const KeywordSelectionScreen = () => {
                             transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = isDark ? '#2563eb' : '#1a1a1a';
+                            e.currentTarget.style.backgroundColor = action.background;
+                            e.currentTarget.style.color = action.foreground;
                         }}
                         onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = isDark ? colors.primary : '#000000';
+                            e.currentTarget.style.backgroundColor = action.background;
+                            e.currentTarget.style.color = action.foreground;
                         }}
                     >
                         {fromSettings ? 'Save & Back' : 'Continue to Feed'}

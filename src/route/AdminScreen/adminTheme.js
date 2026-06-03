@@ -172,10 +172,18 @@ export function credibilityColor(palette, labelOrKey) {
   return palette.credibility[labelOrKey] || palette.credibility[CRED_NAMES[labelOrKey]] || palette.textTertiary;
 }
 
+/** Filled CTA — readable in light and dark (avoid primary bg + white text in dark). */
+export function adminFilledButtonColors(palette) {
+  return {
+    background: palette.textPrimary,
+    foreground: palette.textInverse,
+  };
+}
+
 export { CRED_NAMES, GREY };
 
 /** Live dashboard KPI refresh (seconds). */
-export const DASHBOARD_POLL_INTERVAL_MS = 20_000;
+export const DASHBOARD_POLL_INTERVAL_MS = 45_000;
 /** Processed/raw admin articles — slow background refresh (minutes). */
 export const ARTICLES_POLL_INTERVAL_MS = 5 * 60_000;
 /** User feedback admin queue — half of articles interval. */

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AUTH_PREFIX, API_BASE } from '../config/api';
 import { apiFetch, getAccessToken, setTokens } from '../api/client';
@@ -183,19 +183,25 @@ export function AuthProvider({ children }) {
         return data;
     };
 
-    const value = {
-        user,
-        loading,
-        bootstrapped,
-        isAdmin: user?.role === 'admin',
-        isSuperAdmin: Boolean(user?.is_super_admin),
-        login,
-        register,
-        logout,
-        bootstrap,
-        refreshUser: fetchMe,
-        verifyEmail,
-    };
+    const isAdmin = user?.role === 'admin';
+    const isSuperAdmin = Boolean(user?.is_super_admin);
+
+    const value = useMemo(
+        () => ({
+            user,
+            loading,
+            bootstrapped,
+            isAdmin,
+            isSuperAdmin,
+            login,
+            register,
+            logout,
+            bootstrap,
+            refreshUser: fetchMe,
+            verifyEmail,
+        }),
+        [user, loading, bootstrapped, isAdmin, isSuperAdmin, login, register, logout, bootstrap, fetchMe, verifyEmail]
+    );
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

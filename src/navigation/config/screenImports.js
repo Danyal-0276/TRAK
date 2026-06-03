@@ -22,8 +22,11 @@ import SearchScreen from '../../route/SearchScreen/SearchScreen.jsx';
 import ArticleDetailScreen from '../../route/ArticleDetailScreen/ArticleDetailScreen.jsx';
 import TrendingScreen from '../../route/TrendingScreen/TrendingScreen.jsx';
 import BookmarksScreen from '../../route/BookmarksScreen/BookmarksScreen.jsx';
+import ReactionArticlesScreen from '../../route/ReactionArticlesScreen/ReactionArticlesScreen.jsx';
 import RecentScreen from '../../route/RecentScreen/RecentScreen.jsx';
+import PicsScreen from '../../route/PicsScreen/PicsScreen.jsx';
 import TermsScreen from '../../route/TermsScreen/TermsScreen.jsx';
+import ChatScreen from '../../route/ChatScreen/ChatScreen.jsx';
 import VerifyEmailScreen from '../../route/VerifyEmailScreen/VerifyEmailScreen.jsx';
 
 // OPTIONAL SCREENS - With fallback
@@ -79,7 +82,10 @@ export {
     ProfileScreen,
     TrendingScreen,
     BookmarksScreen,
+    ReactionArticlesScreen,
     RecentScreen,
+    PicsScreen,
     TermsScreen,
+    ChatScreen,
     VerifyEmailScreen,
 };

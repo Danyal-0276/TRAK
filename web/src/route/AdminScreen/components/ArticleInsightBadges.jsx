@@ -122,7 +122,7 @@ function Chip({ label, value, style, icon: Icon }) {
   );
 }
 
-export default function ArticleInsightBadges({ article, textSecondary, borderColor }) {
+export default function ArticleInsightBadges({ article, textSecondary, borderColor, compact = false }) {
   const chips = [];
   const isProcessed = article.scope === 'processed' || article.category === 'Processed';
 
@@ -131,14 +131,14 @@ export default function ArticleInsightBadges({ article, textSecondary, borderCol
     if (meta.show) {
       const { labelKey, style, labelName, score } = meta;
 
-      if (score != null) {
+      if (!compact && score != null) {
         chips.push(
           <Chip key="score" label="Credibility score" value={`${score}/100`} style={styleForCredibilityScore(score)} />,
         );
       }
 
       const conf = article.credibility_confidence_pct;
-      if (conf != null && conf !== score) {
+      if (!compact && conf != null && conf !== score) {
         chips.push(
           <Chip
             key="conf"
@@ -150,7 +150,7 @@ export default function ArticleInsightBadges({ article, textSecondary, borderCol
       }
 
       const breakdown = article.credibility_prob_breakdown;
-      if (breakdown && typeof breakdown === 'object') {
+      if (!compact && breakdown && typeof breakdown === 'object') {
         chips.push(
           <Chip
             key="dist"
@@ -168,14 +168,14 @@ export default function ArticleInsightBadges({ article, textSecondary, borderCol
       chips.push(
         <Chip
           key="verdict"
-          label="Verdict"
-          value={String(labelName).replace(/_/g, ' ')}
+          label={compact ? 'Cred' : 'Verdict'}
+          value={compact && score != null ? `${score} · ${String(labelName).replace(/_/g, ' ')}` : String(labelName).replace(/_/g, ' ')}
           style={style}
           icon={labelKey === 'fake' ? AlertTriangle : CheckCircle2}
         />,
       );
 
-      if (article.fact_check_verdict && article.fact_check_verdict !== 'skipped') {
+      if (!compact && article.fact_check_verdict && article.fact_check_verdict !== 'skipped') {
         chips.push(
           <Chip
             key="fact"
@@ -221,17 +221,17 @@ export default function ArticleInsightBadges({ article, textSecondary, borderCol
   if (!chips.length) return null;
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: compact ? 8 : 10 }}>
       {chips}
     </div>
   );
 }
 
-export function ArticleTopicKeywords({ keywords, textSecondary, isDark, borderColor }) {
+export function ArticleTopicKeywords({ keywords, textSecondary, isDark, borderColor, max = 5 }) {
   if (!keywords?.length) return null;
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
-      {keywords.slice(0, 5).map((kw) => (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
+      {keywords.slice(0, max).map((kw) => (
         <span
           key={kw}
           style={{

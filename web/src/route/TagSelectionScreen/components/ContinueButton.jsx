@@ -12,7 +12,6 @@ export function ContinueButton({ onPress, selectedCount }) {
             <Button
                 title={`Continue (${selectedCount})`}
                 variant="primary"
-                primaryColors={[colors.primary, colors.primary]}
                 onPress={onPress}
                 disabled={isDisabled}
                 style={{

@@ -13,8 +13,10 @@ import {
     Clock,
     ArrowRight,
 } from 'lucide-react';
-import { getFeedItemCredibilityMeta } from '../utils/credibilityIndicator';
+import { getFeedItemCredibilityMeta, LABEL_STYLES } from '../utils/credibilityIndicator';
 import { prefetchArticleDetail } from '../utils/articleDetailCache';
+import { getUserArticleImageProxyUrl, resolveArticleImageUrl } from '../utils/articleMedia';
+import ArticleCardImage from './ArticleCardImage';
 import FeedbackModal from './FeedbackModal';
 
 export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark, layout = 'grid' }) => {
@@ -35,9 +37,19 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const itemUrl = item?.canonical_url || item?.url || '';
     const credLabel = String(item.credibilityLabel || credMeta.labelKey || '').toLowerCase();
     const isFake = !!item.isFake || credMeta.labelKey === 'fake';
-    const isLowCred = !!item.isLowCredibility || credMeta.labelKey === 'suspicious' || isFake;
-    const credBg = isFake || isLowCred ? (isDark ? '#450a0a' : colors.errorBg || '#FEE2E2') : (isDark ? '#052e16' : colors.successBg || '#DCFCE7');
-    const credFg = isFake || isLowCred ? (colors.error || '#dc2626') : (colors.success || '#16a34a');
+    const isSuspicious =
+        !!item.isLowCredibility ||
+        credMeta.labelKey === 'suspicious' ||
+        credLabel === 'suspicious';
+    const credPalette = isFake
+        ? LABEL_STYLES.fake
+        : isSuspicious
+            ? LABEL_STYLES.suspicious
+            : credMeta.labelKey === 'real'
+                ? LABEL_STYLES.real
+                : LABEL_STYLES.unknown;
+    const credBg = credPalette.bg;
+    const credFg = credPalette.color;
     const credText = isFake
         ? 'Fake / Low credibility'
         : credLabel === 'suspicious'
@@ -45,6 +57,8 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
           : credLabel === 'real'
             ? 'Verified / Higher credibility'
             : credMeta.labelName || 'Credibility';
+    const cardImage = resolveArticleImageUrl(item);
+    const imagePlaceholderBg = isDark ? colors.surfaceElevated || colors.backgroundSecondary : '#f3f4f6';
 
     useEffect(() => {
         if (!showMenu) return undefined;
@@ -99,24 +113,22 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                 e.currentTarget.style.borderColor = borderColor;
             }}
             >
-                {/* Image */}
-                {item.image && (
+                {/* Hero image (same pattern as admin article cards) */}
+                {cardImage ? (
                     <div style={{
                         width: '100%',
-                        height: '180px',
-                        backgroundColor: '#f3f4f6',
                         position: 'relative',
                         overflow: 'hidden',
+                        backgroundColor: imagePlaceholderBg,
                     }}>
-                        <img 
-                            src={item.image} 
-                            alt={item.title}
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover',
-                                display: 'block',
-                            }}
+                        <ArticleCardImage
+                            src={cardImage}
+                            alt={item.title || 'Article'}
+                            maxHeight={isMasonry ? 280 : 220}
+                            borderRadius={0}
+                            dynamicAspect
+                            backgroundColor={imagePlaceholderBg}
+                            getProxyUrl={getUserArticleImageProxyUrl}
                         />
                         {item.trending && (
                             <div style={{
@@ -142,7 +154,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             </div>
                         )}
                     </div>
-                )}
+                ) : null}
 
                 <div style={{
                     padding: isMasonry ? '16px' : '20px',
@@ -362,7 +374,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             alignItems: 'center',
                             gap: 4,
                         }}>
-                            {isFake || isLowCred ? (
+                            {isFake || isSuspicious ? (
                                 <AlertTriangle size={11} color={credFg} />
                             ) : (
                                 <CheckCircle size={11} color={credFg} />

@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { CheckCircle2, Mail, Phone, Calendar } from 'lucide-react-native';
+import { CheckCircle2, Mail, Phone, Calendar, ThumbsUp, ThumbsDown, BookOpen } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import Text from '../../../components/ui/Text';
 import ProfileAvatar from './ProfileAvatar';
@@ -28,6 +28,7 @@ const ProfileHeader = ({
   stats,
   onPressAvatar,
   onLongPressAvatar,
+  onStatPress,
 }) => {
   const { theme } = useTheme();
   const { colors } = theme;
@@ -37,9 +38,9 @@ const ProfileHeader = ({
   const joined = formatJoined(dateJoined);
 
   const statItems = [
-    { label: 'Following', value: String(stats?.following ?? 0) },
-    { label: 'Followers', value: String(stats?.followers ?? 0) },
-    { label: 'Saved', value: String(stats?.saved ?? 0) },
+    { key: 'liked', label: 'Liked', value: String(stats?.liked ?? 0), Icon: ThumbsUp },
+    { key: 'disliked', label: 'Disliked', value: String(stats?.disliked ?? 0), Icon: ThumbsDown },
+    { key: 'saved', label: 'Saved', value: String(stats?.saved ?? 0), Icon: BookOpen },
   ];
 
   return (
@@ -110,15 +111,31 @@ const ProfileHeader = ({
         </View>
 
         <View style={styles.statsRow}>
-          {statItems.map((item) => (
-            <View
-              key={item.label}
-              style={[styles.statCard, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderLight }]}
-            >
-              <Text style={[styles.statValue, { color: colors.textPrimary }]}>{item.value}</Text>
-              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{item.label}</Text>
-            </View>
-          ))}
+          {statItems.map((item) => {
+            const StatWrap = onStatPress ? TouchableOpacity : View;
+            return (
+              <StatWrap
+                key={item.key}
+                style={[styles.statCard, { backgroundColor: colors.backgroundSecondary, borderColor: colors.borderLight }]}
+                {...(onStatPress
+                  ? {
+                      activeOpacity: 0.75,
+                      onPress: () => onStatPress(item.key),
+                      accessibilityRole: 'button',
+                      accessibilityLabel: `${item.label}, ${item.value}`,
+                    }
+                  : {})}
+              >
+                {item.Icon ? (
+                  <View style={{ marginBottom: 4 }}>
+                    <item.Icon size={16} color={colors.textSecondary} />
+                  </View>
+                ) : null}
+                <Text style={[styles.statValue, { color: colors.textPrimary }]}>{item.value}</Text>
+                <Text style={[styles.statLabel, { color: colors.textSecondary }]}>{item.label}</Text>
+              </StatWrap>
+            );
+          })}
         </View>
       </View>
     </View>

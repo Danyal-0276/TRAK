@@ -37,6 +37,12 @@ export default function AdminNotificationCard({ row, palette, onClick }) {
   const excerpt = row.text || row.details || 'No message';
   const articleTitle = row.meta?.post_title || row.meta?.article_title;
   const reporter = row.meta?.reporter_email || (row.meta?.user_id ? `User #${row.meta.user_id}` : '');
+  const reporterAvatarBg = palette.isDark
+    ? (palette.surfaceElevated || palette.inputBg || '#262626')
+    : (palette.textPrimary || '#0a0a0a');
+  const reporterAvatarText = palette.isDark
+    ? (palette.textPrimary || '#fafafa')
+    : (palette.textInverse || '#ffffff');
 
   return (
     <button
@@ -123,8 +129,9 @@ export default function AdminNotificationCard({ row, palette, onClick }) {
                     width: 22,
                     height: 22,
                     borderRadius: 999,
-                    background: palette.textPrimary,
-                    color: palette.textInverse || '#fff',
+                    background: reporterAvatarBg,
+                    color: reporterAvatarText,
+                    border: `1px solid ${palette.border}`,
                     fontSize: 10,
                     fontWeight: 800,
                     display: 'inline-flex',

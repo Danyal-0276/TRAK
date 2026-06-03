@@ -132,13 +132,56 @@ export function normalizeAudioBase64(raw) {
   return s.replace(/\s/g, '');
 }
 
-function base64ToBlob(base64Audio, format = 'mp3') {
+/** Call on user tap before any await so later segment play() is allowed. */
+export function unlockWebAudioPlayback() {
+  if (typeof window === 'undefined') return Promise.resolve();
+  try {
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    if (Ctx) {
+      const ctx = new Ctx();
+      return ctx.resume().then(() => ctx.close()).catch(() => {});
+    }
+  } catch {
+    /* ignore */
+  }
+  return Promise.resolve();
+}
+
+function detectAudioFormat(bytes) {
+  if (!bytes || bytes.length < 4) return null;
+  if (bytes[0] === 0x49 && bytes[1] === 0x44 && bytes[2] === 0x33) return 'mp3';
+  if (bytes[0] === 0xff && (bytes[1] & 0xe0) === 0xe0) return 'mp3';
+  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) return 'wav';
+  return null;
+}
+
+function base64ToBytes(base64Audio, format = 'mp3') {
   const clean = normalizeAudioBase64(base64Audio);
-  const binary = atob(clean);
+  if (!clean) throw new Error('No audio data received.');
+  let binary;
+  try {
+    binary = atob(clean);
+  } catch {
+    throw new Error('Invalid audio data from server.');
+  }
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  const mime = String(format || 'mp3').toLowerCase() === 'wav' ? 'audio/wav' : 'audio/mpeg';
-  return new Blob([bytes], { type: mime });
+  const detected = detectAudioFormat(bytes);
+  const fmt = detected || String(format || 'mp3').toLowerCase();
+  return { bytes, format: fmt };
+}
+
+function base64ToBlob(base64Audio, format = 'mp3') {
+  const { bytes } = base64ToBytes(base64Audio, format);
+  return new Blob([bytes]);
+}
+
+function mediaErrorMessage(audio) {
+  const code = audio?.error?.code;
+  if (code === 3) return 'Could not decode audio. Try English or restart the server.';
+  if (code === 4) return 'This browser does not support the audio format from the server.';
+  if (code === 2) return 'Network error while loading audio.';
+  return 'Audio playback failed';
 }
 
 function cacheKey(index, language, voice) {
@@ -147,6 +190,17 @@ function cacheKey(index, language, voice) {
 
 let activeAudio = null;
 let activeBlobUrl = null;
+
+const wa = {
+  ctx: null,
+  source: null,
+  buffer: null,
+  segmentOffset: 0,
+  playStartedAt: 0,
+  pauseOffset: 0,
+  useWebAudio: false,
+  endingForPause: false,
+};
 
 function cleanupActiveAudio() {
   if (activeAudio) {
@@ -168,11 +222,49 @@ function cleanupActiveAudio() {
   }
 }
 
+function stopWebAudio() {
+  if (wa.source) {
+    try {
+      wa.source.stop();
+    } catch {
+      /* ignore */
+    }
+    wa.source = null;
+  }
+  wa.buffer = null;
+  wa.useWebAudio = false;
+  wa.pauseOffset = 0;
+  wa.segmentOffset = 0;
+  wa.endingForPause = false;
+}
+
+async function ensureAudioContext() {
+  const Ctx = window.AudioContext || window.webkitAudioContext;
+  if (!Ctx) throw new Error('Web Audio is not supported in this browser.');
+  if (!wa.ctx || wa.ctx.state === 'closed') {
+    wa.ctx = new Ctx();
+  }
+  await wa.ctx.resume();
+  return wa.ctx;
+}
+
 export function stopNativePlayback() {
   cleanupActiveAudio();
+  stopWebAudio();
 }
 
 export function pauseNativePlayback() {
+  if (wa.useWebAudio && wa.source && wa.ctx) {
+    wa.endingForPause = true;
+    wa.pauseOffset = wa.segmentOffset + (wa.ctx.currentTime - wa.playStartedAt);
+    try {
+      wa.source.stop();
+    } catch {
+      /* ignore */
+    }
+    wa.source = null;
+    return;
+  }
   activeAudio?.pause?.();
 }
 
@@ -181,54 +273,189 @@ export function resumeNativePlayback() {
 }
 
 export async function getNativePlaybackPosition() {
+  if (wa.useWebAudio && wa.ctx) {
+    if (wa.source) {
+      return wa.segmentOffset + (wa.ctx.currentTime - wa.playStartedAt);
+    }
+    return wa.pauseOffset;
+  }
   return activeAudio?.currentTime || 0;
 }
 
-function playBlobAndWait(blob, { startAt = 0, isAborted, isPaused } = {}) {
+function playBlobHtmlAudio(blob, { startAt = 0, isAborted, isPaused } = {}) {
   cleanupActiveAudio();
   const url = URL.createObjectURL(blob);
   activeBlobUrl = url;
-  const audio = new Audio(url);
+  const audio = new Audio();
+  audio.setAttribute('playsinline', '');
+  audio.preload = 'auto';
+  audio.src = url;
   activeAudio = audio;
 
   return new Promise((resolve, reject) => {
+    let settled = false;
     const finish = (err) => {
+      if (settled) return;
+      settled = true;
+      clearInterval(poll);
+      clearTimeout(loadTimeout);
       cleanupActiveAudio();
-      if (err) reject(err);
+      if (err) reject(err instanceof Error ? err : new Error(String(err)));
       else resolve();
     };
 
-    audio.addEventListener('ended', () => {
-      if (isPaused?.()) return;
-      finish();
-    });
-    audio.addEventListener('error', () => finish(new Error('Audio playback failed')));
+    const startPlayback = () => {
+      if (settled || isAborted?.()) return;
+      const dur = Number(audio.duration) || 0;
+      const seek = dur > 0 ? Math.min(Math.max(0, startAt), Math.max(0, dur - 0.05)) : 0;
+      if (seek > 0) {
+        try {
+          audio.currentTime = seek;
+        } catch {
+          /* ignore */
+        }
+      }
+      audio.play().catch((e) => {
+        if (e?.name === 'NotAllowedError') {
+          finish(new Error('Tap Play again to allow audio in your browser.'));
+        } else {
+          finish(e);
+        }
+      });
+    };
+
+    audio.addEventListener('ended', () => finish(), { once: true });
+    audio.addEventListener('error', () => finish(new Error(mediaErrorMessage(audio))), { once: true });
+    audio.addEventListener('canplay', startPlayback, { once: true });
+
+    const loadTimeout = setTimeout(() => {
+      if (!settled && audio.readyState < HTMLMediaElement.HAVE_FUTURE_DATA) {
+        finish(new Error('Audio took too long to load. Try again.'));
+      }
+    }, 60000);
 
     const poll = setInterval(() => {
       if (isAborted?.()) {
-        clearInterval(poll);
         finish();
         return;
       }
       if (isPaused?.()) return;
       const dur = Number(audio.duration) || 0;
       const cur = Number(audio.currentTime) || 0;
-      if (dur > 0 && cur >= dur - 0.15) {
-        clearInterval(poll);
-        finish();
-      }
+      if (dur > 0 && cur >= dur - 0.15) finish();
     }, 250);
-
-    audio.addEventListener('loadedmetadata', () => {
-      if (startAt > 0) audio.currentTime = startAt;
-      audio.play().catch((e) => {
-        clearInterval(poll);
-        finish(e);
-      });
-    });
-
-    audio.load();
   });
+}
+
+function playBlobWebAudio(blob, { startAt = 0, isAborted, isPaused } = {}) {
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    let poll = null;
+    let buffer = null;
+    let ctx = null;
+
+    const finish = (err) => {
+      if (settled) return;
+      settled = true;
+      if (poll) clearInterval(poll);
+      stopWebAudio();
+      if (err) reject(err instanceof Error ? err : new Error(String(err)));
+      else resolve();
+    };
+
+    const playFrom = (offset) => {
+      if (!ctx || !buffer || settled) return;
+      if (wa.source) {
+        try {
+          wa.source.stop();
+        } catch {
+          /* ignore */
+        }
+      }
+      const src = ctx.createBufferSource();
+      src.buffer = buffer;
+      src.connect(ctx.destination);
+      wa.playStartedAt = ctx.currentTime;
+      wa.segmentOffset = offset;
+      wa.source = src;
+      wa.useWebAudio = true;
+      wa.buffer = buffer;
+      src.onended = () => {
+        if (wa.endingForPause) {
+          wa.endingForPause = false;
+          return;
+        }
+        if (!isPaused?.()) finish();
+      };
+      try {
+        src.start(0, Math.min(offset, Math.max(0, buffer.duration - 0.01)));
+      } catch (e) {
+        finish(e);
+      }
+    };
+
+    (async () => {
+      try {
+        ctx = await ensureAudioContext();
+        const arrayBuffer = await blob.arrayBuffer();
+        buffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+        wa.pauseOffset = Math.min(Math.max(0, startAt), buffer.duration);
+        playFrom(wa.pauseOffset);
+
+        poll = setInterval(() => {
+          if (isAborted?.()) {
+            finish();
+            return;
+          }
+          if (isPaused?.()) {
+            if (wa.source && !wa.endingForPause) {
+              wa.endingForPause = true;
+              wa.pauseOffset = wa.segmentOffset + (ctx.currentTime - wa.playStartedAt);
+              try {
+                wa.source.stop();
+              } catch {
+                /* ignore */
+              }
+              wa.source = null;
+            }
+            return;
+          }
+          if (!wa.source && buffer) {
+            playFrom(wa.pauseOffset);
+          }
+          const cur = wa.source
+            ? wa.segmentOffset + (ctx.currentTime - wa.playStartedAt)
+            : wa.pauseOffset;
+          if (buffer.duration > 0 && cur >= buffer.duration - 0.05) finish();
+        }, 250);
+      } catch (e) {
+        finish(
+          e instanceof DOMException
+            ? new Error('Could not decode audio from the server. Try English or restart the API.')
+            : e
+        );
+      }
+    })();
+  });
+}
+
+async function playBlobAndWait(blob, { startAt = 0, isAborted, isPaused } = {}) {
+  if (!blob || blob.size < 32) {
+    throw new Error('Received empty or invalid audio from server.');
+  }
+
+  stopWebAudio();
+  cleanupActiveAudio();
+
+  if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
+    try {
+      return await playBlobWebAudio(blob, { startAt, isAborted, isPaused });
+    } catch (e) {
+      console.warn('Web Audio playback failed, trying HTML audio', e);
+    }
+  }
+
+  return playBlobHtmlAudio(blob, { startAt, isAborted, isPaused });
 }
 
 function estimateSegmentDurationMs(base64Audio) {

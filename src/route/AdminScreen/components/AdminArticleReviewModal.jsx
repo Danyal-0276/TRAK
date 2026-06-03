@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { X, ExternalLink, Eye } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
+import { adminFilledButtonColors } from '../adminTheme';
 import Text from '../../../components/ui/Text';
 import { patchAdminArticle } from '../../../api/adminApi';
 import { useFeedback } from '../../../components/ui/FeedbackProvider';
@@ -36,7 +37,8 @@ export default function AdminArticleReviewModal({
   onOpenInApp,
   feedbackBanner = '',
 }) {
-  const { palette, isDark } = useAdminTheme();
+  const { palette } = useAdminTheme();
+  const actionBtn = adminFilledButtonColors(palette);
   const { success, error: notifyError } = useFeedback();
   const [status, setStatus] = useState('review');
   const [saving, setSaving] = useState(false);
@@ -47,8 +49,8 @@ export default function AdminArticleReviewModal({
 
   if (!article) return null;
 
-  const avatarBg = isDark ? palette.statAccent?.sources || palette.info : palette.textPrimary;
-  const avatarText = isDark ? palette.textInverse : '#ffffff';
+  const avatarBg = palette.textPrimary;
+  const avatarText = palette.textInverse;
   const factHits = Array.isArray(article.fact_check_hits) ? article.fact_check_hits : [];
 
   const handleSave = async () => {
@@ -111,7 +113,7 @@ export default function AdminArticleReviewModal({
           <ArticleTopicKeywords
             keywords={article.topic_keywords}
             textSecondary={palette.textSecondary}
-            isDark={isDark}
+            isDark={palette.isDark}
             borderColor={palette.border}
           />
 
@@ -178,11 +180,11 @@ export default function AdminArticleReviewModal({
           </View>
 
           <TouchableOpacity
-            style={[styles.saveBtn, { backgroundColor: palette.primary, opacity: saving ? 0.7 : 1 }]}
+            style={[styles.saveBtn, { backgroundColor: actionBtn.background, opacity: saving ? 0.7 : 1 }]}
             onPress={handleSave}
             disabled={saving}
           >
-            <Text variant="body" color={isDark ? palette.textInverse : '#ffffff'} style={{ fontWeight: '700' }}>
+            <Text variant="body" color={actionBtn.foreground} style={{ fontWeight: '700' }}>
               {saving ? 'Saving…' : 'Save review'}
             </Text>
           </TouchableOpacity>

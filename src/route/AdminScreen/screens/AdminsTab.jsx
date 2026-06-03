@@ -9,6 +9,7 @@ import EmptyState from '../components/EmptyState';
 import { useFeedback } from '../../../components/ui/FeedbackProvider';
 import AdminListRowSkeleton from '../components/skeletons/AdminListRowSkeleton';
 import { ADMIN_TEXT_STYLE } from '../adminTypography';
+import { adminFilledButtonColors } from '../adminTheme';
 
 const AdminsTab = ({
   admins,
@@ -19,6 +20,7 @@ const AdminsTab = ({
   loading = false,
 }) => {
   const { palette } = useAdminTheme();
+  const actionBtn = adminFilledButtonColors(palette);
   const { isSuperAdmin } = useAuth();
   const { confirm } = useFeedback();
   const [showCreate, setShowCreate] = useState(false);
@@ -64,9 +66,9 @@ const AdminsTab = ({
         {isSuperAdmin ? (
           <TouchableOpacity
             onPress={() => setShowCreate(true)}
-            style={[styles.addBtn, { backgroundColor: palette.primary }]}
+            style={[styles.addBtn, { backgroundColor: actionBtn.background }]}
           >
-            <Plus size={18} color="#fff" />
+            <Plus size={18} color={actionBtn.foreground} />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -133,12 +135,12 @@ const AdminsTab = ({
               <TouchableOpacity
                 onPress={handleCreate}
                 disabled={creating || !email.trim() || password.length < 6}
-                style={[styles.createBtn, { backgroundColor: palette.primary }]}
+                style={[styles.createBtn, { backgroundColor: actionBtn.background }]}
               >
                 {creating ? (
-                  <ActivityIndicator color="#fff" />
+                  <ActivityIndicator color={actionBtn.foreground} />
                 ) : (
-                  <Text variant="body" style={{ color: '#fff', fontWeight: '600' }}>
+                  <Text variant="body" style={{ color: actionBtn.foreground, fontWeight: '600' }}>
                     Create
                   </Text>
                 )}

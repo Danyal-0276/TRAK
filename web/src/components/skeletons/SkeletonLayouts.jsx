@@ -21,10 +21,10 @@ export function GlobalSkeletonStyles() {
 /** Shared theme tokens for masonry / feed skeletons. */
 export function getSkeletonFeedProps(isDark, colors = {}) {
     return {
-        cardBackground: isDark ? colors.surface : '#ffffff',
-        borderColor: isDark ? colors.border || '#334155' : '#e5e7eb',
-        bar1: isDark ? '#334155' : '#e5e7eb',
-        bar2: isDark ? '#475569' : '#f1f5f9',
+        cardBackground: isDark ? colors.surfaceElevated || colors.surface || '#141414' : '#ffffff',
+        borderColor: isDark ? colors.border || '#2e2e2e' : '#e5e7eb',
+        bar1: isDark ? colors.borderLight || '#262626' : '#e5e7eb',
+        bar2: isDark ? colors.border || '#2e2e2e' : '#f1f5f9',
         isDark: !!isDark,
     };
 }

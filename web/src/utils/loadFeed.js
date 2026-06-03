@@ -47,6 +47,8 @@ export function mapApiItem(a) {
     dislike_count: dislikes,
     upvotes: likes,
     topic_keywords: a.topic_keywords || [],
+    image_url: a.image_url || null,
+    image: (a.image_url || a.image || a.thumbnail_url || '').trim() || undefined,
   };
 }
 
@@ -78,6 +80,14 @@ async function fetchExplore(limit = 50, q = '', cursor = '') {
   return parseApiResponse(res);
 }
 
+async function fetchPics(limit = 50, q = '', cursor = '') {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (q && String(q).trim()) params.set('q', String(q).trim());
+  if (cursor && String(cursor).trim()) params.set('cursor', String(cursor).trim());
+  const res = await apiFetch(`${USER_PREFIX}/pics/?${params}`);
+  return parseApiResponse(res);
+}
+
 export async function loadExplorePage({ q = '', limit = 30, cursor = '' } = {}) {
   try {
     const json = await fetchExplore(limit, q, cursor);
@@ -100,6 +110,16 @@ export async function loadExplorePage({ q = '', limit = 30, cursor = '' } = {}) 
     }
     throw e;
   }
+}
+
+export async function loadPicsPage({ q = '', limit = 30, cursor = '' } = {}) {
+  const json = await fetchPics(limit, q, cursor);
+  const results = (json.results || []).map(mapApiItem);
+  return {
+    items: results,
+    nextCursor: json.next_cursor || '',
+    hasMore: Boolean(json.has_more),
+  };
 }
 
 export async function loadFeedPage({ q = '', limit = 30, cursor = '' } = {}) {

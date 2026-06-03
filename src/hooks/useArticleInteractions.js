@@ -8,6 +8,7 @@ import {
 } from '../utils/Service/api';
 import { getBookmarkIds, setBookmarkIds } from '../utils/bookmarksStorage';
 import { mergeReactionRows, setReactionForArticle } from '../utils/reactionsStorage';
+import { useFeedback } from '../components/ui/FeedbackProvider';
 
 const SYNC_COOLDOWN_MS = 45000;
 
@@ -15,6 +16,7 @@ const SYNC_COOLDOWN_MS = 45000;
  * Fast optimistic like/dislike/bookmark with throttled server sync.
  */
 export function useArticleInteractions({ articles = [], onArticlesPatch, autoSync = true } = {}) {
+  const feedback = useFeedback();
   const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
   const [votedItems, setVotedItems] = useState({});
   const lastSyncRef = useRef(0);
@@ -38,11 +40,15 @@ export function useArticleInteractions({ articles = [], onArticlesPatch, autoSyn
 
       const reactionMap = await mergeReactionRows(reactRes.results || [], { replace: false }).catch(() => ({}));
       setVotedItems(reactionMap);
+      const idSet = new Set(ids);
       onArticlesPatch?.((prev) =>
-        (prev || []).map((n) => ({
-          ...n,
-          userReaction: reactionMap[String(n.id)] || null,
-        }))
+        (prev || []).map((n) => {
+          const nid = String(n.id);
+          const userReaction = reactionMap[nid] || null;
+          const isBookmarked = idSet.has(nid);
+          if (n.userReaction === userReaction && !!n.isBookmarked === isBookmarked) return n;
+          return { ...n, userReaction, isBookmarked };
+        })
       );
       return { bookmarkIds: ids, reactionMap };
     },
@@ -60,7 +66,8 @@ export function useArticleInteractions({ articles = [], onArticlesPatch, autoSyn
 
   const handleVote = useCallback(
     async (itemId, type) => {
-      const id = String(itemId);
+      const id = String(itemId || '').trim();
+      if (!id) return;
       let newVote = null;
       let previousVote = null;
 
@@ -81,17 +88,16 @@ export function useArticleInteractions({ articles = [], onArticlesPatch, autoSyn
       if (newVote === 'down') optDislikes += 1;
 
       onArticlesPatch?.((prev) =>
-        (prev || []).map((n) =>
-          String(n.id) !== id
-            ? n
-            : {
-                ...n,
-                like_count: Math.max(0, optLikes),
-                dislike_count: Math.max(0, optDislikes),
-                upvotes: Math.max(0, optLikes),
-                userReaction: newVote,
-              }
-        )
+        (prev || []).map((n) => {
+          if (String(n.id) !== id) return n;
+          return {
+            ...n,
+            like_count: Math.max(0, optLikes),
+            dislike_count: Math.max(0, optDislikes),
+            upvotes: Math.max(0, optLikes),
+            userReaction: newVote,
+          };
+        })
       );
 
       setReactionForArticle(id, newVote).catch(() => {});
@@ -119,18 +125,20 @@ export function useArticleInteractions({ articles = [], onArticlesPatch, autoSyn
                   }
             )
           );
-        } catch {
+        } catch (err) {
           setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
           setReactionForArticle(id, previousVote || null).catch(() => {});
+          feedback?.error?.(err?.message || 'Could not save reaction');
         }
       }, 280);
     },
-    [articles, onArticlesPatch]
+    [articles, onArticlesPatch, feedback]
   );
 
   const handleBookmark = useCallback(
     async (itemId) => {
-      const id = String(itemId);
+      const id = String(itemId || '').trim();
+      if (!id) return;
       let wasBookmarked = false;
       setBookmarkedItems((prev) => {
         wasBookmarked = prev.has(id);
@@ -141,11 +149,18 @@ export function useArticleInteractions({ articles = [], onArticlesPatch, autoSyn
         return next;
       });
 
+      onArticlesPatch?.((prev) =>
+        (prev || []).map((n) => {
+          if (String(n.id) !== id) return n;
+          return { ...n, isBookmarked: !wasBookmarked };
+        })
+      );
+
       const article = articles.find((n) => String(n.id) === id);
       try {
         if (wasBookmarked) await removeBookmark(id);
         else await addBookmark(id, article?.title || '', article?.canonical_url || article?.url || '');
-      } catch {
+      } catch (err) {
         setBookmarkedItems((prev) => {
           const rollback = new Set(prev);
           if (rollback.has(id)) rollback.delete(id);
@@ -153,9 +168,10 @@ export function useArticleInteractions({ articles = [], onArticlesPatch, autoSyn
           setBookmarkIds(Array.from(rollback)).catch(() => {});
           return rollback;
         });
+        feedback?.error?.(err?.message || 'Could not update bookmark');
       }
     },
-    [articles]
+    [articles, feedback]
   );
 
   return {

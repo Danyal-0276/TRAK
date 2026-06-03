@@ -193,6 +193,9 @@ export function getAdminCssVars(palette) {
     '--admin-error': palette.error,
     '--admin-error-bg': palette.errorBg,
     '--admin-page-bg': palette.page,
+    '--admin-page-alt': palette.pageAlt,
+    '--admin-card-hover': palette.cardHover,
+    '--admin-input-bg': palette.inputBg,
     '--admin-shadow-light': palette.shadowLight,
   };
 }

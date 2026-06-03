@@ -1,31 +1,66 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bot, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { chatWithBot, clearChatHistory, getChatHistory } from '../utils/Service/api';
 import { useAuth } from '../context/AuthContext';
+import { useChatBot } from '../context/ChatBotContext';
 import { useTheme } from '../theme/ThemeContext';
+import { useResponsive } from '../hooks/useResponsive';
 import { filledActionColors } from '../theme/buttonContrast';
 
+/** In-app TRAK article path only — never external publisher URLs. */
+function resolveTrakArticlePath(article) {
+  if (!article) return null;
+  const path = article.trak_path || article.article_path;
+  if (typeof path === 'string' && path.startsWith('/article/')) return path;
+  const id = article.id || article.article_id;
+  return id ? `/article/${encodeURIComponent(String(id))}` : null;
+}
+
+function mapHistoryMessage(m) {
+  const path =
+    (typeof m.article_path === 'string' && m.article_path.startsWith('/article/') && m.article_path) ||
+    (m.article_id ? `/article/${encodeURIComponent(String(m.article_id))}` : null);
+  const relatedArticles = [];
+  if (path) {
+    relatedArticles.push({
+      title: m.article_title,
+      source: m.source,
+      path,
+    });
+  }
+  return {
+    role: m.role,
+    text: m.text,
+    relatedArticles,
+  };
+}
+
 const QUICK_PROMPTS = [
-  'Top tech headlines',
-  'Latest Pakistan news',
-  'Show trending topics',
+  'Top tech headlines today',
+  'Summarize Pakistan news',
+  'Who built TRAK AI?',
 ];
 
 const ChatBotWidget = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
+  const { open, setOpen, hasUnread, setHasUnread, closeChat, toggleChat } = useChatBot();
+  const { isDesktop } = useResponsive();
   const { theme } = useTheme();
   const { colors } = theme;
   const isDark = theme.mode === 'dark';
   const action = filledActionColors(colors, isDark);
 
-  const [open, setOpen] = useState(false);
   const [renderPanel, setRenderPanel] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([
-    { role: 'bot', text: 'Welcome to TRAK AI. Ask me anything about fresh news.' },
+    {
+      role: 'bot',
+      text: 'Hi! I am TRAK AI — built by the TRAK team to help you explore news. Ask about headlines, topics, or stories in your feed.',
+    },
   ]);
   const [loading, setLoading] = useState(false);
-  const [hasUnread, setHasUnread] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const scrollRef = useRef(null);
@@ -47,13 +82,7 @@ const ChatBotWidget = () => {
       try {
         const res = await getChatHistory();
         if (Array.isArray(res.messages) && res.messages.length) {
-          const mapped = res.messages.map((m) => ({
-            role: m.role,
-            text: m.text,
-            articleTitle: m.article_title,
-            articleUrl: m.article_url,
-            source: m.source,
-          }));
+          const mapped = res.messages.map(mapHistoryMessage);
           setMessages(mapped);
         }
       } catch (_) {
@@ -83,17 +112,23 @@ const ChatBotWidget = () => {
     setLoading(true);
     try {
       const res = await chatWithBot(text);
-      const top = Array.isArray(res.articles) && res.articles[0] ? res.articles[0] : null;
-      const fallbackUrl = top?.title
-        ? `https://www.google.com/search?q=${encodeURIComponent(top.title)}`
-        : null;
+      const related = Array.isArray(res.related_articles) && res.related_articles.length
+        ? res.related_articles
+        : res.has_trak_article && res.primary_article
+          ? [res.primary_article]
+          : [];
       setMessages((prev) => [
         ...prev,
         {
           role: 'bot',
           text: res.reply || 'No response',
-          articleTitle: top?.title,
-          articleUrl: top?.canonical_url || fallbackUrl,
+          relatedArticles: related
+            .map((a) => ({
+              title: a.title,
+              source: a.source,
+              path: resolveTrakArticlePath(a),
+            }))
+            .filter((a) => a.path),
         },
       ]);
       if (!open) {
@@ -164,7 +199,7 @@ const ChatBotWidget = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={closeChat}
                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textSecondary }}
               >
                 <X size={16} />
@@ -199,31 +234,45 @@ const ChatBotWidget = () => {
                 >
                   {m.text}
                 </span>
-                {m.articleUrl && (
-                  <div style={{ marginTop: 7, display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
-                    <button
-                      type="button"
-                      onClick={() => window.open(m.articleUrl, '_blank', 'noopener,noreferrer')}
-                      style={{
-                        border: `1px solid ${colors.border}`,
-                        borderRadius: 10,
-                        padding: 0,
-                        background: colors.backgroundSecondary,
-                        cursor: 'pointer',
-                        maxWidth: 250,
-                        textAlign: 'left',
-                      }}
-                    >
-                      <div style={{ padding: '8px 10px' }}>
-                        <div style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 4 }}>
-                          {m.source || 'TRAK Source'}
+                {Array.isArray(m.relatedArticles) && m.relatedArticles.length > 0 && (
+                  <div
+                    style={{
+                      marginTop: 7,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 6,
+                      alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+                    }}
+                  >
+                    {m.relatedArticles.map((art, j) => (
+                      <button
+                        key={`${art.path}-${j}`}
+                        type="button"
+                        onClick={() => {
+                          setOpen(false);
+                          navigate(art.path);
+                        }}
+                        style={{
+                          border: `1px solid ${colors.border}`,
+                          borderRadius: 10,
+                          padding: 0,
+                          background: colors.backgroundSecondary,
+                          cursor: 'pointer',
+                          maxWidth: 250,
+                          textAlign: 'left',
+                        }}
+                      >
+                        <div style={{ padding: '8px 10px' }}>
+                          <div style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 4 }}>
+                            {art.source || 'TRAK'} · In app
+                          </div>
+                          <div style={{ fontSize: 12, color: colors.textPrimary, fontWeight: 600, lineHeight: 1.4 }}>
+                            {art.title || 'Open TRAK article'}
+                          </div>
+                          <div style={{ marginTop: 6, fontSize: 11, color: colors.textSecondary }}>Read in TRAK</div>
                         </div>
-                        <div style={{ fontSize: 12, color: colors.textPrimary, fontWeight: 600, lineHeight: 1.4 }}>
-                          {m.articleTitle || 'Open related article'}
-                        </div>
-                        <div style={{ marginTop: 6, fontSize: 11, color: colors.textSecondary }}>View article</div>
-                      </div>
-                    </button>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
@@ -292,7 +341,7 @@ const ChatBotWidget = () => {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Ask anything about news..."
+              placeholder="Ask about news headlines..."
               style={{
                 flex: 1,
                 border: `1px solid ${colors.border}`,
@@ -322,13 +371,10 @@ const ChatBotWidget = () => {
             </button>
           </div>
         </div>
-      ) : (
+      ) : !isDesktop ? (
         <button
           type="button"
-          onClick={() => {
-            setOpen(true);
-            setHasUnread(false);
-          }}
+          onClick={toggleChat}
           style={{
             width: 58,
             height: 58,
@@ -361,7 +407,7 @@ const ChatBotWidget = () => {
           )}
           <Bot size={22} />
         </button>
-      )}
+      ) : null}
       {confirmClear && (
         <div
           style={{

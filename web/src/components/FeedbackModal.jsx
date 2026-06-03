@@ -194,7 +194,7 @@ export default function FeedbackModal({
                 borderRadius: 10,
                 border: 'none',
                 background: action.background,
-                color: action.color,
+                color: action.foreground,
                 cursor: loading ? 'wait' : 'pointer',
                 fontWeight: 700,
                 opacity: loading ? 0.7 : 1,

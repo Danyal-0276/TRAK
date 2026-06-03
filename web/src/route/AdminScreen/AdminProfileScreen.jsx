@@ -8,7 +8,7 @@ import AdminPageHeader from './components/AdminPageHeader';
 import { useAdminPageMeta } from './adminPageMeta';
 
 export default function AdminProfileScreen() {
-  const { palette } = useAdminTheme();
+  const { palette, isDark } = useAdminTheme();
   const navigate = useNavigate();
   const { user, isSuperAdmin, logout } = useAuth();
 
@@ -46,8 +46,9 @@ export default function AdminProfileScreen() {
                 width: 64,
                 height: 64,
                 borderRadius: 32,
-                backgroundColor: palette.primary,
-                color: '#fff',
+                backgroundColor: isDark ? palette.inputBg : palette.primary,
+                color: isDark ? palette.textPrimary : '#fff',
+                border: `1px solid ${borderColor}`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

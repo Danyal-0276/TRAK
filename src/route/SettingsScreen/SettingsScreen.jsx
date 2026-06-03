@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { ScrollView, StyleSheet, StatusBar, Animated, Dimensions, View, Platform } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import LinearGradient from "react-native-linear-gradient";
-import { User, Bell, Lock, Tag, Database, Info, LogOut, Moon, FileText, Mail, MessageSquare } from "lucide-react-native";
+import { User, Bell, Lock, Tag, Database, Info, LogOut, Moon, FileText, Mail, MessageSquare, Image, Hash } from "lucide-react-native";
 import { getNotificationPreferences, patchNotificationPreferences } from "../../api/notificationsApi";
 
 import SettingsHeader from "./components/SettingsHeader";
@@ -33,6 +33,10 @@ export default function SettingsScreen({ navigation }) {
   const { confirm } = useFeedback();
   const darkTheme = theme.mode === "dark";
   const insets = useSafeAreaInsets();
+
+  const openContentScreen = (routeName, params = {}) => {
+    navigation.navigate(routeName, params);
+  };
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -225,20 +229,30 @@ export default function SettingsScreen({ navigation }) {
           />
         </SettingsSection>
 
-        <Card style={{ marginBottom: theme.spacing.lg }}>
+        <Card style={{ marginBottom: theme.spacing.md }}>
           <Text variant="subtitle" color={theme.colors.textPrimary}>
-            Feed &amp; channels
+            Content
           </Text>
           <Text variant="caption" color={theme.colors.textSecondary} style={{ marginTop: theme.spacing.xs }}>
-            Topics you follow for your personalized feed
+            News categories and your own custom keywords
           </Text>
         </Card>
 
         <SettingsSection>
           <SettingsRow
             icon={<Tag size={22} color={colors.primary} />}
-            label="Following news channels"
-            onPress={() => navigation.navigate("TagSelection", { fromSettings: true })}
+            label="Manage Categories"
+            onPress={() => openContentScreen("SettingsTagSelection", { fromSettings: true })}
+          />
+          <SettingsRow
+            icon={<Hash size={22} color={colors.primary} />}
+            label="Manage Custom Keywords"
+            onPress={() =>
+              openContentScreen("SettingsKeywordSelection", {
+                fromSettings: true,
+                selectedTags: [],
+              })
+            }
           />
         </SettingsSection>
 
@@ -322,6 +336,11 @@ export default function SettingsScreen({ navigation }) {
         </SettingsSection>
 
         <SettingsSection>
+          <SettingsRow
+            icon={<Image size={22} color={colors.primary} />}
+            label="Pics"
+            onPress={() => navigation.getParent()?.navigate("Pics")}
+          />
           <SettingsRow
             icon={<MessageSquare size={22} color={colors.primary} />}
             label="Send feedback"

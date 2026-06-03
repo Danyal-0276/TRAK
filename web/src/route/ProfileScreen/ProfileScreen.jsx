@@ -17,6 +17,8 @@ import {
     CheckCircle,
     Users,
     BookOpen,
+    ThumbsUp,
+    ThumbsDown,
     Loader2,
     ShieldCheck,
     ChevronRight,
@@ -30,6 +32,7 @@ import {
     getProfile,
     getUserArticleDetail,
     listBookmarks,
+    listReactions,
     removeBookmark,
     requestProfileVerification,
     setReaction,
@@ -91,8 +94,8 @@ const UserProfileScreen = () => {
     const [showAvatarMenu, setShowAvatarMenu] = useState(false);
     const [showAvatarPreview, setShowAvatarPreview] = useState(false);
     const [userStats, setUserStats] = useState({
-        following: 0,
-        followers: 0,
+        liked: 0,
+        disliked: 0,
         saved: 0,
     });
     const [pageReady, setPageReady] = useState(false);
@@ -125,8 +128,15 @@ const UserProfileScreen = () => {
             const profileData = stripLastLogin(await getProfile());
             setProfile(profileData);
             window.localStorage.setItem(profileCacheKey(), JSON.stringify(profileData));
-            const bookmarkPayload = await listBookmarks().catch(() => ({ results: [] }));
+            const [bookmarkPayload, reactPayload] = await Promise.all([
+                listBookmarks().catch(() => ({ results: [] })),
+                listReactions().catch(() => ({ results: [] })),
+            ]);
             const rows = bookmarkPayload.results || [];
+            const reactions = reactPayload.results || [];
+            const liked = reactions.filter((r) => String(r.reaction || '').toLowerCase() === 'like').length;
+            const disliked = reactions.filter((r) => String(r.reaction || '').toLowerCase() === 'dislike').length;
+            setUserStats({ liked, disliked, saved: rows.length });
             const detailed = await Promise.all(
                 rows.map(async (row) => {
                     const aid = String(row.article_id ?? "").trim();
@@ -176,8 +186,8 @@ const UserProfileScreen = () => {
             setBookmarks(bookmarkedArticles);
             window.localStorage.setItem(profileBookmarksCacheKey(), JSON.stringify(bookmarkedArticles));
             setUserStats({
-                following: Number(profileData?.following_count || 0),
-                followers: Number(profileData?.followers_count || 0),
+                liked,
+                disliked,
                 saved: bookmarkedArticles.length,
             });
         } catch (error) {
@@ -248,8 +258,8 @@ const UserProfileScreen = () => {
     };
 
     const statItems = [
-        { label: 'Following', value: userStats.following, icon: Users, onClick: null },
-        { label: 'Followers', value: userStats.followers, icon: Users, onClick: null },
+        { label: 'Liked', value: userStats.liked, icon: ThumbsUp, onClick: () => navigate('/liked') },
+        { label: 'Disliked', value: userStats.disliked, icon: ThumbsDown, onClick: () => navigate('/disliked') },
         { label: 'Saved', value: userStats.saved, icon: BookOpen, onClick: () => navigate('/bookmarks') },
     ];
 
@@ -499,7 +509,7 @@ const UserProfileScreen = () => {
                                         color: textPrimary,
                                         marginBottom: '4px',
                                     }}>
-                                        {item.value}
+                                        {item.value ?? 0}
                                     </div>
                                     <div style={{
                                         fontSize: '13px',

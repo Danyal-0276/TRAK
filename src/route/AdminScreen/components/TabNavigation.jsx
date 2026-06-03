@@ -30,7 +30,7 @@ const TabNavigation = ({ activeTab, onTabChange, unreadAlerts = 0 }) => {
 
           // Dark: active = light pill + dark icon; inactive = bordered tile + light icon
           const activeBg = isDark ? palette.textPrimary : palette.textPrimary;
-          const activeFg = isDark ? palette.textInverse : '#ffffff';
+          const activeFg = palette.textInverse;
           const inactiveBg = isDark ? palette.inputBg : palette.pageAlt;
           const inactiveBorder = isDark ? palette.border : palette.borderLight;
           const inactiveFg = isDark ? palette.textPrimary : palette.textSecondary;

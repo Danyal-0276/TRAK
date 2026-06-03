@@ -38,11 +38,12 @@ export default function AdminListPanel({
     if (accepted) onDeleteAll();
   };
 
-  const border = colors.border || '#e5e5e5';
-  const panelBg = colors.panelBg || colors.surface || '#fff';
-  const textPrimary = colors.textPrimary || '#0a0a0a';
-  const textSecondary = colors.textSecondary || '#525252';
-  const errorColor = colors.error || '#ef4444';
+  const border = colors.border;
+  const panelBg = colors.panelBg || colors.surface;
+  const textPrimary = colors.textPrimary;
+  const textSecondary = colors.textSecondary;
+  const errorColor = colors.error;
+  const onError = colors.textInverse || '#ffffff';
 
   return (
     <View style={[styles.wrap, { borderColor: border, backgroundColor: panelBg }]}>
@@ -52,7 +53,7 @@ export default function AdminListPanel({
         </Text>
         {items.length > 0 ? (
           <TouchableOpacity onPress={handleDeleteAll} style={[styles.deleteAllBtn, { backgroundColor: errorColor }]}>
-            <Text variant="caption" style={{ color: '#fff', fontWeight: '700' }}>
+            <Text variant="caption" style={{ color: onError, fontWeight: '700' }}>
               Delete all
             </Text>
           </TouchableOpacity>

@@ -33,6 +33,9 @@ const AdminUsersScreen = () => {
     const textPrimary = palette.textPrimary;
     const textSecondary = palette.textSecondary;
     const borderColor = palette.border;
+    const inputBg = palette.inputBg || cardBackground;
+    const avatarBg = palette.buttonPrimaryBg || (isDark ? '#262626' : '#0a0a0a');
+    const avatarText = palette.buttonPrimaryText || (isDark ? '#fafafa' : '#ffffff');
 
     const loadUsers = useCallback(async () => {
         try {
@@ -169,7 +172,7 @@ const AdminUsersScreen = () => {
                             style={{
                                 width: '100%',
                                 padding: '12px 16px 12px 44px',
-                                backgroundColor: palette.inputBg,
+                                backgroundColor: inputBg,
                                 border: `1px solid ${borderColor}`,
                                 borderRadius: 8,
                                 fontSize: 14,
@@ -250,19 +253,15 @@ const AdminUsersScreen = () => {
                         </p>
                     </div>
                 ) : (
-                    <div style={{
-                        backgroundColor: cardBackground,
-                        borderRadius: 12,
-                        border: `1px solid ${borderColor}`,
-                        overflow: 'hidden',
-                    }}>
-                        <div style={{
+                    <div className="admin-data-table">
+                        <div
+                            className={isMobile ? '' : 'admin-data-table__head'}
+                            style={{
                             display: isMobile ? 'none' : 'grid',
-                            gridTemplateColumns: isTablet ? '40px 1fr 1.5fr 1fr 1fr 100px' : '40px 1fr 2fr 1fr 1fr 120px',
+                            gridTemplateColumns: isTablet ? '40px minmax(180px, 2fr) 1fr 1fr 100px' : '40px minmax(220px, 2.5fr) 1fr 1fr 120px',
                             gap: 16,
                             padding: '16px 20px',
-                            borderBottom: `1px solid ${borderColor}`,
-                            backgroundColor: palette.pageAlt,
+                            alignItems: 'center',
                         }}>
                             <div>
                                 <input
@@ -273,14 +272,14 @@ const AdminUsersScreen = () => {
                                 />
                             </div>
                             <div style={{ fontSize: 12, fontWeight: 600, color: textSecondary, textTransform: 'uppercase' }}>Name</div>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: textSecondary, textTransform: 'uppercase' }}>Email</div>
                             <div style={{ fontSize: 12, fontWeight: 600, color: textSecondary, textTransform: 'uppercase' }}>Status</div>
                             <div style={{ fontSize: 12, fontWeight: 600, color: textSecondary, textTransform: 'uppercase' }}>Join Date</div>
-                            <div style={{ fontSize: 12, fontWeight: 600, color: textSecondary, textTransform: 'uppercase' }}>Actions</div>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: textSecondary, textTransform: 'uppercase', textAlign: 'right' }}>Actions</div>
                         </div>
                         {users.map((user) => (
                             <div
                                 key={user.id}
+                                className={isMobile ? '' : 'admin-data-row'}
                                 role="button"
                                 tabIndex={0}
                                 onClick={() => navigate(`/admin/users/${user.id}`)}
@@ -289,18 +288,16 @@ const AdminUsersScreen = () => {
                                 }}
                                 style={{
                                     display: isMobile ? 'block' : 'grid',
-                                    gridTemplateColumns: isMobile ? 'none' : (isTablet ? '40px 1fr 1.5fr 1fr 1fr 100px' : '40px 1fr 2fr 1fr 1fr 120px'),
+                                    gridTemplateColumns: isMobile ? 'none' : (isTablet ? '40px minmax(180px, 2fr) 1fr 1fr 100px' : '40px minmax(220px, 2.5fr) 1fr 1fr 120px'),
                                     gap: 16,
                                     padding: isMobile ? 16 : '16px 20px',
-                                    borderBottom: `1px solid ${borderColor}`,
-                                    cursor: 'pointer',
-                                    transition: 'background 0.2s ease',
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = palette.pageAlt;
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = cardBackground;
+                                    alignItems: 'center',
+                                    ...(isMobile ? {
+                                        backgroundColor: cardBackground,
+                                        border: `1px solid ${borderColor}`,
+                                        borderRadius: 12,
+                                        marginBottom: 12,
+                                    } : {}),
                                 }}
                             >
                                 <div onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center' }}>
@@ -313,32 +310,48 @@ const AdminUsersScreen = () => {
                                         />
                                     ) : null}
                                 </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMobile ? 12 : 0 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: isMobile ? 12 : 0, minWidth: 0 }}>
                                     <div style={{
                                         width: 40,
                                         height: 40,
                                         borderRadius: 8,
-                                        backgroundColor: palette.buttonPrimaryBg || palette.textPrimary,
+                                        backgroundColor: avatarBg,
                                         display: 'flex',
                                         alignItems: 'center',
                                         justifyContent: 'center',
-                                        color: palette.buttonPrimaryText || '#ffffff',
+                                        color: avatarText,
                                         fontSize: 16,
                                         fontWeight: 700,
                                         flexShrink: 0,
                                     }}>
                                         {user.name.charAt(0).toUpperCase()}
                                     </div>
-                                    <div>
-                                        <div style={{ fontSize: 14, fontWeight: 600, color: textPrimary }}>{user.name}</div>
+                                    <div style={{ minWidth: 0 }}>
+                                        <div style={{ fontSize: 14, fontWeight: 600, color: textPrimary, lineHeight: 1.3 }}>
+                                            {user.name}
+                                        </div>
+                                        <div style={{
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            gap: 6,
+                                            marginTop: 4,
+                                            fontSize: 13,
+                                            color: textSecondary,
+                                            lineHeight: 1.3,
+                                        }}>
+                                            <Mail size={12} color={textSecondary} style={{ flexShrink: 0 }} />
+                                            <span style={{
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                                whiteSpace: 'nowrap',
+                                            }}>
+                                                {user.email}
+                                            </span>
+                                        </div>
                                         {user.isAdmin ? (
-                                            <div style={{ fontSize: 11, color: palette.warning, fontWeight: 600, marginTop: 2 }}>Admin</div>
+                                            <div style={{ fontSize: 11, color: palette.warning, fontWeight: 600, marginTop: 4 }}>Admin</div>
                                         ) : null}
                                     </div>
-                                </div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: textSecondary, marginBottom: isMobile ? 8 : 0 }}>
-                                    <Mail size={14} color={textSecondary} />
-                                    {user.email}
                                 </div>
                                 <div style={{ marginBottom: isMobile ? 8 : 0 }} onClick={(e) => e.stopPropagation()}>
                                     <button
@@ -384,7 +397,7 @@ const AdminUsersScreen = () => {
                                             style={{
                                                 padding: 6,
                                                 border: `1px solid ${borderColor}`,
-                                                background: 'transparent',
+                                                background: palette.inputBg || cardBackground,
                                                 borderRadius: 6,
                                                 cursor: 'pointer',
                                             }}

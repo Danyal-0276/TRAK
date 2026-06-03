@@ -1,39 +1,35 @@
 // components/SaveButton.jsx
 import React from "react";
-import { TouchableOpacity, StyleSheet, ActivityIndicator } from "react-native";
-import LinearGradient from "react-native-linear-gradient";
+import { TouchableOpacity, StyleSheet, ActivityIndicator, View } from "react-native";
 import { useTheme } from "../../../theme/ThemeContext";
 import Text from "../../../components/ui/Text";
 import { Check } from "lucide-react-native";
+import { useFilledActionColors } from "../../../theme/buttonContrast";
 
 export default function SaveButton({ onPress, loading = false }) {
   const { theme } = useTheme();
   const { colors } = theme;
+  const actionColors = useFilledActionColors();
   
   return (
     <TouchableOpacity 
       onPress={onPress} 
       activeOpacity={0.8}
       disabled={loading}
-      style={styles.buttonContainer}
+      style={[styles.buttonContainer, { shadowColor: colors.shadowDark || '#000' }]}
     >
-      <LinearGradient
-        colors={[colors.primary, `${colors.primary}DD`]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradient}
-      >
+      <View style={[styles.gradient, { backgroundColor: actionColors.background }]}>
         {loading ? (
-          <ActivityIndicator size="small" color={colors.surface} />
+          <ActivityIndicator size="small" color={actionColors.foreground} />
         ) : (
           <>
-            <Check size={18} color={colors.surface} />
-            <Text variant="body" color={colors.surface} style={styles.buttonText}>
+            <Check size={18} color={actionColors.foreground} />
+            <Text variant="body" color={actionColors.foreground} style={styles.buttonText}>
               Save Changes
             </Text>
           </>
         )}
-      </LinearGradient>
+      </View>
     </TouchableOpacity>
   );
 }
@@ -43,7 +39,6 @@ const styles = StyleSheet.create({
     marginTop: 24,
     borderRadius: 14,
     overflow: 'hidden',
-    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 8,

@@ -25,15 +25,19 @@ import CategoriesScreen from '../route/CategoriesScreen/CategoriesScreen';
 import AboutScreen from '../route/AboutScreen/AboutScreen';
 import HelpScreen from '../route/HelpScreen/HelpScreen';
 import ArticleDetailScreen from '../route/ArticleDetailScreen/ArticleDetailScreen';
-import TrendingScreen from '../route/TrendingScreen/TrendingScreen';
 import BookmarksScreen from '../route/BookmarksScreen/BookmarksScreen';
+import ReactionArticlesScreen from '../route/ReactionArticlesScreen/ReactionArticlesScreen';
 import RecentScreen from '../route/RecentScreen/RecentScreen';
+import PicsScreen from '../route/PicsScreen/PicsScreen';
 import ProtectedRoute from '../components/ProtectedRoute';
 import UserOnlyRoute from '../components/UserOnlyRoute';
+import { useTheme } from '../theme/ThemeContext';
 
 const RouterContent = () => {
   const location = useLocation();
   const { isDesktop } = useResponsive();
+  const { theme } = useTheme();
+  const { colors } = theme;
   const isAuthPage = ['/', '/login', '/signup', '/verify-email', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'].includes(location.pathname);
   const isAdminPage = location.pathname.startsWith('/admin');
   const isMainAppPage = !isAuthPage && !isAdminPage;
@@ -44,12 +48,12 @@ const RouterContent = () => {
       style={{
         minHeight: '100vh',
         width: '100%',
-        backgroundColor: isAuthPage ? '#ffffff' : '#f9fafb',
+        backgroundColor: colors.background,
         paddingTop: '0',
         marginTop: '0',
         paddingRight: isMainAppPage && isDesktop ? '280px' : '0',
         paddingLeft: '0',
-        transition: 'padding 0.3s ease',
+        transition: 'padding 0.3s ease, background-color var(--trak-transition-duration, 0s) var(--trak-transition-ease, ease)',
       }}
     >
       <Routes>
@@ -78,9 +82,12 @@ const RouterContent = () => {
         <Route path="/categories" element={<UserOnlyRoute><CategoriesScreen /></UserOnlyRoute>} />
         <Route path="/about" element={<UserOnlyRoute><AboutScreen /></UserOnlyRoute>} />
         <Route path="/help" element={<UserOnlyRoute><HelpScreen /></UserOnlyRoute>} />
-        <Route path="/trending" element={<UserOnlyRoute><TrendingScreen /></UserOnlyRoute>} />
+        <Route path="/trending" element={<Navigate to="/newsfeed?tab=Trending" replace />} />
         <Route path="/bookmarks" element={<UserOnlyRoute><BookmarksScreen /></UserOnlyRoute>} />
+        <Route path="/liked" element={<UserOnlyRoute><ReactionArticlesScreen reaction="like" /></UserOnlyRoute>} />
+        <Route path="/disliked" element={<UserOnlyRoute><ReactionArticlesScreen reaction="dislike" /></UserOnlyRoute>} />
         <Route path="/recent" element={<UserOnlyRoute><RecentScreen /></UserOnlyRoute>} />
+        <Route path="/pics" element={<UserOnlyRoute><PicsScreen /></UserOnlyRoute>} />
         <Route path="/article/:id" element={<UserOnlyRoute><ArticleDetailScreen /></UserOnlyRoute>} />
         
         {/* Admin-only panel (same as mobile — no newsfeed chrome) */}

@@ -1,12 +1,15 @@
 import React from 'react';
 import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import Text from '../../../components/ui/Text';
+import { useAdminTheme } from '../useAdminTheme';
 
-const StatCard = ({ label, value, accent, palette, onPress }) => {
-  const borderColor = accent || palette?.primary || '#2563eb';
-  const cardBg = palette?.card || '#fff';
-  const textPrimary = palette?.textPrimary || '#0a0a0a';
-  const textSecondary = palette?.textSecondary || '#525252';
+const StatCard = ({ label, value, accent, palette: paletteProp, onPress }) => {
+  const { palette: themePalette } = useAdminTheme();
+  const palette = paletteProp || themePalette;
+  const borderColor = accent || palette.primary;
+  const cardBg = palette.card;
+  const textPrimary = palette.textPrimary;
+  const textSecondary = palette.textSecondary;
 
   const inner = (
     <View style={[styles.statCard, { backgroundColor: cardBg, borderColor: palette?.border, borderLeftColor: borderColor }]}>
