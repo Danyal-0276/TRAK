@@ -4,6 +4,8 @@ import { ChevronLeft, MoreHorizontal } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import TrakLogo from '../../../components/TrakLogo';
 
+const SIDE_SLOT_WIDTH = 40;
+
 export const ArticleDetailHeader = ({ onBackPress, onHomePress, onMorePress }) => {
     const { theme } = useTheme();
     const { colors } = theme;
@@ -19,16 +21,7 @@ export const ArticleDetailHeader = ({ onBackPress, onHomePress, onMorePress }) =
                 },
             ]}
         >
-            <View style={styles.leftGroup}>
-                <TouchableOpacity
-                    style={styles.logoButton}
-                    onPress={onHomePress}
-                    activeOpacity={0.7}
-                    accessibilityLabel="Go to home"
-                    accessibilityRole="button"
-                >
-                    <TrakLogo size={28} />
-                </TouchableOpacity>
+            <View style={styles.sideSlot}>
                 <TouchableOpacity
                     style={[styles.iconButton, { backgroundColor: colors.backgroundSecondary }]}
                     onPress={onBackPress}
@@ -40,15 +33,29 @@ export const ArticleDetailHeader = ({ onBackPress, onHomePress, onMorePress }) =
                 </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
-                style={[styles.iconButton, { backgroundColor: colors.backgroundSecondary }]}
-                onPress={onMorePress}
-                activeOpacity={0.7}
-                accessibilityLabel="More options"
-                accessibilityRole="button"
-            >
-                <MoreHorizontal size={20} color={colors.textSecondary} />
-            </TouchableOpacity>
+            <View style={styles.centerSlot}>
+                <TouchableOpacity
+                    style={styles.logoButton}
+                    onPress={onHomePress}
+                    activeOpacity={0.7}
+                    accessibilityLabel="Go to home"
+                    accessibilityRole="button"
+                >
+                    <TrakLogo size={28} />
+                </TouchableOpacity>
+            </View>
+
+            <View style={[styles.sideSlot, styles.sideSlotRight]}>
+                <TouchableOpacity
+                    style={[styles.iconButton, { backgroundColor: colors.backgroundSecondary }]}
+                    onPress={onMorePress}
+                    activeOpacity={0.7}
+                    accessibilityLabel="More options"
+                    accessibilityRole="button"
+                >
+                    <MoreHorizontal size={20} color={colors.textSecondary} />
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };
@@ -56,7 +63,6 @@ export const ArticleDetailHeader = ({ onBackPress, onHomePress, onMorePress }) =
 const styles = StyleSheet.create({
     header: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 16,
         paddingVertical: 10,
@@ -72,11 +78,18 @@ const styles = StyleSheet.create({
             },
         }),
     },
-    leftGroup: {
-        flexDirection: 'row',
+    sideSlot: {
+        width: SIDE_SLOT_WIDTH,
+        alignItems: 'flex-start',
+        justifyContent: 'center',
+    },
+    sideSlotRight: {
+        alignItems: 'flex-end',
+    },
+    centerSlot: {
+        flex: 1,
         alignItems: 'center',
-        gap: 4,
-        zIndex: 1,
+        justifyContent: 'center',
     },
     logoButton: {
         paddingHorizontal: 4,
@@ -85,11 +98,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     iconButton: {
-        width: 40,
+        width: SIDE_SLOT_WIDTH,
         height: 40,
         borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
-        zIndex: 1,
     },
 });
