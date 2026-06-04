@@ -4,6 +4,8 @@ import {
   getAdminModelMetrics,
   getAdminUsers,
 } from '../../api/adminApi';
+import { getUserFacingError } from '../../utils/getUserFacingError';
+import { normalizeApiErrorMessage } from '../../utils/normalizeApiError';
 import { buildDashboardStatCards, isAnalyticsPayload } from './dashboardChartUtils';
 import { MOCK_ANALYTICS } from './mockAdminData';
 
@@ -26,16 +28,20 @@ export async function loadAdminOverview({ cacheBust = false, requireAnalytics = 
     if (isAnalyticsPayload(raw)) {
       serverAnalytics = raw;
     } else {
-      const detail = raw?.detail || raw?.message;
+      const detail = raw?.detail ?? raw?.message;
       analyticsError =
         typeof detail === 'string'
           ? detail
-          : 'Analytics API returned an unexpected response.';
+          : normalizeApiErrorMessage(raw, 0) || 'Analytics API returned an unexpected response.';
       if (requireAnalytics) throw new Error(analyticsError);
     }
   } catch (err) {
     if (requireAnalytics) throw err;
-    analyticsError = err?.message || 'Could not load analytics.';
+    analyticsError = getUserFacingError(err, {
+      status: err?.status,
+      payload: err?.payload,
+      fallback: 'Could not load analytics. Sign in as an admin and ensure the API is running.',
+    });
     serverAnalytics = null;
   }
 
