@@ -13,8 +13,8 @@ export function formatNetworkError(err, context = 'reach the server') {
   ) {
     const hint =
       Platform.OS === 'android'
-        ? ' Same Wi-Fi as PC, Windows Firewall must allow Python on port 8000, and run: python manage.py runserver 0.0.0.0:8000. USB fix: adb reverse tcp:8000 tcp:8000 then set ANDROID_PHYSICAL_DEVICE=false in api.local.js. Emulator: http://10.0.2.2:8000'
-        : ' Ensure Django is running (python manage.py runserver).';
+        ? ' Same Wi-Fi as PC and Windows Firewall must allow inbound TCP 8000 for Python. Backend: python -m daphne -b 0.0.0.0 -p 8000 TRAK_Backend.asgi:application. USB: adb reverse tcp:8000 tcp:8000 and ANDROID_USE_USB_REVERSE=true in api.local.js. Emulator: http://10.0.2.2:8000'
+        : ' Ensure Daphne is running on your PC (daphne -b 0.0.0.0 -p 8000).';
     return `Cannot ${context} at ${API_BASE}.${hint}`;
   }
   return msg;
