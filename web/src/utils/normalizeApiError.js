@@ -6,6 +6,25 @@
  * @param {number} status - HTTP status code
  * @returns {{ message: string, fields: Record<string, string> }}
  */
+function extractErrorText(value) {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const text = extractErrorText(item);
+      if (text) return text;
+    }
+    return '';
+  }
+  if (typeof value === 'object') {
+    if (typeof value.message === 'string') return value.message;
+    if (typeof value.detail === 'string') return value.detail;
+    if (Array.isArray(value.messages)) return extractErrorText(value.messages);
+  }
+  return '';
+}
+
 export function normalizeApiError(payload, status) {
   const fields = {};
 
@@ -13,14 +32,28 @@ export function normalizeApiError(payload, status) {
     return { message: httpStatusMessage(status), fields };
   }
 
-  // DRF detail string
-  if (typeof payload.detail === 'string') {
-    return { message: friendlyMessage(payload.detail, status), fields };
+  // DRF detail string or nested object (e.g. JWT / validation)
+  if (payload.detail != null) {
+    const detailText = extractErrorText(payload.detail);
+    if (detailText) {
+      return { message: friendlyMessage(detailText, status), fields };
+    }
+  }
+
+  // SimpleJWT-style messages array
+  if (Array.isArray(payload.messages) && payload.messages.length) {
+    const text = extractErrorText(payload.messages);
+    if (text) {
+      return { message: friendlyMessage(text, status), fields };
+    }
   }
 
   // non_field_errors array
   if (Array.isArray(payload.non_field_errors) && payload.non_field_errors.length) {
-    return { message: friendlyMessage(String(payload.non_field_errors[0]), status), fields };
+    const text = extractErrorText(payload.non_field_errors);
+    if (text) {
+      return { message: friendlyMessage(text, status), fields };
+    }
   }
 
   // errors wrapper (some DRF serializers wrap under `errors`)
@@ -29,9 +62,9 @@ export function normalizeApiError(payload, status) {
     : payload;
 
   for (const [key, value] of Object.entries(target)) {
-    if (key === 'non_field_errors') continue;
-    const raw = Array.isArray(value) ? String(value[0]) : String(value);
-    fields[key] = friendlyMessage(raw, null);
+    if (key === 'non_field_errors' || key === 'detail' || key === 'messages') continue;
+    const raw = extractErrorText(value);
+    if (raw) fields[key] = friendlyMessage(raw, null);
   }
 
   const firstFieldMsg = Object.values(fields)[0];
@@ -56,6 +89,9 @@ function httpStatusMessage(status) {
   if (status === 403) return 'You do not have permission to do that.';
   if (status === 404) return 'The requested resource was not found.';
   if (status === 429) return 'Too many attempts. Please wait a moment and try again.';
+  if (status === 502) {
+    return 'The API server is not reachable. Restart the backend on the VPS and ensure port 8000 is open, then click Refresh.';
+  }
   if (status >= 500) return 'Something went wrong on our end. Please try again shortly.';
   return 'Something went wrong. Please try again.';
 }

@@ -23,6 +23,7 @@ import {
   postAdminScrapeRun,
   postAdminScrapeAndPipelineRun,
 } from '../../api/adminApi';
+import { getUserFacingError } from '../../utils/getUserFacingError';
 import { loadAdminOverview, buildOverviewStatCards } from './loadAdminOverview';
 import {
   emptyAnalyticsSnapshot,
@@ -121,7 +122,13 @@ const AdminDashboardScreen = () => {
       setLiveUpdatedAt(new Date());
     } catch (error) {
       console.error('Error loading admin stats:', error);
-      setAnalyticsError(error?.message || 'Failed to load analytics.');
+      setAnalyticsError(
+        getUserFacingError(error, {
+          status: error?.status,
+          payload: error?.payload,
+          fallback: 'Failed to load analytics.',
+        })
+      );
       if (manual || !silent) setSnapshot(null);
     } finally {
       setRefreshing(false);
@@ -389,8 +396,8 @@ const AdminDashboardScreen = () => {
                   fontSize: 13,
                 }}
               >
-                {analyticsError} Charts below use empty data until the API works. Restart the backend and click
-                Refresh.
+                {typeof analyticsError === 'string' ? analyticsError : 'Could not load analytics.'} Charts below
+                use empty data until the API works. Restart the backend and click Refresh.
               </div>
             ) : null}
 
