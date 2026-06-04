@@ -7,6 +7,16 @@ import { parseApiResponse } from './getUserFacingError';
 /** Mock feed only when explicitly enabled (never auto-on in dev — hides real API issues). */
 const allowMockFallback = import.meta.env.VITE_ALLOW_MOCK_FEED === 'true';
 
+/** Belt-and-suspenders: user feeds are Real-only (fake/suspicious are admin-only). */
+function filterRealFeedItems(items) {
+  return (items || []).filter((item) => {
+    const code = item.credibility?.label_code ?? item.credibilityLabel;
+    if (code === 0 || code === '0') return true;
+    const label = String(item.credibility?.label ?? item.credibilityLabel ?? '').toLowerCase();
+    return label === 'real' || label.startsWith('real');
+  });
+}
+
 export function mapApiItem(a) {
   const cred = a.credibility || {};
   const label = cred.label || cred.label_code;
@@ -91,7 +101,7 @@ async function fetchPics(limit = 50, q = '', cursor = '') {
 export async function loadExplorePage({ q = '', limit = 30, cursor = '' } = {}) {
   try {
     const json = await fetchExplore(limit, q, cursor);
-    const results = (json.results || []).map(mapApiItem);
+    const results = filterRealFeedItems((json.results || []).map(mapApiItem));
     return {
       items: results,
       nextCursor: json.next_cursor || '',
@@ -114,7 +124,7 @@ export async function loadExplorePage({ q = '', limit = 30, cursor = '' } = {}) 
 
 export async function loadPicsPage({ q = '', limit = 30, cursor = '' } = {}) {
   const json = await fetchPics(limit, q, cursor);
-  const results = (json.results || []).map(mapApiItem);
+  const results = filterRealFeedItems((json.results || []).map(mapApiItem));
   return {
     items: results,
     nextCursor: json.next_cursor || '',
@@ -124,7 +134,7 @@ export async function loadPicsPage({ q = '', limit = 30, cursor = '' } = {}) {
 
 export async function loadFeedPage({ q = '', limit = 30, cursor = '' } = {}) {
   const json = await fetchFeed(limit, q, cursor);
-  const results = (json.results || []).map(mapApiItem);
+  const results = filterRealFeedItems((json.results || []).map(mapApiItem));
   return {
     items: results,
     nextCursor: json.next_cursor || '',

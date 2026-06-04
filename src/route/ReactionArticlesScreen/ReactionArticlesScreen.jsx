@@ -7,7 +7,8 @@ import {
   ActivityIndicator,
   TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { resolveTopInset } from '../../utils/screenSafeArea';
 import { ChevronLeft } from 'lucide-react-native';
 import ArticleFeedList from '../../components/ArticleFeedList';
 import { useTheme } from '../../theme/ThemeContext';
@@ -33,6 +34,8 @@ const ReactionArticlesScreen = ({ navigation, route }) => {
 
   const { theme } = useTheme();
   const { colors } = theme;
+  const insets = useSafeAreaInsets();
+  const topInset = resolveTopInset(insets, 0);
   const feedback = useFeedback();
   const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
   const [votedItems, setVotedItems] = useState({});
@@ -153,7 +156,7 @@ const ReactionArticlesScreen = ({ navigation, route }) => {
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+    <View style={[styles.safe, { backgroundColor: colors.background, paddingTop: topInset }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
       <View style={[styles.header, { borderBottomColor: colors.borderLight, backgroundColor: colors.surface }]}>
         <TouchableOpacity
@@ -198,7 +201,7 @@ const ReactionArticlesScreen = ({ navigation, route }) => {
           }
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

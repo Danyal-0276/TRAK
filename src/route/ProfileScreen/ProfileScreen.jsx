@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useCallback } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { resolveTopInset } from "../../utils/screenSafeArea";
 import { ScrollView, StatusBar, StyleSheet, Animated, View, TouchableOpacity, Modal, Pressable, Image } from "react-native";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import ProfileHeader from "./components/ProfileHeader";
@@ -13,6 +14,7 @@ import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarV
 import { addBookmark, confirmProfileVerification, getProfile, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, requestProfileVerification, setReaction } from "../../utils/Service/api";
 import { buildArticleDetailParams } from "../../utils/articleNavigation";
 import { mapApiItem } from "../../utils/loadFeed";
+import { filterRealFeedItems } from "../../utils/feedRealOnly";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
 import Text from "../../components/ui/Text";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
@@ -31,6 +33,8 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
   const stackNavigation = navigation.getParent() ?? navigationProp ?? navigation;
   const { theme } = useTheme();
   const { colors } = theme;
+  const insets = useSafeAreaInsets();
+  const topInset = resolveTopInset(insets, 0);
   const { logout, isAdmin, user } = useAuth();
   const { confirm, error: showError } = useFeedback();
   const [bookmarks, setBookmarks] = useState([]);
@@ -162,7 +166,7 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
           }
         })
       );
-      const bookmarkedArticles = detailed.filter(Boolean);
+      const bookmarkedArticles = filterRealFeedItems(detailed.filter(Boolean));
       setBookmarks(bookmarkedArticles);
       setBookmarkedItems(new Set(bookmarkedArticles.map((b) => String(b.id))));
       setStats({ liked, disliked, saved: bookmarkedArticles.length });
@@ -313,7 +317,7 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
 
   if (!uiReady && !profile) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topInset }]}>
         <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
         <ScrollView contentContainerStyle={{ padding: 16 }} showsVerticalScrollIndicator={false}>
           <SkeletonPlaceholder borderRadius={8} backgroundColor={colors.border} highlightColor={colors.surface}>
@@ -330,7 +334,7 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
             <View style={{ height: 120, width: '100%' }} />
           </SkeletonPlaceholder>
         </ScrollView>
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -351,11 +355,11 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
 
   return (
     <>
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['top']}>
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topInset }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
 
       <Animated.ScrollView
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 16) }]}
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
@@ -435,8 +439,8 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
           </View>
         </Pressable>
       </Modal>
-    </SafeAreaView>
-  </>
+    </View>
+    </>
   );
 };
 

@@ -18,6 +18,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { ChevronLeft, Send, Trash2, Sparkles } from 'lucide-react-native';
 import { chatWithBot, clearChatHistory, getChatHistory } from '../../utils/Service/api';
+import { isRealFeedArticle } from '../../utils/feedRealOnly';
 import { useTheme } from '../../theme/ThemeContext';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { useAuth } from '../../context/AuthContext';
@@ -35,12 +36,6 @@ function getKeyboardInset(e) {
   const fromScreenY = coords.screenY != null ? windowHeight - coords.screenY : 0;
   return Math.max(reported, fromScreenY, 0);
 }
-
-const QUICK_PROMPTS = [
-  'Top tech headlines',
-  'Latest Pakistan news',
-  'Show trending topics',
-];
 
 function formatCaughtMessage(e) {
   if (e == null) return 'Chat failed';
@@ -169,7 +164,9 @@ const ChatScreen = () => {
     setLoading(true);
     try {
       const res = await chatWithBot(text);
-      const top = Array.isArray(res.articles) && res.articles[0] ? res.articles[0] : null;
+      const top = Array.isArray(res.articles)
+        ? res.articles.find((a) => isRealFeedArticle(a)) ?? null
+        : null;
       const fallbackUrl = top?.title
         ? `https://www.google.com/search?q=${encodeURIComponent(top.title)}`
         : null;
@@ -297,18 +294,6 @@ const ChatScreen = () => {
             },
           ]}
         >
-          <View style={styles.quickRow}>
-            {QUICK_PROMPTS.map((p) => (
-              <TouchableOpacity
-                key={p}
-                style={[styles.quickChip, { borderColor: colors.border, backgroundColor: colors.backgroundSecondary }]}
-                onPress={() => sendMessage(p)}
-              >
-                <Text style={{ color: colors.textSecondary, fontSize: 12 }}>{p}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
           <View style={styles.inputRow}>
             <TextInput
               value={input}

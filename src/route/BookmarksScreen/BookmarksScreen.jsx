@@ -7,7 +7,8 @@ import {
     ActivityIndicator,
     TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { resolveTopInset } from '../../utils/screenSafeArea';
 import { ChevronLeft } from 'lucide-react-native';
 import ArticleFeedList from '../../components/ArticleFeedList';
 import { useTheme } from '../../theme/ThemeContext';
@@ -16,10 +17,13 @@ import { addBookmark, getUserArticleDetail, listBookmarks, removeBookmark, setRe
 import Text from '../../components/ui/Text';
 import { buildArticleDetailParams } from '../../utils/articleNavigation';
 import { mapApiItem } from '../../utils/loadFeed';
+import { filterRealFeedItems } from '../../utils/feedRealOnly';
 
 const BookmarksScreen = ({ navigation }) => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const insets = useSafeAreaInsets();
+    const topInset = resolveTopInset(insets, 0);
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
     const [votedItems, setVotedItems] = useState({});
     const [newsData, setNewsData] = useState([]);
@@ -61,8 +65,7 @@ const BookmarksScreen = ({ navigation }) => {
             const idSet = new Set((detailed || []).map((item) => String(item.id)));
             setBookmarkedItems(idSet);
             setNewsData(
-                (detailed || [])
-                    .filter(Boolean)
+                filterRealFeedItems(detailed || [])
                     .map((n) => ({ ...n, isBookmarked: true }))
             );
         } catch (e) {
@@ -112,7 +115,7 @@ const BookmarksScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.safe, { backgroundColor: colors.background, paddingTop: topInset }]}>
             <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             <View style={[styles.header, { borderBottomColor: colors.borderLight, backgroundColor: colors.surface }]}>
                 <TouchableOpacity
@@ -160,7 +163,7 @@ const BookmarksScreen = ({ navigation }) => {
                     }
                 />
             )}
-        </SafeAreaView>
+        </View>
     );
 };
 

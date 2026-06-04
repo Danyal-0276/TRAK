@@ -36,11 +36,7 @@ function mapHistoryMessage(m) {
   };
 }
 
-const QUICK_PROMPTS = [
-  'Top tech headlines today',
-  'Summarize Pakistan news',
-  'Who built TRAK AI?',
-];
+
 
 const ChatBotWidget = () => {
   const navigate = useNavigate();
@@ -309,24 +305,6 @@ const ChatBotWidget = () => {
               borderTop: `1px solid ${colors.border}`,
             }}
           >
-            {QUICK_PROMPTS.map((p) => (
-              <button
-                key={p}
-                type="button"
-                onClick={() => sendMessage(p)}
-                style={{
-                  fontSize: 11,
-                  border: `1px solid ${colors.border}`,
-                  borderRadius: 999,
-                  background: colors.surface,
-                  color: colors.textSecondary,
-                  padding: '5px 9px',
-                  cursor: 'pointer',
-                }}
-              >
-                {p}
-              </button>
-            ))}
           </div>
           <div
             style={{

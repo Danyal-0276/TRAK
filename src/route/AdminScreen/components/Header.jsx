@@ -3,6 +3,7 @@ import { View, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAdminTheme } from '../useAdminTheme';
 import { useAuth } from '../../../context/AuthContext';
+import { resolveTopInset } from '../../../utils/screenSafeArea';
 import Text from '../../../components/ui/Text';
 import TrakLogo from '../../../components/TrakLogo';
 
@@ -39,7 +40,7 @@ const Header = ({ activeTab = 'overview' }) => {
         {
           backgroundColor: palette.card,
           borderBottomColor: palette.border,
-          paddingTop: Math.max(insets.top, 8),
+          paddingTop: resolveTopInset(insets, 8),
         },
       ]}
     >

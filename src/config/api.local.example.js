@@ -32,5 +32,8 @@ const LOCAL_API_BASE = Platform.select({
 
 export const API_BASE = USE_RENDER ? PRODUCTION_API_BASE : LOCAL_API_BASE;
 
+/** Set true only when backend runs with ASGI (daphne), not plain runserver. */
+// export const ENABLE_NOTIFICATIONS_WS = true;
+
 // Backend: python manage.py runserver 0.0.0.0:8000
 // MongoDB must be running. Match DEV_LAN_HOST to your PC IP if using Wi-Fi.

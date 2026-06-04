@@ -62,7 +62,10 @@ import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { buildArticleDetailParams } from '../../utils/articleNavigation';
 import { getArticlesFetchParams, filterArticlesForDisplay } from '../../utils/adminArticleFilters';
 import { ADMIN_TAB_ROUTES } from '../../navigation/adminTabIds';
-import { openAdminNotificationsSocket } from '../../api/adminNotificationsRealtime';
+import {
+  openAdminNotificationsSocket,
+  isAdminNotificationsWsEnabled,
+} from '../../api/adminNotificationsRealtime';
 import { dispatchAdminFeedbackRefresh } from '../../utils/adminNotificationsEvents';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -187,9 +190,11 @@ const AdminScreen = ({ navigation }) => {
 
   const adminSocketRef = useRef(null);
   const adminReconnectRef = useRef(null);
+  const adminReconnectAttemptsRef = useRef(0);
+  const ADMIN_WS_MAX_RECONNECT = 3;
 
   useEffect(() => {
-    if (!isAdmin) return undefined;
+    if (!isAdmin || !isAdminNotificationsWsEnabled()) return undefined;
     const connect = async () => {
       const ws = await openAdminNotificationsSocket((payload) => {
         if (payload?.type !== 'notification.created' || !payload.notification?.id) return;
@@ -223,14 +228,23 @@ const AdminScreen = ({ navigation }) => {
       });
       if (!ws) return;
       adminSocketRef.current = ws;
+      ws.onopen = () => {
+        adminReconnectAttemptsRef.current = 0;
+      };
       ws.onclose = () => {
-        adminReconnectRef.current = setTimeout(connect, 2500);
+        if (adminReconnectAttemptsRef.current >= ADMIN_WS_MAX_RECONNECT) return;
+        adminReconnectAttemptsRef.current += 1;
+        adminReconnectRef.current = setTimeout(
+          connect,
+          2500 * adminReconnectAttemptsRef.current
+        );
       };
     };
     connect();
     return () => {
       if (adminSocketRef.current) adminSocketRef.current.close();
       if (adminReconnectRef.current) clearTimeout(adminReconnectRef.current);
+      adminReconnectAttemptsRef.current = 0;
     };
   }, [isAdmin, showSuccess]);
 

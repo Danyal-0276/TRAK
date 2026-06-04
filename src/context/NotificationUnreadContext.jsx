@@ -9,7 +9,12 @@ import React, {
 } from 'react';
 import { useAuth } from './AuthContext';
 import * as notificationsApi from '../api/notificationsApi';
-import { openNotificationsSocket, NOTIFICATIONS_POLL_FALLBACK_MS } from '../api/notificationsRealtime';
+import {
+  openNotificationsSocket,
+  isNotificationsWsEnabled,
+  NOTIFICATIONS_POLL_FALLBACK_MS,
+  NOTIFICATIONS_WS_MAX_RECONNECT,
+} from '../api/notificationsRealtime';
 import {
   getNotificationsCache,
   isNotificationsCacheFresh,
@@ -232,8 +237,10 @@ export function NotificationUnreadProvider({ children }) {
     let reconnectRef = null;
     let socketRef = null;
     let wsConnected = false;
+    let reconnectAttempts = 0;
 
     const startRealtime = async () => {
+      if (!isNotificationsWsEnabled()) return;
       const ws = await openNotificationsSocket((payload) => {
         if (payload?.type !== 'notification.created' || !payload.notification?.id) return;
         upsertNotification(payload.notification);
@@ -242,16 +249,19 @@ export function NotificationUnreadProvider({ children }) {
       socketRef = ws;
       ws.onopen = () => {
         wsConnected = true;
+        reconnectAttempts = 0;
       };
       ws.onclose = () => {
         wsConnected = false;
-        reconnectRef = setTimeout(startRealtime, 2500);
+        if (reconnectAttempts >= NOTIFICATIONS_WS_MAX_RECONNECT) return;
+        reconnectAttempts += 1;
+        reconnectRef = setTimeout(startRealtime, 2500 * reconnectAttempts);
       };
     };
 
     startRealtime();
     pollRef = setInterval(() => {
-      if (!wsConnected) refreshUnreadCount();
+      if (!wsConnected || !isNotificationsWsEnabled()) refreshUnreadCount();
     }, NOTIFICATIONS_POLL_FALLBACK_MS);
 
     return () => {

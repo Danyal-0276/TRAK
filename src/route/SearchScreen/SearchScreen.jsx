@@ -36,6 +36,7 @@ import Text from "../../components/ui/Text";
 import { Search } from "lucide-react-native";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
 import { resetTabBarVisibility } from "../../navigation/tabBarVisibility";
+import { resolveTopInset } from "../../utils/screenSafeArea";
 
 const { width, height } = Dimensions.get('window');
 const PAGER_LAYOUT = { width };
@@ -208,6 +209,7 @@ const SearchScreen = ({ navigation }) => {
   const { colors } = theme;
   const actionColors = useFilledActionColors();
   const insets = useSafeAreaInsets();
+  const topInset = resolveTopInset(insets, 0);
   const feedback = useFeedback();
   const [allNews, setAllNews] = useState([]);
   const [trendingTopics, setTrendingTopics] = useState([]);
@@ -688,7 +690,7 @@ const SearchScreen = ({ navigation }) => {
       />
 
       <View
-        style={[styles.statusBarCover, { height: insets.top, backgroundColor: colors.surface }]}
+        style={[styles.statusBarCover, { height: topInset, backgroundColor: colors.surface }]}
         pointerEvents="none"
       />
 
@@ -697,7 +699,7 @@ const SearchScreen = ({ navigation }) => {
           style={[
             styles.topSection,
             {
-              paddingTop: insets.top,
+              paddingTop: topInset,
               opacity: fadeAnim,
               transform: [{ translateY: topSectionTranslateY }],
               backgroundColor: colors.surface,

@@ -1,38 +1,59 @@
-// components/SettingsSection.jsx
-import React from "react";
-import { View, StyleSheet } from "react-native";
-import { useTheme } from "../../../theme/ThemeContext";
+import React from 'react';
+import { View, StyleSheet } from 'react-native';
+import { useTheme } from '../../../theme/ThemeContext';
+import Text from '../../../components/ui/Text';
 
-export default function SettingsSection({ children, style }) {
+export default function SettingsSection({ title, description, children, style }) {
   const { theme } = useTheme();
-  const { colors, spacing, radius } = theme;
+  const { colors, spacing } = theme;
+  const items = React.Children.toArray(children).filter(Boolean);
+
   return (
-    <View
-      style={[
-        styles.section,
-        {
-          backgroundColor: colors.surface,
-          borderColor: colors.border,
-          paddingHorizontal: spacing.md,
-          paddingVertical: spacing.sm,
-          borderRadius: radius.lg || 16,
-        },
-        style,
-      ]}
-    >
-      {children}
+    <View style={[styles.wrap, { marginBottom: spacing.lg }, style]}>
+      {title ? (
+        <Text style={[styles.sectionTitle, { color: colors.textPrimary }]}>{title}</Text>
+      ) : null}
+      {description ? (
+        <Text style={[styles.sectionDesc, { color: colors.textSecondary }]}>{description}</Text>
+      ) : null}
+      <View
+        style={[
+          styles.card,
+          {
+            backgroundColor: colors.surface,
+            borderColor: colors.borderLight,
+          },
+        ]}
+      >
+        {items.map((child, index) =>
+          React.isValidElement(child)
+            ? React.cloneElement(child, { isLast: index === items.length - 1, key: child.key ?? index })
+            : child
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: {
-    marginBottom: 12,
-    borderWidth: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+  wrap: {},
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    textTransform: 'uppercase',
+    marginBottom: 8,
+    marginLeft: 2,
+  },
+  sectionDesc: {
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 10,
+    marginLeft: 2,
+  },
+  card: {
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
 });

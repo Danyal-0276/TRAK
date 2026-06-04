@@ -29,6 +29,7 @@ import { useFilledActionColors } from '../../theme/buttonContrast';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { resetTabBarVisibility } from '../../navigation/tabBarVisibility';
 import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
+import { resolveTopInset } from '../../utils/screenSafeArea';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { resolveArticleSource } from '../../utils/articleSource';
@@ -178,6 +179,10 @@ const NewsFeedScreen = ({ navigation }) => {
     const tabMounted = useRef(false);
 
     const insets = useSafeAreaInsets();
+    const topInset = resolveTopInset(insets, 0);
+    const [measuredHeaderHeight, setMeasuredHeaderHeight] = useState(
+        TOTAL_HEADER_HEIGHT + topInset
+    );
 
     useEffect(() => {
         if (!tabMounted.current) {
@@ -188,7 +193,7 @@ const NewsFeedScreen = ({ navigation }) => {
     }, [activeTab]);
 
     const { translateY: headerTranslateY, handleScroll, showHeader } = useCollapsibleHeader({
-        hideOffset: TOTAL_HEADER_HEIGHT,
+        hideOffset: measuredHeaderHeight,
         hideThreshold: 50,
     });
 
@@ -542,7 +547,7 @@ const NewsFeedScreen = ({ navigation }) => {
             };
 
             const listHeader = (
-                <View style={{ height: TOTAL_HEADER_HEIGHT + insets.top + 8 }} />
+                <View style={{ height: measuredHeaderHeight + 8 }} />
             );
 
             const listEmpty = loading ? (
@@ -601,7 +606,7 @@ const NewsFeedScreen = ({ navigation }) => {
                             refreshing={refreshing}
                             onRefresh={handleRefresh}
                             {...getRefreshControlProps(colors, theme.mode, {
-                                progressViewOffset: TOTAL_HEADER_HEIGHT + insets.top,
+                                progressViewOffset: measuredHeaderHeight,
                             })}
                         />
                     }
@@ -619,7 +624,8 @@ const NewsFeedScreen = ({ navigation }) => {
             handleScroll,
             handleVote,
             hasFeedPersonalization,
-            insets.top,
+            topInset,
+            measuredHeaderHeight,
             loading,
             navigation,
             newsByTab,
@@ -650,7 +656,7 @@ const NewsFeedScreen = ({ navigation }) => {
                 style={[
                     styles.statusBarCover,
                     {
-                        height: insets.top,
+                        height: topInset,
                         backgroundColor: topChromeColor,
                     },
                 ]}
@@ -661,12 +667,16 @@ const NewsFeedScreen = ({ navigation }) => {
                     style={[
                         styles.headerContainer,
                         { 
-                            paddingTop: insets.top,
+                            paddingTop: topInset,
                             transform: [{ translateY: headerTranslateY }],
                             backgroundColor: topChromeColor,
                             shadowColor: colors.shadowDark || '#000',
                         },
                     ]}
+                    onLayout={(e) => {
+                        const h = Math.max(0, Math.round(e?.nativeEvent?.layout?.height || 0));
+                        if (h > 0 && h !== measuredHeaderHeight) setMeasuredHeaderHeight(h);
+                    }}
                 >
                     <FeedHeader navigation={navigation} />
                     <TabBar activeTab={activeTab} setActiveTab={setActiveTab} />

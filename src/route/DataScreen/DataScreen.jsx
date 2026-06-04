@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { resolveTopInset } from "../../utils/screenSafeArea";
 import { useTheme } from "../../theme/ThemeContext";
 
 const DataScreen = ({ navigation }) => {
@@ -27,8 +28,8 @@ const DataScreen = ({ navigation }) => {
   });
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}>
+    <View style={[styles.safeArea, { paddingTop: resolveTopInset(insets, 0) }]}>
+      <ScrollView contentContainerStyle={[styles.container, { paddingTop: 12 }]}>
         <Text style={styles.title}>Data & Storage</Text>
         <Text style={styles.text}>
           Manage your data usage and storage preferences for better performance.
@@ -47,7 +48,7 @@ const DataScreen = ({ navigation }) => {
         </View>
 
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 
