@@ -26,12 +26,14 @@ import { useUIFeedback } from "../../components/ui/UIFeedback";
 import { getNotificationPreferences, patchNotificationPreferences } from "../../utils/Service/api";
 import { SkeletonPageBlocks } from "../../components/skeletons/SkeletonLayouts";
 import FeedbackModal from "../../components/FeedbackModal";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function SettingsScreen() {
     const { theme, toggleTheme } = useTheme();
     const { colors } = theme;
     const { logout } = useAuth();
     const { confirm } = useUIFeedback();
+    const { t, setLanguage } = useLanguage();
     const navigate = useNavigate();
     const darkTheme = theme.mode === "dark";
 
@@ -108,6 +110,9 @@ export default function SettingsScreen() {
 
     const handleSelectChange = (key, value) => {
         setIsSaving(true);
+        if (key === 'language') {
+            setLanguage(value);
+        }
         setSettings(prev => ({ ...prev, [key]: value }));
         setTimeout(() => {
             setIsSaving(false);
@@ -118,9 +123,9 @@ export default function SettingsScreen() {
 
     const handleLogout = async () => {
         const shouldLogout = await confirm({
-            title: 'Log out?',
-            message: 'Are you sure you want to log out?',
-            confirmText: 'Log out',
+            title: t('settings.logOutConfirmTitle'),
+            message: t('settings.logOutConfirmMessage'),
+            confirmText: t('settings.logOutConfirm'),
             danger: true,
         });
         if (shouldLogout) {
@@ -335,7 +340,7 @@ export default function SettingsScreen() {
                         paddingTop: '0',
                         letterSpacing: '-0.5px',
                     }}>
-                        Settings
+                        {t('settings.title')}
                     </h1>
                     <p style={{
                         fontSize: '15px',
@@ -343,7 +348,7 @@ export default function SettingsScreen() {
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
-                        Manage your account settings and preferences
+                        {t('settings.subtitle')}
                     </p>
                 </div>
 
@@ -369,7 +374,7 @@ export default function SettingsScreen() {
                             fontWeight: '500',
                             color: textSecondary,
                         }}>
-                            Saving changes...
+                            {t('settings.saving')}
                         </span>
                     </div>
                 )}
@@ -390,72 +395,72 @@ export default function SettingsScreen() {
                             fontWeight: '500',
                             color: darkTheme ? '#34D399' : '#166534',
                         }}>
-                            Settings saved successfully
+                            {t('settings.saved')}
                         </span>
                     </div>
                 )}
 
                 {/* Account Section */}
-                <SettingsSection title="Account">
+                <SettingsSection title={t('settings.account')}>
                     <SettingsRow
                         icon={<User size={20} color={colors.textPrimary} />}
-                        label="Profile"
-                        description="Edit your profile information"
+                        label={t('settings.profile')}
+                        description={t('settings.profileDesc')}
                         onPress={() => navigate("/profile")}
                     />
                     <SettingsRow
                         icon={<User size={20} color={colors.textPrimary} />}
-                        label="Edit Profile"
-                        description="Update your name, bio, and other details"
+                        label={t('settings.editProfile')}
+                        description={t('settings.editProfileDesc')}
                         onPress={() => navigate("/edit-profile")}
                     />
                 </SettingsSection>
 
                 <SettingsSection
-                    title="Feed & channels"
-                    description="Topics you follow in your personalized feed"
+                    title={t('settings.feedChannels')}
+                    description={t('settings.feedChannelsDesc')}
                 >
                     <SettingsRow
                         icon={<Tag size={20} color={colors.textPrimary} />}
-                        label="Following news channels"
-                        description="Choose categories and keywords"
+                        label={t('settings.followingChannels')}
+                        description={t('settings.followingChannelsDesc')}
                         onPress={() => navigate('/tag-selection', { state: { fromSettings: true } })}
                     />
                 </SettingsSection>
 
                 {/* Notifications Section */}
                 <SettingsSection 
-                    title="Notification preferences"
-                    description="Push, email, and keyword alerts"
+                    title={t('settings.notifications')}
+                    description={t('settings.notificationsDesc')}
                 >
                     <SettingsRow
                         icon={<Bell size={20} color={colors.textPrimary} />}
-                        label="Push Notifications"
-                        description="Receive notifications in your browser"
+                        label={t('settings.pushNotifications')}
+                        description={t('settings.pushNotificationsDesc')}
                         switchEnabled
                         switchValue={settings.pushNotifications}
                         onSwitchChange={() => handleToggle('pushNotifications')}
                     />
                     <SettingsRow
                         icon={<Mail size={20} color={colors.textPrimary} />}
-                        label="Email Notifications"
-                        description="Get notified via email"
+                        label={t('settings.emailNotifications')}
+                        description={t('settings.emailNotificationsDesc')}
                         switchEnabled
                         switchValue={settings.emailNotifications}
                         onSwitchChange={() => handleToggle('emailNotifications')}
                     />
                     <SettingsRow
                         icon={<Tag size={20} color={colors.textPrimary} />}
-                        label="Keyword Alerts"
-                        description="Get notified when articles match your keywords"
+                        label={t('settings.keywordAlerts')}
+                        description={t('settings.keywordAlertsDesc')}
                         switchEnabled
                         switchValue={settings.keywordAlerts}
                         onSwitchChange={() => handleToggle('keywordAlerts')}
                     />
                     <SettingsRow
                         icon={<Clock size={20} color={colors.textPrimary} />}
-                        label="Quiet Hours"
-                        description="Mute notifications during specific hours"
+                        label={t('settings.quietHours')}
+                        description={t('settings.quietHoursDesc')}
                         switchEnabled
                         switchValue={settings.quietHours}
                         onSwitchChange={() => handleToggle('quietHours')}
@@ -482,7 +487,7 @@ export default function SettingsScreen() {
                                     color: textPrimary,
                                 }}
                             />
-                            <span style={{ color: textSecondary }}>to</span>
+                            <span style={{ color: textSecondary }}>{t('settings.to')}</span>
                             <input
                                 type="time"
                                 value={settings.quietHoursEnd}
@@ -501,43 +506,43 @@ export default function SettingsScreen() {
                 </SettingsSection>
 
                 {/* Privacy & Security */}
-                <SettingsSection title="Privacy & Security">
+                <SettingsSection title={t('settings.privacy')}>
                     <SettingsRow
                         icon={<Lock size={20} color={colors.textPrimary} />}
-                        label="Privacy & Security"
-                        description="Manage your privacy settings"
+                        label={t('settings.privacy')}
+                        description={t('settings.privacyDesc')}
                         onPress={() => navigate("/privacy")}
                     />
                     <SettingsRow
                         icon={<Shield size={20} color={colors.textPrimary} />}
-                        label="Data & Storage"
-                        description="View and manage your data"
+                        label={t('settings.dataStorage')}
+                        description={t('settings.dataStorageDesc')}
                         onPress={() => navigate("/data")}
                     />
                 </SettingsSection>
 
                 {/* Content */}
-                <SettingsSection title="Content">
+                <SettingsSection title={t('settings.content')}>
                     <SettingsRow
                         icon={<Tag size={20} color={colors.textPrimary} />}
-                        label="Manage Categories"
-                        description="Customize your news categories"
+                        label={t('settings.manageCategories')}
+                        description={t('settings.manageCategoriesDesc')}
                         onPress={() => navigate("/tag-selection?fromSettings=1", { state: { fromSettings: true } })}
                     />
                 </SettingsSection>
 
                 {/* Preferences */}
-                <SettingsSection title="Preferences">
+                <SettingsSection title={t('settings.preferences')}>
                     <SettingsRow
                         icon={darkTheme ? <Sun size={20} color={colors.textPrimary} /> : <Moon size={20} color={colors.textPrimary} />}
-                        label={darkTheme ? "Light Mode" : "Dark Mode"}
-                        description="Switch between light and dark theme"
+                        label={darkTheme ? t('settings.lightMode') : t('settings.darkMode')}
+                        description={t('settings.themeDesc')}
                         onPress={toggleTheme}
                     />
                     <SettingsRow
                         icon={<Globe size={20} color={colors.textPrimary} />}
-                        label="Language"
-                        description="Choose your preferred language"
+                        label={t('settings.language')}
+                        description={t('settings.languageDesc')}
                         selectEnabled
                         selectValue={settings.language}
                         selectOptions={[
@@ -551,8 +556,8 @@ export default function SettingsScreen() {
                     />
                     <SettingsRow
                         icon={<Clock size={20} color={colors.textPrimary} />}
-                        label="Timezone"
-                        description="Set your timezone"
+                        label={t('settings.timezone')}
+                        description={t('settings.timezoneDesc')}
                         selectEnabled
                         selectValue={settings.timezone}
                         selectOptions={[
@@ -567,17 +572,17 @@ export default function SettingsScreen() {
                 </SettingsSection>
 
                 {/* About */}
-                <SettingsSection title="About">
+                <SettingsSection title={t('settings.aboutSection')}>
                     <SettingsRow
                         icon={<MessageSquare size={20} color={colors.textPrimary} />}
-                        label="Send feedback"
-                        description="Tell us about bugs, ideas, or app issues"
+                        label={t('settings.sendFeedback')}
+                        description={t('settings.sendFeedbackDesc')}
                         onPress={() => setAppFeedbackOpen(true)}
                     />
                     <SettingsRow
                         icon={<Info size={20} color={colors.textPrimary} />}
-                        label="About TRAK"
-                        description="Learn more about the app"
+                        label={t('settings.aboutTrak')}
+                        description={t('settings.aboutTrakDesc')}
                         onPress={() => navigate("/about")}
                     />
                 </SettingsSection>
@@ -586,8 +591,8 @@ export default function SettingsScreen() {
                 <SettingsSection>
                     <SettingsRow
                         icon={<LogOut size={20} color="#ef4444" />}
-                        label="Log Out"
-                        description="Sign out of your account"
+                        label={t('settings.logOut')}
+                        description={t('settings.logOutDesc')}
                         labelColor="#ef4444"
                         onPress={handleLogout}
                     />

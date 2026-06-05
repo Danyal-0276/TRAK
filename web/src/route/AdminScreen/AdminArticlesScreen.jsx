@@ -109,13 +109,14 @@ const AdminArticlesScreen = () => {
         async (fetchScope, pipeFilter, { silent = false } = {}) => {
             try {
                 if (!silent) setLoading(true);
-                const { scope, pipelineStatus, moderationStatus } = getArticlesFetchParams(pipeFilter);
+                const { scope, pipelineStatus, moderationStatus, credibilityLabel } = getArticlesFetchParams(pipeFilter);
                 const response = await getAdminArticles({
                     page: 1,
                     pageSize: 100,
                     scope: fetchScope || scope,
                     pipelineStatus,
                     moderationStatus,
+                    credibilityLabel,
                 });
                 setArticles((response.results || []).map(mapApiDoc));
                 setArticleCounts(response.counts || null);

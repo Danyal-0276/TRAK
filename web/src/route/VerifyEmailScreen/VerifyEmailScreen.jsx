@@ -10,6 +10,8 @@ import { resendEmailVerification } from '../../api/authEmailApi';
 const VerifyEmailScreen = () => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const isDark = theme.mode === 'dark';
+    const action = filledActionColors(colors, isDark);
   const navigate = useNavigate();
   const location = useLocation();
   const { user, verifyEmail, isAuthenticated } = useAuth();

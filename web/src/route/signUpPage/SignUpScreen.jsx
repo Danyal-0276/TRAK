@@ -42,7 +42,8 @@ const SignUpScreen = () => {
         } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             newErrors.email = 'Invalid email address';
         }
-        if (phone.trim() && !/^\+?[0-9]{8,15}$/.test(phone.trim())) {
+        const phoneDigits = phone.trim().replace(/\D/g, '');
+        if (phone.trim() && (phoneDigits.length < 8 || phoneDigits.length > 15)) {
             newErrors.phone = 'Invalid phone number';
         }
         
@@ -73,7 +74,8 @@ const SignUpScreen = () => {
         setLoading(true);
         setErrors({});
         try {
-            const sessionUser = await register(email, password, confirmPassword, fullName, phone);
+            const normalizedPhone = phone.trim().replace(/\D/g, '');
+            const sessionUser = await register(email, password, confirmPassword, fullName, normalizedPhone);
             if (sessionUser?.email_verified) {
                 navigate('/tag-selection', { state: { fromSignup: true } });
             } else {
@@ -85,7 +87,8 @@ const SignUpScreen = () => {
                 const mapped = {};
                 for (const [key, val] of Object.entries(fieldErrors)) {
                     if (key === 'email') mapped.email = val;
-                    else if (key === 'password' || key === 'password_confirm') mapped.password = val;
+                    else if (key === 'password') mapped.password = val;
+                    else if (key === 'password_confirm') mapped.confirmPassword = val;
                     else if (key === 'full_name') mapped.fullName = val;
                     else if (key === 'phone') mapped.phone = val;
                     else mapped.email = val;

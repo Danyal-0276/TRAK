@@ -5,6 +5,7 @@ import { NotificationUnreadProvider } from './context/NotificationUnreadContext'
 import { UserKeywordsProvider } from './context/UserKeywordsContext';
 import { FeedCacheProvider } from './context/FeedCacheContext';
 import { ChatBotProvider } from './context/ChatBotContext';
+import { LanguageProvider } from './context/LanguageContext';
 import AppRouter from './navigation/AppRouter';
 import { UIFeedbackProvider } from './components/ui/UIFeedback';
 import { GlobalSkeletonStyles } from './components/skeletons/SkeletonLayouts';
@@ -13,6 +14,7 @@ import './App.css';
 const App = () => {
   return (
     <ThemeProvider initialMode="light">
+      <LanguageProvider>
       <GlobalSkeletonStyles />
       <UIFeedbackProvider>
         <AuthProvider>
@@ -34,6 +36,7 @@ const App = () => {
           </NotificationUnreadProvider>
         </AuthProvider>
       </UIFeedbackProvider>
+      </LanguageProvider>
     </ThemeProvider>
   );
 };

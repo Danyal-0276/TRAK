@@ -42,7 +42,7 @@ const ChatBotWidget = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { open, setOpen, hasUnread, setHasUnread, closeChat, toggleChat } = useChatBot();
-  const { isDesktop } = useResponsive();
+  const { isMobile } = useResponsive();
   const { theme } = useTheme();
   const { colors } = theme;
   const isDark = theme.mode === 'dark';
@@ -110,9 +110,11 @@ const ChatBotWidget = () => {
       const res = await chatWithBot(text);
       const related = Array.isArray(res.related_articles) && res.related_articles.length
         ? res.related_articles
-        : res.has_trak_article && res.primary_article
-          ? [res.primary_article]
-          : [];
+        : Array.isArray(res.articles) && res.articles.length
+          ? res.articles
+          : res.has_trak_article && res.primary_article
+            ? [res.primary_article]
+            : [];
       setMessages((prev) => [
         ...prev,
         {
@@ -131,7 +133,13 @@ const ChatBotWidget = () => {
         setHasUnread(true);
       }
     } catch (error) {
-      setMessages((prev) => [...prev, { role: 'bot', text: error.message || 'Chat failed' }]);
+      const fallback =
+        error?.status === 502
+          ? 'TRAK AI is temporarily unavailable. Please try again in a moment.'
+          : error?.status === 401
+            ? 'Please sign in again to use TRAK AI.'
+            : error.message || 'Chat failed. Please try again.';
+      setMessages((prev) => [...prev, { role: 'bot', text: fallback }]);
     } finally {
       setLoading(false);
     }
@@ -141,8 +149,10 @@ const ChatBotWidget = () => {
     return null;
   }
 
+  const dockBottom = isMobile ? 76 : 20;
+
   return (
-    <div style={{ position: 'fixed', right: 20, bottom: 20, zIndex: 1000 }}>
+    <div style={{ position: 'fixed', right: 20, bottom: dockBottom, zIndex: 1101 }}>
       <style>{`
         @keyframes chatMsgIn {
           from { opacity: 0; transform: translateY(8px) scale(0.98); }
@@ -156,8 +166,8 @@ const ChatBotWidget = () => {
       {renderPanel ? (
         <div
           style={{
-            width: 360,
-            height: 520,
+            width: isMobile ? 'min(360px, calc(100vw - 40px))' : 360,
+            height: isMobile ? 'min(520px, calc(100vh - 160px))' : 520,
             background: colors.surface,
             border: `1px solid ${colors.border}`,
             borderRadius: 16,
@@ -349,7 +359,7 @@ const ChatBotWidget = () => {
             </button>
           </div>
         </div>
-      ) : !isDesktop ? (
+      ) : (
         <button
           type="button"
           onClick={toggleChat}
@@ -385,7 +395,7 @@ const ChatBotWidget = () => {
           )}
           <Bot size={22} />
         </button>
-      ) : null}
+      )}
       {confirmClear && (
         <div
           style={{

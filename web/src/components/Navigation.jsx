@@ -5,6 +5,7 @@ import { useTheme } from '../theme/ThemeContext';
 import Text from './ui/Text';
 import NotificationBadge from './NotificationBadge';
 import { useNotificationUnread } from '../context/NotificationUnreadContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const Navigation = () => {
     const { theme } = useTheme();
@@ -13,6 +14,7 @@ const Navigation = () => {
     const location = useLocation();
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
     const { unreadCount } = useNotificationUnread();
+    const { t } = useLanguage();
 
     useEffect(() => {
         const handleResize = () => {
@@ -23,11 +25,11 @@ const Navigation = () => {
     }, []);
 
     const navItems = [
-        { icon: Home, path: '/newsfeed', label: 'Home' },
-        { icon: Search, path: '/search', label: 'Search' },
-        { icon: Bell, path: '/notifications', label: 'Notifications' },
-        { icon: User, path: '/profile', label: 'Profile' },
-        { icon: Settings, path: '/settings', label: 'Settings' },
+        { icon: Home, path: '/newsfeed', label: t('nav.home') },
+        { icon: Search, path: '/search', label: t('nav.explore') },
+        { icon: Bell, path: '/notifications', label: t('nav.notifications') },
+        { icon: User, path: '/profile', label: t('nav.profile') },
+        { icon: Settings, path: '/settings', label: t('nav.settings') },
     ];
 
     const isActive = (path) => location.pathname === path;

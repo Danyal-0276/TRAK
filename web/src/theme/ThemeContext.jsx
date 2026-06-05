@@ -32,11 +32,11 @@ const radius = {
 };
 
 const typography = {
-  title: { fontSize: 28, fontWeight: '700', letterSpacing: -0.25 },
-  subtitle: { fontSize: 20, fontWeight: '600' },
-  body: { fontSize: 16, fontWeight: '400', lineHeight: 24 },
-  caption: { fontSize: 13, fontWeight: '400' },
-  button: { fontSize: 17, fontWeight: '600', letterSpacing: 0.3 },
+  title: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 28, fontWeight: '700', letterSpacing: -0.25 },
+  subtitle: { fontFamily: "'Space Grotesk', sans-serif", fontSize: 20, fontWeight: '600' },
+  body: { fontFamily: "'Inter', sans-serif", fontSize: 16, fontWeight: '400', lineHeight: 24 },
+  caption: { fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: '400' },
+  button: { fontFamily: "'Inter', sans-serif", fontSize: 17, fontWeight: '600', letterSpacing: 0.3 },
 };
 
 const elevation = {

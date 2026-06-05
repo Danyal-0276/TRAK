@@ -17,12 +17,20 @@ import { openArticleDetail } from '../../utils/openArticleDetail';
 import { useFeedCache } from '../../context/FeedCacheContext';
 import { filterFeedByUserKeywords } from '../../utils/feedKeywordMatch';
 import { resolveArticleImageUrl } from '../../utils/articleMedia';
+import { useLanguage } from '../../context/LanguageContext';
+
+const FEED_TAB_KEYS = {
+    'For you': 'feed.forYou',
+    Bookmarks: 'feed.bookmarks',
+    Trending: 'feed.trending',
+};
 
 const NewsFeedScreen = () => {
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
     const { isMobile, isTablet } = useResponsive();
+    const { t } = useLanguage();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const rawTab = searchParams.get('tab');
@@ -443,7 +451,7 @@ const NewsFeedScreen = () => {
                                     ? (colors.primary)
                                     : textSecondary,
                             }}>
-                                {tab}
+                                {t(FEED_TAB_KEYS[tab] || tab)}
                             </span>
                         </button>
                     ))}
@@ -465,7 +473,7 @@ const NewsFeedScreen = () => {
                         {feedError ? (
                             <>
                                 <h2 style={{ fontSize: '20px', fontWeight: '700', color: textPrimary, marginBottom: '8px' }}>
-                                    Could not load the feed
+                                    {t('feed.couldNotLoad')}
                                 </h2>
                                 <p style={{ fontSize: '15px', color: textSecondary, lineHeight: 1.5, marginBottom: '16px' }}>
                                     {feedError}
@@ -487,16 +495,16 @@ const NewsFeedScreen = () => {
                                         fontSize: '15px',
                                     }}
                                 >
-                                    Retry
+                                    {t('feed.retry')}
                                 </button>
                             </>
                         ) : activeTab === 'For you' && !hasFeedPersonalization ? (
                             <>
                                 <h2 style={{ fontSize: '20px', fontWeight: '700', color: textPrimary, marginBottom: '8px' }}>
-                                    Choose your interests
+                                    {t('feed.chooseInterests')}
                                 </h2>
                                 <p style={{ fontSize: '15px', color: textSecondary, lineHeight: 1.5, marginBottom: '20px' }}>
-                                    Select news categories to see a personalized For You feed.
+                                    {t('feed.chooseInterestsDesc')}
                                 </p>
                                 <button
                                     type="button"
@@ -512,16 +520,16 @@ const NewsFeedScreen = () => {
                                         fontSize: '15px',
                                     }}
                                 >
-                                    Pick categories
+                                    {t('feed.pickCategories')}
                                 </button>
                             </>
                         ) : activeTab === 'For you' && hasFeedPersonalization ? (
                             <p style={{ fontSize: '16px', color: textSecondary, lineHeight: 1.5 }}>
-                                No articles match your interests yet. Try adding more categories or keywords, then refresh.
+                                {t('feed.noMatchYet')}
                             </p>
                         ) : (
                             <p style={{ fontSize: '16px', color: textSecondary }}>
-                                {activeTab === 'Bookmarks' ? 'No bookmarked articles yet.' : 'No articles to show.'}
+                                {activeTab === 'Bookmarks' ? t('feed.noBookmarks') : t('feed.noArticles')}
                             </p>
                         )}
                     </div>

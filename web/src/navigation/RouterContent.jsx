@@ -35,7 +35,7 @@ import { useTheme } from '../theme/ThemeContext';
 
 const RouterContent = () => {
   const location = useLocation();
-  const { isDesktop } = useResponsive();
+  const { isDesktop, isMobile } = useResponsive();
   const { theme } = useTheme();
   const { colors } = theme;
   const isAuthPage = ['/', '/login', '/signup', '/verify-email', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'].includes(location.pathname);
@@ -49,7 +49,7 @@ const RouterContent = () => {
         minHeight: '100vh',
         width: '100%',
         backgroundColor: colors.background,
-        paddingTop: '0',
+        paddingTop: isMainAppPage && isMobile ? '4px' : '0',
         marginTop: '0',
         paddingRight: isMainAppPage && isDesktop ? '280px' : '0',
         paddingLeft: '0',

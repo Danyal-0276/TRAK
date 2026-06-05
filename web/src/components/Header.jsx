@@ -1,48 +1,81 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Search, Bell, Menu, X, Bot } from 'lucide-react';
+import { Search, Bell, Menu, X } from 'lucide-react';
 import { useTheme } from '../theme/ThemeContext';
 import ThemeIcon from '../theme/ThemeIcon';
 import TrakLogo from './TrakLogo';
 import ThemeToggle from './ThemeToggle';
 import './headerIconButtons.css';
 import { useAuth } from '../context/AuthContext';
-import { useChatBot } from '../context/ChatBotContext';
 import { useResponsive } from '../hooks/useResponsive';
 import Text from './ui/Text';
 import NotificationBadge from './NotificationBadge';
 import { useNotificationUnread } from '../context/NotificationUnreadContext';
 import { getProfile } from '../utils/Service/api';
+import { useLanguage } from '../context/LanguageContext';
+import {
+  PROFILE_UPDATED_EVENT,
+  readProfileCache,
+  writeProfileCache,
+  getProfileAvatar,
+  getProfileInitial,
+} from '../utils/profileCache';
 
 const Header = () => {
     const { theme, toggleTheme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
     const { user } = useAuth();
-    const { toggleChat, open: chatOpen, hasUnread: chatUnread } = useChatBot();
+    const { t } = useLanguage();
     const { isMobile, isTablet, isDesktop } = useResponsive();
     const navigate = useNavigate();
     const location = useLocation();
     const [searchQuery, setSearchQuery] = useState('');
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
-    const [profileInitial, setProfileInitial] = useState('U');
-    const [avatarPreview, setAvatarPreview] = useState('');
+    const applyProfile = useCallback((profile) => {
+        if (!profile) return;
+        setProfileInitial(getProfileInitial(profile, user?.email));
+        setAvatarPreview(getProfileAvatar(profile));
+    }, [user?.email]);
+
+    const [profileInitial, setProfileInitial] = useState(() => {
+        const cached = readProfileCache();
+        return cached ? getProfileInitial(cached, '') : 'U';
+    });
+    const [avatarPreview, setAvatarPreview] = useState(() => getProfileAvatar(readProfileCache()));
     const { unreadCount } = useNotificationUnread();
 
     useEffect(() => {
+        if (!user) {
+            setProfileInitial('U');
+            setAvatarPreview('');
+            return undefined;
+        }
+
+        const cached = readProfileCache();
+        if (cached) applyProfile(cached);
+
+        const onProfileUpdated = (event) => {
+            if (event?.detail) applyProfile(event.detail);
+        };
+        window.addEventListener(PROFILE_UPDATED_EVENT, onProfileUpdated);
+
         (async () => {
             try {
                 const profile = await getProfile();
-                const base = (profile?.full_name || profile?.email || 'U').trim();
-                setProfileInitial(base.charAt(0).toUpperCase() || 'U');
-                setAvatarPreview(profile?.avatar_image || '');
+                applyProfile(profile);
+                writeProfileCache(profile);
             } catch {
-                setProfileInitial('U');
-                setAvatarPreview('');
+                if (!cached) {
+                    setProfileInitial(getProfileInitial(null, user?.email));
+                    setAvatarPreview('');
+                }
             }
         })();
-    }, [location.pathname, user?.id, user?.pk, user?.email]);
+
+        return () => window.removeEventListener(PROFILE_UPDATED_EVENT, onProfileUpdated);
+    }, [location.pathname, user, user?.id, user?.pk, user?.email, applyProfile]);
 
     const hideHeaderPaths = ['/', '/login', '/signup', '/forgot-password', '/forgot-password-code', '/reset-password', '/password-changed', '/tag-selection', '/keyword-selection', '/terms', '/privacy'];
     if (hideHeaderPaths.includes(location.pathname) || location.pathname.startsWith('/admin')) {
@@ -75,10 +108,10 @@ const Header = () => {
     }, [location.pathname, navigate]);
 
     const navLinks = [
-        { path: '/newsfeed', label: 'Home' },
-        { path: '/search', label: 'Explore' },
-        { path: '/categories', label: 'Categories' },
-        { path: '/about', label: 'About' },
+        { path: '/newsfeed', label: t('nav.home') },
+        { path: '/search', label: t('nav.explore') },
+        { path: '/categories', label: t('nav.categories') },
+        { path: '/about', label: t('nav.about') },
     ];
 
     const contentOffset = isDesktop ? 'max(0px, calc((100% - 1200px) / 2))' : 0;
@@ -124,35 +157,6 @@ const Header = () => {
         }}>
             <ThemeToggle isDark={isDark} colors={colors} onClick={toggleTheme} />
 
-            {user ? (
-                <button
-                    type="button"
-                    className="header-icon-btn"
-                    onClick={toggleChat}
-                    title="TRAK AI Assistant"
-                    aria-label="Open TRAK AI chat"
-                    style={iconBtnStyle(chatOpen)}
-                    onMouseEnter={(e) => iconBtnHover(e, chatOpen)}
-                    onMouseLeave={(e) => iconBtnLeave(e, chatOpen)}
-                >
-                    <ThemeIcon icon={Bot} size={20} color={chatOpen ? colors.primary : colors.textSecondary} />
-                    {chatUnread ? (
-                        <span
-                            style={{
-                                position: 'absolute',
-                                top: 8,
-                                right: 8,
-                                width: 8,
-                                height: 8,
-                                borderRadius: '50%',
-                                background: colors.error || '#ef4444',
-                                border: `2px solid ${isDark ? colors.background : '#ffffff'}`,
-                            }}
-                        />
-                    ) : null}
-                </button>
-            ) : null}
-
             <button
                 type="button"
                 className="header-icon-btn"
@@ -182,6 +186,8 @@ const Header = () => {
                     alignItems: 'center',
                     justifyContent: 'center',
                     transition: 'all 0.2s ease',
+                    overflow: 'hidden',
+                    padding: 0,
                 }}
                 onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = isDark ? colors.primary : '#000000';
@@ -198,6 +204,7 @@ const Header = () => {
                     <img
                         src={avatarPreview}
                         alt="Profile"
+                        onError={() => setAvatarPreview('')}
                         style={{
                             width: '100%',
                             height: '100%',
@@ -231,6 +238,7 @@ const Header = () => {
             zIndex: 1000,
             boxShadow: isDark ? '0 1px 3px rgba(0, 0, 0, 0.3)' : '0 1px 3px rgba(0, 0, 0, 0.05)',
             paddingRight: isDesktop ? '280px' : 0,
+            paddingTop: isMobile ? 'max(env(safe-area-inset-top, 0px), 8px)' : 0,
         }}>
             <div style={{
                 position: 'relative',
