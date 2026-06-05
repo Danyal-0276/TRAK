@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { MoreHorizontal } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../theme/ThemeContext";
-import SearchBar from "./components/SearchBar";
+import { useResponsive } from "../../hooks/useResponsive";
+import { useLanguage } from "../../context/LanguageContext";
 import Tabs from "./components/tabs";
 import TrendingTopics from "./components/TrendingTopics";
 import { NewsCard } from "../../components/NewsCard";
@@ -41,7 +42,8 @@ const SearchScreen = () => {
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
     const navigate = useNavigate();
-    const [searchParams, setSearchParams] = useSearchParams();
+    const { isMobile } = useResponsive();
+    const { t } = useLanguage();
     const [allNews, setAllNews] = useState([]);
     const [filteredNews, setFilteredNews] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -51,34 +53,24 @@ const SearchScreen = () => {
     const [hasMore, setHasMore] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const loadSeqRef = useRef(0);
-    const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || "");
-    const [debouncedQuery, setDebouncedQuery] = useState(searchParams.get('q') || "");
+    const [topicFilter, setTopicFilter] = useState("");
     const [activeTab, setActiveTab] = useState("All");
     const [votedItems, setVotedItems] = useState({});
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
     const { success, error: showError } = useUIFeedback();
-    const searchRef = useRef(null);
     const discoverMenuRef = useRef(null);
     const [discoverMenuOpen, setDiscoverMenuOpen] = useState(false);
-    const lastScrollY = useRef(0);
-    const [headerHidden, setHeaderHidden] = useState(false);
     const { getExploreFeed, saveExploreFeed, isFresh } = useFeedCache();
 
     const [categories, setCategories] = useState(["All"]);
 
     const trendingTopics = useMemo(() => {
-        if (debouncedQuery.trim()) return [];
+        if (topicFilter.trim()) return [];
         return deriveTrendingFromArticles(allNews);
-    }, [allNews, debouncedQuery]);
+    }, [allNews, topicFilter]);
 
     useEffect(() => {
-        const t = setTimeout(() => setDebouncedQuery(searchQuery), 300);
-        return () => clearTimeout(t);
-    }, [searchQuery]);
-
-    useEffect(() => {
-        const q = debouncedQuery.trim();
-        const queryKey = q.toLowerCase();
+        const queryKey = '';
         const seq = ++loadSeqRef.current;
 
         const cached = getExploreFeed(queryKey);
@@ -108,7 +100,7 @@ const SearchScreen = () => {
             if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
 
             try {
-                const page = await loadExplorePage({ q, limit: 50, cursor: '' });
+                const page = await loadExplorePage({ limit: 50, cursor: '' });
                 if (seq !== loadSeqRef.current) return;
 
                 const newsData = page.items || [];
@@ -145,12 +137,11 @@ const SearchScreen = () => {
                 if (seq === loadSeqRef.current) setLoading(false);
             }
         })();
-    }, [debouncedQuery, retryTick, getExploreFeed, isFresh]);
+    }, [retryTick, getExploreFeed, isFresh]);
 
     useEffect(() => {
         if (!allNews.length) return;
-        const queryKey = debouncedQuery.trim().toLowerCase();
-        saveExploreFeed(queryKey, {
+        saveExploreFeed('', {
             allNews,
             filteredNews,
             nextCursor,
@@ -162,13 +153,12 @@ const SearchScreen = () => {
             loadError,
             scrollY: window.scrollY,
         });
-    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, debouncedQuery, saveExploreFeed]);
+    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, saveExploreFeed]);
 
     useEffect(() => {
-        const queryKey = debouncedQuery.trim().toLowerCase();
         return () => {
             if (!allNews.length) return;
-            saveExploreFeed(queryKey, {
+            saveExploreFeed('', {
                 allNews,
                 filteredNews,
                 nextCursor,
@@ -181,14 +171,13 @@ const SearchScreen = () => {
                 scrollY: window.scrollY,
             });
         };
-    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, debouncedQuery, saveExploreFeed]);
+    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, saveExploreFeed]);
 
     const loadMore = useCallback(async () => {
         if (!hasMore || loadingMore || !nextCursor) return;
         setLoadingMore(true);
         try {
             const page = await loadExplorePage({
-                q: debouncedQuery.trim(),
                 limit: 50,
                 cursor: nextCursor,
             });
@@ -200,7 +189,7 @@ const SearchScreen = () => {
         } finally {
             setLoadingMore(false);
         }
-    }, [hasMore, loadingMore, nextCursor, debouncedQuery]);
+    }, [hasMore, loadingMore, nextCursor]);
 
     const scrollSentinelRef = useInfiniteScroll({
         onLoadMore: loadMore,
@@ -255,54 +244,15 @@ const SearchScreen = () => {
         setDiscoverMenuOpen(false);
     }, [filteredNews, success, showError]);
 
-    // Read query parameter from URL on mount and when URL changes
-    useEffect(() => {
-        const urlQuery = searchParams.get('q') || '';
-        if (urlQuery) {
-            setSearchQuery(urlQuery);
-        }
-    }, [searchParams]);
-
-    const handleSearch = (query) => {
-        setSearchQuery(query);
-        // Update URL with search query
-        if (query.trim()) {
-            setSearchParams({ q: query.trim() });
-        } else {
-            setSearchParams({});
-        }
-    };
-
     const handleTopicPress = (topicName) => {
-        setSearchQuery(topicName);
-        setSearchParams({ q: topicName });
-        setActiveTab("All"); // Reset to All tab when searching
-        searchRef.current?.collapseKeepText();
-    };
-
-    const handleClearSearch = () => {
-        setSearchQuery("");
+        setTopicFilter(topicName);
         setActiveTab("All");
-        setSearchParams({}); // Clear URL parameter
-        if (searchRef.current) {
-            searchRef.current.collapseKeepText();
-        }
     };
 
-    useEffect(() => {
-        const onScroll = () => {
-            const y = window.scrollY || 0;
-            const diff = y - lastScrollY.current;
-            if (Math.abs(diff) > 6) {
-                if (diff > 0 && y > 80) setHeaderHidden(true);
-                if (diff < 0) setHeaderHidden(false);
-            }
-            if (y < 24) setHeaderHidden(false);
-            lastScrollY.current = y;
-        };
-        window.addEventListener('scroll', onScroll, { passive: true });
-        return () => window.removeEventListener('scroll', onScroll);
-    }, []);
+    const handleClearFilters = () => {
+        setTopicFilter("");
+        setActiveTab("All");
+    };
 
     useEffect(() => {
         // Don't filter if news haven't loaded yet
@@ -322,33 +272,25 @@ const SearchScreen = () => {
             });
         }
 
-        // Then filter by search query if present
-        if (debouncedQuery && debouncedQuery.trim()) {
-            const lower = debouncedQuery.toLowerCase().trim();
-            const searchTerms = lower.split(/\s+/).filter(term => term.length > 0); // Split into individual words and filter empty
-            
-            if (searchTerms.length > 0) {
-                results = results.filter((item) => {
-                    if (!item) return false;
-                    
-                    // Combine all searchable text
-                    const searchableText = [
-                        item.title || '',
-                        item.excerpt || '',
-                        item.description || '',
-                        item.source || '',
-                        item.category || '',
-                        (item.topic_keywords || []).join(' '),
-                    ].join(' ').toLowerCase();
-                    
-                    // Check if all search terms are found in the searchable text
-                    return searchTerms.every(term => searchableText.includes(term));
-                });
-            }
+        if (topicFilter && topicFilter.trim()) {
+            const lower = topicFilter.toLowerCase().trim();
+            results = results.filter((item) => {
+                if (!item) return false;
+                const keywords = (item.topic_keywords || []).map((k) => String(k).toLowerCase());
+                const searchableText = [
+                    item.title || '',
+                    item.excerpt || '',
+                    item.description || '',
+                    item.source || '',
+                    item.category || '',
+                    keywords.join(' '),
+                ].join(' ').toLowerCase();
+                return keywords.includes(lower) || searchableText.includes(lower);
+            });
         }
 
         setFilteredNews(results);
-    }, [debouncedQuery, activeTab, allNews]);
+    }, [topicFilter, activeTab, allNews]);
 
     const handleArticlePress = (article) => {
         openArticleDetail(navigate, article);
@@ -421,7 +363,7 @@ const SearchScreen = () => {
         <div style={{
             minHeight: '100vh',
             backgroundColor: backgroundColor,
-            paddingTop: '0',
+            paddingTop: isMobile ? '12px' : '0',
             marginTop: '0',
         }}>
             <div style={{
@@ -435,11 +377,8 @@ const SearchScreen = () => {
                     top: 0,
                     zIndex: 20,
                     backgroundColor,
-                    paddingTop: '6px',
+                    paddingTop: isMobile ? '8px' : '6px',
                     marginBottom: '12px',
-                    transform: headerHidden ? 'translateY(-118%)' : 'translateY(0)',
-                    opacity: headerHidden ? 0 : 1,
-                    transition: 'transform 240ms ease, opacity 220ms ease',
                 }}>
                     {/* Header Section */}
                     <div style={{
@@ -455,7 +394,7 @@ const SearchScreen = () => {
                             paddingTop: '0',
                             letterSpacing: '-0.5px',
                         }}>
-                            Explore Articles
+                            {t('pages.exploreTitle')}
                         </h1>
                         <p style={{
                             fontSize: '15px',
@@ -463,20 +402,12 @@ const SearchScreen = () => {
                             margin: '0',
                             lineHeight: '1.5',
                         }}>
-                            Search and discover articles from all categories
+                            {t('pages.exploreSubtitle')}
                         </p>
                     </div>
 
-                    {/* Search Bar + actions */}
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', marginBottom: '18px' }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                            <SearchBar
-                                ref={searchRef}
-                                onSearch={handleSearch}
-                                initialQuery={searchQuery}
-                            />
-                        </div>
-                        <div ref={discoverMenuRef} style={{ position: 'relative', flexShrink: 0, paddingTop: '4px' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', justifyContent: 'flex-end', marginBottom: '18px' }}>
+                        <div ref={discoverMenuRef} style={{ position: 'relative', flexShrink: 0 }}>
                             <button
                                 type="button"
                                 aria-label="More actions"
@@ -694,10 +625,10 @@ const SearchScreen = () => {
                             margin: '0 0 24px 0',
                             textAlign: 'center',
                         }}>
-                            {searchQuery.trim() 
-                                ? "Try searching with different keywords or clear the search" 
-                                : activeTab !== "All" 
-                                    ? `No articles found in ${activeTab} category` 
+                            {topicFilter.trim()
+                                ? "Try a different trending topic or clear filters"
+                                : activeTab !== "All"
+                                    ? `No articles found in ${activeTab} category`
                                     : "No articles available"}
                         </p>
                         <div style={{
@@ -706,7 +637,7 @@ const SearchScreen = () => {
                             alignItems: 'center',
                             gap: '12px',
                         }}>
-                            {(searchQuery.trim() || (activeTab && activeTab !== "All")) && (
+                            {(topicFilter.trim() || (activeTab && activeTab !== "All")) && (
                                 <div style={{
                                     display: 'flex',
                                     alignItems: 'center',
@@ -714,7 +645,7 @@ const SearchScreen = () => {
                                     flexWrap: 'wrap',
                                     justifyContent: 'center',
                                 }}>
-                                    {searchQuery.trim() && (
+                                    {topicFilter.trim() && (
                                         <div style={{
                                             display: 'inline-flex',
                                             alignItems: 'center',
@@ -729,7 +660,7 @@ const SearchScreen = () => {
                                                 fontWeight: '600',
                                                 color: colors.textPrimary,
                                             }}>
-                                                Search:
+                                                Topic:
                                             </span>
                                             <span style={{
                                                 fontSize: '13px',
@@ -740,7 +671,7 @@ const SearchScreen = () => {
                                                 borderRadius: '6px',
                                                 border: '1px solid #d1d5db',
                                             }}>
-                                                "{searchQuery}"
+                                                "{topicFilter}"
                                             </span>
                                         </div>
                                     )}
@@ -777,7 +708,7 @@ const SearchScreen = () => {
                                 </div>
                             )}
                             <button
-                                onClick={handleClearSearch}
+                                onClick={handleClearFilters}
                                 style={{
                                     padding: '10px 20px',
                                     border: '1px solid #e5e7eb',
@@ -798,18 +729,18 @@ const SearchScreen = () => {
                                     e.currentTarget.style.backgroundColor = '#ffffff';
                                 }}
                             >
-                                Clear Filters & Show All
+                                {t('common.clearFilters')}
                             </button>
                         </div>
                     </div>
                 ) : (
                     <div>
-                        {!searchQuery.trim() && (
+                        {!topicFilter.trim() && (
                             <>
                                 <TrendingTopics 
                                     topics={trendingTopics}
                                     onTopicPress={handleTopicPress}
-                                    searchQuery={searchQuery}
+                                    searchQuery=""
                                 />
                             </>
                         )}

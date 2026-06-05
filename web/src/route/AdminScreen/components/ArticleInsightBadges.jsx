@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkles, GitBranch, CheckCircle2, AlertTriangle, CheckCircle, ShieldCheck } from 'lucide-react';
+import { Sparkles, GitBranch, CheckCircle2, AlertTriangle, AlertCircle, CheckCircle, ShieldCheck } from 'lucide-react';
 import {
   LABEL_STYLES,
   normalizeLabelKey,
@@ -38,6 +38,14 @@ export function ArticleCredibilitySourceDot({ article, size = 12 }) {
     );
   }
 
+  if (labelKey === 'suspicious') {
+    return (
+      <span title={title} style={{ display: 'inline-flex', flexShrink: 0 }}>
+        <AlertCircle size={size} color={style.color} strokeWidth={2.5} aria-hidden />
+      </span>
+    );
+  }
+
   return (
     <span title={title} style={{ display: 'inline-flex', flexShrink: 0 }}>
       <CheckCircle size={size} color={style.color} fill={style.color} strokeWidth={2.5} aria-hidden />
@@ -51,7 +59,7 @@ export function ArticleCredibilityIndicator({ article }) {
   if (!meta.show) return null;
 
   const { style, labelKey, score, labelName } = meta;
-  const Icon = labelKey === 'fake' ? AlertTriangle : CheckCircle2;
+  const Icon = labelKey === 'fake' ? AlertTriangle : labelKey === 'suspicious' ? AlertCircle : CheckCircle2;
   const breakdown = article.credibility_prob_breakdown;
   const distHint =
     breakdown && typeof breakdown === 'object'
@@ -131,6 +139,31 @@ export default function ArticleInsightBadges({ article, textSecondary, borderCol
     if (meta.show) {
       const { labelKey, style, labelName, score } = meta;
 
+      if (labelKey === 'fake' || labelKey === 'suspicious') {
+        chips.push(
+          <span
+            key="cred-tag"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 11,
+              fontWeight: 700,
+              padding: '5px 10px',
+              borderRadius: 6,
+              border: `1px solid ${style.border}`,
+              backgroundColor: style.bg,
+              color: style.color,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+            }}
+          >
+            {labelKey === 'fake' ? <AlertTriangle size={12} strokeWidth={2.5} /> : <AlertCircle size={12} strokeWidth={2.5} />}
+            {labelKey === 'fake' ? 'Fake news' : 'Suspicious'}
+          </span>,
+        );
+      }
+
       if (!compact && score != null) {
         chips.push(
           <Chip key="score" label="Credibility score" value={`${score}/100`} style={styleForCredibilityScore(score)} />,
@@ -171,7 +204,7 @@ export default function ArticleInsightBadges({ article, textSecondary, borderCol
           label={compact ? 'Cred' : 'Verdict'}
           value={compact && score != null ? `${score} · ${String(labelName).replace(/_/g, ' ')}` : String(labelName).replace(/_/g, ' ')}
           style={style}
-          icon={labelKey === 'fake' ? AlertTriangle : CheckCircle2}
+          icon={labelKey === 'fake' ? AlertTriangle : labelKey === 'suspicious' ? AlertCircle : CheckCircle2}
         />,
       );
 

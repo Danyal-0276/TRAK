@@ -6,9 +6,12 @@ function wsBase() {
   return API_BASE.replace('http://', 'ws://');
 }
 
-/** WebSocket needs ASGI (daphne). On unless VITE_ENABLE_NOTIFICATIONS_WS=false. */
+/** WebSocket needs ASGI (daphne). Off in Vite dev by default. */
 export function isAdminNotificationsWsEnabled() {
-  return import.meta.env.VITE_ENABLE_NOTIFICATIONS_WS !== 'false';
+  const flag = import.meta.env.VITE_ENABLE_NOTIFICATIONS_WS;
+  if (flag === 'true') return true;
+  if (flag === 'false') return false;
+  return !import.meta.env.DEV;
 }
 
 export function openAdminNotificationsSocket(onMessage) {

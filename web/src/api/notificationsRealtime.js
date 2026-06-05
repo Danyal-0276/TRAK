@@ -6,8 +6,12 @@ function wsBase() {
   return API_BASE.replace('http://', 'ws://');
 }
 
+/** Live WS needs ASGI (daphne). Off in Vite dev by default — runserver resets /ws and spams proxy errors. */
 export function isNotificationsWsEnabled() {
-  return import.meta.env.VITE_ENABLE_NOTIFICATIONS_WS !== 'false';
+  const flag = import.meta.env.VITE_ENABLE_NOTIFICATIONS_WS;
+  if (flag === 'true') return true;
+  if (flag === 'false') return false;
+  return !import.meta.env.DEV;
 }
 
 /** HTTP fallback when live WebSocket is disabled. */

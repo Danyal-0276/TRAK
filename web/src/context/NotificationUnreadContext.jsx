@@ -225,23 +225,45 @@ export function NotificationUnreadProvider({ children }) {
     let pollId = null;
     let reconnectRef = null;
     let socketRef = null;
+    let reconnectAttempts = 0;
+    const MAX_WS_RECONNECT = 3;
+
+    const startPolling = () => {
+      if (pollId) return;
+      pollId = setInterval(() => refreshUnreadCount(), NOTIFICATIONS_POLL_FALLBACK_MS);
+    };
 
     const connect = () => {
+      if (!isNotificationsWsEnabled()) {
+        startPolling();
+        return;
+      }
       const ws = openNotificationsSocket((payload) => {
         if (payload?.type !== 'notification.created' || !payload.notification?.id) return;
         upsertNotification(payload.notification);
       });
-      if (!ws) return;
+      if (!ws) {
+        startPolling();
+        return;
+      }
       socketRef = ws;
+      ws.onopen = () => {
+        reconnectAttempts = 0;
+      };
+      ws.onerror = () => {
+        ws.close();
+      };
       ws.onclose = () => {
-        reconnectRef = setTimeout(connect, 2500);
+        socketRef = null;
+        reconnectAttempts += 1;
+        if (reconnectAttempts >= MAX_WS_RECONNECT) {
+          startPolling();
+          return;
+        }
+        reconnectRef = setTimeout(connect, 5000);
       };
     };
     connect();
-
-    if (!isNotificationsWsEnabled()) {
-      pollId = setInterval(() => refreshUnreadCount(), NOTIFICATIONS_POLL_FALLBACK_MS);
-    }
 
     return () => {
       unsubSync();

@@ -44,11 +44,11 @@ import { getBookmarkIds, setBookmarkIds } from "../../utils/bookmarksStorage";
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from "../../utils/reactionsStorage";
 import { mapApiItem } from "../../utils/loadFeed";
 
-function profileCacheKey() {
-    const u = getCurrentUser();
-    const id = u?.id ?? u?.pk;
-    return id != null ? `trak_profile_cache_v1_${id}` : 'trak_profile_cache_v1_guest';
-}
+import {
+    profileCacheKey,
+    writeProfileCache,
+    dispatchProfileUpdated,
+} from '../../utils/profileCache';
 
 function profileBookmarksCacheKey() {
     const u = getCurrentUser();
@@ -127,7 +127,8 @@ const UserProfileScreen = () => {
             setLoading(true);
             const profileData = stripLastLogin(await getProfile());
             setProfile(profileData);
-            window.localStorage.setItem(profileCacheKey(), JSON.stringify(profileData));
+            writeProfileCache(profileData);
+            dispatchProfileUpdated(profileData);
             const [bookmarkPayload, reactPayload] = await Promise.all([
                 listBookmarks().catch(() => ({ results: [] })),
                 listReactions().catch(() => ({ results: [] })),
@@ -325,6 +326,8 @@ const UserProfileScreen = () => {
                 const dataUrl = String(reader.result || "");
                 const updated = stripLastLogin(await updateProfile({ avatar_image: dataUrl }));
                 setProfile(updated);
+                writeProfileCache(updated);
+                dispatchProfileUpdated(updated);
             } catch {
                 // ignore avatar update errors to keep profile usable
             }

@@ -5,6 +5,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { useAuth } from '../context/AuthContext';
 import { useUserKeywords } from '../context/UserKeywordsContext';
+import { useLanguage } from '../context/LanguageContext';
 
 const AppSidebar = () => {
     const { theme } = useTheme();
@@ -16,6 +17,7 @@ const AppSidebar = () => {
     const location = useLocation();
     const [searchParams] = useSearchParams();
     const { keywords, loading: keywordsLoading } = useUserKeywords();
+    const { t } = useLanguage();
     const topicRows = useMemo(
         () => (keywords || []).map((t, i) => ({ id: `${i}-${t}`, topic: String(t) })),
         [keywords]
@@ -33,11 +35,11 @@ const AppSidebar = () => {
     }
 
     const quickLinks = [
-        { icon: TrendingUp, label: 'Trending', to: { pathname: '/newsfeed', search: '?tab=Trending' } },
-        { icon: Bookmark, label: 'Bookmarks', to: '/bookmarks' },
-        { icon: Clock, label: 'Recent', to: '/recent' },
-        { icon: Image, label: 'Pics', to: '/pics' },
-        { icon: Tag, label: 'Categories', to: '/categories' },
+        { icon: TrendingUp, label: t('sidebar.trending'), to: { pathname: '/newsfeed', search: '?tab=Trending' } },
+        { icon: Bookmark, label: t('sidebar.bookmarks'), to: '/bookmarks' },
+        { icon: Clock, label: t('sidebar.recent'), to: '/recent' },
+        { icon: Image, label: t('sidebar.pics'), to: '/pics' },
+        { icon: Tag, label: t('sidebar.categories'), to: '/categories' },
     ];
 
     const isQuickLinkActive = (link) => {
@@ -52,10 +54,10 @@ const AppSidebar = () => {
     };
 
     const footerLinks = [
-        { label: 'About', path: '/about' },
-        { label: 'Help', path: '/help' },
-        { label: 'Privacy', path: '/privacy' },
-        { label: 'Terms', path: '/terms' },
+        { label: t('sidebar.about'), path: '/about' },
+        { label: t('sidebar.help'), path: '/help' },
+        { label: t('sidebar.privacy'), path: '/privacy' },
+        { label: t('sidebar.terms'), path: '/terms' },
     ];
 
     const backgroundColor = colors.background;
@@ -87,7 +89,7 @@ const AppSidebar = () => {
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
                 }}>
-                    Quick Links
+                    {t('sidebar.quickLinks')}
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {quickLinks.map((link) => {
@@ -158,19 +160,19 @@ const AppSidebar = () => {
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px',
                 }}>
-                    Your topics
+                    {t('sidebar.yourTopics')}
                 </h3>
                 {!user ? (
                     <p style={{ fontSize: '12px', color: textSecondary, margin: 0, lineHeight: 1.5 }}>
-                        Sign in to see the topics you follow.
+                        {t('sidebar.signInTopics')}
                     </p>
                 ) : keywordsLoading && topicRows.length === 0 ? (
                     <p style={{ fontSize: '12px', color: textSecondary, margin: 0, lineHeight: 1.5 }}>
-                        Loading your topics…
+                        {t('sidebar.loadingTopics')}
                     </p>
                 ) : topicRows.length === 0 ? (
                     <p style={{ fontSize: '12px', color: textSecondary, margin: 0, lineHeight: 1.5 }}>
-                        No keywords yet.{' '}
+                        {t('sidebar.noKeywords')}{' '}
                         <button
                             type="button"
                             onClick={() => navigate('/categories')}

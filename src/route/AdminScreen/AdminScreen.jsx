@@ -330,7 +330,7 @@ const AdminScreen = ({ navigation }) => {
   }, [updateConnectionsIfChanged]);
 
   const loadArticles = useCallback(async ({ silent = false } = {}) => {
-    const { scope, pipelineStatus, moderationStatus } = getArticlesFetchParams(articlePipelineFilter);
+    const { scope, pipelineStatus, moderationStatus, credibilityLabel } = getArticlesFetchParams(articlePipelineFilter);
     if (!silent) setArticlesLoading(true);
     try {
       const res = await getAdminArticles({
@@ -339,6 +339,7 @@ const AdminScreen = ({ navigation }) => {
         scope,
         pipelineStatus,
         moderationStatus,
+        credibilityLabel,
       });
       setApiArticles((res.results || []).map(mapAdminArticleRow));
       setArticleCounts(res.counts || null);

@@ -3,7 +3,7 @@
  */
 
 export const NEEDS_REVIEW_HELP =
-  'Feed shows processed articles only. Needs review = Fake or Suspicious with fact-check, not yet approved. Pipeline filters show raw scraper rows.';
+  'Feed shows processed articles only. Fake / Suspicious filters show all articles with that credibility label. Needs review = Fake or Suspicious with fact-check, not yet approved. Pipeline filters show raw scraper rows.';
 
 const FACT_CHECK_SKIP = new Set([
   '',
@@ -17,6 +17,8 @@ const FACT_CHECK_SKIP = new Set([
 
 export const FEED_FILTERS = [
   { id: '', label: 'All processed' },
+  { id: 'fake', label: 'Fake news' },
+  { id: 'suspicious', label: 'Suspicious' },
   { id: 'review', label: 'Needs review' },
   { id: 'approved', label: 'Approved' },
 ];
@@ -40,9 +42,22 @@ export function isFakeOrSuspicious(article) {
   return name.includes('fake') || name.includes('suspicious');
 }
 
+export function isFakeArticle(article) {
+  const code = article?.credibility_label;
+  if (code === 1 || code === '1') return true;
+  return String(article?.credibility_label_name || '').toLowerCase().includes('fake');
+}
+
+export function isSuspiciousArticle(article) {
+  const code = article?.credibility_label;
+  if (code === 2 || code === '2') return true;
+  return String(article?.credibility_label_name || '').toLowerCase().includes('suspicious');
+}
+
 export function getArticlesApiScope(pipelineFilter = '') {
   const pipe = String(pipelineFilter || '').toLowerCase();
   if (pipe === 'raw' || ['queue', 'pending', 'processing', 'failed'].includes(pipe)) return 'raw';
+  if (['fake', 'suspicious', 'review', 'approved'].includes(pipe)) return 'processed';
   return 'processed';
 }
 
@@ -51,12 +66,17 @@ export function getArticlesFetchParams(pipelineFilter = '') {
   const scope = getArticlesApiScope(pipe);
   const serverPipeline = ['queue', 'pending', 'processing', 'failed'].includes(pipe) ? pipe : '';
   let serverModeration = '';
+  let credibilityLabel = '';
   if (pipe === 'review' || pipe === 'needs_review' || pipe === 'needs-review') {
     serverModeration = 'review';
   } else if (pipe === 'approved') {
     serverModeration = 'approved';
+  } else if (pipe === 'fake') {
+    credibilityLabel = '1';
+  } else if (pipe === 'suspicious') {
+    credibilityLabel = '2';
   }
-  return { scope, pipelineStatus: serverPipeline, moderationStatus: serverModeration };
+  return { scope, pipelineStatus: serverPipeline, moderationStatus: serverModeration, credibilityLabel };
 }
 
 export function articleNeedsReview(article) {
@@ -97,6 +117,12 @@ export function filterArticlesByPipeline(articles, pipelineFilter) {
   const list = articles || [];
 
   if (!pipe) return list.filter((a) => a.scope === 'processed');
+  if (pipe === 'fake') {
+    return list.filter((a) => a.scope === 'processed' && isFakeArticle(a));
+  }
+  if (pipe === 'suspicious') {
+    return list.filter((a) => a.scope === 'processed' && isSuspiciousArticle(a));
+  }
   if (pipe === 'review' || pipe === 'needs_review' || pipe === 'needs-review') {
     return list.filter(articleNeedsReview);
   }
@@ -185,6 +211,10 @@ export function buildArticleCountDisplay({ counts, pipelineFilter, displayedCoun
     if (needsReview != null) {
       detail += ` · ${formatCount(needsReview)} need review`;
     }
+  } else if (filter === 'fake') {
+    detail = `${formatCount(filteredTotal ?? showing)} fake news article${(filteredTotal ?? showing) === 1 ? '' : 's'}`;
+  } else if (filter === 'suspicious') {
+    detail = `${formatCount(filteredTotal ?? showing)} suspicious article${(filteredTotal ?? showing) === 1 ? '' : 's'}`;
   } else if (filter === 'review' || filter === 'needs_review') {
     const n = needsReview ?? filteredTotal ?? showing;
     if (n > showing) {

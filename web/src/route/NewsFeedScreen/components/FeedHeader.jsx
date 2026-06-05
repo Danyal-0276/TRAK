@@ -4,11 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../../theme/ThemeContext';
 import TrakLogo from '../../../components/TrakLogo';
 import Text from '../../../components/ui/Text';
+import { useLanguage } from '../../../context/LanguageContext';
 
 export const FeedHeader = () => {
     const { theme } = useTheme();
     const { colors } = theme;
     const navigate = useNavigate();
+    const { t } = useLanguage();
 
     return (
         <div style={{
@@ -46,7 +48,7 @@ export const FeedHeader = () => {
                         color: colors.textPrimary,
                         letterSpacing: '0.2px',
                     }}>
-                        Newsfeed
+                        {t('feed.newsfeed')}
                     </Text>
                 </div>
                 <button

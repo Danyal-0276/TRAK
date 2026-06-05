@@ -15,12 +15,13 @@ import {
     getCategoryIcon,
 } from '../../utils/categoryMatch';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
+import { useLanguage } from '../../context/LanguageContext';
 const POPULAR_CATEGORY_NAMES = [
     'Technology', 'Politics', 'Business', 'Sports', 'Health',
     'Science', 'Entertainment', 'World', 'Finance', 'Education',
 ];
 
-const ARTICLES_PREVIEW_COUNT = 5;
+const ARTICLES_PREVIEW_COUNT = 6;
 const INITIAL_VISIBLE_COUNT = 8;
 
 function articleSortTime(item) {
@@ -31,6 +32,7 @@ function articleSortTime(item) {
 
 const CategoriesScreen = () => {
     const { theme } = useTheme();
+    const { t } = useLanguage();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
     const navigate = useNavigate();
@@ -198,10 +200,10 @@ const CategoriesScreen = () => {
                 {/* Header */}
                 <div style={{ marginBottom: 24 }}>
                     <h1 style={{ fontSize: 28, fontWeight: 700, color: textPrimary, margin: '0 0 8px', letterSpacing: '-0.5px' }}>
-                        Categories
+                        {t('pages.categoriesTitle')}
                     </h1>
                     <p style={{ fontSize: 15, color: textSecondary, margin: 0, lineHeight: 1.5 }}>
-                        Browse articles by category
+                        {t('pages.categoriesSubtitle')}
                     </p>
                 </div>
 
@@ -347,7 +349,7 @@ const CategoriesScreen = () => {
                                                                     cursor: 'pointer',
                                                                 }}
                                                             >
-                                                                Show more ({hiddenCount} more)
+                                                                {t('pages.showMore')}
                                                             </button>
                                                         ) : null}
                                                     </>
@@ -373,7 +375,7 @@ const CategoriesScreen = () => {
                                 }}
                             >
                                 {showMore ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                                {showMore ? 'Show fewer categories' : `Show ${moreCategories.length} more categories`}
+                                {showMore ? t('pages.showFewer') : t('pages.showMore')}
                             </button>
                         )}
 

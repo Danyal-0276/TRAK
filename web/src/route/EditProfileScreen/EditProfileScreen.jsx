@@ -13,6 +13,7 @@ import {
     AlertCircle
 } from 'lucide-react';
 import { getProfile, updateProfile } from '../../utils/Service/api';
+import { writeProfileCache, dispatchProfileUpdated } from '../../utils/profileCache';
 import { useTheme } from '../../theme/ThemeContext';
 import { filledActionColors } from '../../theme/buttonContrast';
 import { SkeletonPageBlocks } from '../../components/skeletons/SkeletonLayouts';
@@ -160,13 +161,15 @@ const EditProfileScreen = () => {
         setShowSuccess(false);
 
         try {
-            await updateProfile({
+            const updated = await updateProfile({
                 full_name: formData.name,
                 username: formData.username,
                 phone: formData.phone,
                 bio: formData.bio,
                 avatar_image: avatarPreview || '',
             });
+            writeProfileCache(updated);
+            dispatchProfileUpdated(updated);
 
             setShowSuccess(true);
             setTimeout(() => {

@@ -10,6 +10,8 @@ import {
   XCircle,
   Info,
   Workflow,
+  AlertTriangle,
+  AlertCircle,
 } from 'lucide-react';
 import {
   FEED_FILTERS,
@@ -19,7 +21,7 @@ import {
 } from '../../../utils/adminArticleFilters';
 import './adminArticlesControlPanel.css';
 
-const FEED_ICONS = { '': Rss, review: Eye, approved: CheckCircle2 };
+const FEED_ICONS = { '': Rss, fake: AlertTriangle, suspicious: AlertCircle, review: Eye, approved: CheckCircle2 };
 const PIPELINE_ICONS = { queue: Inbox, pending: Clock, processing: Loader, failed: XCircle };
 
 const STAT_META = {
