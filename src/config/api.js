@@ -1,23 +1,16 @@
 import { Platform } from 'react-native';
-import { RENDER_API_BASE } from '../../config/apiBase';
 
 /**
  * Django API origin.
- * - Release builds: Render
- * - Dev: emulator/simulator localhost (override in gitignored `api.local.js` for a physical device)
+ * - Release builds: VPS (set in gitignored `api.local.js`)
+ * - Dev: emulator/simulator localhost (override in `api.local.js` for a physical device)
  */
-const devApiBase =
+const defaultApiBase =
     Platform.select({
         android: 'http://10.0.2.2:8000',
         ios: 'http://localhost:8000',
         default: 'http://127.0.0.1:8000',
     }) || 'http://127.0.0.1:8000';
-
-// Release: set API_BASE in api.local.js (see api.local.example.js / TRAK/.env.example).
-const defaultApiBase =
-    typeof __DEV__ !== 'undefined' && __DEV__
-        ? devApiBase
-        : RENDER_API_BASE || devApiBase;
 
 let localOverride = {};
 try {

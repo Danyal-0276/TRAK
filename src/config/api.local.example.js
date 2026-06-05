@@ -2,11 +2,14 @@ import { Platform } from 'react-native';
 
 // Copy to api.local.js (gitignored). Values mirror TRAK/.env.example at repo root.
 
-/** true = deployed API. false = local Django on your PC. */
-const USE_RENDER = false;
+/** true = VPS (dev + release). false = local Django on your PC. */
+const USE_VPS = true;
 
-/** Production Django API — set TRAK/.env.example → VITE_API_URL (same host). */
-const PRODUCTION_API_BASE = 'https://trak-backend-upip.onrender.com';
+/** VPS production API */
+const PRODUCTION_API_BASE = 'http://167.86.110.151:8000';
+
+/** Render (paused) */
+// const PRODUCTION_API_BASE = 'https://trak-backend-upip.onrender.com';
 
 /** Your PC Wi-Fi IPv4 (ipconfig) — phone and PC must be on the same network. */
 const DEV_LAN_HOST = '192.168.100.100';
@@ -30,10 +33,6 @@ const LOCAL_API_BASE = Platform.select({
   default: 'http://127.0.0.1:8000',
 });
 
-export const API_BASE = USE_RENDER ? PRODUCTION_API_BASE : LOCAL_API_BASE;
+export const API_BASE = USE_VPS ? PRODUCTION_API_BASE : LOCAL_API_BASE;
 
-/** Set true only when backend runs with ASGI (daphne), not plain runserver. */
-// export const ENABLE_NOTIFICATIONS_WS = true;
-
-// Backend: python manage.py runserver 0.0.0.0:8000
-// MongoDB must be running. Match DEV_LAN_HOST to your PC IP if using Wi-Fi.
+// Local backend: python -m daphne -b 0.0.0.0 -p 8000 TRAK_Backend.asgi:application
