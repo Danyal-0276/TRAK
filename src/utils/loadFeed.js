@@ -3,9 +3,12 @@ import { fetchExplore, fetchExplorePage, fetchFeed, fetchPicsPage } from '../api
 import { getAccessToken } from '../api/client';
 import { loadUserKeywords } from './userKeywordsStorage';
 import { filterFeedByUserKeywords } from './feedKeywordMatch';
+import { filterRealFeedItems } from './feedRealOnly';
 
 /** Mock feed only when explicitly enabled (never auto-on in dev). */
 const allowMockFallback = false;
+
+export { filterRealFeedItems, isRealFeedArticle } from './feedRealOnly';
 
 function computeMatchedKeywords(topicKeywords = [], userKeywords = []) {
     const topics = topicKeywords.map((k) => String(k || '').toLowerCase());
@@ -89,7 +92,9 @@ export async function loadFeedItems(options = {}) {
                 mode === 'explore'
                     ? await fetchExplorePage(50, q, '')
                     : await fetchFeed(50, q);
-            const items = (json.results || []).map((a) => mapApiItem(a, userKeywords));
+            const items = filterRealFeedItems(
+                (json.results || []).map((a) => mapApiItem(a, userKeywords))
+            );
             if (mode === 'user') {
                 return filterFeedByUserKeywords(items, userKeywords);
             }
@@ -124,7 +129,7 @@ export async function loadExplorePage(options = {}) {
     const userKeywords = await loadUserKeywords();
     const json = await fetchExplorePage(limit, q, cursor);
     return {
-        items: (json.results || []).map((a) => mapApiItem(a, userKeywords)),
+        items: filterRealFeedItems((json.results || []).map((a) => mapApiItem(a, userKeywords))),
         nextCursor: json.next_cursor || null,
         hasMore: Boolean(json.has_more),
     };
@@ -141,7 +146,7 @@ export async function loadPicsPage(options = {}) {
     const userKeywords = await loadUserKeywords();
     const json = await fetchPicsPage(limit, q, cursor);
     return {
-        items: (json.results || []).map((a) => mapApiItem(a, userKeywords)),
+        items: filterRealFeedItems((json.results || []).map((a) => mapApiItem(a, userKeywords))),
         nextCursor: json.next_cursor || null,
         hasMore: Boolean(json.has_more),
     };

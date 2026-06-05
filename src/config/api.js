@@ -23,6 +23,9 @@ try {
 
 export const API_BASE = localOverride.API_BASE ?? defaultApiBase;
 
+/** WebSocket notifications — requires ASGI (e.g. daphne). Default false for `runserver`. */
+export const ENABLE_NOTIFICATIONS_WS = localOverride.ENABLE_NOTIFICATIONS_WS === true;
+
 export const AUTH_PREFIX = `${API_BASE}/api/auth`;
 export const USER_PREFIX = `${API_BASE}/api/user`;
 export const ADMIN_PREFIX = `${API_BASE}/api/admin`;

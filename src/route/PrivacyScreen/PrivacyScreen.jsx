@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { resolveTopInset } from "../../utils/screenSafeArea";
 import { useTheme } from "../../theme/ThemeContext";
 
 const PrivacyScreen = ({ navigation }) => {
@@ -27,8 +28,8 @@ const PrivacyScreen = ({ navigation }) => {
   });
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <ScrollView contentContainerStyle={[styles.container, { paddingTop: Math.max(insets.top, 20) }]}>
+    <View style={[styles.safeArea, { paddingTop: resolveTopInset(insets, 0) }]}>
+      <ScrollView contentContainerStyle={[styles.container, { paddingTop: 12 }]}>
         <Text style={styles.title}>Privacy & Security</Text>
         <Text style={styles.text}>
           Your privacy is our priority. We ensure that your personal data is
@@ -53,7 +54,7 @@ const PrivacyScreen = ({ navigation }) => {
         </View>
 
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

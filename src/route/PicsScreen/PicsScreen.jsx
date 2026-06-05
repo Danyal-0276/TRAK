@@ -9,7 +9,8 @@ import {
     Dimensions,
     FlatList,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { resolveTopInset } from '../../utils/screenSafeArea';
 import { useTheme } from '../../theme/ThemeContext';
 import { getRefreshControlProps } from '../../theme/refreshControl';
 import { loadPicsPage } from '../../utils/loadFeed';
@@ -25,6 +26,8 @@ const CARD_WIDTH = (Dimensions.get('window').width - 24 - GAP) / NUM_COLUMNS;
 const PicsScreen = ({ navigation }) => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const insets = useSafeAreaInsets();
+    const topInset = resolveTopInset(insets, 0);
     const [newsData, setNewsData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
@@ -106,7 +109,7 @@ const PicsScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.safe, { backgroundColor: colors.background, paddingTop: topInset }]}>
             <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             <View style={[styles.header, { borderBottomColor: colors.borderLight, backgroundColor: colors.surface }]}>
                 <View style={styles.headerText}>
@@ -155,7 +158,7 @@ const PicsScreen = ({ navigation }) => {
                     }
                 />
             )}
-        </SafeAreaView>
+        </View>
     );
 };
 

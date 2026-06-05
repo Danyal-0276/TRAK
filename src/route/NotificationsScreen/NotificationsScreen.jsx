@@ -7,7 +7,8 @@ import {
   ActivityIndicator,
   StatusBar,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { resolveTopInset } from "../../utils/screenSafeArea";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import NotificationTabs, { NotificationTabBar } from "./components/NotificationTabs";
 import { useNotifications } from "../../context/NotificationUnreadContext";
@@ -27,6 +28,7 @@ const NotificationsScreen = () => {
   const isDark = theme.mode === "dark";
   const actionColors = useFilledActionColors();
   const insets = useSafeAreaInsets();
+  const topInset = resolveTopInset(insets, 0);
   const navigation = useNavigation();
   const feedback = useFeedback();
   const {
@@ -78,9 +80,11 @@ const NotificationsScreen = () => {
 
   if (showLoading) {
     return (
-      <SafeAreaView
-        style={[styles.loadingContainer, { backgroundColor: colors.background }]}
-        edges={["top", "bottom"]}
+      <View
+        style={[
+          styles.loadingContainer,
+          { backgroundColor: colors.background, paddingTop: topInset, paddingBottom: insets.bottom },
+        ]}
       >
         <StatusBar
           barStyle={theme.mode === "dark" ? "light-content" : "dark-content"}
@@ -90,15 +94,12 @@ const NotificationsScreen = () => {
         <Text variant="body" color={colors.textSecondary} style={styles.loadingText}>
           Loading notifications...
         </Text>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: colors.surface }]}
-      edges={["top"]}
-    >
+    <View style={[styles.container, { backgroundColor: colors.surface, paddingTop: topInset }]}>
       <StatusBar
         barStyle={isDark ? "light-content" : "dark-content"}
         backgroundColor={colors.surface}
@@ -153,7 +154,7 @@ const NotificationsScreen = () => {
           bottomInset={listBottomPad}
         />
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

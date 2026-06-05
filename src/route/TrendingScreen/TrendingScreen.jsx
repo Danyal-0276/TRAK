@@ -7,7 +7,8 @@ import {
     ActivityIndicator,
     TouchableOpacity,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { resolveTopInset } from '../../utils/screenSafeArea';
 import ArticleFeedList from '../../components/ArticleFeedList';
 import { useTheme } from '../../theme/ThemeContext';
 import { getRefreshControlProps } from '../../theme/refreshControl';
@@ -19,6 +20,8 @@ import { buildArticleDetailParams } from '../../utils/articleNavigation';
 const TrendingScreen = ({ navigation }) => {
     const { theme } = useTheme();
     const { colors } = theme;
+    const insets = useSafeAreaInsets();
+    const topInset = resolveTopInset(insets, 0);
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
     const [votedItems, setVotedItems] = useState({});
     const [newsData, setNewsData] = useState([]);
@@ -94,7 +97,7 @@ const TrendingScreen = ({ navigation }) => {
     };
 
     return (
-        <SafeAreaView style={[styles.safe, { backgroundColor: colors.background }]} edges={['top']}>
+        <View style={[styles.safe, { backgroundColor: colors.background, paddingTop: topInset }]}>
             <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             <View style={[styles.header, { borderBottomColor: colors.borderLight, backgroundColor: colors.surface }]}>
                 <View style={styles.headerText}>
@@ -135,7 +138,7 @@ const TrendingScreen = ({ navigation }) => {
                     }
                 />
             )}
-        </SafeAreaView>
+        </View>
     );
 };
 

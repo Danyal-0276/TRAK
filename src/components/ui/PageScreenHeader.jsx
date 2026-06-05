@@ -2,6 +2,7 @@ import React from 'react';
 import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
+import { resolveTopInset } from '../../utils/screenSafeArea';
 import TrakLogo from '../TrakLogo';
 import Text from './Text';
 
@@ -14,6 +15,8 @@ export default function PageScreenHeader({
   subtitle,
   rightAction = null,
   paddingTop,
+  /** When false, parent already applied safe-area (e.g. tab chrome wrapper). */
+  safeAreaTop = true,
   style,
 }) {
   const { theme } = useTheme();
@@ -21,7 +24,8 @@ export default function PageScreenHeader({
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const compact = width < 360;
-  const resolvedTop = paddingTop ?? Math.max(insets.top, 8) + 8;
+  const contentPad = paddingTop ?? 8;
+  const resolvedTop = safeAreaTop ? resolveTopInset(insets, contentPad) : contentPad;
 
   return (
     <View

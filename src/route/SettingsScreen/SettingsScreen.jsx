@@ -1,25 +1,37 @@
-// SettingsScreen.jsx
-import React, { useState, useRef, useEffect } from "react";
-import { ScrollView, StyleSheet, StatusBar, Animated, Dimensions, View, Platform } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import LinearGradient from "react-native-linear-gradient";
-import { User, Bell, Lock, Tag, Database, Info, LogOut, Moon, FileText, Mail, MessageSquare, Image, Hash } from "lucide-react-native";
-import { getNotificationPreferences, patchNotificationPreferences } from "../../api/notificationsApi";
+import React, { useState, useEffect } from 'react';
+import { ScrollView, StyleSheet, StatusBar, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { resolveTopInset } from '../../utils/screenSafeArea';
+import {
+  User,
+  Bell,
+  Lock,
+  Tag,
+  Database,
+  Info,
+  LogOut,
+  Moon,
+  Sun,
+  FileText,
+  Mail,
+  MessageSquare,
+  Image,
+  Hash,
+  Sparkles,
+} from 'lucide-react-native';
+import { getNotificationPreferences, patchNotificationPreferences } from '../../api/notificationsApi';
 
-import SettingsHeader from "./components/SettingsHeader";
-import SettingsSection from "./components/SettingsSection";
-import SettingsRow from "./components/SettingsRow";
-import ThemeSwitchButton from "./components/ThemeSwitchButton";
-import { useTheme } from "../../theme/ThemeContext";
-import { useAuth } from "../../context/AuthContext";
-import { useFeedback } from "../../components/ui/FeedbackProvider";
-import Card from "../../components/ui/Card";
-import Text from "../../components/ui/Text";
-import { resetTabBarVisibility } from "../../navigation/tabBarVisibility";
-import { useCollapsibleHeader } from "../../hooks/useCollapsibleHeader";
-import FeedbackModal from "../../components/FeedbackModal";
+import SettingsHeader from './components/SettingsHeader';
+import SettingsSection from './components/SettingsSection';
+import SettingsRow from './components/SettingsRow';
+import { useTheme } from '../../theme/ThemeContext';
+import { useAuth } from '../../context/AuthContext';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
+import Text from '../../components/ui/Text';
+import { resetTabBarVisibility } from '../../navigation/tabBarVisibility';
+import FeedbackModal from '../../components/FeedbackModal';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const ICON_SIZE = 18;
 
 export default function SettingsScreen({ navigation }) {
   const [pushEnabled, setPushEnabled] = useState(true);
@@ -28,60 +40,16 @@ export default function SettingsScreen({ navigation }) {
   const [quietHours, setQuietHours] = useState(false);
   const [appFeedbackOpen, setAppFeedbackOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const { colors } = theme;
+  const { colors, spacing } = theme;
   const { logout } = useAuth();
   const { confirm } = useFeedback();
-  const darkTheme = theme.mode === "dark";
+  const darkTheme = theme.mode === 'dark';
   const insets = useSafeAreaInsets();
+  const iconColor = colors.primary || colors.textPrimary;
 
   const openContentScreen = (routeName, params = {}) => {
     navigation.navigate(routeName, params);
   };
-  
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const [headerSectionHeight, setHeaderSectionHeight] = useState(100);
-  const { translateY: headerTranslateY, handleScroll } = useCollapsibleHeader({
-    hideOffset: headerSectionHeight,
-    hideThreshold: 40,
-  });
-  const circle1Anim = useRef(new Animated.Value(0)).current;
-  const circle2Anim = useRef(new Animated.Value(0)).current;
-  const circle3Anim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.timing(circle1Anim, {
-        toValue: 1,
-        duration: 1000,
-        delay: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(circle2Anim, {
-        toValue: 1,
-        duration: 1000,
-        delay: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(circle3Anim, {
-        toValue: 1,
-        duration: 1000,
-        delay: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
 
   useEffect(() => {
     resetTabBarVisibility();
@@ -101,154 +69,72 @@ export default function SettingsScreen({ navigation }) {
     })();
   }, []);
 
+  const topInset = resolveTopInset(insets, 0);
+
   return (
-    <SafeAreaView edges={['left', 'right', 'bottom']} style={[styles.container, { backgroundColor: colors.background }]}>
-      <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topInset }]}>
+      <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-      <View
-        style={[styles.statusBarCover, { height: insets.top, backgroundColor: colors.surface }]}
-        pointerEvents="none"
-      />
-      
-      {/* Gradient background */}
-      <LinearGradient
-        colors={theme.mode === 'dark' 
-          ? [colors.background, colors.backgroundSecondary, colors.background]
-          : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
-        }
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientBackground}
-      />
-      
-      {/* Animated decorative circles */}
-      <Animated.View 
-        style={[
-          styles.accentCircle1, 
-          { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.12' : '0.05'})`,
-            opacity: circle1Anim,
-            transform: [
-              {
-                scale: circle1Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-            ],
-          }
-        ]}
-        pointerEvents="none"
-      />
-      <Animated.View 
-        style={[
-          styles.accentCircle2, 
-          { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.10' : '0.04'})`,
-            opacity: circle2Anim,
-            transform: [
-              {
-                scale: circle2Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-            ],
-          }
-        ]}
-        pointerEvents="none"
-      />
-      <Animated.View 
-        style={[
-          styles.accentCircle3, 
-          { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.08' : '0.03'})`,
-            opacity: circle3Anim,
-            transform: [
-              {
-                scale: circle3Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-            ],
-          }
-        ]}
-        pointerEvents="none"
-      />
-      
-      <Animated.View
-        style={[
-          styles.fixedHeader,
-          {
-            paddingTop: insets.top,
-            backgroundColor: colors.surface,
-            borderBottomColor: colors.borderLight,
-            transform: [{ translateY: headerTranslateY }],
-          },
-        ]}
-        onLayout={(e) => {
-          const h = Math.max(0, Math.round(e?.nativeEvent?.layout?.height || 0));
-          if (h > 0 && h !== headerSectionHeight) setHeaderSectionHeight(h);
-        }}
-      >
-        <SettingsHeader />
-      </Animated.View>
+      <SettingsHeader navigation={navigation} />
 
-      <Animated.ScrollView
+      <ScrollView
         contentContainerStyle={[
           styles.scroll,
           {
-            paddingTop: headerSectionHeight + theme.spacing.sm,
-            paddingHorizontal: theme.spacing.md,
-            paddingBottom: theme.spacing.lg,
+            paddingHorizontal: spacing.md,
+            paddingTop: spacing.md,
+            paddingBottom: insets.bottom + spacing.xxl,
           },
         ]}
         showsVerticalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
       >
-        <Card style={{ marginBottom: theme.spacing.lg }}>
-          <Text variant="subtitle" color={theme.colors.textPrimary}>
-            Your Account
-          </Text>
-          <Text
-            variant="body"
-            color={theme.colors.textSecondary}
-            style={{ marginTop: theme.spacing.xs }}
-          >
-            Manage profile, preferences, and security.
-          </Text>
-        </Card>
+        <View
+          style={[
+            styles.hero,
+            {
+              backgroundColor: colors.surface,
+              borderColor: colors.borderLight,
+            },
+          ]}
+        >
+          <View style={[styles.heroIcon, { backgroundColor: `${iconColor}18` }]}>
+            <Sparkles size={22} color={iconColor} strokeWidth={2} />
+          </View>
+          <View style={styles.heroText}>
+            <Text variant="subtitle" color={colors.textPrimary} style={styles.heroTitle}>
+              Your TRAK experience
+            </Text>
+            <Text variant="caption" color={colors.textSecondary} style={styles.heroSubtitle}>
+              Tune alerts, topics, and how the app looks on this device.
+            </Text>
+          </View>
+        </View>
 
-        <SettingsSection>
+        <SettingsSection title="Account">
           <SettingsRow
-            icon={<User size={22} color={colors.primary} />}
-            label="Account"
-            onPress={() => navigation.navigate("ProfileScreen")}
+            icon={<User size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
+            label="Profile"
+            subtitle="View and edit your account"
+            onPress={() => navigation.navigate('ProfileScreen')}
           />
         </SettingsSection>
 
-        <Card style={{ marginBottom: theme.spacing.md }}>
-          <Text variant="subtitle" color={theme.colors.textPrimary}>
-            Content
-          </Text>
-          <Text variant="caption" color={theme.colors.textSecondary} style={{ marginTop: theme.spacing.xs }}>
-            News categories and your own custom keywords
-          </Text>
-        </Card>
-
-        <SettingsSection>
+        <SettingsSection
+          title="Content"
+          description="Categories and keywords shape your feed and alerts."
+        >
           <SettingsRow
-            icon={<Tag size={22} color={colors.primary} />}
-            label="Manage Categories"
-            onPress={() => openContentScreen("SettingsTagSelection", { fromSettings: true })}
+            icon={<Tag size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
+            label="Manage categories"
+            subtitle="Topics you follow"
+            onPress={() => openContentScreen('SettingsTagSelection', { fromSettings: true })}
           />
           <SettingsRow
-            icon={<Hash size={22} color={colors.primary} />}
-            label="Manage Custom Keywords"
+            icon={<Hash size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
+            label="Custom keywords"
+            subtitle="Extra terms for matching articles"
             onPress={() =>
-              openContentScreen("SettingsKeywordSelection", {
+              openContentScreen('SettingsKeywordSelection', {
                 fromSettings: true,
                 selectedTags: [],
               })
@@ -256,16 +142,11 @@ export default function SettingsScreen({ navigation }) {
           />
         </SettingsSection>
 
-        <Card style={{ marginBottom: theme.spacing.md }}>
-          <Text variant="subtitle" color={theme.colors.textPrimary}>
-            Notification preferences
-          </Text>
-        </Card>
-
-        <SettingsSection>
+        <SettingsSection title="Notifications">
           <SettingsRow
-            icon={<Bell size={22} color={colors.primary} />}
+            icon={<Bell size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Push notifications"
+            subtitle="Breaking and personalized alerts"
             switchEnabled
             switchValue={pushEnabled}
             onSwitchChange={async (v) => {
@@ -278,8 +159,9 @@ export default function SettingsScreen({ navigation }) {
             }}
           />
           <SettingsRow
-            icon={<Mail size={22} color={colors.primary} />}
+            icon={<Mail size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Email notifications"
+            subtitle="Summaries and important updates"
             switchEnabled
             switchValue={emailEnabled}
             onSwitchChange={async (v) => {
@@ -292,8 +174,9 @@ export default function SettingsScreen({ navigation }) {
             }}
           />
           <SettingsRow
-            icon={<Tag size={22} color={colors.primary} />}
+            icon={<Hash size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Keyword alerts"
+            subtitle="When new articles match your keywords"
             switchEnabled
             switchValue={keywordAlerts}
             onSwitchChange={async (v) => {
@@ -306,143 +189,131 @@ export default function SettingsScreen({ navigation }) {
             }}
           />
           <SettingsRow
-            icon={<Moon size={22} color={colors.primary} />}
+            icon={<Moon size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Quiet hours"
+            subtitle="Pause non-urgent alerts (coming soon)"
             switchEnabled
             switchValue={quietHours}
             onSwitchChange={setQuietHours}
           />
         </SettingsSection>
 
-        <SettingsSection>
+        <SettingsSection title="Privacy & legal">
           <SettingsRow
-            icon={<Lock size={22} color={colors.primary} />}
-            label="Privacy & Security"
-            onPress={() => navigation.navigate("PrivacyScreen")}
+            icon={<Lock size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
+            label="Privacy & security"
+            onPress={() => navigation.navigate('PrivacyScreen')}
           />
           <SettingsRow
-            icon={<FileText size={22} color={colors.primary} />}
-            label="Terms of Service"
-            onPress={() => navigation.getParent()?.navigate("TermsScreen")}
-          />
-        </SettingsSection>
-
-        <SettingsSection>
-          <SettingsRow
-            icon={<Database size={22} color={colors.primary} />}
-            label="Data & Storage"
-            onPress={() => navigation.navigate("DataScreen")}
+            icon={<FileText size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
+            label="Terms of service"
+            onPress={() => navigation.getParent()?.navigate('TermsScreen')}
           />
         </SettingsSection>
 
-        <SettingsSection>
+        <SettingsSection title="App">
           <SettingsRow
-            icon={<Image size={22} color={colors.primary} />}
+            icon={darkTheme ? <Sun size={ICON_SIZE} color={iconColor} strokeWidth={2.25} /> : <Moon size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
+            label="Appearance"
+            subtitle={darkTheme ? 'Dark mode on' : 'Light mode on'}
+            onPress={toggleTheme}
+            trailing={
+              <Text variant="caption" color={colors.textSecondary} style={styles.trailingPill}>
+                {darkTheme ? 'Dark' : 'Light'}
+              </Text>
+            }
+          />
+          <SettingsRow
+            icon={<Database size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
+            label="Data & storage"
+            onPress={() => navigation.navigate('DataScreen')}
+          />
+          <SettingsRow
+            icon={<Image size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Pics"
-            onPress={() => navigation.getParent()?.navigate("Pics")}
+            subtitle="Image-first discovery feed"
+            onPress={() => navigation.getParent()?.navigate('Pics')}
           />
           <SettingsRow
-            icon={<MessageSquare size={22} color={colors.primary} />}
+            icon={<MessageSquare size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Send feedback"
             onPress={() => setAppFeedbackOpen(true)}
           />
           <SettingsRow
-            icon={<Info size={22} color={colors.primary} />}
-            label="About"
-            onPress={() => navigation.navigate("AboutScreen")}
+            icon={<Info size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
+            label="About TRAK"
+            onPress={() => navigation.navigate('AboutScreen')}
           />
         </SettingsSection>
 
-        <SettingsSection>
-          <ThemeSwitchButton darkTheme={darkTheme} onToggle={toggleTheme} />
-        </SettingsSection>
-
-        <SettingsSection>
+        <SettingsSection title="Session">
           <SettingsRow
-            icon={<LogOut size={22} color={colors.error} />}
-            label="Log Out"
-            labelColor={colors.error}
+            icon={<LogOut size={ICON_SIZE} color={colors.error || '#ef4444'} strokeWidth={2.25} />}
+            label="Log out"
+            subtitle="Sign out on this device"
+            labelColor={colors.error || '#ef4444'}
+            danger
             onPress={async () => {
               const accepted = await confirm({
-                title: "Logout",
-                message: "Are you sure you want to log out?",
-                confirmText: "Logout",
+                title: 'Log out',
+                message: 'Are you sure you want to log out?',
+                confirmText: 'Log out',
                 danger: true,
               });
               if (!accepted) return;
               await logout();
               const root = navigation.getParent()?.getParent();
-              root?.reset({ index: 0, routes: [{ name: "OpeningScreen" }] });
+              root?.reset({ index: 0, routes: [{ name: 'OpeningScreen' }] });
             }}
           />
         </SettingsSection>
-      </Animated.ScrollView>
+      </ScrollView>
+
       <FeedbackModal
         visible={appFeedbackOpen}
         onClose={() => setAppFeedbackOpen(false)}
         type="app_feedback"
         title="Send app feedback"
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  statusBarCover: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 70,
-  },
-  fixedHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 4,
-      },
-      android: { elevation: 4 },
-    }),
-  },
-  gradientBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
-  accentCircle1: {
-    position: 'absolute',
-    width: 350,
-    height: 350,
-    borderRadius: 175,
-    top: -100,
-    right: -100,
-  },
-  accentCircle2: {
-    position: 'absolute',
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    bottom: 200,
-    left: -80,
-  },
-  accentCircle3: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    top: SCREEN_HEIGHT * 0.4,
-    right: -50,
-  },
   scroll: {},
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginBottom: 8,
+    gap: 14,
+  },
+  heroIcon: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroText: {
+    flex: 1,
+    minWidth: 0,
+  },
+  heroTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  heroSubtitle: {
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  trailingPill: {
+    fontWeight: '600',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
 });

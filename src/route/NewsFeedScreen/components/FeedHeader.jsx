@@ -11,7 +11,8 @@ export const FeedHeader = ({ navigation }) => {
     return (
         <PageScreenHeader
             title="Newsfeed"
-            paddingTop={0}
+            safeAreaTop={false}
+            paddingTop={10}
             style={headerStyles.noExtraBorder}
             rightAction={
                 <TouchableOpacity

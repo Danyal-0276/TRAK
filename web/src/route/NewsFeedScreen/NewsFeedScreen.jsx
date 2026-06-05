@@ -404,7 +404,7 @@ const NewsFeedScreen = () => {
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
-                        Discover trending stories, insights, and updates from around the world
+                        Discover real news, insights, and updates from around the world
                     </p>
                 </div>
 
