@@ -135,6 +135,23 @@ export async function loadExplorePage(options = {}) {
     };
 }
 
+export async function loadCategoryPage(options = {}) {
+    const category = options.category || '';
+    const cursor = options.cursor || '';
+    const limit = Math.max(1, Number(options.limit || 30));
+    const token = await getAccessToken();
+    if (!token || !category) {
+        return { items: [], nextCursor: null, hasMore: false };
+    }
+    const userKeywords = await loadUserKeywords();
+    const json = await fetchExplorePage(limit, '', cursor, category);
+    return {
+        items: filterRealFeedItems((json.results || []).map((a) => mapApiItem(a, userKeywords))),
+        nextCursor: json.next_cursor || null,
+        hasMore: Boolean(json.has_more),
+    };
+}
+
 export async function loadPicsPage(options = {}) {
     const q = options.q || '';
     const cursor = options.cursor || '';

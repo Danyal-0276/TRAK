@@ -125,6 +125,12 @@ export default function SettingsScreen({ navigation }) {
         >
           <SettingsRow
             icon={<Tag size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
+            label="Browse categories"
+            subtitle="Explore articles by topic"
+            onPress={() => navigation.navigate('NewsFeed', { screen: 'BrowseCategories' })}
+          />
+          <SettingsRow
+            icon={<Tag size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Manage categories"
             subtitle="Topics you follow"
             onPress={() => openContentScreen('SettingsTagSelection', { fromSettings: true })}

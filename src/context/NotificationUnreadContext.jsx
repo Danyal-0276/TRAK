@@ -145,7 +145,7 @@ export function NotificationUnreadProvider({ children }) {
       if (runBackfill && !isNotificationBackfillDone()) {
         markNotificationBackfillDone();
         try {
-          await notificationsApi.backfillKeywordNotifications({ hours: 72, limit: 50 });
+          await notificationsApi.backfillKeywordNotifications({ hours: 24, limit: 25 });
           await refreshNotifications({ silent: true, force: true });
         } catch {
           /* non-fatal */

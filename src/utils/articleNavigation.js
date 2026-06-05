@@ -1,3 +1,5 @@
+import { sanitizeArticleBody, sanitizeArticleSummary } from './articleTextSanitize';
+
 /** Max characters sent to TTS (backend may chunk further). */
 export const LISTEN_TEXT_MAX = 40000;
 
@@ -33,14 +35,18 @@ export function normalizeArticleForDetail(item) {
     return { id: '', title: 'Untitled', excerpt: '', content: '', fullContent: '' };
   }
   const id = String(item.id || item.article_id || item._id || '').trim();
-  const excerpt = item.excerpt || item.summary || '';
-  const fullContent =
-    item.fullContent || item.full_content || item.content || '';
+  const title = item.title || 'Untitled';
+  const rawBody = item.fullContent || item.full_content || item.content || '';
+  const fullContent = sanitizeArticleBody(rawBody, { title });
+  const excerpt = sanitizeArticleSummary(item.excerpt || item.summary || '', {
+    title,
+    body: fullContent,
+  });
   return {
     ...item,
     id,
     article_id: id,
-    title: item.title || 'Untitled',
+    title,
     excerpt,
     summary: excerpt,
     content: fullContent,

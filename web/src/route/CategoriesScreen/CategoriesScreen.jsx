@@ -50,7 +50,6 @@ const CategoriesScreen = () => {
     const [expandedCategory, setExpandedCategory] = useState(null);
     // whether the "More categories" section is open
     const [showMore, setShowMore] = useState(false);
-    const [expandedShowAll, setExpandedShowAll] = useState({});
 
     const loadNews = async () => {
         try {
@@ -278,10 +277,7 @@ const CategoriesScreen = () => {
                                 const sortedArticles = [...catArticles].sort(
                                     (a, b) => articleSortTime(b) - articleSortTime(a)
                                 );
-                                const showAllArticles = expandedShowAll[category.name];
-                                const visibleArticles = showAllArticles
-                                    ? sortedArticles
-                                    : sortedArticles.slice(0, ARTICLES_PREVIEW_COUNT);
+                                const visibleArticles = sortedArticles.slice(0, ARTICLES_PREVIEW_COUNT);
                                 const hiddenCount = sortedArticles.length - ARTICLES_PREVIEW_COUNT;
 
                                 return (
@@ -348,13 +344,10 @@ const CategoriesScreen = () => {
                                                                 />
                                                             ))}
                                                         </MasonryFeed>
-                                                        {hiddenCount > 0 && !showAllArticles ? (
+                                                        {hiddenCount > 0 ? (
                                                             <button
                                                                 type="button"
-                                                                onClick={() => setExpandedShowAll((prev) => ({
-                                                                    ...prev,
-                                                                    [category.name]: true,
-                                                                }))}
+                                                                onClick={() => navigate(`/categories/${encodeURIComponent(category.key)}`)}
                                                                 style={{
                                                                     marginTop: 16,
                                                                     padding: '10px 18px',

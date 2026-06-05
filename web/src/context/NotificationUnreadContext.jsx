@@ -136,7 +136,7 @@ export function NotificationUnreadProvider({ children }) {
         if (!sessionStorage.getItem(BACKFILL_SESSION_KEY)) {
           sessionStorage.setItem(BACKFILL_SESSION_KEY, '1');
           try {
-            await notificationsApi.backfillKeywordNotifications({ hours: 72, limit: 50 });
+            await notificationsApi.backfillKeywordNotifications({ hours: 24, limit: 25 });
             await refreshNotifications({ silent: true, force: true });
           } catch {
             /* non-fatal */

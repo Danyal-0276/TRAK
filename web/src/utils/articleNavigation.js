@@ -1,3 +1,5 @@
+import { sanitizeArticleBody, sanitizeArticleSummary } from './articleTextSanitize';
+
 const CARD_SUMMARY_FALLBACK_MAX = 500;
 
 
@@ -8,15 +10,17 @@ export function getCardSummaryText(item, maxLen = CARD_SUMMARY_FALLBACK_MAX) {
 
   if (!item || typeof item !== 'object') return '';
 
-  const summary = String(item.summary || item.excerpt || item.description || '').trim();
+  const title = String(item.title || '').trim();
+  const body = sanitizeArticleBody(
+    item.full_content || item.fullContent || item.content || '',
+    { title }
+  );
+  const summary = sanitizeArticleSummary(
+    String(item.summary || item.excerpt || item.description || '').trim(),
+    { title, body }
+  );
 
   if (summary) return summary;
-
-  const body = String(
-
-    item.full_content || item.fullContent || item.content || ''
-
-  ).trim();
 
   if (!body) return '';
 
@@ -46,11 +50,17 @@ export function normalizeArticleForDetail(item) {
 
   const id = String(item.id || item.article_id || item._id || '').trim();
 
-  const excerpt = item.excerpt || item.summary || item.description || '';
+  const title = item.title || 'Untitled';
 
-  const fullContent =
+  const fullContent = sanitizeArticleBody(
+    item.fullContent || item.full_content || item.content || '',
+    { title }
+  );
 
-    item.fullContent || item.full_content || item.content || '';
+  const excerpt = sanitizeArticleSummary(item.excerpt || item.summary || item.description || '', {
+    title,
+    body: fullContent,
+  });
 
   return {
 
@@ -60,7 +70,7 @@ export function normalizeArticleForDetail(item) {
 
     article_id: id,
 
-    title: item.title || 'Untitled',
+    title,
 
     excerpt,
 

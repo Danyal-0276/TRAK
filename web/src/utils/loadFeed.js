@@ -82,9 +82,10 @@ export function mergeUniqueById(existing, incoming) {
   return out;
 }
 
-async function fetchExplore(limit = 50, q = '', cursor = '') {
+async function fetchExplore(limit = 50, q = '', cursor = '', category = '') {
   const params = new URLSearchParams({ limit: String(limit) });
   if (q && String(q).trim()) params.set('q', String(q).trim());
+  if (category && String(category).trim()) params.set('category', String(category).trim());
   if (cursor && String(cursor).trim()) params.set('cursor', String(cursor).trim());
   const res = await apiFetch(`${USER_PREFIX}/explore/?${params}`);
   return parseApiResponse(res);
@@ -96,6 +97,25 @@ async function fetchPics(limit = 50, q = '', cursor = '') {
   if (cursor && String(cursor).trim()) params.set('cursor', String(cursor).trim());
   const res = await apiFetch(`${USER_PREFIX}/pics/?${params}`);
   return parseApiResponse(res);
+}
+
+export async function loadCategoryPage({ category = '', limit = 30, cursor = '' } = {}) {
+  try {
+    const json = await fetchExplore(limit, '', cursor, category);
+    const results = filterRealFeedItems((json.results || []).map(mapApiItem));
+    return {
+      items: results,
+      nextCursor: json.next_cursor || '',
+      hasMore: Boolean(json.has_more),
+    };
+  } catch (e) {
+    if (allowMockFallback) {
+      console.warn('Category API failed, using mock:', e?.message);
+      const response = await mockApi.getNewsFeed();
+      return { items: (response.data || []).map(mapApiItem), nextCursor: '', hasMore: false };
+    }
+    throw e;
+  }
 }
 
 export async function loadExplorePage({ q = '', limit = 30, cursor = '' } = {}) {
