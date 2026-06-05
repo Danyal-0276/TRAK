@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, ActivityIndicator, Dimensions, ScrollView } from 'react-native';
 import {
   FileText,
   BarChart3,
@@ -22,8 +22,7 @@ import AdminChartSkeleton from '../components/skeletons/AdminChartSkeleton';
 import { ADMIN_TEXT_STYLE } from '../adminTypography';
 import { adminFilledButtonColors } from '../adminTheme';
 
-const PIPELINE_BATCH_SIZE = 15;
-const SCRAPE_ONLY_LIMIT = 40;
+const SCRAPE_ONLY_LIMIT = 10;
 
 const STAT_ICONS = {
   raw: FileText,
@@ -47,9 +46,7 @@ const DashboardTab = ({
   onKpiPress,
   onManageSettings,
   refreshing = false,
-  onRunPipeline,
   onRunScrape,
-  onRunScrapeAndPipeline,
   activePipelineAction = null,
   pipelineProgress = 0,
   pipelineRunPhase = 'idle',
@@ -142,71 +139,23 @@ const DashboardTab = ({
               </Text>
               <View style={styles.pipelineRow}>
                 <TouchableOpacity
-                  onPress={onRunPipeline}
-                  disabled={pipelineBusy}
-                  style={[
-                    styles.runBtn,
-                    {
-                      backgroundColor: actionBtn.background,
-                      opacity: pipelineBusy && !isActionRunning('batch') ? 0.55 : 1,
-                    },
-                  ]}
-                >
-                  {isActionRunning('batch') ? (
-                    <ActivityIndicator color={actionBtn.foreground} size="small" />
-                  ) : (
-                    <>
-                      <Play size={16} color={actionBtn.foreground} fill={actionBtn.foreground} />
-                      <Text variant="body" style={[styles.runBtnText, { color: actionBtn.foreground }]}>
-                        Run batch ({PIPELINE_BATCH_SIZE})
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
                   onPress={onRunScrape}
                   disabled={pipelineBusy}
                   style={[
                     styles.runBtn,
                     {
-                      backgroundColor: palette.card,
-                      borderWidth: 1,
-                      borderColor: palette.border,
+                      backgroundColor: actionBtn.background,
                       opacity: pipelineBusy && !isActionRunning('scrape') ? 0.55 : 1,
                     },
                   ]}
                 >
                   {isActionRunning('scrape') ? (
-                    <ActivityIndicator color={palette.textPrimary} size="small" />
+                    <ActivityIndicator color={actionBtn.foreground} size="small" />
                   ) : (
                     <>
-                      <Play size={16} color={palette.textPrimary} />
-                      <Text variant="body" style={[styles.runBtnText, { color: palette.textPrimary }]}>
-                        Run scrape ({SCRAPE_ONLY_LIMIT} max)
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-                <TouchableOpacity
-                  onPress={onRunScrapeAndPipeline}
-                  disabled={pipelineBusy}
-                  style={[
-                    styles.runBtn,
-                    {
-                      backgroundColor: palette.inputBg || palette.pageAlt,
-                      borderWidth: 1,
-                      borderColor: palette.border,
-                      opacity: pipelineBusy && !isActionRunning('scrape_pipeline') ? 0.55 : 1,
-                    },
-                  ]}
-                >
-                  {isActionRunning('scrape_pipeline') ? (
-                    <ActivityIndicator color={palette.textPrimary} size="small" />
-                  ) : (
-                    <>
-                      <Play size={16} color={palette.textPrimary} />
-                      <Text variant="body" style={[styles.runBtnText, { color: palette.textPrimary }]}>
-                        Run scrape + pipeline
+                      <Play size={16} color={actionBtn.foreground} fill={actionBtn.foreground} />
+                      <Text variant="body" style={[styles.runBtnText, { color: actionBtn.foreground }]}>
+                        Run scrape (~{SCRAPE_ONLY_LIMIT} fair mix)
                       </Text>
                     </>
                   )}
@@ -231,22 +180,32 @@ const DashboardTab = ({
                   No recent pipeline errors.
                 </Text>
               ) : (
-                failures.slice(0, 5).map((f, i) => (
-                  <View
-                    key={`${f.title}-${i}`}
-                    style={[styles.failureItem, i < failures.length - 1 && { borderBottomColor: palette.borderLight, borderBottomWidth: 1 }]}
-                  >
-                    <Text variant="caption" color={palette.textPrimary} style={{ fontWeight: '600' }} numberOfLines={2}>
-                      {f.title}
-                    </Text>
-                    <Text variant="caption" color={palette.textTertiary} style={{ marginTop: 2 }}>
-                      {f.source_key}
-                    </Text>
-                    <Text variant="caption" color={palette.error} style={{ marginTop: 4 }} numberOfLines={3}>
-                      {f.error}
-                    </Text>
-                  </View>
-                ))
+                <ScrollView
+                  style={styles.failuresScroll}
+                  contentContainerStyle={styles.failuresScrollContent}
+                  nestedScrollEnabled
+                  showsVerticalScrollIndicator
+                >
+                  {failures.slice(0, 5).map((f, i, arr) => (
+                    <View
+                      key={`${f.title}-${i}`}
+                      style={[
+                        styles.failureItem,
+                        i < arr.length - 1 && { borderBottomColor: palette.borderLight, borderBottomWidth: 1 },
+                      ]}
+                    >
+                      <Text variant="caption" color={palette.textPrimary} style={{ fontWeight: '600' }} numberOfLines={2}>
+                        {f.title}
+                      </Text>
+                      <Text variant="caption" color={palette.textTertiary} style={{ marginTop: 2 }}>
+                        {f.source_key}
+                      </Text>
+                      <Text variant="caption" color={palette.error} style={{ marginTop: 4 }} numberOfLines={3}>
+                        {f.error}
+                      </Text>
+                    </View>
+                  ))}
+                </ScrollView>
               )}
             </View>
           </View>
@@ -289,7 +248,9 @@ const styles = StyleSheet.create({
   },
   pipelineRowSection: { paddingHorizontal: 20, gap: 12, marginBottom: 8 },
   pipelineCard: { padding: 16, borderRadius: 14, borderWidth: 1 },
-  failuresCard: { padding: 16, borderRadius: 14, borderWidth: 1, maxHeight: 220 },
+  failuresCard: { padding: 16, borderRadius: 14, borderWidth: 1 },
+  failuresScroll: { maxHeight: 168 },
+  failuresScrollContent: { paddingBottom: 4 },
   pipelineRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' },
   runBtn: {
     flexDirection: 'row',

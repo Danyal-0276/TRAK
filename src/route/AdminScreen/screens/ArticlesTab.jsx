@@ -11,6 +11,10 @@ import {
   XCircle,
   Workflow,
   Info,
+  AlertTriangle,
+  AlertCircle,
+  RotateCcw,
+  Trash2,
 } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import { getAdminDashboardPalette } from '../adminTheme';
@@ -22,7 +26,7 @@ import AdminListRowSkeleton from '../components/skeletons/AdminListRowSkeleton';
 import AdminArticleCountBar from '../components/AdminArticleCountBar';
 import { NEEDS_REVIEW_HELP, FEED_FILTERS, PIPELINE_FILTERS } from '../../../utils/adminArticleFilters';
 
-const FEED_ICONS = { '': Rss, review: Eye, approved: CheckCircle2 };
+const FEED_ICONS = { '': Rss, fake: AlertTriangle, suspicious: AlertCircle, review: Eye, approved: CheckCircle2 };
 const PIPELINE_ICONS = { queue: Inbox, pending: Clock, processing: Loader, failed: XCircle };
 
 const LIST_PERF = {
@@ -34,8 +38,9 @@ const LIST_PERF = {
 };
 
 const AdminArticleRow = React.memo(
-  function AdminArticleRow({ article, palette, handlersRef }) {
+  function AdminArticleRow({ article, palette, handlersRef, showFailedActions, failedBulkBusy }) {
     const h = handlersRef.current;
+    const canRequeue = showFailedActions && article.pipeline_status === 'failed';
     return (
       <ArticleCard
         article={article}
@@ -43,10 +48,16 @@ const AdminArticleRow = React.memo(
         onView={h?.onView}
         onReview={h?.onReview}
         onDelete={h?.onDelete}
+        onRequeue={canRequeue ? h?.onRequeue : undefined}
+        requeueDisabled={failedBulkBusy}
       />
     );
   },
-  (prev, next) => prev.article === next.article && prev.palette === next.palette
+  (prev, next) =>
+    prev.article === next.article &&
+    prev.palette === next.palette &&
+    prev.showFailedActions === next.showFailedActions &&
+    prev.failedBulkBusy === next.failedBulkBusy
 );
 
 const ArticlesTab = ({
@@ -56,6 +67,10 @@ const ArticlesTab = ({
   onViewArticle,
   onReviewArticle,
   onDelete,
+  onRequeue,
+  onRequeueAllFailed,
+  onDeleteAllFailed,
+  failedBulkBusy = false,
   pipelineFilter = '',
   onPipelineFilterChange,
   loading = false,
@@ -69,8 +84,9 @@ const ArticlesTab = ({
     [theme.colors, isDark, paletteProp]
   );
   const [helpOpen, setHelpOpen] = useState(false);
-  const handlersRef = useRef({ onView: onViewArticle, onReview: onReviewArticle, onDelete });
-  handlersRef.current = { onView: onViewArticle, onReview: onReviewArticle, onDelete };
+  const handlersRef = useRef({ onView: onViewArticle, onReview: onReviewArticle, onDelete, onRequeue });
+  handlersRef.current = { onView: onViewArticle, onReview: onReviewArticle, onDelete, onRequeue };
+  const showFailedActions = pipelineFilter === 'failed';
 
   const renderChip = useCallback(
     (p, icons, isPipe = false) => {
@@ -147,6 +163,49 @@ const ArticlesTab = ({
           </View>
         ) : null}
 
+        {showFailedActions && onRequeueAllFailed && onDeleteAllFailed ? (
+          <View
+            style={[
+              styles.failedBulkBar,
+              {
+                borderColor: palette.borderLight,
+                backgroundColor: palette.pageAlt,
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={[styles.failedBulkBtn, { borderColor: palette.border, backgroundColor: palette.card }]}
+              onPress={onRequeueAllFailed}
+              disabled={failedBulkBusy}
+            >
+              <RotateCcw size={14} color={palette.textPrimary} />
+              <Text variant="caption" color={palette.textPrimary} style={styles.failedBulkBtnText}>
+                Send all back to queue
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.failedBulkBtn,
+                styles.failedBulkBtnDanger,
+                {
+                  borderColor: `${palette.pipeline?.failed || palette.error}55`,
+                  backgroundColor: palette.errorBg,
+                },
+              ]}
+              onPress={onDeleteAllFailed}
+              disabled={failedBulkBusy}
+            >
+              <Trash2 size={14} color={palette.pipeline?.failed || palette.error} />
+              <Text
+                variant="caption"
+                style={[styles.failedBulkBtnText, { color: palette.pipeline?.failed || palette.error }]}
+              >
+                Delete all failed
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
+
         <SearchBar value={searchQuery} onChangeText={onSearchChange} placeholder="Search articles…" palette={palette} />
       </View>
     ),
@@ -161,14 +220,26 @@ const ArticlesTab = ({
       helpOpen,
       renderChip,
       onSearchChange,
+      showFailedActions,
+      onRequeueAllFailed,
+      onDeleteAllFailed,
+      failedBulkBusy,
     ]
   );
 
   const keyExtractor = useCallback((item) => `${item.scope}-${item.id}`, []);
 
   const renderItem = useCallback(
-    ({ item }) => <AdminArticleRow article={item} palette={palette} handlersRef={handlersRef} />,
-    [palette]
+    ({ item }) => (
+      <AdminArticleRow
+        article={item}
+        palette={palette}
+        handlersRef={handlersRef}
+        showFailedActions={showFailedActions}
+        failedBulkBusy={failedBulkBusy}
+      />
+    ),
+    [palette, showFailedActions, failedBulkBusy]
   );
 
   if (loading && articles.length === 0) {
@@ -236,6 +307,26 @@ const styles = StyleSheet.create({
   sep: { width: 1, height: 18, marginHorizontal: 4 },
   infoBtn: { marginLeft: 4, padding: 4 },
   help: { fontSize: 10, lineHeight: 14, paddingHorizontal: 10, paddingVertical: 7, borderTopWidth: 1 },
+  failedBulkBar: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  failedBulkBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  failedBulkBtnDanger: {},
+  failedBulkBtnText: { fontSize: 12, fontWeight: '600' },
 });
 
 export default React.memo(ArticlesTab);

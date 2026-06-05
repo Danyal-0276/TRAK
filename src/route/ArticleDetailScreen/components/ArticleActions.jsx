@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
-import { TouchableOpacity as GHTouchableOpacity } from 'react-native-gesture-handler';
+import { View, Text, StyleSheet, Platform, Pressable } from 'react-native';
 import { ChevronUp, ChevronDown, Bookmark, Share2 } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../../theme/ThemeContext';
@@ -25,12 +24,12 @@ export const ArticleActions = ({
   const pillBg = isDark ? colors.backgroundSecondary : colors.background;
 
   const renderBtn = (icon, label, active, onPress, count) => (
-    <GHTouchableOpacity style={[styles.btn, { backgroundColor: active ? colors.primary + '14' : 'transparent' }]} onPress={onPress} activeOpacity={0.75} hitSlop={8}>
+    <Pressable style={[styles.btn, { backgroundColor: active ? colors.primary + '14' : 'transparent' }]} onPress={onPress} delayPressIn={0} hitSlop={8}>
       {icon}
       <Text style={[styles.btnLabel, { color: active ? colors.textPrimary : colors.textSecondary }]}>
         {count != null ? count : label}
       </Text>
-    </GHTouchableOpacity>
+    </Pressable>
   );
 
   return (
@@ -72,10 +71,10 @@ export const ArticleActions = ({
           )}
         </View>
 
-        <GHTouchableOpacity
+        <Pressable
           style={[styles.roundBtn, { backgroundColor: isBookmarked ? colors.primary : pillBg, borderColor: colors.borderLight }]}
           onPress={onBookmark}
-          activeOpacity={0.8}
+          delayPressIn={0}
           hitSlop={8}
         >
           <Bookmark
@@ -83,16 +82,16 @@ export const ArticleActions = ({
             color={isBookmarked ? colors.textOnPrimary || '#fff' : colors.textPrimary}
             fill={isBookmarked ? colors.textOnPrimary || '#fff' : 'none'}
           />
-        </GHTouchableOpacity>
+        </Pressable>
 
-        <GHTouchableOpacity
+        <Pressable
           style={[styles.roundBtn, { backgroundColor: pillBg, borderColor: colors.borderLight }]}
           onPress={onShare}
-          activeOpacity={0.8}
+          delayPressIn={0}
           hitSlop={8}
         >
           <Share2 size={20} color={colors.textPrimary} strokeWidth={2} />
-        </GHTouchableOpacity>
+        </Pressable>
       </View>
     </View>
   );

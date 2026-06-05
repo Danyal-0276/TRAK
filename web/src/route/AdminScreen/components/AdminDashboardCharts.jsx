@@ -1,4 +1,4 @@
-import React, { useId } from 'react';
+import React, { useId, useMemo } from 'react';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -22,7 +22,10 @@ import {
   factCheckBarData,
   pipelinePieData,
   sourceBarData,
+  sharedSourceCountAxisMax,
+  countAxisTicks,
 } from '../dashboardChartUtils';
+import { adminChartTooltipRenderer } from './AdminChartTooltip';
 
 const CHART_HEIGHT = 280;
 
@@ -50,7 +53,7 @@ function ChartCard({ title, subtitle, children, palette }) {
           <p style={{ margin: '4px 0 0', fontSize: 12, color: palette.textSecondary, lineHeight: 1.4 }}>{subtitle}</p>
         ) : null}
       </div>
-      <div style={{ width: '100%', height: CHART_HEIGHT, minHeight: CHART_HEIGHT, padding: '8px 4px 12px' }}>
+      <div style={{ width: '100%', height: CHART_HEIGHT, minHeight: CHART_HEIGHT, padding: '8px 12px 12px 10px' }}>
         {children}
       </div>
     </div>
@@ -111,22 +114,23 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
   const pipeline = pipelinePieData(snapshot, palette);
   const credibility = credibilityPieData(snapshot, palette);
   const factCheck = factCheckBarData(snapshot, palette);
-  const sourcesRaw = sourceBarData(snapshot, 'raw_by_source_key');
-  const sourcesProc = sourceBarData(snapshot, 'processed_by_source_key');
+  const sourcesRaw = sourceBarData(snapshot, 'raw_by_source_key', 8, palette);
+  const sourcesProc = sourceBarData(snapshot, 'processed_by_source_key', 8, palette);
+  const sourceCountAxisMax = useMemo(
+    () => sharedSourceCountAxisMax(sourcesRaw, sourcesProc),
+    [sourcesRaw, sourcesProc]
+  );
+  const sourceCountTicks = useMemo(
+    () => countAxisTicks(sourceCountAxisMax),
+    [sourceCountAxisMax]
+  );
   const feedbackStatus = feedbackStatusPieData(snapshot, palette);
   const feedbackCategories = feedbackCategoryBarData(snapshot);
   const ps = snapshot?.pipeline_summary || {};
   const inFlight = Number(ps.active_processing ?? ps.processing) || 0;
   const workers = Number(ps.pipeline_workers) || 1;
 
-  const tip = {
-    borderRadius: 10,
-    border: `1px solid ${palette.border}`,
-    backgroundColor: palette.card,
-    color: palette.textPrimary,
-    fontSize: 12,
-    boxShadow: `0 4px 12px ${palette.shadow}`,
-  };
+  const renderTooltip = useMemo(() => adminChartTooltipRenderer(palette), [palette]);
 
   const axisTick = { fill: palette.textTertiary, fontSize: 11 };
   const gridStroke = palette.borderLight;
@@ -228,14 +232,14 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
       >
         <ChartCard
           title="Scrape & process activity"
-          subtitle="Last 14 days · MongoDB ingest & process dates"
+          subtitle="Last 14 days · scraped vs pipeline completed (by scrape date)"
           palette={palette}
         >
           {activity.length === 0 ? (
             <EmptyChart palette={palette} message="No dated activity in this period" />
           ) : (
             <ResponsiveContainer width="100%" height={CHART_HEIGHT - 24}>
-              <AreaChart data={activity} margin={{ top: 4, right: 12, left: -8, bottom: 0 }}>
+              <AreaChart data={activity} margin={{ top: 8, right: 12, left: 4, bottom: 4 }}>
                 <defs>
                   <linearGradient id={scrapedGrad} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor={palette.chart.scraped} stopOpacity={0.28} />
@@ -248,8 +252,14 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
                 </defs>
                 <CartesianGrid stroke={gridStroke} vertical={false} strokeDasharray="4 4" />
                 <XAxis dataKey="name" tick={axisTick} axisLine={false} tickLine={false} />
-                <YAxis tick={axisTick} axisLine={false} tickLine={false} width={28} />
-                <Tooltip contentStyle={tip} labelStyle={{ color: palette.textSecondary }} />
+                <YAxis
+                  tick={axisTick}
+                  axisLine={false}
+                  tickLine={false}
+                  width={44}
+                  tickMargin={6}
+                />
+                <Tooltip content={renderTooltip} />
                 <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
                 <Area
                   type="monotone"
@@ -294,7 +304,7 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
                     <Cell key={entry.name} fill={entry.fill} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={tip} />
+                <Tooltip content={renderTooltip} />
                 <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
               </PieChart>
             </ResponsiveContainer>
@@ -323,7 +333,7 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
                     <Cell key={entry.name} fill={entry.fill} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={tip} />
+                <Tooltip content={renderTooltip} />
                 <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
               </PieChart>
             </ResponsiveContainer>
@@ -339,7 +349,7 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
                 <CartesianGrid stroke={gridStroke} horizontal={false} strokeDasharray="4 4" />
                 <XAxis type="number" tick={axisTick} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" width={96} tick={{ ...axisTick, fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tip} cursor={{ fill: palette.pageAlt }} />
+                <Tooltip content={renderTooltip} cursor={{ fill: palette.pageAlt }} />
                 <Bar dataKey="value" name="Articles" radius={[0, 6, 6, 0]} barSize={14}>
                   {factCheck.map((entry) => (
                     <Cell key={entry.name} fill={entry.fill} />
@@ -355,7 +365,7 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
             <EmptyChart palette={palette} message="No source breakdown" />
           ) : (
             <ResponsiveContainer width="100%" height={CHART_HEIGHT - 20}>
-              <BarChart data={sourcesRaw} margin={{ top: 8, right: 8, left: -12, bottom: 48 }}>
+              <BarChart data={sourcesRaw} margin={{ top: 8, right: 8, left: 4, bottom: 48 }}>
                 <CartesianGrid stroke={gridStroke} vertical={false} strokeDasharray="4 4" />
                 <XAxis
                   dataKey="name"
@@ -367,9 +377,21 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
                   axisLine={false}
                   tickLine={false}
                 />
-                <YAxis tick={axisTick} width={32} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tip} cursor={{ fill: palette.pageAlt }} />
-                <Bar dataKey="count" name="Articles" fill={palette.chart.rawBar} radius={[6, 6, 0, 0]} maxBarSize={36} />
+                <YAxis
+                  tick={axisTick}
+                  width={40}
+                  axisLine={false}
+                  tickLine={false}
+                  domain={[0, sourceCountAxisMax]}
+                  ticks={sourceCountTicks}
+                  allowDecimals={false}
+                />
+                <Tooltip content={renderTooltip} cursor={{ fill: palette.pageAlt }} />
+                <Bar dataKey="count" name="Articles" radius={[6, 6, 0, 0]} maxBarSize={36}>
+                  {sourcesRaw.map((entry) => (
+                    <Cell key={entry.name} fill={entry.fill} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -380,7 +402,7 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
             <EmptyChart palette={palette} message="No processed sources" />
           ) : (
             <ResponsiveContainer width="100%" height={CHART_HEIGHT - 20}>
-              <BarChart data={sourcesProc} margin={{ top: 8, right: 8, left: -12, bottom: 48 }}>
+              <BarChart data={sourcesProc} margin={{ top: 8, right: 8, left: 4, bottom: 48 }}>
                 <CartesianGrid stroke={gridStroke} vertical={false} strokeDasharray="4 4" />
                 <XAxis
                   dataKey="name"
@@ -392,9 +414,21 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
                   axisLine={false}
                   tickLine={false}
                 />
-                <YAxis tick={axisTick} width={32} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tip} cursor={{ fill: palette.pageAlt }} />
-                <Bar dataKey="count" name="Articles" fill={palette.chart.procBar} radius={[6, 6, 0, 0]} maxBarSize={36} />
+                <YAxis
+                  tick={axisTick}
+                  width={40}
+                  axisLine={false}
+                  tickLine={false}
+                  domain={[0, sourceCountAxisMax]}
+                  ticks={sourceCountTicks}
+                  allowDecimals={false}
+                />
+                <Tooltip content={renderTooltip} cursor={{ fill: palette.pageAlt }} />
+                <Bar dataKey="count" name="Articles" radius={[6, 6, 0, 0]} maxBarSize={36}>
+                  {sourcesProc.map((entry) => (
+                    <Cell key={entry.name} fill={entry.fill} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           )}
@@ -411,7 +445,7 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
                     <Cell key={entry.name} fill={entry.fill} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={tip} />
+                <Tooltip content={renderTooltip} />
                 <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" iconSize={8} />
               </PieChart>
             </ResponsiveContainer>
@@ -427,7 +461,7 @@ export default function AdminDashboardCharts({ snapshot, palette, isMobile = fal
                 <CartesianGrid stroke={gridStroke} horizontal={false} strokeDasharray="4 4" />
                 <XAxis type="number" tick={axisTick} axisLine={false} tickLine={false} />
                 <YAxis type="category" dataKey="name" width={96} tick={{ ...axisTick, fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={tip} cursor={{ fill: palette.pageAlt }} />
+                <Tooltip content={renderTooltip} cursor={{ fill: palette.pageAlt }} />
                 <Bar dataKey="count" name="Reports" fill={palette.chart.info} radius={[0, 6, 6, 0]} barSize={14} />
               </BarChart>
             </ResponsiveContainer>

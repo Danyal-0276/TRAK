@@ -17,6 +17,7 @@ import FeedbackModal from '../../components/FeedbackModal';
 import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
+import { computeOptimisticReactionCounts, reactionApiValue } from '../../utils/reactionVote';
 import { mapApiItem } from '../../utils/loadFeed';
 import { getFeedItemCredibilityMeta } from '../../utils/credibilityIndicator';
 import { normalizeArticleForDetail, getArticleListenText } from '../../utils/articleNavigation';
@@ -31,6 +32,7 @@ import { getUserFacingError } from '../../utils/getUserFacingError';
 import { useResponsive } from '../../hooks/useResponsive';
 import ArticleCardImage from '../../components/ArticleCardImage';
 import { resolveArticleImageUrl, getUserArticleImageProxyUrl } from '../../utils/articleMedia';
+import { downloadArticleJson } from '../../utils/exportArticle';
 
 const ARTICLE_HEADER_HEIGHT = 56;
 
@@ -63,28 +65,34 @@ const ArticleDetailScreen = () => {
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [likeCount, setLikeCount] = useState(0);
     const [dislikeCount, setDislikeCount] = useState(0);
-    const [reactionPending, setReactionPending] = useState(false);
     const [scrollY, setScrollY] = useState(0);
 
-    const submitReaction = async (next) => {
-        if (reactionPending || !articleKey) return;
+    const submitReaction = (next) => {
+        if (!articleKey) return;
         const previous = reaction;
-        setReactionPending(true);
+        const counts = computeOptimisticReactionCounts(likeCount, dislikeCount, previous, next);
         setReactionState(next);
+        setLikeCount(counts.like_count);
+        setDislikeCount(counts.dislike_count);
         setReactionForArticle(articleKey, next);
-        try {
-            const data = await setReaction(
-                articleKey,
-                next === 'up' ? 'like' : next === 'down' ? 'dislike' : 'none'
-            );
-            setLikeCount(Number(data.like_count ?? 0));
-            setDislikeCount(Number(data.dislike_count ?? 0));
-        } catch {
-            setReactionState(previous);
-            setReactionForArticle(articleKey, previous || null);
-        } finally {
-            setReactionPending(false);
-        }
+        (async () => {
+            try {
+                const data = await setReaction(articleKey, reactionApiValue(next));
+                setLikeCount(Number(data.like_count ?? counts.like_count));
+                setDislikeCount(Number(data.dislike_count ?? counts.dislike_count));
+            } catch {
+                setReactionState(previous);
+                setReactionForArticle(articleKey, previous || null);
+                const rollback = computeOptimisticReactionCounts(
+                    counts.like_count,
+                    counts.dislike_count,
+                    next,
+                    previous
+                );
+                setLikeCount(rollback.like_count);
+                setDislikeCount(rollback.dislike_count);
+            }
+        })();
     };
 
     const handleLike = () => submitReaction(reaction === 'up' ? null : 'up');
@@ -129,6 +137,12 @@ const ArticleDetailScreen = () => {
     const handleOpenOriginal = () => {
         const url = article.canonical_url || article.url;
         if (url) window.open(url, '_blank', 'noopener,noreferrer');
+        setShowMoreMenu(false);
+    };
+
+    const handleExport = () => {
+        downloadArticleJson(article);
+        success('Export downloaded.');
         setShowMoreMenu(false);
     };
 
@@ -368,6 +382,7 @@ const ArticleDetailScreen = () => {
                                         ...(article.canonical_url || article.url
                                             ? [{ label: 'Open original', onClick: handleOpenOriginal }]
                                             : []),
+                                        { label: 'Export', onClick: handleExport },
                                         { label: 'Report or give feedback', onClick: handleReport, danger: true },
                                     ].map((item) => (
                                         <button
@@ -607,7 +622,6 @@ const ArticleDetailScreen = () => {
                     }}>
                         <button
                             onClick={handleLike}
-                            disabled={reactionPending}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -619,7 +633,6 @@ const ArticleDetailScreen = () => {
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
                                 boxShadow: reaction === 'up' ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
-                                opacity: reactionPending ? 0.6 : 1,
                             }}
                             onMouseEnter={(e) => {
                                 if (reaction !== 'up') {
@@ -654,7 +667,6 @@ const ArticleDetailScreen = () => {
 
                         <button
                             onClick={handleDislike}
-                            disabled={reactionPending}
                             style={{
                                 display: 'flex',
                                 alignItems: 'center',
@@ -666,7 +678,6 @@ const ArticleDetailScreen = () => {
                                 cursor: 'pointer',
                                 transition: 'all 0.2s ease',
                                 boxShadow: reaction === 'down' ? '0 1px 3px rgba(0, 0, 0, 0.1)' : 'none',
-                                opacity: reactionPending ? 0.6 : 1,
                             }}
                             onMouseEnter={(e) => {
                                 if (reaction !== 'down') {

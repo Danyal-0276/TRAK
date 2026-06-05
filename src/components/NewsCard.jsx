@@ -415,8 +415,22 @@ function NewsCardInner({
     );
 }
 
+function itemInteractionSnapshot(item) {
+    if (!item) return '';
+    return [
+        item.userReaction ?? '',
+        item.isBookmarked ? '1' : '0',
+        Number(item.like_count ?? item.upvotes ?? 0),
+        Number(item.dislike_count ?? 0),
+    ].join('|');
+}
+
 function propsAreEqual(prev, next) {
-    if (prev.item !== next.item) return false;
+    if (itemInteractionSnapshot(prev.item) !== itemInteractionSnapshot(next.item)) return false;
+    if (prev.votedItems !== next.votedItems) return false;
+    if (prev.bookmarkedItems !== next.bookmarkedItems) return false;
+    if (prev.userVote !== next.userVote) return false;
+    if (prev.isBookmarked !== next.isBookmarked) return false;
     if (prev.onPress !== next.onPress) return false;
     if (prev.onVote !== next.onVote) return false;
     if (prev.onBookmark !== next.onBookmark) return false;

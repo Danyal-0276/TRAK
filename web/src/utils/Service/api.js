@@ -1,5 +1,6 @@
 import { fetchWithTimeout } from '../../api/fetchWithTimeout';
 import { normalizeApiError } from '../normalizeApiError';
+import { emitAuthSessionEnded } from '../authSessionEvents';
 
 import { RENDER_API_BASE } from '../../../../config/apiBase';
 
@@ -175,8 +176,21 @@ export const authRequest = async (path, options = {}) => {
       if (payload.access) {
         storage?.setItem(ACCESS_KEY, payload.access);
         res = await doReq(payload.access);
+      } else {
+        clearAuthTokens();
+        emitAuthSessionEnded();
+        throw new Error('Session expired. Please sign in again.');
       }
+    } else {
+      clearAuthTokens();
+      emitAuthSessionEnded();
+      throw new Error('Session expired. Please sign in again.');
     }
+  }
+  if (res.status === 401) {
+    clearAuthTokens();
+    emitAuthSessionEnded();
+    throw new Error('Session expired. Please sign in again.');
   }
   if (!res.ok) await parseError(res);
   return res.json();

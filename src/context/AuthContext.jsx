@@ -7,6 +7,7 @@ import { registerDeviceToken } from '../api/notificationsApi';
 import { verifyEmailCode } from '../api/authEmailApi';
 import { getOrCreatePushToken } from '../api/pushToken';
 import { formatNetworkError } from '../utils/networkError';
+import { emitAuthSessionEnded, onAuthSessionEnded } from '../utils/authSessionEvents';
 
 const AuthContext = createContext(null);
 const USER_CACHE_KEY = 'trak_user_cache_v1';
@@ -19,9 +20,8 @@ export function AuthProvider({ children }) {
     const fetchMe = useCallback(async () => {
         const res = await apiFetch(`${AUTH_PREFIX}/me/`, {}, API_BASE);
         if (res.status === 401) {
-            // Tokens are no longer valid (e.g. backend user DB rebuilt).
-            // apiFetch already cleared them; surface this so the UI logs out.
             await AsyncStorage.removeItem(USER_CACHE_KEY).catch(() => {});
+            emitAuthSessionEnded();
             return { __sessionInvalid: true };
         }
         if (!res.ok) return null;
@@ -88,6 +88,14 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         bootstrap();
     }, [bootstrap]);
+
+    useEffect(() => {
+        return onAuthSessionEnded(() => {
+            clearStoredAuthSession();
+            AsyncStorage.removeItem(USER_CACHE_KEY).catch(() => {});
+            setUser(null);
+        });
+    }, []);
 
     const login = async (email, password) => {
         const normalizedPassword = typeof password === 'string' ? password.trim() : password;

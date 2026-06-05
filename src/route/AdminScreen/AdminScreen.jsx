@@ -11,6 +11,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { TabView } from 'react-native-tab-view';
+import { useFocusEffect } from '@react-navigation/native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAdminTheme } from './useAdminTheme';
@@ -18,6 +19,9 @@ import { useAuth } from '../../context/AuthContext';
 import {
   deleteAdminUser,
   deleteAdminArticle,
+  deleteAllFailedArticles,
+  requeueAdminArticle,
+  requeueAllFailedArticles,
   getAdminArticles,
   getAdminNotifications,
   getAdminSettings,
@@ -25,9 +29,7 @@ import {
   patchAdminSettings,
   patchAdminUser,
   postAdminCreate,
-  postAdminPipelineRun,
   postAdminScrapeRun,
-  postAdminScrapeAndPipelineRun,
   createAdminCategory,
   deleteAdminCategory,
   addAdminSubcategory,
@@ -62,6 +64,7 @@ import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { buildArticleDetailParams } from '../../utils/articleNavigation';
 import { getArticlesFetchParams, filterArticlesForDisplay } from '../../utils/adminArticleFilters';
 import { ADMIN_TAB_ROUTES } from '../../navigation/adminTabIds';
+import { takeQueuedAdminTab } from '../../utils/adminNavigationIntent';
 import {
   openAdminNotificationsSocket,
   isAdminNotificationsWsEnabled,
@@ -69,9 +72,7 @@ import {
 import { dispatchAdminFeedbackRefresh } from '../../utils/adminNotificationsEvents';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const PIPELINE_BATCH_SIZE = 15;
-const SCRAPE_ONLY_LIMIT = 40;
-const SCRAPE_AND_PIPELINE = { scrapeLimit: 40, pipelineLimit: 200 };
+const SCRAPE_ONLY_LIMIT = 10;
 
 function mapAdminArticleRow(doc) {
   const dateStr = doc.fetched_at || doc.processed_at || '';
@@ -118,7 +119,7 @@ function mapAdminArticleRow(doc) {
   };
 }
 
-const AdminScreen = ({ navigation }) => {
+const AdminScreen = ({ navigation, route }) => {
   const { theme, toggleTheme } = useTheme();
   const { user, isAdmin, isSuperAdmin, bootstrapped, logout } = useAuth();
   const { palette: adminPalette } = useAdminTheme();
@@ -133,6 +134,20 @@ const AdminScreen = ({ navigation }) => {
     if (i >= 0) setTabIndex(i);
     setSearchQuery('');
   }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const queued = takeQueuedAdminTab();
+      if (queued) {
+        setActiveTab(queued);
+        return;
+      }
+      const tab = route?.params?.tab;
+      if (!tab) return;
+      setActiveTab(tab);
+      navigation.setParams({ tab: undefined });
+    }, [navigation, route?.params?.tab, setActiveTab])
+  );
   const [users, setUsers] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [apiArticles, setApiArticles] = useState([]);
@@ -146,6 +161,7 @@ const AdminScreen = ({ navigation }) => {
   const [liveUpdatedAt, setLiveUpdatedAt] = useState(null);
   const [articlePipelineFilter, setArticlePipelineFilter] = useState('');
   const [articleCounts, setArticleCounts] = useState(null);
+  const [failedBulkBusy, setFailedBulkBusy] = useState(false);
   const [articlesLoading, setArticlesLoading] = useState(false);
   const [listsLoading, setListsLoading] = useState(false);
   const [connectionUrlInput, setConnectionUrlInput] = useState('');
@@ -377,8 +393,11 @@ const AdminScreen = ({ navigation }) => {
         name: u.email?.split('@')[0] || 'admin',
         email: u.email,
         status: u.is_active ? 'active' : 'inactive',
+        is_active: !!u.is_active,
         role: u.role,
         is_super_admin: u.is_super_admin,
+        created_at: u.created_at,
+        last_login: u.last_login,
       }));
       const notificationsData = (notificationsRes.results || []).map((n) => ({
         id: n.id,
@@ -537,36 +556,12 @@ const AdminScreen = ({ navigation }) => {
     }
   };
 
-  const runPipeline = async () =>
-    runAdminAction({
-      actionId: 'batch',
-      runner: () => postAdminPipelineRun(PIPELINE_BATCH_SIZE, { drainQueue: true }),
-      startLabel: 'Processing queue until empty…',
-      successLabel: (ok, err, result) => {
-        const left = result?.pending_remaining ?? result?.after?.raw_pending;
-        return `Done · ${ok} processed${err ? ` · ${err} errors` : ''}${left === 0 ? ' · queue empty' : left != null ? ` · ${left} still in queue` : ''}`;
-      },
-    });
-
   const runScrapeOnly = async () =>
     runAdminAction({
       actionId: 'scrape',
       runner: () => postAdminScrapeRun(SCRAPE_ONLY_LIMIT),
-      startLabel: `Scraping up to ${SCRAPE_ONLY_LIMIT} new articles…`,
+      startLabel: `Scraping ~${SCRAPE_ONLY_LIMIT} new articles (shared across sources)…`,
       successLabel: (_ok, _err, result) => `Done · ${result?.delta?.raw_total ?? 0} raw added`,
-    });
-
-  const runScrapeAndPipeline = async () =>
-    runAdminAction({
-      actionId: 'scrape_pipeline',
-      runner: () => postAdminScrapeAndPipelineRun(SCRAPE_AND_PIPELINE),
-      startLabel: 'Scraping then running pipeline…',
-      successLabel: (ok, err, result) => {
-        const processed = result?.pipeline?.processed_ok ?? ok;
-        const errs = result?.pipeline?.errors ?? err;
-        const left = result?.pipeline?.pending_remaining ?? result?.after?.raw_pending;
-        return `Done · ${result?.delta?.raw_total ?? 0} scraped · ${processed} processed${errs ? ` · ${errs} errors` : ''}${left === 0 ? ' · queue empty' : left != null ? ` · ${left} still in queue` : ''}`;
-      },
     });
 
   const handleKpiPress = (key) => {
@@ -851,6 +846,67 @@ const AdminScreen = ({ navigation }) => {
     [apiArticles, articlePipelineFilter, searchQuery]
   );
 
+  const failedCount = articleCounts?.filtered_total ?? filteredArticles.length;
+
+  const handleRequeueOne = useCallback(async (article) => {
+    const row = typeof article === 'object' ? article : apiArticles.find((a) => String(a.id) === String(article));
+    if (!row || row.pipeline_status !== 'failed') return;
+    setFailedBulkBusy(true);
+    try {
+      await requeueAdminArticle(row.scope || 'raw', row.id);
+      showSuccess('Article sent back to queue.');
+      await loadOverview({ silent: true });
+      await loadArticles();
+    } catch (e) {
+      showError(e?.message || 'Could not requeue article.');
+    } finally {
+      setFailedBulkBusy(false);
+    }
+  }, [apiArticles, loadArticles, loadOverview, showError, showSuccess]);
+
+  const handleRequeueAllFailed = useCallback(async () => {
+    if (failedBulkBusy || failedCount === 0) return;
+    const accepted = await confirm({
+      title: 'Send all failed back to queue?',
+      message: `This will requeue ${failedCount} failed article(s) for processing.`,
+      confirmText: 'Send back',
+    });
+    if (!accepted) return;
+    setFailedBulkBusy(true);
+    try {
+      const res = await requeueAllFailedArticles();
+      showSuccess(res?.detail || 'Failed articles requeued.');
+      await loadOverview({ silent: true });
+      await loadArticles();
+    } catch (e) {
+      showError(e?.message || 'Could not requeue failed articles.');
+    } finally {
+      setFailedBulkBusy(false);
+    }
+  }, [confirm, failedBulkBusy, failedCount, loadArticles, loadOverview, showError, showSuccess]);
+
+  const handleDeleteAllFailed = useCallback(async () => {
+    if (failedBulkBusy || failedCount === 0) return;
+    const accepted = await confirm({
+      title: 'Delete all failed articles?',
+      message: `Permanently delete ${failedCount} failed raw article(s)? This cannot be undone.`,
+      confirmText: 'Delete all',
+      danger: true,
+    });
+    if (!accepted) return;
+    setFailedBulkBusy(true);
+    try {
+      const res = await deleteAllFailedArticles();
+      showSuccess(res?.detail || 'Failed articles deleted.');
+      await loadOverview({ silent: true });
+      await loadArticles();
+    } catch (e) {
+      showError(e?.message || 'Could not delete failed articles.');
+    } finally {
+      setFailedBulkBusy(false);
+    }
+  }, [confirm, failedBulkBusy, failedCount, loadArticles, loadOverview, showError, showSuccess]);
+
   const renderAdminScene = ({ route }) => {
     const scroll = (content) => (
       <ScrollView
@@ -878,9 +934,7 @@ const AdminScreen = ({ navigation }) => {
               onKpiPress={handleKpiPress}
               onManageSettings={() => setActiveTab('settings')}
               refreshing={refreshing}
-              onRunPipeline={runPipeline}
               onRunScrape={runScrapeOnly}
-              onRunScrapeAndPipeline={runScrapeAndPipeline}
               activePipelineAction={activePipelineAction}
               pipelineProgress={pipelineProgress}
               pipelineRunPhase={pipelineRunPhase}
@@ -923,6 +977,10 @@ const AdminScreen = ({ navigation }) => {
               navigation.navigate('ArticleDetail', buildArticleDetailParams(article))
             }
             onDelete={(article) => handleDelete(article, 'article')}
+            onRequeue={handleRequeueOne}
+            onRequeueAllFailed={handleRequeueAllFailed}
+            onDeleteAllFailed={handleDeleteAllFailed}
+            failedBulkBusy={failedBulkBusy}
             pipelineFilter={articlePipelineFilter}
             onPipelineFilterChange={handleArticlePipelineFilterChange}
             loading={articlesLoading}

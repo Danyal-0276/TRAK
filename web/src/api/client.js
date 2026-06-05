@@ -1,5 +1,7 @@
 import { API_BASE, AUTH_PREFIX } from '../config/api';
 import { fetchWithTimeout } from './fetchWithTimeout';
+import { clearAuthTokens } from '../utils/Service/api';
+import { emitAuthSessionEnded } from '../utils/authSessionEvents';
 
 const ACCESS_KEY = 'trak_access_token';
 const REFRESH_KEY = 'trak_refresh_token';
@@ -20,7 +22,11 @@ async function refreshAccess() {
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ refresh }),
   });
-  if (!res.ok) return null;
+  if (!res.ok) {
+    clearAuthTokens();
+    emitAuthSessionEnded();
+    return null;
+  }
   const data = await res.json();
   if (data.access) localStorage.setItem(ACCESS_KEY, data.access);
   return data.access;
@@ -46,6 +52,10 @@ export async function apiFetch(url, options = {}, timeoutMs) {
     if (next) {
       headers.Authorization = `Bearer ${next}`;
       res = await fetchWithTimeout(url, { ...options, headers }, timeoutMs);
+    }
+    if (res.status === 401) {
+      clearAuthTokens();
+      emitAuthSessionEnded();
     }
   }
 

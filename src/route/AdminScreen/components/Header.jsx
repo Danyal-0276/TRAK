@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAdminTheme } from '../useAdminTheme';
 import { useAuth } from '../../../context/AuthContext';
@@ -25,6 +26,7 @@ function displayNameFromEmail(email) {
 }
 
 const Header = ({ activeTab = 'overview' }) => {
+  const navigation = useNavigation();
   const { palette } = useAdminTheme();
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
@@ -58,14 +60,18 @@ const Header = ({ activeTab = 'overview' }) => {
           ) : null}
         </View>
 
-        <View
+        <TouchableOpacity
           style={[styles.avatar, { backgroundColor: `${palette.primary}18` }]}
+          onPress={() => navigation.navigate('ProfileScreen')}
+          activeOpacity={0.7}
+          accessibilityRole="button"
           accessibilityLabel={email ? `${displayName}, ${email}` : displayName}
+          accessibilityHint="Opens your profile"
         >
           <Text variant="caption" color={palette.primary} style={{ fontWeight: '800', fontSize: 13 }}>
             {initial}
           </Text>
-        </View>
+        </TouchableOpacity>
       </View>
     </View>
   );

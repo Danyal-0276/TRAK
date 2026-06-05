@@ -410,7 +410,7 @@ const AdminSettingsScreen = () => {
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: textSecondary, marginBottom: 8 }}>
                     Select category
                   </label>
-                  <div style={{ marginBottom: 16 }}>
+                  <div style={{ marginBottom: 16, width: '100%' }}>
                     <AdminCategorySelect
                       categories={categories}
                       value={selectedCategorySlug}

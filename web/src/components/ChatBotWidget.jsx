@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { isAuthPath } from '../navigation/authPaths';
 import { Bot, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { chatWithBot, clearChatHistory, getChatHistory } from '../utils/Service/api';
 import { useAuth } from '../context/AuthContext';
@@ -40,6 +41,7 @@ function mapHistoryMessage(m) {
 
 const ChatBotWidget = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const { open, setOpen, hasUnread, setHasUnread, closeChat, toggleChat } = useChatBot();
   const { isMobile } = useResponsive();
@@ -145,7 +147,7 @@ const ChatBotWidget = () => {
     }
   };
 
-  if (!user) {
+  if (!user || isAuthPath(location.pathname)) {
     return null;
   }
 

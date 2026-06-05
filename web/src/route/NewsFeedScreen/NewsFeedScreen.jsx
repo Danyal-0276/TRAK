@@ -18,6 +18,7 @@ import { useFeedCache } from '../../context/FeedCacheContext';
 import { filterFeedByUserKeywords } from '../../utils/feedKeywordMatch';
 import { resolveArticleImageUrl } from '../../utils/articleMedia';
 import { useLanguage } from '../../context/LanguageContext';
+import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
 
 const FEED_TAB_KEYS = {
     'For you': 'feed.forYou',
@@ -286,38 +287,39 @@ const NewsFeedScreen = () => {
         openArticleDetail(navigate, article);
     };
 
-    const handleVote = async (itemId, type) => {
+    const handleVote = (itemId, type) => {
         const id = String(itemId);
-        const previousVote = votedItems[id];
+        const previousVote = votedItems[id] ?? null;
         const newVote = previousVote === type ? null : type;
 
-        setVotedItems((prev) => ({
-            ...prev,
-            [id]: newVote,
-        }));
+        setVotedItems((prev) => ({ ...prev, [id]: newVote }));
         setReactionForArticle(id, newVote);
+        setNewsData((prev) =>
+            prev.map((n) => (String(n.id) !== id ? n : patchArticleVoteRow(n, previousVote, newVote)))
+        );
 
-        try {
-            const data = await setReaction(
-                id,
-                newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none'
-            );
-            const likes = Number(data.like_count ?? 0);
-            const dislikes = Number(data.dislike_count ?? 0);
-            setNewsData((prev) =>
-                prev.map((n) =>
-                    String(n.id) !== id
-                        ? n
-                        : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes }
-                )
-            );
-        } catch (error) {
-            setVotedItems((prev) => ({
-                ...prev,
-                [id]: previousVote,
-            }));
-            setReactionForArticle(id, previousVote || null);
-        }
+        (async () => {
+            try {
+                const data = await setReaction(id, reactionApiValue(newVote));
+                const likes = Number(data.like_count ?? 0);
+                const dislikes = Number(data.dislike_count ?? 0);
+                setNewsData((prev) =>
+                    prev.map((n) =>
+                        String(n.id) !== id
+                            ? n
+                            : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes, userReaction: newVote }
+                    )
+                );
+            } catch {
+                setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
+                setReactionForArticle(id, previousVote || null);
+                setNewsData((prev) =>
+                    prev.map((n) =>
+                        String(n.id) !== id ? n : patchArticleVoteRow(n, newVote, previousVote)
+                    )
+                );
+            }
+        })();
     };
 
     const handleBookmark = async (itemId) => {

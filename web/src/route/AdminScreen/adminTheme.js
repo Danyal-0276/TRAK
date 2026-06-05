@@ -82,15 +82,28 @@ const LIGHT = {
     none: GREY[400],
   },
   chart: {
-    scraped: GREY[600],
-    processed: GREY[800],
-    primary: GREY[700],
-    secondary: GREY[500],
-    info: GREY[400],
-    rawBar: GREY[600],
-    procBar: GREY[800],
+    scraped: '#2563eb',
+    processed: '#16a34a',
+    primary: '#2563eb',
+    secondary: '#7c3aed',
+    info: '#0891b2',
+    rawBar: '#2563eb',
+    procBar: '#16a34a',
     factCheck: GREY[700],
-    series: [GREY[700], GREY[600], GREY[500], GREY[800], GREY[400], GREY[900]],
+    series: ['#2563eb', '#7c3aed', '#0891b2', '#16a34a', '#ea580c', '#db2777', '#4f46e5', '#0d9488'],
+    factCheckVerdict: {
+      supports_ml: SEMANTIC.green,
+      contradicts_ml: SEMANTIC.red,
+      mixed: SEMANTIC.amber,
+      inconclusive: SEMANTIC.yellow,
+      api_error: SEMANTIC.red,
+      no_hits: GREY[500],
+      standalone: '#2563eb',
+      skipped: GREY[400],
+      disabled: GREY[400],
+      empty_query: GREY[500],
+      no_api_key: SEMANTIC.amber,
+    },
   },
   statAccent: {
     raw: GREY[700],
@@ -144,15 +157,28 @@ const DARK = {
     none: GREY[500],
   },
   chart: {
-    scraped: GREY[400],
-    processed: GREY[300],
-    primary: GREY[300],
-    secondary: GREY[500],
-    info: GREY[400],
-    rawBar: GREY[500],
-    procBar: GREY[300],
+    scraped: '#60a5fa',
+    processed: '#4ade80',
+    primary: '#60a5fa',
+    secondary: '#a78bfa',
+    info: '#22d3ee',
+    rawBar: '#60a5fa',
+    procBar: '#4ade80',
     factCheck: GREY[400],
-    series: [GREY[300], GREY[400], GREY[500], GREY[200], GREY[600], GREY[700]],
+    series: ['#60a5fa', '#a78bfa', '#22d3ee', '#4ade80', '#fb923c', '#f472b6', '#818cf8', '#2dd4bf'],
+    factCheckVerdict: {
+      supports_ml: SEMANTIC.greenDark,
+      contradicts_ml: SEMANTIC.redDark,
+      mixed: '#fbbf24',
+      inconclusive: SEMANTIC.yellowDark,
+      api_error: SEMANTIC.redDark,
+      no_hits: GREY[500],
+      standalone: '#60a5fa',
+      skipped: GREY[500],
+      disabled: GREY[500],
+      empty_query: GREY[500],
+      no_api_key: '#fbbf24',
+    },
   },
   statAccent: {
     raw: GREY[300],
@@ -210,6 +236,28 @@ export function pipelineColor(palette, status) {
 
 export function credibilityColor(palette, labelOrKey) {
   return palette.credibility[labelOrKey] || palette.credibility[CRED_NAMES[labelOrKey]] || palette.textTertiary;
+}
+
+function normalizeVerdictKey(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+}
+
+export function factCheckVerdictColor(palette, verdict, index = 0) {
+  const key = normalizeVerdictKey(verdict);
+  return (
+    palette.chart?.factCheckVerdict?.[key] ||
+    chartSeriesColor(palette, index) ||
+    palette.textTertiary
+  );
+}
+
+export function chartSeriesColor(palette, index) {
+  const series = palette.chart?.series || [];
+  if (!series.length) return palette.primary;
+  return series[Math.abs(Number(index) || 0) % series.length];
 }
 
 export { CRED_NAMES, GREY };

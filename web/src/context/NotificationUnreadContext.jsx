@@ -47,18 +47,28 @@ export function NotificationUnreadProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const syncUnreadFromList = useCallback((list) => {
+    const count = (Array.isArray(list) ? list : []).filter((n) => !n.read).length;
+    setUnreadCount(count);
+    return count;
+  }, []);
+
   const applyList = useCallback((list) => {
     const next = Array.isArray(list) ? list : [];
     cacheRef.current = { list: next, savedAt: Date.now() };
     setNotifications(next);
     setHydrated(true);
     listLoadedRef.current = true;
-    setUnreadCount(next.filter((n) => !n.read).length);
-  }, []);
+    syncUnreadFromList(next);
+  }, [syncUnreadFromList]);
 
   const refreshUnreadCount = useCallback(async () => {
     if (!user) {
       setUnreadCount(0);
+      return;
+    }
+    if (listLoadedRef.current && hydrated) {
+      syncUnreadFromList(cacheRef.current.list);
       return;
     }
     try {
@@ -67,7 +77,7 @@ export function NotificationUnreadProvider({ children }) {
     } catch {
       setUnreadCount(0);
     }
-  }, [user]);
+  }, [user, hydrated, syncUnreadFromList]);
 
   const refreshNotifications = useCallback(
     async ({ silent = false, force = false } = {}) => {
@@ -86,7 +96,7 @@ export function NotificationUnreadProvider({ children }) {
         setNotifications(cached.list);
         setHydrated(true);
         listLoadedRef.current = true;
-        setUnreadCount(cached.list.filter((n) => !n.read).length);
+        syncUnreadFromList(cached.list);
         if (!silent) setLoading(false);
         return;
       }
@@ -102,22 +112,24 @@ export function NotificationUnreadProvider({ children }) {
         if (!silent) setLoading(false);
       }
     },
-    [user, applyList]
+    [user, applyList, syncUnreadFromList]
   );
 
   const ensureNotificationsLoaded = useCallback(
-    async ({ runBackfill = false } = {}) => {
+    async ({ runBackfill = false, force = true } = {}) => {
       if (!user) return;
 
       if (
+        !force &&
         listLoadedRef.current &&
         cacheRef.current.list.length > 0 &&
         Date.now() - cacheRef.current.savedAt < CACHE_TTL_MS
       ) {
         setNotifications(cacheRef.current.list);
         setHydrated(true);
+        syncUnreadFromList(cacheRef.current.list);
       } else {
-        await refreshNotifications({ silent: false, force: false });
+        await refreshNotifications({ silent: false, force: true });
       }
 
       if (runBackfill && typeof sessionStorage !== 'undefined') {
@@ -132,7 +144,7 @@ export function NotificationUnreadProvider({ children }) {
         }
       }
     },
-    [user, refreshNotifications]
+    [user, refreshNotifications, syncUnreadFromList]
   );
 
   const markAsRead = useCallback(async (notificationId) => {

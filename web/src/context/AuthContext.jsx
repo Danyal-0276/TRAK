@@ -21,6 +21,7 @@ import {
     resendEmailVerification,
     verifyEmailCode,
 } from '../api/authEmailApi';
+import { onAuthSessionEnded } from '../utils/authSessionEvents';
 
 const AuthContext = createContext(null);
 
@@ -31,6 +32,13 @@ export const AuthProvider = ({ children }) => {
     useEffect(() => {
         setUser(getCurrentUser());
         setLoading(false);
+    }, []);
+
+    useEffect(() => {
+        return onAuthSessionEnded(() => {
+            clearAuthTokens();
+            setUser(null);
+        });
     }, []);
 
     const applySession = (session) => {

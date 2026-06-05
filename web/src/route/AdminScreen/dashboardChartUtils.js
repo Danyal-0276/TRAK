@@ -1,6 +1,6 @@
 /** Transform `/api/admin/analytics/` payload for Recharts (theme-aware). */
 
-import { CRED_NAMES, credibilityColor, pipelineColor } from './adminTheme';
+import { CRED_NAMES, chartSeriesColor, credibilityColor, factCheckVerdictColor, pipelineColor } from './adminTheme';
 
 export function isAnalyticsPayload(obj) {
   return (
@@ -44,29 +44,53 @@ export function credibilityPieData(snapshot, palette) {
 export function factCheckBarData(snapshot, palette) {
   if (!snapshot || !palette) return [];
   const raw = snapshot.fact_check_by_verdict || {};
-  const fills = (palette.chart?.series || [
-    palette.chart?.primary,
-    palette.chart?.secondary,
-    palette.chart?.info,
-    palette.chart?.scraped,
-    palette.chart?.processed,
-  ]).filter(Boolean);
   return Object.entries(raw)
     .map(([name, value], i) => ({
+      key: String(name),
       name: String(name).replace(/_/g, ' '),
       value: Number(value) || 0,
-      fill: fills[i % fills.length],
+      fill: factCheckVerdictColor(palette, name, i),
     }))
     .filter((d) => d.value > 0)
     .sort((a, b) => b.value - a.value);
 }
 
-export function sourceBarData(snapshot, field = 'raw_by_source_key', limit = 8) {
+export function sourceBarData(snapshot, field = 'raw_by_source_key', limit = 8, palette = null) {
   const raw = snapshot?.[field] || {};
   return Object.entries(raw)
-    .map(([name, value]) => ({ name: String(name), count: Number(value) || 0 }))
+    .map(([name, value], i) => ({
+      name: String(name),
+      count: Number(value) || 0,
+      fill: palette ? chartSeriesColor(palette, i) : undefined,
+    }))
     .sort((a, b) => b.count - a.count)
     .slice(0, limit);
+}
+
+/** Round up to a readable axis top so paired charts can share the same Y scale. */
+export function niceCountAxisMax(peak) {
+  const value = Math.max(0, Number(peak) || 0);
+  if (value <= 0) return 10;
+  const padded = Math.ceil(value * 1.05);
+  const magnitude = 10 ** Math.floor(Math.log10(padded));
+  const normalized = padded / magnitude;
+  const niceUnit =
+    normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return niceUnit * magnitude;
+}
+
+export function sharedSourceCountAxisMax(...series) {
+  const peak = Math.max(0, ...series.flat().map((row) => Number(row?.count) || 0));
+  return niceCountAxisMax(peak);
+}
+
+export function countAxisTicks(max) {
+  const top = niceCountAxisMax(max);
+  const step = top <= 20 ? 5 : top <= 50 ? 10 : top <= 100 ? 25 : top <= 200 ? 50 : 100;
+  const ticks = [];
+  for (let t = 0; t <= top; t += step) ticks.push(t);
+  if (ticks[ticks.length - 1] !== top) ticks.push(top);
+  return ticks;
 }
 
 export function activityAreaData(snapshot) {
@@ -145,13 +169,13 @@ export function buildActivityDailyFromArticles(articles = [], days = 14) {
     buckets[key] = { scraped: 0, processed: 0 };
   }
   for (const article of articles) {
-    if (article.scope === 'raw') {
-      const key = dayKeyFromIso(article.fetched_at);
-      if (key && buckets[key]) buckets[key].scraped += 1;
-    }
-    if (article.scope === 'processed') {
-      const key = dayKeyFromIso(article.processed_at || article.fetched_at);
-      if (key && buckets[key]) buckets[key].processed += 1;
+    if (article.scope !== 'raw') continue;
+    const key = dayKeyFromIso(article.fetched_at);
+    if (!key || !buckets[key]) continue;
+    buckets[key].scraped += 1;
+    const status = String(article.pipeline_status || '').toLowerCase();
+    if (status === 'done') {
+      buckets[key].processed += 1;
     }
   }
   return Object.keys(buckets)
@@ -160,7 +184,7 @@ export function buildActivityDailyFromArticles(articles = [], days = 14) {
       date,
       label: date.slice(5),
       scraped: buckets[date].scraped,
-      processed: buckets[date].processed,
+      processed: Math.min(buckets[date].processed, buckets[date].scraped),
     }));
 }
 
@@ -172,12 +196,18 @@ function mergeActivityDailyFromApiFields(base) {
   const processed = base.processed_daily || [];
   if (!ingest.length && !processed.length) return base.activity_daily || [];
   const procMap = Object.fromEntries(processed.map((d) => [d.date, Number(d.count) || 0]));
-  return ingest.map((row) => ({
-    date: row.date,
-    label: row.label || String(row.date || '').slice(5),
-    scraped: Number(row.count) || 0,
-    processed: procMap[row.date] ?? 0,
-  }));
+  const ingestMap = Object.fromEntries(ingest.map((row) => [row.date, Number(row.count) || 0]));
+  const allDates = [...new Set([...ingest.map((r) => r.date), ...processed.map((r) => r.date)])].sort();
+  return allDates.map((date) => {
+    const scraped = ingestMap[date] ?? 0;
+    const done = procMap[date] ?? 0;
+    return {
+      date,
+      label: String(date || '').slice(5),
+      scraped,
+      processed: Math.min(done, scraped),
+    };
+  });
 }
 
 /** Merge analytics API snapshot with article timestamps for activity charts. */

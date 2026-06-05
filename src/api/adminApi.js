@@ -188,6 +188,25 @@ export async function deleteAdminArticle(scope, articleId) {
   return parseJson(res);
 }
 
+export async function requeueAdminArticle(scope, articleId) {
+  const res = await apiFetch(
+    `${ADMIN_PREFIX}/articles/${encodeURIComponent(scope)}/${encodeURIComponent(articleId)}/`,
+    { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ requeue: true }) },
+    API_BASE
+  );
+  return parseJson(res);
+}
+
+export async function requeueAllFailedArticles() {
+  const res = await apiFetch(`${ADMIN_PREFIX}/articles/failed/bulk/`, { method: 'POST' }, API_BASE);
+  return parseJson(res);
+}
+
+export async function deleteAllFailedArticles() {
+  const res = await apiFetch(`${ADMIN_PREFIX}/articles/failed/bulk/`, { method: 'DELETE' }, API_BASE);
+  return parseJson(res);
+}
+
 export async function createAdminCategory(name, subcategories = []) {
   const res = await apiFetch(
     `${ADMIN_PREFIX}/settings/categories/`,

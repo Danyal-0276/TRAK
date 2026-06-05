@@ -187,7 +187,7 @@ export default function AdminAdminsScreen() {
                   {admin.created_at ? (
                     <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                       <Calendar size={12} />
-                      {new Date(admin.created_at).toLocaleDateString()}
+                      {new Date(admin.created_at).toLocaleDateString(undefined, { timeZone: 'UTC' })}
                     </span>
                   ) : null}
                 </div>

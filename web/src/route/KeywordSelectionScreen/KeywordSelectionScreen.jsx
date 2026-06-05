@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import Text from '../../components/ui/Text';
 import { ArrowLeft, Plus, X, ArrowRight } from 'lucide-react';
-import { getUserKeywords, setUserKeywords } from '../../utils/userKeywordsStorage';
-import { newsTagsWithSubcategories } from '../TagSelectionScreen/constants/newsCategories';
-import { trackKeywords } from '../../utils/Service/api';
+import { loadUserKeywords, setUserKeywords } from '../../utils/userKeywordsStorage';
+import { loadTagsWithSubcategories, taxonomyTermsFromMap } from '../../utils/platformTaxonomy';
+import { getCurrentUser, getUserKeywordsFromServer, trackKeywords } from '../../utils/Service/api';
 import { filledActionColors } from '../../theme/buttonContrast';
 
 const KeywordSelectionScreen = () => {
@@ -16,17 +16,35 @@ const KeywordSelectionScreen = () => {
     const { isMobile, isTablet } = useResponsive();
     const navigate = useNavigate();
     const location = useLocation();
-    const BUILTIN_TAXONOMY_TERMS = new Set(
-        Object.entries(newsTagsWithSubcategories).flatMap(([main, subs]) => [main, ...(subs || [])])
-    );
-    const [selectedKeywords, setSelectedKeywords] = useState(() =>
-        getUserKeywords().filter((k) => !BUILTIN_TAXONOMY_TERMS.has(String(k || '').toLowerCase()))
-    );
+    const [selectedKeywords, setSelectedKeywords] = useState([]);
     const [keywordInput, setKeywordInput] = useState('');
-    
+    const [navigating, setNavigating] = useState(false);
+
     const selectedTags = location.state?.selectedTags || [];
     const fromSettings = Boolean(location.state?.fromSettings);
     const action = filledActionColors(colors, isDark);
+
+    // Categories and keywords share one saved list; hide admin/platform categories here.
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            const [map, saved] = await Promise.all([
+                loadTagsWithSubcategories(),
+                loadUserKeywords(getUserKeywordsFromServer),
+            ]);
+            if (cancelled) return;
+            const categoryTerms = taxonomyTermsFromMap(map);
+            for (const tag of selectedTags) {
+                categoryTerms.add(String(tag || '').toLowerCase());
+            }
+            setSelectedKeywords(
+                saved.filter((k) => !categoryTerms.has(String(k || '').toLowerCase()))
+            );
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [selectedTags.join('\x1f')]);
 
     const addKeyword = () => {
         const trimmedKeyword = keywordInput.trim();
@@ -58,22 +76,32 @@ const KeywordSelectionScreen = () => {
         }
     };
 
-    const handleContinue = async () => {
+    const finishFlow = () => {
+        if (navigating) return;
+        setNavigating(true);
+
         const merged = [...selectedKeywords, ...selectedTags]
             .map((k) => String(k || '').trim().toLowerCase())
             .filter(Boolean)
             .filter((k, idx, arr) => arr.indexOf(k) === idx);
         setUserKeywords(merged);
-        try {
-            await trackKeywords(merged);
-        } catch (e) {
+
+        // Do not block navigation on the API — it can take a long time on cold start.
+        trackKeywords(merged).catch((e) => {
             console.warn('track-keywords:', e?.message);
-        }
+        });
+
         if (fromSettings) {
             navigate('/settings');
             return;
         }
+        const user = getCurrentUser();
+        if (user?.role === 'admin') {
+            navigate('/admin/dashboard', { replace: true });
+            return;
+        }
         navigate('/newsfeed', {
+            replace: true,
             state: {
                 selectedTags,
                 selectedKeywords: merged,
@@ -98,7 +126,7 @@ const KeywordSelectionScreen = () => {
                 maxWidth: '1200px',
                 margin: '0 auto',
                 width: '100%',
-                padding: isMobile ? '0 16px 24px 16px' : isTablet ? '0 20px 24px 20px' : '0 24px 24px 24px',
+                padding: isMobile ? '0 16px 96px 16px' : isTablet ? '0 20px 48px 20px' : '0 24px 48px 24px',
             }}>
                 {/* Header Section */}
                 <div style={{
@@ -335,7 +363,9 @@ const KeywordSelectionScreen = () => {
                     gap: '12px',
                 }}>
                     <button
-                        onClick={handleContinue}
+                        type="button"
+                        disabled={navigating}
+                        onClick={finishFlow}
                         style={{
                             flex: 1,
                             padding: '14px 24px',
@@ -345,7 +375,8 @@ const KeywordSelectionScreen = () => {
                             borderRadius: '10px',
                             fontSize: '15px',
                             fontWeight: '600',
-                            cursor: 'pointer',
+                            cursor: navigating ? 'wait' : 'pointer',
+                            opacity: navigating ? 0.7 : 1,
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -365,7 +396,9 @@ const KeywordSelectionScreen = () => {
                         <ArrowRight size={18} />
                     </button>
                     <button
-                        onClick={() => (fromSettings ? navigate('/settings') : handleContinue())}
+                        type="button"
+                        disabled={navigating}
+                        onClick={() => (fromSettings ? navigate('/settings') : finishFlow())}
                         style={{
                             padding: '14px 24px',
                             backgroundColor: cardBackground,
@@ -374,7 +407,8 @@ const KeywordSelectionScreen = () => {
                             borderRadius: '10px',
                             fontSize: '15px',
                             fontWeight: '600',
-                            cursor: 'pointer',
+                            cursor: navigating ? 'wait' : 'pointer',
+                            opacity: navigating ? 0.7 : 1,
                             transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {

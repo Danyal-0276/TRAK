@@ -32,6 +32,7 @@ import PicsScreen from '../route/PicsScreen/PicsScreen';
 import ProtectedRoute from '../components/ProtectedRoute';
 import UserOnlyRoute from '../components/UserOnlyRoute';
 import { useTheme } from '../theme/ThemeContext';
+import SessionGuard from './SessionGuard';
 
 const RouterContent = () => {
   const location = useLocation();
@@ -56,6 +57,7 @@ const RouterContent = () => {
         transition: 'padding 0.3s ease, background-color var(--trak-transition-duration, 0s) var(--trak-transition-ease, ease)',
       }}
     >
+      <SessionGuard />
       <Routes>
         {/* Auth Routes */}
         <Route path="/" element={<OpeningScreen />} />

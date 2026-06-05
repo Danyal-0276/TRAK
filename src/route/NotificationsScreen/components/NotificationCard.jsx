@@ -25,23 +25,13 @@ const NotificationCard = ({ item, onMarkAsRead, onNotificationPress }) => {
 
 
   const handlePress = () => {
-
-    if (!item.read && onMarkAsRead && item.id) {
-
-      onMarkAsRead(item.id);
-
-    }
-
     if (onNotificationPress) {
-
       onNotificationPress(item);
-
-    } else if (item.id) {
-
-      navigation.navigate("NotificationDetail", { notificationId: item.id });
-
+      return;
     }
-
+    if (item.id) {
+      navigation.navigate("NotificationDetail", { notificationId: item.id, onMarkAsRead });
+    }
   };
 
 
