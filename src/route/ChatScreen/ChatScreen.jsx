@@ -37,13 +37,6 @@ function getKeyboardInset(e) {
   return Math.max(reported, fromScreenY, 0);
 }
 
-function formatCaughtMessage(e) {
-  if (e == null) return 'Chat failed';
-  if (typeof e === 'string') return e;
-  if (typeof e === 'object' && typeof e.message === 'string') return e.message;
-  return 'Chat failed';
-}
-
 const ChatScreen = () => {
   const navigation = useNavigation();
   const route = useRoute();
@@ -180,8 +173,19 @@ const ChatScreen = () => {
           articleUrl: top?.canonical_url || fallbackUrl,
         },
       ]);
-    } catch (e) {
-      setMessages((prev) => [...prev, { role: 'bot', text: formatCaughtMessage(e) }]);
+    } catch (chatError) {
+      let failureText = 'Chat failed';
+      if (typeof chatError === 'string' && chatError.trim()) {
+        failureText = chatError;
+      } else if (
+        chatError &&
+        typeof chatError === 'object' &&
+        typeof chatError.message === 'string' &&
+        chatError.message.trim()
+      ) {
+        failureText = chatError.message;
+      }
+      setMessages((prev) => [...prev, { role: 'bot', text: failureText }]);
     } finally {
       setLoading(false);
     }
