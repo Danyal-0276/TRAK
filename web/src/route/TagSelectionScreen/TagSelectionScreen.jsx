@@ -5,7 +5,7 @@ import { useResponsive } from '../../hooks/useResponsive';
 import Text from '../../components/ui/Text';
 import { ArrowLeft, Search, Check, X } from 'lucide-react';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
-import { getUserKeywords, loadUserKeywords } from '../../utils/userKeywordsStorage';
+import { loadUserKeywords } from '../../utils/userKeywordsStorage';
 import { getUserKeywordsFromServer } from '../../utils/Service/api';
 import { loadTagsWithSubcategories } from '../../utils/platformTaxonomy';
 import { filledActionColors } from '../../theme/buttonContrast';
@@ -56,29 +56,33 @@ const TagSelectionScreen = () => {
         };
     }, [fromSignup, navigate]);
 
-    // Restore previously selected tags once taxonomy has loaded.
-    // Runs whenever mainTags changes (i.e., after taxonomy async load completes).
+    // Restore previously selected tags once taxonomy has loaded (fetch from API when signed in).
     useEffect(() => {
         if (fromSignup) return;
-        if (!mainTags.length) return; // taxonomy not loaded yet
-        const saved = getUserKeywords();
-        if (!saved.length) return;
-        // Normalise to lowercase for reliable matching
-        const savedLower = saved.map((s) => s.toLowerCase());
-        const next = new Set();
-        for (const main of mainTags) {
-            const subs = tagsMap[main] || [];
-            if (savedLower.includes(main.toLowerCase())) next.add(main);
-            for (const sub of subs) {
-                if (savedLower.includes(sub.toLowerCase())) {
-                    next.add(main);
-                    next.add(sub);
+        if (!mainTags.length) return;
+        let cancelled = false;
+        (async () => {
+            const saved = await loadUserKeywords(getUserKeywordsFromServer);
+            if (cancelled || !saved.length) return;
+            const savedLower = saved.map((s) => s.toLowerCase());
+            const next = new Set();
+            for (const main of mainTags) {
+                const subs = tagsMap[main] || [];
+                if (savedLower.includes(main.toLowerCase())) next.add(main);
+                for (const sub of subs) {
+                    if (savedLower.includes(sub.toLowerCase())) {
+                        next.add(main);
+                        next.add(sub);
+                    }
                 }
             }
-        }
-        if (next.size) setSelectedTags(Array.from(next));
+            if (next.size) setSelectedTags(Array.from(next));
+        })();
+        return () => {
+            cancelled = true;
+        };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [mainTags.join('\x1f')]);
+    }, [mainTags.join('\x1f'), fromSignup]);
 
     const toggleMainTag = (tag) => {
         setSelectedTags(prev => {
