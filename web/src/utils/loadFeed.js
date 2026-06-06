@@ -24,10 +24,12 @@ export function mapApiItem(a) {
   const likes = Number(a.like_count ?? a.upvotes ?? 0);
   const dislikes = Number(a.dislike_count ?? 0);
   const summaryText = getCardSummaryText({
+    title: a.title,
     summary: a.summary,
     excerpt: a.excerpt,
     description: a.description,
     full_content: a.full_content,
+    fullContent: a.full_content,
     content: a.content,
   });
   return {
