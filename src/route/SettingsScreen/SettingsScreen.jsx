@@ -33,7 +33,8 @@ import FeedbackModal from '../../components/FeedbackModal';
 
 const ICON_SIZE = 18;
 
-export default function SettingsScreen({ navigation }) {
+export default function SettingsScreen({ navigation, route }) {
+  const embeddedInTab = Boolean(route?.params?.embeddedInTab);
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [keywordAlerts, setKeywordAlerts] = useState(true);
@@ -75,7 +76,7 @@ export default function SettingsScreen({ navigation }) {
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topInset }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-      <SettingsHeader navigation={navigation} />
+      <SettingsHeader navigation={navigation} embeddedInTab={embeddedInTab} />
 
       <ScrollView
         contentContainerStyle={[
