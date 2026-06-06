@@ -98,7 +98,8 @@ export function UserKeywordsProvider({ children }) {
         if (cacheRef.current.userId !== userId) {
             cacheRef.current = { at: 0, userId };
         }
-    }, [authLoading, isAuthenticated, userId]);
+        refresh();
+    }, [authLoading, isAuthenticated, userId, refresh]);
 
     useEffect(() => {
         const onChanged = (e) => {
@@ -114,7 +115,7 @@ export function UserKeywordsProvider({ children }) {
         <UserKeywordsContext.Provider
             value={{
                 keywords,
-                loading: authLoading,
+                loading: authLoading || syncing,
                 syncing,
                 refresh,
                 hydrateKeywords,
