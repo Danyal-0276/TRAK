@@ -58,7 +58,7 @@ export default function AdminNotificationCard({ item, palette, onPress }) {
                 {typeMeta.label}
               </Text>
               <Text variant="caption" color={palette.textTertiary}>
-                {relativeTime(item.created_at)}
+                {relativeTime(item.created_at || item.updated_at)}
               </Text>
             </View>
             <View style={styles.chipRow}>

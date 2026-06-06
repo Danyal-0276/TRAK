@@ -101,7 +101,7 @@ export default function AdminNotificationCard({ row, palette, onClick }) {
                   <span style={{ fontSize: 11, fontWeight: 700, color: '#ef4444' }}>Important</span>
                 ) : null}
                 <span style={{ marginLeft: 'auto', fontSize: 12, color: palette.textTertiary }}>
-                  {relativeTime(row.created_at)}
+                  {relativeTime(row.created_at || row.updated_at)}
                 </span>
               </div>
               <div

@@ -3,12 +3,12 @@ import {
   getNotificationSourceName,
   isArticleKeywordNotification,
 } from '../utils/notificationDisplay';
+import { parseFeedbackTimestamp } from '../constants/feedbackCategoryMeta';
 
 function timeAgo(iso) {
-  if (!iso) return '';
-  const ts = new Date(iso).getTime();
-  if (Number.isNaN(ts)) return '';
-  const diff = Math.max(0, Date.now() - ts);
+  const d = parseFeedbackTimestamp(iso);
+  if (!d) return '';
+  const diff = Math.max(0, Date.now() - d.getTime());
   const m = Math.floor(diff / 60000);
   if (m < 1) return 'just now';
   if (m < 60) return `${m}m ago`;

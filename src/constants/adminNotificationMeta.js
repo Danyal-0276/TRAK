@@ -1,6 +1,6 @@
-import { relativeTime } from './feedbackCategoryMeta';
+import { relativeTime, parseFeedbackTimestamp } from './feedbackCategoryMeta';
 
-export { relativeTime };
+export { relativeTime, parseFeedbackTimestamp };
 
 export const NOTIFICATION_FILTER_TABS = [
   { key: 'all', label: 'All' },

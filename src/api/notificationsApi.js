@@ -10,6 +10,8 @@ import {
 
 } from '../utils/notificationDisplay';
 
+import { parseFeedbackTimestamp } from '../constants/feedbackCategoryMeta';
+
 
 
 const PREFIX = `${API_BASE}/api/notifications`;
@@ -18,13 +20,11 @@ const PREFIX = `${API_BASE}/api/notifications`;
 
 function timeAgo(iso) {
 
-  if (!iso) return '';
+  const d = parseFeedbackTimestamp(iso);
 
-  const ts = new Date(iso).getTime();
+  if (!d) return '';
 
-  if (Number.isNaN(ts)) return '';
-
-  const diff = Math.max(0, Date.now() - ts);
+  const diff = Math.max(0, Date.now() - d.getTime());
 
   const m = Math.floor(diff / 60000);
 
@@ -36,9 +36,9 @@ function timeAgo(iso) {
 
   if (h < 24) return `${h}h ago`;
 
-  const d = Math.floor(h / 24);
+  const days = Math.floor(h / 24);
 
-  return `${d}d ago`;
+  return `${days}d ago`;
 
 }
 

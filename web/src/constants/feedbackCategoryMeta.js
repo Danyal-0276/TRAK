@@ -24,17 +24,30 @@ export function formatFeedbackType(type) {
   return String(type || 'Feedback').replace(/_/g, ' ');
 }
 
+export function parseFeedbackTimestamp(iso) {
+  if (!iso) return null;
+  const raw = String(iso).trim();
+  if (!raw) return null;
+  const hasTz = /[zZ]$|[+-]\d{2}:\d{2}$/.test(raw);
+  const d = new Date(hasTz ? raw : `${raw}Z`);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Prefer submitted_at — set when the user actually sent feedback. */
+export function feedbackSubmittedAt(row) {
+  return row?.submitted_at || row?.updated_at || row?.created_at || null;
+}
+
 export function relativeTime(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
+  const d = parseFeedbackTimestamp(iso);
+  if (!d) return '';
   const diff = Date.now() - d.getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return 'Just now';
   if (mins < 60) return `${mins}m ago`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 48) return `${hrs}h ago`;
-  return d.toLocaleDateString();
+  return d.toLocaleString();
 }
 
 export default FEEDBACK_CATEGORIES;

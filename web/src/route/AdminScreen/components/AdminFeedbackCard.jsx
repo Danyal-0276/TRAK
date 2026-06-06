@@ -4,6 +4,7 @@ import {
   getFeedbackCategoryMeta,
   formatFeedbackType,
   relativeTime,
+  feedbackSubmittedAt,
   FEEDBACK_STATUS_META,
 } from '../../../constants/feedbackCategoryMeta';
 
@@ -100,7 +101,7 @@ export default function AdminFeedbackCard({ row, palette, onClick }) {
                   {formatFeedbackType(row.type)}
                 </span>
                 <span style={{ marginLeft: 'auto', fontSize: 12, color: palette.textTertiary }}>
-                  {relativeTime(row.created_at)}
+                  {relativeTime(feedbackSubmittedAt(row))}
                 </span>
               </div>
               <div
