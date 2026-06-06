@@ -16,6 +16,7 @@ import {
   getFeedbackCategoryMeta,
   formatFeedbackType,
   relativeTime,
+  feedbackSubmittedAt,
   FEEDBACK_STATUS_META,
 } from '../../../constants/feedbackCategoryMeta';
 
@@ -58,7 +59,7 @@ export default function AdminFeedbackCard({ item, palette, onPress }) {
                 {cat.label}
               </Text>
               <Text variant="caption" color={palette.textTertiary}>
-                {relativeTime(item.created_at)}
+                {relativeTime(feedbackSubmittedAt(item))}
               </Text>
             </View>
             <View style={[styles.typeChip, { backgroundColor: palette.pageAlt || palette.backgroundSecondary }]}>
