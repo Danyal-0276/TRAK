@@ -23,7 +23,6 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
   const action = filledActionColors(colors, isDark);
   const { error: showError } = useFeedback();
   const email = (route.params?.email || '').trim().toLowerCase();
-  const emailSent = route.params?.emailSent !== false;
   const [code, setCode] = useState('');
   const [timer, setTimer] = useState(60);
   const [loading, setLoading] = useState(false);
@@ -67,7 +66,11 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
     if (timer > 0 || !email) return;
     setResendLoading(true);
     try {
-      await requestPasswordReset(email);
+      const res = await requestPasswordReset(email);
+      if (res?.email_sent === false) {
+        showError(res?.detail || 'Could not resend code. Try again later.');
+        return;
+      }
       setTimer(60);
     } catch (e) {
       showError(e.message || 'Could not resend code.');
@@ -94,9 +97,7 @@ const ForgotPasswordCodeScreen = ({ navigation, route }) => {
           Enter verification code
         </Text>
         <Text variant="body" color={colors.textSecondary} style={{ textAlign: 'center', marginBottom: 24 }}>
-          {emailSent
-            ? `We sent a 6-digit code to ${email || 'your email'}. Check your inbox and spam.`
-            : `If your account exists, a code was sent to ${email || 'your email'}.`}
+          {`We sent a 6-digit code to ${email || 'your email'}. Check your inbox and spam.`}
         </Text>
 
         <TextInput
