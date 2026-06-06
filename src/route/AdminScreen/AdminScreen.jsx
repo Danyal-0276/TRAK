@@ -581,7 +581,6 @@ const AdminScreen = ({ navigation, route }) => {
   const handleLogout = async () => {
     try {
       await logout();
-      navigation.reset({ index: 0, routes: [{ name: 'OpeningScreen' }] });
     } catch {
       Alert.alert('Logout', 'Could not logout. Please try again.');
     }
@@ -850,7 +849,8 @@ const AdminScreen = ({ navigation, route }) => {
 
   const handleRequeueOne = useCallback(async (article) => {
     const row = typeof article === 'object' ? article : apiArticles.find((a) => String(a.id) === String(article));
-    if (!row || row.pipeline_status !== 'failed') return;
+    const ps = String(row?.pipeline_status || '').toLowerCase();
+    if (!row || !['failed', 'processing'].includes(ps)) return;
     setFailedBulkBusy(true);
     try {
       await requeueAdminArticle(row.scope || 'raw', row.id);

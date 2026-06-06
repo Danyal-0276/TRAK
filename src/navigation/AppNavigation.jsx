@@ -64,7 +64,7 @@ const RootStack = ({ initialRouteName }) => (
 );
 
 export default function AppNavigation() {
-    const { user, bootstrapped, logout } = useAuth();
+    const { user, bootstrapped } = useAuth();
     const { theme } = useTheme();
     const navRef = useRef(null);
 
@@ -75,14 +75,13 @@ export default function AppNavigation() {
     }, [bootstrapped, user]);
 
     useEffect(() => {
-        return onAuthSessionEnded(() => {
-            logout();
+        return onAuthSessionEnded((reason) => {
             const nav = navRef.current;
-            if (nav?.reset) {
-                nav.reset({ index: 0, routes: [{ name: 'Login' }] });
-            }
+            if (!nav?.reset) return;
+            const routeName = reason === 'manual' ? 'OpeningScreen' : 'Login';
+            nav.reset({ index: 0, routes: [{ name: routeName }] });
         });
-    }, [logout]);
+    }, []);
     // Show a fast branded loader instead of a black frame.
     if (!bootstrapped) {
         return (

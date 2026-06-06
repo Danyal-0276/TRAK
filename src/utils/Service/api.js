@@ -88,7 +88,7 @@ export const getCurrentUser = async () => {
 export const getAccessToken = async () =>
   (await AsyncStorage.getItem(ACCESS_KEY)) || (await AsyncStorage.getItem('trak_access'));
 export const clearAuthSession = async () => {
-  await AsyncStorage.multiRemove([ACCESS_KEY, REFRESH_KEY, USER_KEY]);
+  await AsyncStorage.multiRemove([ACCESS_KEY, REFRESH_KEY, USER_KEY, 'trak_access', 'trak_refresh']);
   await clearUserContentCaches();
 };
 

@@ -177,6 +177,7 @@ export function AuthProvider({ children }) {
         await clearStoredAuthSession();
         await AsyncStorage.removeItem(USER_CACHE_KEY).catch(() => {});
         setUser(null);
+        emitAuthSessionEnded('manual');
     };
 
     const verifyEmail = async (code) => {

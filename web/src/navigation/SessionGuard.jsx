@@ -7,8 +7,8 @@ export default function SessionGuard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    return onAuthSessionEnded(() => {
-      navigate('/login', { replace: true });
+    return onAuthSessionEnded((reason) => {
+      navigate(reason === 'manual' ? '/' : '/login', { replace: true });
     });
   }, [navigate]);
 

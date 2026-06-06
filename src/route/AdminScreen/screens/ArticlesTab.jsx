@@ -40,7 +40,8 @@ const LIST_PERF = {
 const AdminArticleRow = React.memo(
   function AdminArticleRow({ article, palette, handlersRef, showFailedActions, failedBulkBusy }) {
     const h = handlersRef.current;
-    const canRequeue = showFailedActions && article.pipeline_status === 'failed';
+    const ps = String(article.pipeline_status || '').toLowerCase();
+    const canRequeue = showFailedActions && ['failed', 'processing'].includes(ps);
     return (
       <ArticleCard
         article={article}

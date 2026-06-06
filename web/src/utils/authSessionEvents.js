@@ -6,10 +6,11 @@ export function onAuthSessionEnded(handler) {
   return () => listeners.delete(handler);
 }
 
-export function emitAuthSessionEnded() {
+/** @param {'expired' | 'manual'} [reason] */
+export function emitAuthSessionEnded(reason = 'expired') {
   listeners.forEach((handler) => {
     try {
-      handler();
+      handler(reason);
     } catch {
       // ignore listener errors
     }
