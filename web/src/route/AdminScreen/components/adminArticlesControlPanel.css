@@ -121,6 +121,32 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
+.admin-articles-panel__bulk {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid;
+}
+
+.admin-articles-panel__bulk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+
+.admin-articles-panel__bulk-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
 .admin-articles-panel__footer {
   display: flex;
   align-items: center;

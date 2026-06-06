@@ -55,18 +55,28 @@ export function NotificationUnreadProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  const syncUnreadFromList = useCallback((list) => {
+    const count = (Array.isArray(list) ? list : []).filter((n) => !n.read).length;
+    setUnreadCount(count);
+    return count;
+  }, []);
+
   const applyList = useCallback((list) => {
     const next = Array.isArray(list) ? list : [];
     saveNotificationsCache(next);
     setNotifications(next);
     setHydrated(true);
     listLoadedRef.current = true;
-    setUnreadCount(next.filter((n) => !n.read).length);
-  }, []);
+    syncUnreadFromList(next);
+  }, [syncUnreadFromList]);
 
   const refreshUnreadCount = useCallback(async () => {
     if (!user) {
       setUnreadCount(0);
+      return;
+    }
+    if (listLoadedRef.current && hydrated) {
+      syncUnreadFromList(getNotificationsCache());
       return;
     }
     try {
@@ -75,7 +85,7 @@ export function NotificationUnreadProvider({ children }) {
     } catch {
       setUnreadCount(0);
     }
-  }, [user]);
+  }, [user, hydrated, syncUnreadFromList]);
 
   const refreshNotifications = useCallback(
     async ({ silent = false, force = false } = {}) => {
@@ -91,7 +101,7 @@ export function NotificationUnreadProvider({ children }) {
         setNotifications(cached);
         setHydrated(true);
         listLoadedRef.current = true;
-        setUnreadCount(cached.filter((n) => !n.read).length);
+        syncUnreadFromList(cached);
         if (!silent) setLoading(false);
         return;
       }
@@ -107,7 +117,7 @@ export function NotificationUnreadProvider({ children }) {
           setNotifications(cached);
           setHydrated(true);
           listLoadedRef.current = true;
-          setUnreadCount(cached.filter((n) => !n.read).length);
+          syncUnreadFromList(cached);
         } else if (!cacheValid) {
           applyList([]);
         }
@@ -115,7 +125,7 @@ export function NotificationUnreadProvider({ children }) {
         if (!silent) setLoading(false);
       }
     },
-    [user, applyList]
+    [user, applyList, syncUnreadFromList]
   );
 
   const ensureNotificationsLoaded = useCallback(
@@ -127,7 +137,7 @@ export function NotificationUnreadProvider({ children }) {
         setNotifications(cached);
         setHydrated(true);
         listLoadedRef.current = true;
-        setUnreadCount(cached.filter((n) => !n.read).length);
+        syncUnreadFromList(cached);
       } else {
         await refreshNotifications({ silent: false, force: true });
       }
@@ -135,14 +145,14 @@ export function NotificationUnreadProvider({ children }) {
       if (runBackfill && !isNotificationBackfillDone()) {
         markNotificationBackfillDone();
         try {
-          await notificationsApi.backfillKeywordNotifications({ hours: 72, limit: 50 });
+          await notificationsApi.backfillKeywordNotifications({ hours: 24, limit: 25 });
           await refreshNotifications({ silent: true, force: true });
         } catch {
           /* non-fatal */
         }
       }
     },
-    [user, refreshNotifications]
+    [user, refreshNotifications, syncUnreadFromList]
   );
 
   const markAsRead = useCallback(async (notificationId) => {

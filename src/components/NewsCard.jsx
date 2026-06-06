@@ -23,6 +23,7 @@ import {
     resolveArticleVote,
     resolveArticleBookmarked,
 } from '../utils/articleCardInteraction';
+import { sanitizeArticleSummary, sanitizeArticleBody } from '../utils/articleTextSanitize';
 
 function NewsCardInner({
     item,
@@ -44,7 +45,10 @@ function NewsCardInner({
     const canInteract = !articleId.startsWith('news-');
     const safeSource = resolveArticleSource(item);
     const safeTitle = String(item?.title || 'Untitled');
-    const safeExcerpt = String(item?.excerpt || item?.summary || '');
+    const safeExcerpt = sanitizeArticleSummary(item?.excerpt || item?.summary || '', {
+        title: safeTitle,
+        body: sanitizeArticleBody(item?.fullContent || item?.content || '', { title: safeTitle }),
+    });
     const safeCategory = String(item?.category || 'General');
     const likeCount = Number(item?.like_count ?? item?.upvotes ?? 0);
     const dislikeCount = Number(item?.dislike_count ?? 0);
@@ -415,8 +419,22 @@ function NewsCardInner({
     );
 }
 
+function itemInteractionSnapshot(item) {
+    if (!item) return '';
+    return [
+        item.userReaction ?? '',
+        item.isBookmarked ? '1' : '0',
+        Number(item.like_count ?? item.upvotes ?? 0),
+        Number(item.dislike_count ?? 0),
+    ].join('|');
+}
+
 function propsAreEqual(prev, next) {
-    if (prev.item !== next.item) return false;
+    if (itemInteractionSnapshot(prev.item) !== itemInteractionSnapshot(next.item)) return false;
+    if (prev.votedItems !== next.votedItems) return false;
+    if (prev.bookmarkedItems !== next.bookmarkedItems) return false;
+    if (prev.userVote !== next.userVote) return false;
+    if (prev.isBookmarked !== next.isBookmarked) return false;
     if (prev.onPress !== next.onPress) return false;
     if (prev.onVote !== next.onVote) return false;
     if (prev.onBookmark !== next.onBookmark) return false;

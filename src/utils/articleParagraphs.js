@@ -1,3 +1,5 @@
+import { isNavBoilerplateLine } from './articleTextSanitize';
+
 /**
  * Split article body into display paragraphs (preserves \n\n from scrapers;
  * falls back to sentence boundaries when pipeline flattened whitespace).
@@ -12,7 +14,7 @@ export function splitArticleParagraphs(text) {
   let parts = normalized
     .split(/\n\s*\n+/)
     .map((p) => p.replace(/\s+/g, ' ').trim())
-    .filter(Boolean);
+    .filter((p) => p && !isNavBoilerplateLine(p));
 
   if (parts.length <= 1 && normalized.length > 280) {
     parts = normalized

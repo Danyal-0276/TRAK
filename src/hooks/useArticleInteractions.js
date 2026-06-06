@@ -9,6 +9,7 @@ import {
 import { getBookmarkIds, setBookmarkIds } from '../utils/bookmarksStorage';
 import { mergeReactionRows, setReactionForArticle } from '../utils/reactionsStorage';
 import { useFeedback } from '../components/ui/FeedbackProvider';
+import { patchArticleVoteRow, reactionApiValue } from '../utils/reactionVote';
 
 const SYNC_COOLDOWN_MS = 45000;
 
@@ -77,27 +78,10 @@ export function useArticleInteractions({ articles = [], onArticlesPatch, autoSyn
         return { ...prev, [id]: newVote };
       });
 
-      const article = articles.find((n) => String(n.id) === id);
-      const prevLikes = Number(article?.like_count ?? article?.upvotes ?? 0);
-      const prevDislikes = Number(article?.dislike_count ?? 0);
-      let optLikes = prevLikes;
-      let optDislikes = prevDislikes;
-      if (previousVote === 'up') optLikes -= 1;
-      if (previousVote === 'down') optDislikes -= 1;
-      if (newVote === 'up') optLikes += 1;
-      if (newVote === 'down') optDislikes += 1;
-
       onArticlesPatch?.((prev) =>
-        (prev || []).map((n) => {
-          if (String(n.id) !== id) return n;
-          return {
-            ...n,
-            like_count: Math.max(0, optLikes),
-            dislike_count: Math.max(0, optDislikes),
-            upvotes: Math.max(0, optLikes),
-            userReaction: newVote,
-          };
-        })
+        (prev || []).map((n) =>
+          String(n.id) !== id ? n : patchArticleVoteRow(n, previousVote, newVote)
+        )
       );
 
       setReactionForArticle(id, newVote).catch(() => {});
@@ -106,12 +90,9 @@ export function useArticleInteractions({ articles = [], onArticlesPatch, autoSyn
       voteQueueRef.current[id] = setTimeout(async () => {
         delete voteQueueRef.current[id];
         try {
-          const data = await setReaction(
-            id,
-            newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none'
-          );
-          const likes = Number(data.like_count ?? optLikes);
-          const dislikes = Number(data.dislike_count ?? optDislikes);
+          const data = await setReaction(id, reactionApiValue(newVote));
+          const likes = Number(data.like_count ?? 0);
+          const dislikes = Number(data.dislike_count ?? 0);
           onArticlesPatch?.((prev) =>
             (prev || []).map((n) =>
               String(n.id) !== id
@@ -130,7 +111,7 @@ export function useArticleInteractions({ articles = [], onArticlesPatch, autoSyn
           setReactionForArticle(id, previousVote || null).catch(() => {});
           feedback?.error?.(err?.message || 'Could not save reaction');
         }
-      }, 280);
+      }, 0);
     },
     [articles, onArticlesPatch, feedback]
   );

@@ -7,6 +7,9 @@ import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts
 import { loadExplorePage, mergeUniqueById } from '../../utils/loadFeed';
 import { openArticleDetail } from '../../utils/openArticleDetail';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
+import { setReaction } from '../../utils/Service/api';
+import { setReactionForArticle } from '../../utils/reactionsStorage';
+import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
 
 function recencySortKey(item) {
     const s = item?.time || item?.published_at || '';
@@ -80,10 +83,37 @@ const RecentScreen = () => {
         openArticleDetail(navigate, article);
     };
 
-    const handleVote = async (itemId, type) => {
-        const previousVote = votedItems[itemId];
+    const handleVote = (itemId, type) => {
+        const id = String(itemId);
+        const previousVote = votedItems[id] ?? null;
         const newVote = previousVote === type ? null : type;
-        setVotedItems((prev) => ({ ...prev, [itemId]: newVote }));
+        setVotedItems((prev) => ({ ...prev, [id]: newVote }));
+        setReactionForArticle(id, newVote);
+        setNewsData((prev) =>
+            prev.map((n) => (String(n.id) !== id ? n : patchArticleVoteRow(n, previousVote, newVote)))
+        );
+        (async () => {
+            try {
+                const data = await setReaction(id, reactionApiValue(newVote));
+                const likes = Number(data.like_count ?? 0);
+                const dislikes = Number(data.dislike_count ?? 0);
+                setNewsData((prev) =>
+                    prev.map((n) =>
+                        String(n.id) !== id
+                            ? n
+                            : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes, userReaction: newVote }
+                    )
+                );
+            } catch {
+                setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
+                setReactionForArticle(id, previousVote || null);
+                setNewsData((prev) =>
+                    prev.map((n) =>
+                        String(n.id) !== id ? n : patchArticleVoteRow(n, newVote, previousVote)
+                    )
+                );
+            }
+        })();
     };
 
     const handleBookmark = async (itemId) => {

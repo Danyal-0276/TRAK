@@ -1,6 +1,6 @@
 import React, { useState, memo } from 'react';
 import { View, TouchableOpacity, StyleSheet, Linking, Pressable, Image } from 'react-native';
-import { Eye, Trash2, Clock, Tag } from 'lucide-react-native';
+import { Eye, Trash2, Clock, Tag, RotateCcw } from 'lucide-react-native';
 import Text from '../../../components/ui/Text';
 import ArticleInsightBadges, {
   ArticleCredibilityIndicator,
@@ -11,7 +11,16 @@ import { useAdminTheme } from '../useAdminTheme';
 
 const HERO_HEIGHT = 168;
 
-const ArticleCard = ({ article, onEdit, onDelete, onView, onReview, palette: paletteProp }) => {
+const ArticleCard = ({
+  article,
+  onEdit,
+  onDelete,
+  onView,
+  onReview,
+  onRequeue,
+  requeueDisabled = false,
+  palette: paletteProp,
+}) => {
   const { palette: themePalette } = useAdminTheme();
   const palette = paletteProp || themePalette;
   const [imageHidden, setImageHidden] = useState(false);
@@ -110,6 +119,28 @@ const ArticleCard = ({ article, onEdit, onDelete, onView, onReview, palette: pal
             View
           </Text>
         </TouchableOpacity>
+        {onRequeue ? (
+          <TouchableOpacity
+            style={[
+              styles.footerBtn,
+              {
+                borderColor: border,
+                backgroundColor: palette.card,
+                opacity: requeueDisabled ? 0.6 : 1,
+              },
+            ]}
+            disabled={requeueDisabled}
+            onPress={(e) => {
+              e?.stopPropagation?.();
+              onRequeue(article);
+            }}
+          >
+            <RotateCcw size={12} color={textPrimary} />
+            <Text variant="caption" color={textPrimary} style={{ fontWeight: '600', marginLeft: 4 }}>
+              Send back
+            </Text>
+          </TouchableOpacity>
+        ) : null}
         <TouchableOpacity
           style={[styles.footerBtn, styles.deleteBtn, { borderColor: palette.error, backgroundColor: palette.errorBg }]}
           onPress={() => onDelete?.(article)}
@@ -172,6 +203,7 @@ const styles = StyleSheet.create({
   footer: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
     paddingTop: 12,
     borderTopWidth: 1,
@@ -194,7 +226,9 @@ function articleCardPropsEqual(prev, next) {
   return (
     prev.onView === next.onView &&
     prev.onReview === next.onReview &&
-    prev.onDelete === next.onDelete
+    prev.onDelete === next.onDelete &&
+    prev.onRequeue === next.onRequeue &&
+    prev.requeueDisabled === next.requeueDisabled
   );
 }
 

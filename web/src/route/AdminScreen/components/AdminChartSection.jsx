@@ -114,7 +114,8 @@ export default function AdminChartSection({
                 color: textPrimary,
               }}
               formatter={(value) => [formatY(value), '']}
-              labelStyle={{ color: textSecondary }}
+              labelStyle={{ color: textPrimary, fontWeight: 600 }}
+              itemStyle={{ color: textPrimary }}
             />
             {lines.map((line) => (
               <Line

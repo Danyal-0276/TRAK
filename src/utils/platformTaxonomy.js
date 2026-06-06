@@ -27,9 +27,14 @@ export async function loadTagsWithSubcategories() {
   return { ...newsTagsWithSubcategories };
 }
 
-/** Flat set of main + sub category slugs for keyword deduplication. */
+/** Flat set of main + sub category slugs (lowercased) for keyword deduplication. */
 export function taxonomyTermsFromMap(tagsMap) {
-  return new Set(
-    Object.entries(tagsMap || {}).flatMap(([main, subs]) => [main, ...(subs || [])])
-  );
+  const terms = new Set();
+  for (const [main, subs] of Object.entries(tagsMap || {})) {
+    if (main) terms.add(String(main).toLowerCase());
+    for (const sub of subs || []) {
+      if (sub) terms.add(String(sub).toLowerCase());
+    }
+  }
+  return terms;
 }

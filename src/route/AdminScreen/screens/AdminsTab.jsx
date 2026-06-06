@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, TouchableOpacity, TextInput, Modal, ActivityIndicator } from 'react-native';
-import { Shield, Plus, Trash2 } from 'lucide-react-native';
+import { Shield, Plus, Trash2, Calendar } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
 import { useAuth } from '../../../context/AuthContext';
 import SearchBar from '../components/SearchBar';
@@ -10,6 +10,12 @@ import { useFeedback } from '../../../components/ui/FeedbackProvider';
 import AdminListRowSkeleton from '../components/skeletons/AdminListRowSkeleton';
 import { ADMIN_TEXT_STYLE } from '../adminTypography';
 import { adminFilledButtonColors } from '../adminTheme';
+import { formatCalendarDate } from '../../../utils/formatCalendarDate';
+
+function isAdminActive(admin) {
+  if (typeof admin?.is_active === 'boolean') return admin.is_active;
+  return admin?.status === 'active';
+}
 
 const AdminsTab = ({
   admins,
@@ -80,27 +86,52 @@ const AdminsTab = ({
       ) : admins.length === 0 ? (
         <EmptyState icon={Shield} title="No admins found" subtitle="No administrator accounts" />
       ) : (
-        admins.map((admin) => (
-          <View
-            key={admin.id}
-            style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}
-          >
-            <View style={{ flex: 1 }}>
-              <Text variant="body" color={palette.textPrimary} style={{ fontWeight: '600' }}>
-                {admin.email}
-              </Text>
-              <Text variant="caption" color={palette.textSecondary} style={{ marginTop: 4 }}>
-                {admin.is_active ? 'Active' : 'Inactive'}
-                {admin.is_super_admin ? ' · Super Admin' : ''}
-              </Text>
+        admins.map((admin) => {
+          const active = isAdminActive(admin);
+          const created = formatCalendarDate(admin.created_at);
+          const statusColor = active ? palette.success || '#16a34a' : palette.textSecondary;
+          return (
+            <View
+              key={admin.id}
+              style={[styles.card, { backgroundColor: palette.card, borderColor: palette.border }]}
+            >
+              <View style={[styles.avatar, { backgroundColor: `${palette.primary}18` }]}>
+                <Shield size={22} color={palette.primary} />
+              </View>
+              <View style={styles.cardBody}>
+                <Text variant="body" color={palette.textPrimary} style={{ fontWeight: '700' }} numberOfLines={1}>
+                  {admin.email}
+                </Text>
+                <View style={styles.metaRow}>
+                  <View style={[styles.statusBadge, { backgroundColor: `${statusColor}18` }]}>
+                    <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                    <Text variant="caption" style={{ color: statusColor, fontWeight: '600' }}>
+                      {active ? 'Active' : 'Inactive'}
+                    </Text>
+                  </View>
+                  {created ? (
+                    <View style={styles.dateRow}>
+                      <Calendar size={12} color={palette.textSecondary} />
+                      <Text variant="caption" color={palette.textSecondary}>
+                        {created}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                {admin.is_super_admin ? (
+                  <Text variant="caption" style={{ color: palette.primary, fontWeight: '700', marginTop: 4 }}>
+                    Super Admin
+                  </Text>
+                ) : null}
+              </View>
+              {isSuperAdmin && !admin.is_super_admin ? (
+                <TouchableOpacity onPress={() => handleDelete(admin)} style={styles.deleteBtn}>
+                  <Trash2 size={18} color={palette.error || '#ef4444'} />
+                </TouchableOpacity>
+              ) : null}
             </View>
-            {isSuperAdmin && !admin.is_super_admin ? (
-              <TouchableOpacity onPress={() => handleDelete(admin)} style={styles.deleteBtn}>
-                <Trash2 size={18} color={palette.error || '#ef4444'} />
-              </TouchableOpacity>
-            ) : null}
-          </View>
-        ))
+          );
+        })
       )}
 
       <Modal visible={showCreate} transparent animationType="fade">
@@ -184,6 +215,43 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     marginBottom: 10,
+    gap: 12,
+  },
+  avatar: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginTop: 6,
+  },
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 6,
+  },
+  statusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  dateRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   deleteBtn: { padding: 8 },
   modalOverlay: {

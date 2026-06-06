@@ -69,6 +69,9 @@ const NotificationsScreen = () => {
       articleId &&
       (notification.type === "keyword_match" || notification.type === "keyword")
     ) {
+      if (!notification.read && notification.id) {
+        markAsRead(notification.id);
+      }
       navigation.navigate("ArticleDetail", { articleId: String(articleId) });
       return;
     }

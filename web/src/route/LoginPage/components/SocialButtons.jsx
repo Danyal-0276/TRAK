@@ -3,9 +3,7 @@ import { SocialButton } from './SocialButton';
 import { useTheme } from '../../../theme/ThemeContext';
 import Text from '../../../components/ui/Text';
 
-const FacebookIcon = '/images/facebook-logo-png-23.png';
 const GoogleIcon = '/images/google.png';
-const AppleIcon = '/images/apple-logo-icon-14915.png';
 
 export const SocialButtons = ({ onSocialPress, loadingProvider }) => {
     const { theme } = useTheme();
@@ -20,24 +18,13 @@ export const SocialButtons = ({ onSocialPress, loadingProvider }) => {
                 </Text>
                 <div style={{ flex: 1, height: 1, backgroundColor: colors.border }} />
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 16 }}>
-                <SocialButton
-                    iconSource={FacebookIcon}
-                    onPress={() => onSocialPress?.('facebook')}
-                    loading={loadingProvider === 'facebook'}
-                />
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
                 <SocialButton
                     iconSource={GoogleIcon}
                     onPress={() => onSocialPress?.('google')}
                     loading={loadingProvider === 'google'}
                 />
-                <SocialButton
-                    iconSource={AppleIcon}
-                    onPress={() => onSocialPress?.('apple')}
-                    loading={loadingProvider === 'apple'}
-                />
             </div>
         </div>
     );
 };
-

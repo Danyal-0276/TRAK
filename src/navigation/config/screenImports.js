@@ -16,6 +16,8 @@ import EditProfileScreen from '../../route/EditProfileScreen/EditProfileScreen.j
 import PrivacyScreen from '../../route/PrivacyScreen/PrivacyScreen.jsx';
 import DataScreen from '../../route/DataScreen/DataScreen.jsx';
 import CategoriesScreen from '../../route/CategoriesScreen/CategoriesScreen.jsx';
+import BrowseCategoriesScreen from '../../route/BrowseCategoriesScreen/BrowseCategoriesScreen.jsx';
+import CategoryArticlesScreen from '../../route/CategoryArticlesScreen/CategoryArticlesScreen.jsx';
 import AboutScreen from '../../route/AboutScreen/AboutScreen.jsx';
 import AdminScreen from '../../route/AdminScreen/AdminScreen.jsx';
 import SearchScreen from '../../route/SearchScreen/SearchScreen.jsx';
@@ -73,6 +75,8 @@ export {
     PrivacyScreen,
     DataScreen,
     CategoriesScreen,
+    BrowseCategoriesScreen,
+    CategoryArticlesScreen,
     AboutScreen,
     AdminScreen,
     SearchScreen,

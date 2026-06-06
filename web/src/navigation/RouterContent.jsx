@@ -22,6 +22,7 @@ import PrivacyScreen from '../route/PrivacyScreen/PrivacyScreen';
 import TermsScreen from '../route/TermsScreen/TermsScreen';
 import DataScreen from '../route/DataScreen/DataScreen';
 import CategoriesScreen from '../route/CategoriesScreen/CategoriesScreen';
+import CategoryArticlesScreen from '../route/CategoryArticlesScreen/CategoryArticlesScreen';
 import AboutScreen from '../route/AboutScreen/AboutScreen';
 import HelpScreen from '../route/HelpScreen/HelpScreen';
 import ArticleDetailScreen from '../route/ArticleDetailScreen/ArticleDetailScreen';
@@ -32,6 +33,7 @@ import PicsScreen from '../route/PicsScreen/PicsScreen';
 import ProtectedRoute from '../components/ProtectedRoute';
 import UserOnlyRoute from '../components/UserOnlyRoute';
 import { useTheme } from '../theme/ThemeContext';
+import SessionGuard from './SessionGuard';
 
 const RouterContent = () => {
   const location = useLocation();
@@ -56,6 +58,7 @@ const RouterContent = () => {
         transition: 'padding 0.3s ease, background-color var(--trak-transition-duration, 0s) var(--trak-transition-ease, ease)',
       }}
     >
+      <SessionGuard />
       <Routes>
         {/* Auth Routes */}
         <Route path="/" element={<OpeningScreen />} />
@@ -80,6 +83,7 @@ const RouterContent = () => {
         <Route path="/edit-profile" element={<UserOnlyRoute><EditProfileScreen /></UserOnlyRoute>} />
         <Route path="/data" element={<UserOnlyRoute><DataScreen /></UserOnlyRoute>} />
         <Route path="/categories" element={<UserOnlyRoute><CategoriesScreen /></UserOnlyRoute>} />
+        <Route path="/categories/:categorySlug" element={<UserOnlyRoute><CategoryArticlesScreen /></UserOnlyRoute>} />
         <Route path="/about" element={<UserOnlyRoute><AboutScreen /></UserOnlyRoute>} />
         <Route path="/help" element={<UserOnlyRoute><HelpScreen /></UserOnlyRoute>} />
         <Route path="/trending" element={<Navigate to="/newsfeed?tab=Trending" replace />} />

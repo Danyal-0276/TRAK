@@ -11,11 +11,19 @@ import {
     Clock,
     Tag,
     Trash2,
+    RotateCcw,
 } from 'lucide-react';
 import AdminPageLayout from './components/AdminPageLayout';
 import AdminPageHeader from './components/AdminPageHeader';
 import { useAdminPageMeta } from './adminPageMeta';
-import { deleteAdminArticle, getAdminArticles, patchAdminArticle } from '../../api/adminApi';
+import {
+    deleteAdminArticle,
+    deleteAllFailedArticles,
+    getAdminArticles,
+    patchAdminArticle,
+    requeueAdminArticle,
+    requeueAllFailedArticles,
+} from '../../api/adminApi';
 import {
     getArticlesApiScope,
     getArticlesFetchParams,
@@ -28,6 +36,7 @@ import ArticleInsightBadges, {
     ArticleTopicKeywords,
 } from './components/ArticleInsightBadges';
 import { enableAdminAppPreview } from '../../utils/adminAppPreview';
+import { dispatchAdminOverviewRefresh } from '../../utils/adminOverviewEvents';
 import { normalizeArticleForDetail } from '../../utils/articleNavigation';
 import { ARTICLES_POLL_INTERVAL_MS } from './adminTheme';
 import { isArticlesPath } from './hooks/useAdminTabActive';
@@ -51,6 +60,7 @@ const AdminArticlesScreen = () => {
     const [pipelineFilter, setPipelineFilter] = useState(initialRoute.pipelineFilter);
     const [statusById, setStatusById] = useState({});
     const [reviewArticle, setReviewArticle] = useState(null);
+    const [failedBulkBusy, setFailedBulkBusy] = useState(false);
 
     const cardBackground = palette.card;
     const textPrimary = palette.textPrimary;
@@ -169,6 +179,7 @@ const AdminArticlesScreen = () => {
             try {
                 await deleteAdminArticle(target.scope, articleId);
                 success('Article deleted.');
+                dispatchAdminOverviewRefresh({ silent: true, cacheBust: true });
                 loadArticles(apiScope, pipelineFilter);
             } catch (e) {
                 notifyError(e?.message || 'Failed to delete article.');
@@ -185,6 +196,7 @@ const AdminArticlesScreen = () => {
             await patchAdminArticle(target.scope, articleId, { status: nextStatus });
             setArticles((prev) => prev.map((a) => (a.id === articleId ? { ...a, moderation_status: nextStatus } : a)));
             success('Article status updated.');
+            dispatchAdminOverviewRefresh({ silent: true, cacheBust: true });
             loadArticles(apiScope, pipelineFilter);
         } catch (e) {
             setStatusById((prev) => ({ ...prev, [articleId]: previous }));
@@ -193,6 +205,67 @@ const AdminArticlesScreen = () => {
     };
 
     const filteredArticles = filterArticlesForDisplay(articles, pipelineFilter, searchQuery);
+
+    const failedCount = articleCounts?.filtered_total ?? filteredArticles.length;
+
+    const handleRequeueOne = async (articleId) => {
+        const target = articles.find((a) => a.id === articleId);
+        if (!target || target.pipeline_status !== 'failed') return;
+        setFailedBulkBusy(true);
+        try {
+            await requeueAdminArticle(target.scope || 'raw', articleId);
+            success('Article sent back to queue.');
+            dispatchAdminOverviewRefresh({ silent: true, cacheBust: true });
+            await loadArticles(apiScope, pipelineFilter);
+        } catch (e) {
+            notifyError(e?.message || 'Could not requeue article.');
+        } finally {
+            setFailedBulkBusy(false);
+        }
+    };
+
+    const handleRequeueAllFailed = async () => {
+        if (failedBulkBusy || failedCount === 0) return;
+        const accepted = await confirm({
+            title: 'Send all failed back to queue?',
+            message: `This will requeue ${failedCount} failed article(s) for processing.`,
+            confirmText: 'Send back',
+        });
+        if (!accepted) return;
+        setFailedBulkBusy(true);
+        try {
+            const res = await requeueAllFailedArticles();
+            success(res?.detail || 'Failed articles requeued.');
+            dispatchAdminOverviewRefresh({ silent: true, cacheBust: true });
+            await loadArticles(apiScope, pipelineFilter);
+        } catch (e) {
+            notifyError(e?.message || 'Could not requeue failed articles.');
+        } finally {
+            setFailedBulkBusy(false);
+        }
+    };
+
+    const handleDeleteAllFailed = async () => {
+        if (failedBulkBusy || failedCount === 0) return;
+        const accepted = await confirm({
+            title: 'Delete all failed articles?',
+            message: `Permanently delete ${failedCount} failed raw article(s)? This cannot be undone.`,
+            confirmText: 'Delete all',
+            danger: true,
+        });
+        if (!accepted) return;
+        setFailedBulkBusy(true);
+        try {
+            const res = await deleteAllFailedArticles();
+            success(res?.detail || 'Failed articles deleted.');
+            dispatchAdminOverviewRefresh({ silent: true, cacheBust: true });
+            await loadArticles(apiScope, pipelineFilter);
+        } catch (e) {
+            notifyError(e?.message || 'Could not delete failed articles.');
+        } finally {
+            setFailedBulkBusy(false);
+        }
+    };
 
     const handleFilterChange = (filterId) => {
         setPipelineFilter(filterId);
@@ -226,6 +299,9 @@ const AdminArticlesScreen = () => {
                         onFilterChange={handleFilterChange}
                         displayedCount={filteredArticles.length}
                         searchQuery={searchQuery}
+                        failedBulkBusy={failedBulkBusy}
+                        onRequeueAllFailed={handleRequeueAllFailed}
+                        onDeleteAllFailed={handleDeleteAllFailed}
                     />
                 </AdminPageHeader>
 
@@ -520,6 +596,33 @@ const AdminArticlesScreen = () => {
                                             <Eye size={12} />
                                             In app
                                         </button>
+                                        {pipelineFilter === 'failed' && article.pipeline_status === 'failed' ? (
+                                            <button
+                                                type="button"
+                                                disabled={failedBulkBusy}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleRequeueOne(article.id);
+                                                }}
+                                                style={{
+                                                    padding: '6px 10px',
+                                                    border: `1px solid ${borderColor}`,
+                                                    borderRadius: '6px',
+                                                    fontSize: '11px',
+                                                    fontWeight: '600',
+                                                    color: textPrimary,
+                                                    background: palette.card,
+                                                    cursor: failedBulkBusy ? 'wait' : 'pointer',
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: '4px',
+                                                    opacity: failedBulkBusy ? 0.6 : 1,
+                                                }}
+                                            >
+                                                <RotateCcw size={12} />
+                                                Send back
+                                            </button>
+                                        ) : null}
                                         <button
                                             type="button"
                                             onClick={(e) => {

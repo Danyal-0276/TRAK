@@ -15,6 +15,8 @@ import {
     TagSelectionScreen,
     KeywordSelectionScreen,
     CategoriesScreen,
+    BrowseCategoriesScreen,
+    CategoryArticlesScreen,
     AdminScreen,
     NewsFeedScreen,
 } from './config/screenImports';
@@ -58,6 +60,8 @@ const MainAppStack = () => {
             <Stack.Screen name="TagSelection" component={TagSelectionScreen} />
             <Stack.Screen name="KeywordSelection" component={KeywordSelectionScreen} />
             <Stack.Screen name="CategoriesScreen" component={CategoriesScreen} />
+            <Stack.Screen name="BrowseCategories" component={BrowseCategoriesScreen} />
+            <Stack.Screen name="CategoryArticles" component={CategoryArticlesScreen} />
             <Stack.Screen name="NotificationDetail" component={NotificationDetailScreen} />
         </Stack.Navigator>
     );

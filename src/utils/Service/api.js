@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE } from '../../config/api';
 import { formatNetworkError } from '../networkError';
+import { emitAuthSessionEnded } from '../authSessionEvents';
 
 const API_BASE_URL = API_BASE;
 
@@ -153,6 +154,7 @@ export const authRequest = async (path, options = {}) => {
     const refresh = await AsyncStorage.getItem(REFRESH_KEY);
     if (!refresh) {
       await clearAuthSession();
+      emitAuthSessionEnded();
       throw new Error('Session expired. Please sign in again.');
     }
     const refreshRes = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
@@ -167,14 +169,19 @@ export const authRequest = async (path, options = {}) => {
         res = await doReq(payload.access);
       } else {
         await clearAuthSession();
+        emitAuthSessionEnded();
         throw new Error('Session expired. Please sign in again.');
       }
     } else {
-      // Refresh token is stale (common after a backend user-DB rebuild).
-      // Wipe the session so the app sends the user back to the login screen.
       await clearAuthSession();
+      emitAuthSessionEnded();
       throw new Error('Session expired. Please sign in again.');
     }
+  }
+  if (res.status === 401) {
+    await clearAuthSession();
+    emitAuthSessionEnded();
+    throw new Error('Session expired. Please sign in again.');
   }
   if (!res.ok) await parseError(res);
   return res.json();

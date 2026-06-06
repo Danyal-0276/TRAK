@@ -1,6 +1,6 @@
 /** Transform `/api/admin/analytics/` payload (aligned with web). */
 
-import { CRED_NAMES, credibilityColor, pipelineColor } from './adminTheme';
+import { CRED_NAMES, chartSeriesColor, credibilityColor, factCheckVerdictColor, pipelineColor } from './adminTheme';
 
 export function isAnalyticsPayload(obj) {
   return (
@@ -43,13 +43,13 @@ export function buildActivityDailyFromArticles(articles = [], days = 14) {
     buckets[key] = { scraped: 0, processed: 0 };
   }
   for (const article of articles) {
-    if (article.scope === 'raw') {
-      const key = dayKeyFromIso(article.fetched_at);
-      if (key && buckets[key]) buckets[key].scraped += 1;
-    }
-    if (article.scope === 'processed') {
-      const key = dayKeyFromIso(article.processed_at || article.fetched_at);
-      if (key && buckets[key]) buckets[key].processed += 1;
+    if (article.scope !== 'raw') continue;
+    const key = dayKeyFromIso(article.fetched_at);
+    if (!key || !buckets[key]) continue;
+    buckets[key].scraped += 1;
+    const status = String(article.pipeline_status || '').toLowerCase();
+    if (status === 'done') {
+      buckets[key].processed += 1;
     }
   }
   return Object.keys(buckets)
@@ -58,7 +58,7 @@ export function buildActivityDailyFromArticles(articles = [], days = 14) {
       date,
       label: date.slice(5),
       scraped: buckets[date].scraped,
-      processed: buckets[date].processed,
+      processed: Math.min(buckets[date].processed, buckets[date].scraped),
     }));
 }
 
@@ -70,12 +70,18 @@ function mergeActivityDailyFromApiFields(base) {
   const processed = base.processed_daily || [];
   if (!ingest.length && !processed.length) return base.activity_daily || [];
   const procMap = Object.fromEntries(processed.map((d) => [d.date, Number(d.count) || 0]));
-  return ingest.map((row) => ({
-    date: row.date,
-    label: row.label || String(row.date || '').slice(5),
-    scraped: Number(row.count) || 0,
-    processed: procMap[row.date] ?? 0,
-  }));
+  const ingestMap = Object.fromEntries(ingest.map((row) => [row.date, Number(row.count) || 0]));
+  const allDates = [...new Set([...ingest.map((r) => r.date), ...processed.map((r) => r.date)])].sort();
+  return allDates.map((date) => {
+    const scraped = ingestMap[date] ?? 0;
+    const done = procMap[date] ?? 0;
+    return {
+      date,
+      label: String(date || '').slice(5),
+      scraped,
+      processed: Math.min(done, scraped),
+    };
+  });
 }
 
 function pipelineSummaryFromCounts(counts, rawTotal) {
@@ -221,27 +227,25 @@ export function credibilityPieData(snapshot, palette) {
 export function factCheckBarData(snapshot, palette) {
   if (!snapshot || !palette) return [];
   const raw = snapshot.fact_check_by_verdict || {};
-  const fills = (palette.chart?.series || [
-    palette.chart?.primary,
-    palette.chart?.secondary,
-    palette.chart?.info,
-    palette.chart?.scraped,
-    palette.chart?.processed,
-  ]).filter(Boolean);
   return Object.entries(raw)
     .map(([name, value], i) => ({
+      key: String(name),
       name: String(name).replace(/_/g, ' '),
       value: Number(value) || 0,
-      fill: fills[i % fills.length],
+      fill: factCheckVerdictColor(palette, name, i),
     }))
     .filter((d) => d.value > 0)
     .sort((a, b) => b.value - a.value);
 }
 
-export function sourceBarData(snapshot, field = 'raw_by_source_key', limit = 8) {
+export function sourceBarData(snapshot, field = 'raw_by_source_key', limit = 8, palette = null) {
   const raw = snapshot?.[field] || {};
   return Object.entries(raw)
-    .map(([name, value]) => ({ name: String(name), count: Number(value) || 0 }))
+    .map(([name, value], i) => ({
+      name: String(name),
+      count: Number(value) || 0,
+      fill: palette ? chartSeriesColor(palette, i) : undefined,
+    }))
     .filter((d) => d.count > 0)
     .sort((a, b) => b.count - a.count)
     .slice(0, limit);
@@ -268,9 +272,42 @@ export function barListRows(entries, palette, { nameFormatter, colorPicker } = {
 export function activityAreaData(snapshot) {
   return (snapshot?.activity_daily || []).map((row) => ({
     name: row.label || row.date?.slice(5) || '',
+    date: row.date || '',
     scraped: row.scraped ?? 0,
     processed: row.processed ?? 0,
   }));
+}
+
+/** Compact axis label (e.g. "06-03" → "6/3") so dates fit on narrow screens. */
+export function formatActivityAxisLabel(label) {
+  const raw = String(label || '').trim();
+  if (!raw) return '';
+  const parts = raw.split('-');
+  if (parts.length === 2) {
+    const month = Number(parts[0]);
+    const day = Number(parts[1]);
+    if (Number.isFinite(month) && Number.isFinite(day)) {
+      return `${month}/${day}`;
+    }
+  }
+  return raw.length > 6 ? raw.slice(0, 6) : raw;
+}
+
+/**
+ * Pick x-axis ticks that fit the chart width without overlapping.
+ * Always shows first and last day; fills in between at a computed step.
+ */
+export function buildActivityChartAxisLabels(rows, { chartWidth = 320, minPointWidth = 48 } = {}) {
+  const total = rows?.length || 0;
+  if (!total) return [];
+  const maxTicks = Math.max(5, Math.min(7, Math.floor(chartWidth / minPointWidth)));
+  const cappedTicks = Math.min(maxTicks, total);
+  const step = total <= cappedTicks ? 1 : Math.ceil((total - 1) / (cappedTicks - 1));
+  return rows.map((row, i) => {
+    const show = i === 0 || i === total - 1 || i % step === 0;
+    if (!show) return '';
+    return formatActivityAxisLabel(row.name || row.label || String(row.date || '').slice(5));
+  });
 }
 
 export function feedbackStatusPieData(snapshot, palette) {

@@ -38,16 +38,23 @@ function buildStyles({
       padding: '2px 12px',
       fontSize: 15,
       fontWeight: 600,
+      flexWrap: 'nowrap',
     }),
     placeholder: (base) => ({
       ...base,
       color: textSecondary,
       fontWeight: 500,
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
     }),
     singleValue: (base) => ({
       ...base,
       color: textPrimary,
       transition: 'opacity 0.18s ease',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis',
     }),
     input: (base) => ({
       ...base,

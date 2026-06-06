@@ -7,6 +7,7 @@ import {
   Modal,
   ScrollView,
   Linking,
+  Pressable,
 } from 'react-native';
 import { Bell, ExternalLink } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
@@ -105,6 +106,7 @@ const NotificationsTab = ({ notifications, onSwitchTab, loading = false, onNotif
 
       <Modal visible={Boolean(selected)} animationType="slide" transparent onRequestClose={() => setSelected(null)}>
         <View style={styles.modalOverlay}>
+          <Pressable style={StyleSheet.absoluteFillObject} onPress={() => setSelected(null)} accessibilityLabel="Close notification" />
           <View style={[styles.modalCard, { backgroundColor: palette.card, borderColor: palette.border }]}>
             <ScrollView showsVerticalScrollIndicator={false}>
               <Text variant="title" color={palette.textPrimary} style={styles.modalTitle}>

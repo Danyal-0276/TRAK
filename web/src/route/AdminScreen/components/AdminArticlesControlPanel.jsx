@@ -12,6 +12,8 @@ import {
   Workflow,
   AlertTriangle,
   AlertCircle,
+  RotateCcw,
+  Trash2,
 } from 'lucide-react';
 import {
   FEED_FILTERS,
@@ -44,6 +46,9 @@ export default function AdminArticlesControlPanel({
   onFilterChange,
   displayedCount,
   searchQuery,
+  failedBulkBusy = false,
+  onRequeueAllFailed,
+  onDeleteAllFailed,
 }) {
   const [helpOpen, setHelpOpen] = useState(false);
 
@@ -177,6 +182,42 @@ export default function AdminArticlesControlPanel({
           </div>
         </div>
       </div>
+
+      {pipelineFilter === 'failed' ? (
+        <div
+          className="admin-articles-panel__bulk"
+          style={{ borderTopColor: palette.borderLight, background: isDark ? 'rgba(255,255,255,0.02)' : palette.pageAlt }}
+        >
+          <button
+            type="button"
+            className="admin-articles-panel__bulk-btn"
+            disabled={failedBulkBusy}
+            onClick={onRequeueAllFailed}
+            style={{
+              borderColor: palette.border,
+              background: palette.card,
+              color: palette.textPrimary,
+            }}
+          >
+            <RotateCcw size={14} />
+            Send all back to queue
+          </button>
+          <button
+            type="button"
+            className="admin-articles-panel__bulk-btn admin-articles-panel__bulk-btn--danger"
+            disabled={failedBulkBusy}
+            onClick={onDeleteAllFailed}
+            style={{
+              borderColor: `${palette.pipeline?.failed || '#dc2626'}55`,
+              background: isDark ? 'rgba(220,38,38,0.12)' : '#fef2f2',
+              color: palette.pipeline?.failed || '#dc2626',
+            }}
+          >
+            <Trash2 size={14} />
+            Delete all failed
+          </button>
+        </div>
+      ) : null}
 
       {(countDisplay.detail || helpOpen) && (
         <div

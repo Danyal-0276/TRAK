@@ -118,13 +118,15 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
             const [map, saved] = await Promise.all([loadTagsWithSubcategories(), loadUserKeywords()]);
             if (!mounted) return;
             const terms = taxonomyTermsFromMap(map);
-            const customOnly = saved.filter((k) => !terms.has(String(k || '').toLowerCase()));
-            if (customOnly.length) setSelectedKeywords(customOnly);
+            for (const tag of selectedTags) {
+                terms.add(String(tag || '').toLowerCase());
+            }
+            setSelectedKeywords(saved.filter((k) => !terms.has(String(k || '').toLowerCase())));
         })();
         return () => {
             mounted = false;
         };
-    }, []);
+    }, [selectedTags.join('\x1f')]);
 
     const addKeyword = () => {
         const trimmedKeyword = keywordInput.trim();
@@ -158,36 +160,49 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
         }
     };
 
-    const handleContinue = async () => {
-        setLoading(true);
-        try {
-            const merged = [...selectedKeywords, ...selectedTags]
-                .map((k) => String(k || '').trim().toLowerCase())
-                .filter(Boolean)
-                .filter((k, idx, arr) => arr.indexOf(k) === idx);
-            const token = await getAccessToken();
-            if (token && merged.length) {
-                try {
-                    await trackKeywords(merged);
-                    await setUserKeywords(merged);
-                    invalidateUserKeywordsCache();
-                } catch (e) {
-                    console.warn('track-keywords:', e?.message);
-                }
-            }
-            if (fromSettings) {
-                goToSettings();
-            } else {
-                navigation.navigate('NewsFeed', {
-                    selectedTags,
-                    selectedKeywords: merged,
-                });
-            }
-        } catch (error) {
-            console.error('Error:', error);
-        } finally {
-            setLoading(false);
+    const buildMergedKeywords = () =>
+        [...selectedKeywords, ...selectedTags]
+            .map((k) => String(k || '').trim().toLowerCase())
+            .filter(Boolean)
+            .filter((k, idx, arr) => arr.indexOf(k) === idx);
+
+    const exitKeywordStep = () => {
+        if (fromSettings) {
+            goToSettings();
+            return;
         }
+        navigation.reset({
+            index: 0,
+            routes: [{ name: 'NewsFeed' }],
+        });
+    };
+
+    const syncKeywordsInBackground = (merged) => {
+        if (!merged.length) return;
+        void (async () => {
+            try {
+                await setUserKeywords(merged);
+                invalidateUserKeywordsCache();
+                const token = await getAccessToken();
+                if (token) {
+                    await trackKeywords(merged);
+                }
+            } catch (e) {
+                console.warn('track-keywords:', e?.message);
+            }
+        })();
+    };
+
+    const handleSkip = () => {
+        const merged = buildMergedKeywords();
+        exitKeywordStep();
+        syncKeywordsInBackground(merged);
+    };
+
+    const handleContinue = () => {
+        const merged = buildMergedKeywords();
+        exitKeywordStep();
+        syncKeywordsInBackground(merged);
     };
 
     return (
@@ -410,7 +425,7 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
                         }}
                     >
                         <ActionButtons
-                            onSkip={fromSettings ? goToSettings : handleContinue}
+                            onSkip={fromSettings ? goToSettings : handleSkip}
                             onContinue={handleContinue}
                             keywordCount={selectedKeywords.length}
                             loading={loading}

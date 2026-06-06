@@ -18,6 +18,7 @@ import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { mapApiItem } from '../../utils/loadFeed';
 import { loadArticlesFromRows } from '../../utils/loadArticleRows';
+import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
 
 export default function ReactionArticlesScreen({ reaction = 'like' }) {
   const navigate = useNavigate();
@@ -67,35 +68,47 @@ export default function ReactionArticlesScreen({ reaction = 'like' }) {
     }
   };
 
-  const handleVote = async (itemId, type) => {
+  const handleVote = (itemId, type) => {
     const id = String(itemId);
-    const previousVote = votedItems[id];
+    const previousVote = votedItems[id] ?? null;
     const newVote = previousVote === type ? null : type;
+    const targetReaction = reaction === 'like' ? 'up' : 'down';
+
     setVotedItems((prev) => ({ ...prev, [id]: newVote }));
     setReactionForArticle(id, newVote);
-    try {
-      const data = await setReaction(id, newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none');
-      const likes = Number(data.like_count ?? 0);
-      const dislikes = Number(data.dislike_count ?? 0);
-      setNewsData((prev) =>
-        prev
-          .map((n) =>
-            String(n.id) !== id ? n : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes }
+    setNewsData((prev) =>
+      prev.map((n) => (String(n.id) !== id ? n : patchArticleVoteRow(n, previousVote, newVote)))
+    );
+
+    (async () => {
+      try {
+        const data = await setReaction(id, reactionApiValue(newVote));
+        const likes = Number(data.like_count ?? 0);
+        const dislikes = Number(data.dislike_count ?? 0);
+        setNewsData((prev) => {
+          let next = prev.map((n) =>
+            String(n.id) !== id
+              ? n
+              : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes, userReaction: newVote }
+          );
+          if (newVote !== targetReaction) {
+            next = next.filter((n) => String(n.id) !== id);
+          }
+          return next;
+        });
+        if (newVote !== targetReaction) {
+          await loadItems();
+        }
+      } catch {
+        setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
+        setReactionForArticle(id, previousVote || null);
+        setNewsData((prev) =>
+          prev.map((n) =>
+            String(n.id) !== id ? n : patchArticleVoteRow(n, newVote, previousVote)
           )
-          .filter((n) => {
-            if (reaction === 'like') return votedItems[id] === 'up' || newVote === 'up';
-            if (reaction === 'dislike') return votedItems[id] === 'down' || newVote === 'down';
-            return true;
-          })
-      );
-      if (newVote !== (reaction === 'like' ? 'up' : 'down')) {
-        setNewsData((prev) => prev.filter((n) => String(n.id) !== id));
+        );
       }
-      await loadItems();
-    } catch {
-      setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
-      setReactionForArticle(id, previousVote || null);
-    }
+    })();
   };
 
   const handleBookmark = async (itemId) => {

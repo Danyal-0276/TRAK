@@ -16,6 +16,7 @@ import {
 } from '../../utils/categoryMatch';
 import { ChevronDown, ChevronUp, Search } from 'lucide-react';
 import { useLanguage } from '../../context/LanguageContext';
+import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
 const POPULAR_CATEGORY_NAMES = [
     'Technology', 'Politics', 'Business', 'Sports', 'Health',
     'Science', 'Entertainment', 'World', 'Finance', 'Education',
@@ -49,7 +50,6 @@ const CategoriesScreen = () => {
     const [expandedCategory, setExpandedCategory] = useState(null);
     // whether the "More categories" section is open
     const [showMore, setShowMore] = useState(false);
-    const [expandedShowAll, setExpandedShowAll] = useState({});
 
     const loadNews = async () => {
         try {
@@ -112,21 +112,38 @@ const CategoriesScreen = () => {
         openArticleDetail(navigate, article);
     };
 
-    const handleVote = async (itemId, type) => {
+    const handleVote = (itemId, type) => {
         const id = String(itemId);
-        const previousVote = votedItems[id];
+        const previousVote = votedItems[id] ?? null;
         const newVote = previousVote === type ? null : type;
         setVotedItems((prev) => ({ ...prev, [id]: newVote }));
         setReactionForArticle(id, newVote);
-        try {
-            await setReaction(
-                id,
-                newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none'
-            );
-        } catch (error) {
-            setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
-            setReactionForArticle(id, previousVote || null);
-        }
+        setAllNews((prev) =>
+            prev.map((n) => (String(n.id) !== id ? n : patchArticleVoteRow(n, previousVote, newVote)))
+        );
+
+        (async () => {
+            try {
+                const data = await setReaction(id, reactionApiValue(newVote));
+                const likes = Number(data.like_count ?? 0);
+                const dislikes = Number(data.dislike_count ?? 0);
+                setAllNews((prev) =>
+                    prev.map((n) =>
+                        String(n.id) !== id
+                            ? n
+                            : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes, userReaction: newVote }
+                    )
+                );
+            } catch {
+                setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
+                setReactionForArticle(id, previousVote || null);
+                setAllNews((prev) =>
+                    prev.map((n) =>
+                        String(n.id) !== id ? n : patchArticleVoteRow(n, newVote, previousVote)
+                    )
+                );
+            }
+        })();
     };
 
     const handleBookmark = async (itemId) => {
@@ -260,10 +277,7 @@ const CategoriesScreen = () => {
                                 const sortedArticles = [...catArticles].sort(
                                     (a, b) => articleSortTime(b) - articleSortTime(a)
                                 );
-                                const showAllArticles = expandedShowAll[category.name];
-                                const visibleArticles = showAllArticles
-                                    ? sortedArticles
-                                    : sortedArticles.slice(0, ARTICLES_PREVIEW_COUNT);
+                                const visibleArticles = sortedArticles.slice(0, ARTICLES_PREVIEW_COUNT);
                                 const hiddenCount = sortedArticles.length - ARTICLES_PREVIEW_COUNT;
 
                                 return (
@@ -330,13 +344,10 @@ const CategoriesScreen = () => {
                                                                 />
                                                             ))}
                                                         </MasonryFeed>
-                                                        {hiddenCount > 0 && !showAllArticles ? (
+                                                        {hiddenCount > 0 ? (
                                                             <button
                                                                 type="button"
-                                                                onClick={() => setExpandedShowAll((prev) => ({
-                                                                    ...prev,
-                                                                    [category.name]: true,
-                                                                }))}
+                                                                onClick={() => navigate(`/categories/${encodeURIComponent(category.key)}`)}
                                                                 style={{
                                                                     marginTop: 16,
                                                                     padding: '10px 18px',

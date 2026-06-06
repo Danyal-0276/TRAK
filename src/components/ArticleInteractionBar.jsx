@@ -1,8 +1,6 @@
 import React from 'react';
 
-import { View, Text, StyleSheet } from 'react-native';
-
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 
 import { ChevronUp, ChevronDown, Bookmark, Share2 } from 'lucide-react-native';
 
@@ -98,13 +96,13 @@ export default function ArticleInteractionBar({
 
       <View style={styles.group} pointerEvents="box-none">
 
-        <TouchableOpacity
+        <Pressable
 
           style={[styles.actionBtn, { backgroundColor: voteUpBg }]}
 
           onPress={pressUp}
 
-          activeOpacity={0.7}
+          delayPressIn={0}
 
           hitSlop={{ top: 12, bottom: 12, left: 8, right: 4 }}
 
@@ -136,17 +134,17 @@ export default function ArticleInteractionBar({
 
           </Text>
 
-        </TouchableOpacity>
+        </Pressable>
 
 
 
-        <TouchableOpacity
+        <Pressable
 
           style={[styles.actionBtn, { backgroundColor: voteDownBg }]}
 
           onPress={pressDown}
 
-          activeOpacity={0.7}
+          delayPressIn={0}
 
           hitSlop={{ top: 12, bottom: 12, left: 4, right: 8 }}
 
@@ -178,17 +176,17 @@ export default function ArticleInteractionBar({
 
           </Text>
 
-        </TouchableOpacity>
+        </Pressable>
 
 
 
-        <TouchableOpacity
+        <Pressable
 
           style={[styles.iconBtn, { backgroundColor: bookmarkBg }]}
 
           onPress={pressBookmark}
 
-          activeOpacity={0.7}
+          delayPressIn={0}
 
           hitSlop={12}
 
@@ -206,19 +204,19 @@ export default function ArticleInteractionBar({
 
           />
 
-        </TouchableOpacity>
+        </Pressable>
 
 
 
         {typeof onShare === 'function' ? (
 
-          <TouchableOpacity
+          <Pressable
 
             style={styles.iconBtn}
 
             onPress={onShare}
 
-            activeOpacity={0.7}
+            delayPressIn={0}
 
             hitSlop={12}
 
@@ -226,7 +224,7 @@ export default function ArticleInteractionBar({
 
             <Share2 size={16} color={colors.textSecondary} strokeWidth={2} />
 
-          </TouchableOpacity>
+          </Pressable>
 
         ) : null}
 

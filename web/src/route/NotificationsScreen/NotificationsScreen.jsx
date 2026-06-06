@@ -31,6 +31,7 @@ const NotificationsScreen = () => {
         hydrated,
         unreadCount,
         markAllAsRead,
+        markAsRead,
         ensureNotificationsLoaded,
     } = useNotifications();
     const [filteredNotifications, setFilteredNotifications] = useState([]);
@@ -41,11 +42,8 @@ const NotificationsScreen = () => {
     useEffect(() => {
         if (openedRef.current) return;
         openedRef.current = true;
-        (async () => {
-            await ensureNotificationsLoaded({ runBackfill: true });
-            await markAllAsRead();
-        })();
-    }, [ensureNotificationsLoaded, markAllAsRead]);
+        ensureNotificationsLoaded({ runBackfill: true });
+    }, [ensureNotificationsLoaded]);
 
     useEffect(() => {
         filterNotifications();
@@ -68,6 +66,9 @@ const NotificationsScreen = () => {
     };
 
     const handleNotificationClick = (notification) => {
+        if (!notification.read && notification.id) {
+            markAsRead(notification.id);
+        }
         const articleId = notification.meta?.article_id;
         if (articleId && (notification.type === 'keyword_match' || notification.type === 'keyword')) {
             navigate(`/article/${encodeURIComponent(String(articleId))}`);
@@ -161,6 +162,7 @@ const NotificationsScreen = () => {
         );
     };
 
+    const visibleUnread = notifications.filter((n) => !n.read).length;
     const importantCount = notifications.filter(n => n.important).length;
     const showLoading = loading && !hydrated;
 
@@ -208,10 +210,10 @@ const NotificationsScreen = () => {
                             margin: '0',
                             lineHeight: '1.5',
                         }}>
-                            {unreadCount > 0 ? `${unreadCount} unread notification${unreadCount === 1 ? '' : 's'}` : 'All caught up!'}
+                            {visibleUnread > 0 ? `${visibleUnread} unread notification${visibleUnread === 1 ? '' : 's'}` : 'All caught up!'}
                         </p>
                     </div>
-                    {unreadCount > 0 && (
+                    {visibleUnread > 0 && (
                         <button
                             onClick={markAllAsRead}
                             style={{
@@ -253,7 +255,7 @@ const NotificationsScreen = () => {
                 }}>
                     {[
                         { id: 'All', label: 'All', count: notifications.length },
-                        { id: 'Unread', label: 'Unread', count: unreadCount },
+                        { id: 'Unread', label: 'Unread', count: visibleUnread },
                         {
                             id: 'Keywords',
                             label: 'Keywords',

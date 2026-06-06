@@ -18,6 +18,8 @@ import { prefetchArticleDetail } from '../utils/articleDetailCache';
 import { getUserArticleImageProxyUrl, resolveArticleImageUrl } from '../utils/articleMedia';
 import ArticleCardImage from './ArticleCardImage';
 import FeedbackModal from './FeedbackModal';
+import { useUIFeedback } from './ui/UIFeedback';
+import { downloadArticleJson } from '../utils/exportArticle';
 
 export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark, layout = 'grid' }) => {
     const isMasonry = layout === 'masonry';
@@ -26,10 +28,11 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const isDark = theme.mode === 'dark';
     const [showMenu, setShowMenu] = useState(false);
     const [feedbackOpen, setFeedbackOpen] = useState(false);
+    const { success } = useUIFeedback();
     const menuRef = useRef(null);
     const itemId = item?.id != null ? String(item.id) : '';
     const isBookmarked = bookmarkedItems?.has(itemId) || bookmarkedItems?.has(item.id);
-    const voteType = votedItems?.[itemId] ?? votedItems?.[item.id];
+    const voteType = votedItems?.[itemId] ?? votedItems?.[item.id] ?? item?.userReaction ?? null;
     const likeCount = Number(item.like_count ?? item.upvotes ?? 0);
     const dislikeCount = Number(item.dislike_count ?? 0);
     const cardSummary = getCardSummaryText(item);
@@ -308,6 +311,14 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                             },
                                         }]
                                         : []),
+                                    {
+                                        label: 'Export',
+                                        onClick: () => {
+                                            setShowMenu(false);
+                                            downloadArticleJson(item);
+                                            success('Export downloaded.');
+                                        },
+                                    },
                                     {
                                         label: 'Report or give feedback',
                                         danger: true,

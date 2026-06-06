@@ -7,12 +7,14 @@ import { ScrollView, StatusBar, StyleSheet, Animated, View, TouchableOpacity, Mo
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
 import ProfileHeader from "./components/ProfileHeader";
 import ProfileActions from "./components/ProfileActions";
+import AdminProfileView from "./components/AdminProfileView";
 import BookmarkList from "./components/BookmarkList";
 import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
 import { addBookmark, confirmProfileVerification, getProfile, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, requestProfileVerification, setReaction } from "../../utils/Service/api";
 import { buildArticleDetailParams } from "../../utils/articleNavigation";
+import { queueAdminTab } from "../../utils/adminNavigationIntent";
 import { mapApiItem } from "../../utils/loadFeed";
 import { filterRealFeedItems } from "../../utils/feedRealOnly";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
@@ -35,7 +37,7 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
   const { colors } = theme;
   const insets = useSafeAreaInsets();
   const topInset = resolveTopInset(insets, 0);
-  const { logout, isAdmin, user } = useAuth();
+  const { logout, isAdmin, isSuperAdmin, user } = useAuth();
   const { confirm, error: showError } = useFeedback();
   const [bookmarks, setBookmarks] = useState([]);
   const [profile, setProfile] = useState(() => stripLastLogin(user || null));
@@ -181,6 +183,11 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
   }, []);
 
   useEffect(() => {
+    if (isAdmin) {
+      setProfile(stripLastLogin(user || null));
+      setUiReady(true);
+      return;
+    }
     hydrateFromCache();
     loadProfileData();
     Animated.parallel([
@@ -196,16 +203,17 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
         useNativeDriver: true,
       }),
     ]).start();
-  }, [fadeAnim, slideAnim, hydrateFromCache, loadProfileData]);
+  }, [fadeAnim, slideAnim, hydrateFromCache, loadProfileData, isAdmin, user]);
 
   useFocusEffect(
     useCallback(() => {
+      if (isAdmin) return;
       try {
         loadProfileData();
       } catch (_) {
         // ignore
       }
-    }, [loadProfileData])
+    }, [loadProfileData, isAdmin])
   );
 
   useEffect(() => {
@@ -315,6 +323,18 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
     }
   };
 
+  const openAdminSettings = () => {
+    queueAdminTab('settings');
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+      return;
+    }
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'NewsFeed' }],
+    });
+  };
+
   if (!uiReady && !profile) {
     return (
       <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topInset }]}>
@@ -352,6 +372,26 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
 
   const emailVerified = isAdmin ? true : Boolean(profile?.email_verified);
   const phoneVerified = isAdmin ? true : Boolean(profile?.phone_verified);
+
+  if (isAdmin) {
+    return (
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topInset }]}>
+        <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+        <ScrollView
+          contentContainerStyle={[styles.scrollContent, styles.adminScrollContent, { paddingBottom: Math.max(insets.bottom, 16) }]}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={[styles.adminTitle, { color: colors.textPrimary }]}>Profile</Text>
+          <AdminProfileView
+            user={profile || user}
+            isSuperAdmin={isSuperAdmin}
+            onOpenSettings={openAdminSettings}
+            onLogout={handleLogout}
+          />
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <>
@@ -447,6 +487,8 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 120 },
+  adminScrollContent: { paddingTop: 12, paddingBottom: 24 },
+  adminTitle: { fontSize: 24, fontWeight: '800', letterSpacing: -0.3, marginBottom: 16 },
   modalBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",

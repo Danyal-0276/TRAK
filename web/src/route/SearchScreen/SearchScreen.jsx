@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { MoreHorizontal } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "../../theme/ThemeContext";
 import { useResponsive } from "../../hooks/useResponsive";
@@ -12,11 +11,11 @@ import { getSkeletonFeedProps } from "../../components/skeletons/SkeletonLayouts
 import { loadExplorePage, mergeUniqueById } from "../../utils/loadFeed";
 import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
 import { openArticleDetail } from "../../utils/openArticleDetail";
-import { useUIFeedback } from "../../components/ui/UIFeedback";
-import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction, submitArticleReport } from "../../utils/Service/api";
+import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from "../../utils/Service/api";
 import { getBookmarkIds, setBookmarkIds } from "../../utils/bookmarksStorage";
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from "../../utils/reactionsStorage";
 import { useFeedCache } from "../../context/FeedCacheContext";
+import { patchArticleVoteRow, reactionApiValue } from "../../utils/reactionVote";
 
 function deriveTrendingFromArticles(articles) {
   const counts = {};
@@ -57,9 +56,6 @@ const SearchScreen = () => {
     const [activeTab, setActiveTab] = useState("All");
     const [votedItems, setVotedItems] = useState({});
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
-    const { success, error: showError } = useUIFeedback();
-    const discoverMenuRef = useRef(null);
-    const [discoverMenuOpen, setDiscoverMenuOpen] = useState(false);
     const { getExploreFeed, saveExploreFeed, isFresh } = useFeedCache();
 
     const [categories, setCategories] = useState(["All"]);
@@ -197,53 +193,6 @@ const SearchScreen = () => {
         loading: loading || loadingMore,
     });
 
-    useEffect(() => {
-        if (!discoverMenuOpen) return;
-        const close = (e) => {
-            if (discoverMenuRef.current && !discoverMenuRef.current.contains(e.target)) {
-                setDiscoverMenuOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', close);
-        return () => document.removeEventListener('mousedown', close);
-    }, [discoverMenuOpen]);
-
-    const exportDiscoverResults = useCallback(() => {
-        const rows = filteredNews.map((a) => ({
-            id: a.id,
-            title: a.title,
-            source: a.source,
-            category: a.category,
-            url: a.canonical_url || a.url,
-        }));
-        const blob = new Blob([JSON.stringify(rows, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `trak-discover-export-${Date.now()}.json`;
-        a.click();
-        URL.revokeObjectURL(url);
-        setDiscoverMenuOpen(false);
-        success('Export downloaded.');
-    }, [filteredNews, success]);
-
-    const reportDiscoverContent = useCallback(async () => {
-        const reason = typeof window !== 'undefined' ? window.prompt('Describe the issue (spam, misleading, etc.):', 'flag') : 'flag';
-        if (reason === null) return;
-        const first = filteredNews[0];
-        try {
-            await submitArticleReport({
-                article_id: first?.id ? String(first.id) : '',
-                url: first?.canonical_url || first?.url || '',
-                reason: reason || 'flag',
-            });
-            success('Thanks — your report was sent.');
-        } catch (e) {
-            showError(e?.message || 'Could not submit report.');
-        }
-        setDiscoverMenuOpen(false);
-    }, [filteredNews, success, showError]);
-
     const handleTopicPress = (topicName) => {
         setTopicFilter(topicName);
         setActiveTab("All");
@@ -296,35 +245,36 @@ const SearchScreen = () => {
         openArticleDetail(navigate, article);
     };
 
-    const handleVote = async (itemId, type) => {
+    const handleVote = (itemId, type) => {
         const id = String(itemId);
-        const previousVote = votedItems[id];
+        const previousVote = votedItems[id] ?? null;
         const newVote = previousVote === type ? null : type;
 
-        setVotedItems(prev => ({
-            ...prev,
-            [id]: newVote
-        }));
+        setVotedItems((prev) => ({ ...prev, [id]: newVote }));
         setReactionForArticle(id, newVote);
+        setAllNews((prev) =>
+            prev.map((n) => (String(n.id) !== id ? n : patchArticleVoteRow(n, previousVote, newVote)))
+        );
 
-        try {
-            const data = await setReaction(
-                id,
-                newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none'
-            );
-            const likes = Number(data.like_count ?? 0);
-            const dislikes = Number(data.dislike_count ?? 0);
-            const patch = { like_count: likes, dislike_count: dislikes, upvotes: likes, votes: likes };
-            setAllNews((prev) =>
-                prev.map((n) => (String(n.id) !== id ? n : { ...n, ...patch }))
-            );
-        } catch (error) {
-            setVotedItems(prev => ({
-                ...prev,
-                [id]: previousVote
-            }));
-            setReactionForArticle(id, previousVote || null);
-        }
+        (async () => {
+            try {
+                const data = await setReaction(id, reactionApiValue(newVote));
+                const likes = Number(data.like_count ?? 0);
+                const dislikes = Number(data.dislike_count ?? 0);
+                const patch = { like_count: likes, dislike_count: dislikes, upvotes: likes, votes: likes, userReaction: newVote };
+                setAllNews((prev) =>
+                    prev.map((n) => (String(n.id) !== id ? n : { ...n, ...patch }))
+                );
+            } catch {
+                setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
+                setReactionForArticle(id, previousVote || null);
+                setAllNews((prev) =>
+                    prev.map((n) =>
+                        String(n.id) !== id ? n : patchArticleVoteRow(n, newVote, previousVote)
+                    )
+                );
+            }
+        })();
     };
 
     const handleBookmark = async (itemId) => {
@@ -354,7 +304,6 @@ const SearchScreen = () => {
     };
 
     const backgroundColor = colors.background;
-    const cardBackground = colors.surface;
     const textPrimary = colors.textPrimary;
     const textSecondary = colors.textSecondary;
     const borderColor = colors.border;
@@ -404,82 +353,6 @@ const SearchScreen = () => {
                         }}>
                             {t('pages.exploreSubtitle')}
                         </p>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', justifyContent: 'flex-end', marginBottom: '18px' }}>
-                        <div ref={discoverMenuRef} style={{ position: 'relative', flexShrink: 0 }}>
-                            <button
-                                type="button"
-                                aria-label="More actions"
-                                onClick={() => setDiscoverMenuOpen((o) => !o)}
-                                style={{
-                                    width: 44,
-                                    height: 44,
-                                    borderRadius: 10,
-                                    border: `1px solid ${borderColor}`,
-                                    background: colors.surface,
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    color: textPrimary,
-                                }}
-                            >
-                                <MoreHorizontal size={20} />
-                            </button>
-                            {discoverMenuOpen ? (
-                                <div style={{
-                                    position: 'absolute',
-                                    right: 0,
-                                    top: 48,
-                                    minWidth: 180,
-                                    background: cardBackground,
-                                    border: `1px solid ${borderColor}`,
-                                    borderRadius: 10,
-                                    boxShadow: isDark ? '0 8px 24px rgba(0,0,0,0.4)' : '0 8px 24px rgba(15,23,42,0.12)',
-                                    zIndex: 50,
-                                    overflow: 'hidden',
-                                }}>
-                                    <button
-                                        type="button"
-                                        onClick={exportDiscoverResults}
-                                        style={{
-                                            display: 'block',
-                                            width: '100%',
-                                            textAlign: 'left',
-                                            padding: '12px 14px',
-                                            border: 'none',
-                                            background: 'transparent',
-                                            cursor: 'pointer',
-                                            fontSize: 14,
-                                            fontWeight: 600,
-                                            color: textPrimary,
-                                        }}
-                                    >
-                                        Export results
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={reportDiscoverContent}
-                                        style={{
-                                            display: 'block',
-                                            width: '100%',
-                                            textAlign: 'left',
-                                            padding: '12px 14px',
-                                            border: 'none',
-                                            borderTop: `1px solid ${borderColor}`,
-                                            background: 'transparent',
-                                            cursor: 'pointer',
-                                            fontSize: 14,
-                                            fontWeight: 600,
-                                            color: textPrimary,
-                                        }}
-                                    >
-                                        Report / Flag
-                                    </button>
-                                </div>
-                            ) : null}
-                        </div>
                     </div>
 
                     {/* Tab Bar */}

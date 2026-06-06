@@ -41,6 +41,7 @@ export default function AdminCategorySelect({ categories, value, onChange, color
       formatOptionLabel={formatOptionLabel}
       noOptionsMessage="No categories found"
       minWidth={200}
+      selectWidth="100%"
     />
   );
 }

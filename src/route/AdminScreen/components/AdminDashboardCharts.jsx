@@ -5,6 +5,7 @@ import Text from '../../../components/ui/Text';
 import {
   activityAreaData,
   barListRows,
+  buildActivityChartAxisLabels,
   credibilityPieData,
   feedbackStatusPieData,
   feedbackCategoryBarData,
@@ -12,9 +13,12 @@ import {
   sourceBarData,
 } from '../dashboardChartUtils';
 import AdminHorizontalBarList from './AdminHorizontalBarList';
+import { chartSeriesColor, factCheckVerdictColor } from '../adminTheme';
 
-const CHART_HEIGHT = 220;
+const CHART_HEIGHT = 232;
+const ACTIVITY_CHART_HEIGHT = 248;
 const H_PAD = 20;
+const ACTIVITY_LABEL_MIN_WIDTH = 48;
 
 function ChartCard({ title, subtitle, palette, children, emptyMessage, isEmpty }) {
   return (
@@ -72,7 +76,7 @@ function useChartConfig(palette) {
           : `rgba(37, 99, 235, ${opacity})`,
       labelColor: () => palette.textTertiary,
       propsForBackgroundLines: { stroke: palette.borderLight, strokeWidth: 1 },
-      propsForLabels: { fontSize: 10 },
+      propsForLabels: { fontSize: 9 },
     }),
     [palette]
   );
@@ -95,22 +99,23 @@ export default function AdminDashboardCharts({ snapshot, palette }) {
   }));
   const factRows = barListRows(Object.entries(snapshot?.fact_check_by_verdict || {}), palette, {
     nameFormatter: (n) => String(n).replace(/_/g, ' '),
+    colorPicker: (name, i) => factCheckVerdictColor(palette, name, i),
   })
     .filter((r) => r.value > 0)
     .sort((a, b) => b.value - a.value);
 
-  const sourcesRaw = sourceBarData(snapshot, 'raw_by_source_key').map((s) => ({
+  const sourcesRaw = sourceBarData(snapshot, 'raw_by_source_key', 8, palette).map((s, i) => ({
     key: s.name,
     name: s.name,
     value: s.count,
-    fill: palette.chart.rawBar,
+    fill: s.fill || chartSeriesColor(palette, i),
   }));
 
-  const sourcesProc = sourceBarData(snapshot, 'processed_by_source_key').map((s) => ({
+  const sourcesProc = sourceBarData(snapshot, 'processed_by_source_key', 8, palette).map((s, i) => ({
     key: s.name,
     name: s.name,
     value: s.count,
-    fill: palette.chart.procBar,
+    fill: s.fill || chartSeriesColor(palette, i),
   }));
   const ps = snapshot?.pipeline_summary || {};
   const inFlight = Number(ps.active_processing ?? ps.processing) || 0;
@@ -118,23 +123,32 @@ export default function AdminDashboardCharts({ snapshot, palette }) {
 
   const activityChart = useMemo(() => {
     if (!activity.length) return null;
+    const axisLabels = buildActivityChartAxisLabels(activity, {
+      chartWidth,
+      minPointWidth: ACTIVITY_LABEL_MIN_WIDTH,
+    });
+    const totalScraped = activity.reduce((sum, d) => sum + (d.scraped || 0), 0);
+    const totalProcessed = activity.reduce((sum, d) => sum + (d.processed || 0), 0);
     return {
-      labels: activity.map((d) => d.name),
+      labels: axisLabels,
       datasets: [
         {
           data: activity.map((d) => Math.max(0, d.scraped || 0)),
           color: () => palette.chart.scraped,
           strokeWidth: 2,
+          withDots: false,
         },
         {
           data: activity.map((d) => Math.max(0, d.processed || 0)),
           color: () => palette.chart.processed,
           strokeWidth: 2,
+          withDots: false,
         },
       ],
-      legend: ['Scraped', 'Processed'],
+      totalScraped,
+      totalProcessed,
     };
-  }, [activity, palette]);
+  }, [activity, palette, chartWidth]);
 
   const toPieData = (rows) =>
     rows.map((r) => ({
@@ -185,25 +199,49 @@ export default function AdminDashboardCharts({ snapshot, palette }) {
 
       <ChartCard
         title="Scrape & process activity"
-        subtitle="Last 14 days · from MongoDB ingest dates"
+        subtitle="Last 14 days · scraped vs pipeline completed (by scrape date)"
         palette={palette}
         isEmpty={!activityChart}
         emptyMessage="No dated activity in this period"
       >
         {activityChart ? (
-          <LineChart
-            data={activityChart}
-            width={chartWidth}
-            height={CHART_HEIGHT}
-            chartConfig={baseConfig}
-            bezier
-            style={styles.chart}
-            withDots={false}
-            withInnerLines
-            withOuterLines={false}
-            withVerticalLines={false}
-            fromZero
-          />
+          <View>
+            <View style={styles.activityLegend}>
+              <LegendPill
+                label="scraped"
+                value={activityChart.totalScraped}
+                color={palette.chart.scraped}
+                textColor={palette.textSecondary}
+              />
+              <LegendPill
+                label="processed"
+                value={activityChart.totalProcessed}
+                color={palette.chart.processed}
+                textColor={palette.textSecondary}
+              />
+            </View>
+            <LineChart
+              data={{
+                labels: activityChart.labels,
+                datasets: activityChart.datasets,
+              }}
+              width={chartWidth}
+              height={ACTIVITY_CHART_HEIGHT}
+              chartConfig={baseConfig}
+              bezier
+              style={styles.chart}
+              withDots={false}
+              withShadow={false}
+              withInnerLines
+              withOuterLines={false}
+              withVerticalLines={false}
+              fromZero
+              segments={4}
+              horizontalLabelRotation={0}
+              xLabelsOffset={0}
+              formatXLabel={(value) => (value?.trim() ? value : '')}
+            />
+          </View>
         ) : null}
       </ChartCard>
 
@@ -342,5 +380,13 @@ const styles = StyleSheet.create({
   chartBody: { paddingVertical: 4, paddingHorizontal: 0, minHeight: 120 },
   chartBodyEmpty: { minHeight: CHART_HEIGHT },
   chart: { borderRadius: 12, marginVertical: 4 },
+  activityLegend: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
   empty: { textAlign: 'center', paddingVertical: 48 },
 });

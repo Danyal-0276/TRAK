@@ -1,5 +1,33 @@
 import { Linking, Platform, Share } from 'react-native';
 
+function articleExportPayload(item) {
+  return {
+    id: item?.id,
+    title: item?.title,
+    source: item?.source,
+    category: item?.category,
+    url: item?.canonical_url || item?.url,
+    excerpt: item?.excerpt || item?.description,
+    summary: item?.summary,
+    topic_keywords: item?.topic_keywords,
+    credibility: item?.credibility || item?.credibilityLabel,
+    published_at: item?.published_at || item?.time,
+  };
+}
+
+export async function exportArticle(item) {
+  const json = JSON.stringify(articleExportPayload(item), null, 2);
+  const title = String(item?.title || 'Article');
+  try {
+    await Share.share({
+      title: `Export: ${title}`,
+      message: json,
+    });
+  } catch (_) {
+    /* dismissed */
+  }
+}
+
 export async function shareArticle(item) {
   const title = String(item?.title || 'Article');
   const url = item?.canonical_url || item?.url || '';
@@ -37,6 +65,10 @@ export function openArticleMenu(item, feedback, options = {}) {
             },
           ]
         : []),
+      {
+        label: 'Export',
+        onPress: () => exportArticle(item),
+      },
       {
         label: 'Report or give feedback',
         destructive: true,

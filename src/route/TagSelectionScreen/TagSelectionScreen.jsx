@@ -280,8 +280,6 @@ const TagSelectionScreen = ({ navigation, route }) => {
         }
         setLoading(true);
         try {
-            // Simulate API call
-            await new Promise(resolve => setTimeout(resolve, 500));
             const keywordScreen =
                 fromSettings && route?.name === 'SettingsTagSelection'
                     ? 'SettingsKeywordSelection'

@@ -7,7 +7,7 @@ export const ARTICLE_LIST_PERF = {
   initialNumToRender: 5,
   maxToRenderPerBatch: 4,
   windowSize: 5,
-  updateCellsBatchingPeriod: 64,
+  updateCellsBatchingPeriod: 16,
   removeClippedSubviews: Platform.OS === 'android',
 };
 

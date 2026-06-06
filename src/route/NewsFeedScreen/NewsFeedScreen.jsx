@@ -483,7 +483,7 @@ const NewsFeedScreen = ({ navigation }) => {
                 setReactionForArticle(id, previousVote || null).catch(() => {});
                 feedback?.error?.(err?.message || 'Could not save reaction');
             }
-        }, 280);
+        }, 0);
     };
 
     const handleBookmark = async (itemId) => {

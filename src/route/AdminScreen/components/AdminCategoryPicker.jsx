@@ -20,7 +20,12 @@ export default function AdminCategoryPicker({ categories, value, onChange, color
         onPress={() => setOpen(true)}
         activeOpacity={0.85}
       >
-        <Text variant="body" color={selected ? textPrimary : colors.textTertiary} style={{ flex: 1 }}>
+        <Text
+          variant="body"
+          color={selected ? textPrimary : colors.textTertiary}
+          style={{ flex: 1 }}
+          numberOfLines={1}
+        >
           {selected ? selected.name : 'Choose a category…'}
         </Text>
         <ChevronDown size={18} color={colors.textSecondary} />

@@ -10,6 +10,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { defaultStackScreenOptions } from './stackScreenOptions';
 import { getInitialRouteForUser } from '../utils/authNavigation';
 import { bindPushNotificationNavigation, setPushNavigationRef } from '../notifications/pushNavigation';
+import { onAuthSessionEnded } from '../utils/authSessionEvents';
 import {
     EditProfileScreen,
     PrivacyScreen,
@@ -63,7 +64,7 @@ const RootStack = ({ initialRouteName }) => (
 );
 
 export default function AppNavigation() {
-    const { user, bootstrapped } = useAuth();
+    const { user, bootstrapped, logout } = useAuth();
     const { theme } = useTheme();
     const navRef = useRef(null);
 
@@ -72,6 +73,16 @@ export default function AppNavigation() {
         setPushNavigationRef(navRef.current);
         bindPushNotificationNavigation();
     }, [bootstrapped, user]);
+
+    useEffect(() => {
+        return onAuthSessionEnded(() => {
+            logout();
+            const nav = navRef.current;
+            if (nav?.reset) {
+                nav.reset({ index: 0, routes: [{ name: 'Login' }] });
+            }
+        });
+    }, [logout]);
     // Show a fast branded loader instead of a black frame.
     if (!bootstrapped) {
         return (

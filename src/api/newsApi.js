@@ -24,9 +24,10 @@ export async function fetchExplore(limit = 50, q = '') {
     return res.json();
 }
 
-export async function fetchExplorePage(limit = 50, q = '', cursor = '') {
+export async function fetchExplorePage(limit = 50, q = '', cursor = '', category = '') {
     const params = new URLSearchParams({ limit: String(limit) });
     if (q && String(q).trim()) params.set('q', String(q).trim());
+    if (category && String(category).trim()) params.set('category', String(category).trim());
     if (cursor && String(cursor).trim()) params.set('cursor', String(cursor).trim());
     const res = await apiFetch(`${USER_PREFIX}/explore/?${params}`, {}, API_BASE);
     if (!res.ok) {

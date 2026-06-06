@@ -37,6 +37,7 @@ import { getAccessToken } from '../../api/client';
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
+import { computeOptimisticReactionCounts, reactionApiValue } from '../../utils/reactionVote';
 
 const { width, height } = Dimensions.get('window');
 
@@ -47,7 +48,6 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     const initialArticle = normalizeArticleForDetail(route.params?.article || {});
     const [article, setArticle] = useState(initialArticle);
     const [reaction, setReactionState] = useState(null);
-    const [reactionPending, setReactionPending] = useState(false);
     const [isBookmarked, setIsBookmarked] = useState(false);
     const [likeCount, setLikeCount] = useState(Number(initialArticle.like_count ?? 0));
     const [dislikeCount, setDislikeCount] = useState(Number(initialArticle.dislike_count ?? 0));
@@ -173,43 +173,35 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         }, [navigation])
     );
 
-    const handleLike = async () => {
-        if (reactionPending) return;
+    const applyReaction = (next) => {
         const previous = reaction;
-        const next = previous === 'up' ? null : 'up';
+        const counts = computeOptimisticReactionCounts(likeCount, dislikeCount, previous, next);
         setReactionState(next);
+        setLikeCount(counts.like_count);
+        setDislikeCount(counts.dislike_count);
         setReactionForArticle(articleId, next).catch(() => {});
-        setReactionPending(true);
-        try {
-            const data = await setReaction(articleId, next === 'up' ? 'like' : next === 'down' ? 'dislike' : 'none');
-            setLikeCount(Number(data.like_count ?? likeCount));
-            setDislikeCount(Number(data.dislike_count ?? dislikeCount));
-        } catch {
-            setReactionForArticle(articleId, previous || null).catch(() => {});
-            setReactionState(previous);
-        } finally {
-            setReactionPending(false);
-        }
+        (async () => {
+            try {
+                const data = await setReaction(articleId, reactionApiValue(next));
+                setLikeCount(Number(data.like_count ?? counts.like_count));
+                setDislikeCount(Number(data.dislike_count ?? counts.dislike_count));
+            } catch {
+                setReactionForArticle(articleId, previous || null).catch(() => {});
+                setReactionState(previous);
+                const rollback = computeOptimisticReactionCounts(
+                    counts.like_count,
+                    counts.dislike_count,
+                    next,
+                    previous
+                );
+                setLikeCount(rollback.like_count);
+                setDislikeCount(rollback.dislike_count);
+            }
+        })();
     };
 
-    const handleDislike = async () => {
-        if (reactionPending) return;
-        const previous = reaction;
-        const next = previous === 'down' ? null : 'down';
-        setReactionState(next);
-        setReactionForArticle(articleId, next).catch(() => {});
-        setReactionPending(true);
-        try {
-            const data = await setReaction(articleId, next === 'up' ? 'like' : next === 'down' ? 'dislike' : 'none');
-            setLikeCount(Number(data.like_count ?? likeCount));
-            setDislikeCount(Number(data.dislike_count ?? dislikeCount));
-        } catch {
-            setReactionForArticle(articleId, previous || null).catch(() => {});
-            setReactionState(previous);
-        } finally {
-            setReactionPending(false);
-        }
-    };
+    const handleLike = () => applyReaction(reaction === 'up' ? null : 'up');
+    const handleDislike = () => applyReaction(reaction === 'down' ? null : 'down');
 
     const handleBookmark = async () => {
         const previous = isBookmarked;

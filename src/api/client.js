@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchWithTimeout } from './fetchWithTimeout';
+import { emitAuthSessionEnded } from '../utils/authSessionEvents';
 
 const ACCESS_KEY = 'trak_access_token';
 const REFRESH_KEY = 'trak_refresh_token';
@@ -26,9 +27,9 @@ async function refreshAccess(baseUrl) {
         body: JSON.stringify({ refresh }),
     });
     if (!res.ok) {
-        // Refresh token rejected (e.g. user DB rebuilt server-side).
-        // Wipe the session so the UI falls back to the login screen.
+        // Refresh token rejected (e.g. account deleted or DB rebuilt).
         await clearTokens();
+        emitAuthSessionEnded();
         return null;
     }
     const data = await res.json();
@@ -61,6 +62,10 @@ export async function apiFetch(url, options = {}, baseUrlForRefresh = '', timeou
         if (newAccess) {
             headers.Authorization = `Bearer ${newAccess}`;
             res = await fetchWithTimeout(url, { ...options, headers }, timeoutMs);
+        }
+        if (res.status === 401) {
+            await clearTokens();
+            emitAuthSessionEnded();
         }
     }
 
