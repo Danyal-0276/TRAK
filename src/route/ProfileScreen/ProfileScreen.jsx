@@ -367,7 +367,6 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
     });
     if (!accepted) return;
     await logout();
-    navigation.reset({ index: 0, routes: [{ name: 'OpeningScreen' }] });
   };
 
   const emailVerified = isAdmin ? true : Boolean(profile?.email_verified);

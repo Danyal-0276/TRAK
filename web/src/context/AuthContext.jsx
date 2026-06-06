@@ -21,7 +21,7 @@ import {
     resendEmailVerification,
     verifyEmailCode,
 } from '../api/authEmailApi';
-import { onAuthSessionEnded } from '../utils/authSessionEvents';
+import { emitAuthSessionEnded, onAuthSessionEnded } from '../utils/authSessionEvents';
 
 const AuthContext = createContext(null);
 
@@ -94,6 +94,7 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         clearAuthTokens();
         setUser(null);
+        emitAuthSessionEnded('manual');
     };
 
     const verifyEmail = async (code) => {

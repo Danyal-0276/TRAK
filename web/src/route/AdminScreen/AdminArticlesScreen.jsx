@@ -209,8 +209,9 @@ const AdminArticlesScreen = () => {
     const failedCount = articleCounts?.filtered_total ?? filteredArticles.length;
 
     const handleRequeueOne = async (articleId) => {
-        const target = articles.find((a) => a.id === articleId);
-        if (!target || target.pipeline_status !== 'failed') return;
+        const target = articles.find((a) => String(a.id) === String(articleId));
+        const ps = String(target?.pipeline_status || '').toLowerCase();
+        if (!target || !['failed', 'processing'].includes(ps)) return;
         setFailedBulkBusy(true);
         try {
             await requeueAdminArticle(target.scope || 'raw', articleId);
@@ -596,7 +597,10 @@ const AdminArticlesScreen = () => {
                                             <Eye size={12} />
                                             In app
                                         </button>
-                                        {pipelineFilter === 'failed' && article.pipeline_status === 'failed' ? (
+                                        {pipelineFilter === 'failed' &&
+                                        ['failed', 'processing'].includes(
+                                            String(article.pipeline_status || '').toLowerCase()
+                                        ) ? (
                                             <button
                                                 type="button"
                                                 disabled={failedBulkBusy}

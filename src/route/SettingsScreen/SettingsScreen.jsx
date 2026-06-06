@@ -268,8 +268,6 @@ export default function SettingsScreen({ navigation }) {
               });
               if (!accepted) return;
               await logout();
-              const root = navigation.getParent()?.getParent();
-              root?.reset({ index: 0, routes: [{ name: 'OpeningScreen' }] });
             }}
           />
         </SettingsSection>
