@@ -2,38 +2,45 @@ import { sanitizeArticleBody, sanitizeArticleSummary } from './articleTextSaniti
 
 const CARD_SUMMARY_FALLBACK_MAX = 500;
 
-
+function trimCardSummary(text, maxLen) {
+  const s = String(text || '').trim();
+  if (!s) return '';
+  if (s.length <= maxLen) return s;
+  const cut = s.slice(0, maxLen);
+  const lastSpace = cut.lastIndexOf(' ');
+  const trimmed = lastSpace > maxLen * 0.6 ? cut.slice(0, lastSpace) : cut;
+  return `${trimmed.trim()}…`;
+}
 
 /** Text shown on feed cards: pipeline summary, or a short body snippet. */
-
 export function getCardSummaryText(item, maxLen = CARD_SUMMARY_FALLBACK_MAX) {
-
   if (!item || typeof item !== 'object') return '';
 
   const title = String(item.title || '').trim();
+  const rawSummary = String(item.summary || item.excerpt || item.description || '').trim();
   const body = sanitizeArticleBody(
     item.full_content || item.fullContent || item.content || '',
     { title }
   );
-  const summary = sanitizeArticleSummary(
-    String(item.summary || item.excerpt || item.description || '').trim(),
-    { title, body }
-  );
 
-  if (summary) return summary;
+  if (rawSummary) {
+    const summary = body
+      ? sanitizeArticleSummary(rawSummary, { title, body })
+      : rawSummary.replace(/\s+Home\s*$/i, '').trim();
+    if (summary) return trimCardSummary(summary, maxLen);
+  }
 
   if (!body) return '';
+
+  const bodySummary = sanitizeArticleSummary(body, { title, body });
+  if (bodySummary) return trimCardSummary(bodySummary, maxLen);
 
   if (body.length <= maxLen) return body;
 
   const cut = body.slice(0, maxLen);
-
   const lastSpace = cut.lastIndexOf(' ');
-
   const trimmed = lastSpace > maxLen * 0.6 ? cut.slice(0, lastSpace) : cut;
-
   return `${trimmed.trim()}…`;
-
 }
 
 

@@ -23,7 +23,7 @@ import {
     resolveArticleVote,
     resolveArticleBookmarked,
 } from '../utils/articleCardInteraction';
-import { sanitizeArticleSummary, sanitizeArticleBody } from '../utils/articleTextSanitize';
+import { getCardSummaryText } from '../utils/articleNavigation';
 
 function NewsCardInner({
     item,
@@ -45,10 +45,7 @@ function NewsCardInner({
     const canInteract = !articleId.startsWith('news-');
     const safeSource = resolveArticleSource(item);
     const safeTitle = String(item?.title || 'Untitled');
-    const safeExcerpt = sanitizeArticleSummary(item?.excerpt || item?.summary || '', {
-        title: safeTitle,
-        body: sanitizeArticleBody(item?.fullContent || item?.content || '', { title: safeTitle }),
-    });
+    const safeExcerpt = getCardSummaryText(item);
     const safeCategory = String(item?.category || 'General');
     const likeCount = Number(item?.like_count ?? item?.upvotes ?? 0);
     const dislikeCount = Number(item?.dislike_count ?? 0);
