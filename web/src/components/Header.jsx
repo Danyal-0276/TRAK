@@ -47,6 +47,13 @@ const Header = () => {
     const { unreadCount } = useNotificationUnread();
 
     useEffect(() => {
+        if (location.pathname === '/search') {
+            const q = new URLSearchParams(location.search).get('q') || '';
+            setSearchQuery(q);
+        }
+    }, [location.pathname, location.search]);
+
+    useEffect(() => {
         if (!user) {
             setProfileInitial('U');
             setAvatarPreview('');
