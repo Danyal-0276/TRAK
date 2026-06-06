@@ -14,7 +14,6 @@ const ForgotPasswordCodeScreen = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const email = (location.state?.email || '').trim().toLowerCase();
-  const emailSent = location.state?.emailSent !== false;
   const [code, setCode] = useState('');
   const [timer, setTimer] = useState(60);
   const [resendLoading, setResendLoading] = useState(false);
@@ -133,13 +132,9 @@ const ForgotPasswordCodeScreen = () => {
               lineHeight: '1.5',
             }}
           >
-            {emailSent
-              ? 'We sent a 6-digit code to '
-              : 'If your account exists, a code was sent to '}
+            We sent a 6-digit code to{' '}
             <span style={{ fontWeight: '600', color: colors.textPrimary }}>{email || 'your email'}</span>.
-            {emailSent
-              ? ' Your email may take up to a minute to arrive — check inbox and spam.'
-              : ''}
+            Your email may take up to a minute to arrive — check inbox and spam.
           </p>
         </div>
 
@@ -217,7 +212,11 @@ const ForgotPasswordCodeScreen = () => {
               if (timer > 0 || !email || resendLoading) return;
               setResendLoading(true);
               try {
-                await requestPasswordReset(email);
+                const res = await requestPasswordReset(email);
+                if (res?.email_sent === false) {
+                  setError(res?.detail || 'Could not resend code. Try again later.');
+                  return;
+                }
                 setTimer(60);
               } catch {
                 setError('Could not resend code. Try again.');

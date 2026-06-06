@@ -38,11 +38,15 @@ const ForgotPasswordScreen = () => {
                 return;
             }
             const res = await requestPasswordReset(email.trim());
+            if (res?.email_sent === false) {
+                setErrors((prev) => ({
+                    ...prev,
+                    email: res?.detail || 'Could not send reset email. Please try again in a few minutes.',
+                }));
+                return;
+            }
             navigate('/forgot-password-code', {
-                state: {
-                    email: email.trim().toLowerCase(),
-                    emailSent: res?.email_sent !== false,
-                },
+                state: { email: email.trim().toLowerCase() },
             });
         } catch (err) {
             setErrors((prev) => ({

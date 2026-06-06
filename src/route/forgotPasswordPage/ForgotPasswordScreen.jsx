@@ -301,9 +301,12 @@ const ForgotPasswordScreen = ({ navigation }) => {
                                             return;
                                         }
                                         const res = await requestPasswordReset(email.trim());
+                                        if (res?.email_sent === false) {
+                                            showError(res?.detail || 'Could not send reset email. Try again in a few minutes.');
+                                            return;
+                                        }
                                         navigation.navigate('ForgotPasswordCode', {
                                             email: email.trim().toLowerCase(),
-                                            emailSent: res?.email_sent !== false,
                                         });
                                     } catch (error) {
                                         showError(error?.message || 'Could not send reset email.');
