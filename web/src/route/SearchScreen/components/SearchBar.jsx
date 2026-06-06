@@ -1,7 +1,11 @@
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { Search, X } from "lucide-react";
+import { useTheme } from "../../../theme/ThemeContext";
 
 const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
+    const { theme } = useTheme();
+    const { colors } = theme;
+    const isDark = theme.mode === 'dark';
     const [focused, setFocused] = useState(false);
     const [query, setQuery] = useState(initialQuery);
     const inputRef = useRef(null);
@@ -55,14 +59,18 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
             <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                backgroundColor: '#f9fafb',
+                backgroundColor: colors.surface,
                 borderRadius: '10px',
                 padding: '12px 16px',
-                border: focused ? '1px solid #0f172a' : '1px solid #e5e7eb',
+                border: focused
+                    ? `1px solid ${colors.primary || '#0f172a'}`
+                    : `1px solid ${colors.border}`,
                 transition: 'all 0.2s ease',
-                boxShadow: focused ? '0 0 0 3px rgba(15, 23, 42, 0.1)' : 'none',
+                boxShadow: focused
+                    ? (isDark ? '0 0 0 3px rgba(129, 140, 248, 0.2)' : '0 0 0 3px rgba(15, 23, 42, 0.1)')
+                    : 'none',
             }}>
-                <Search size={18} color="#9ca3af" style={{ marginRight: 12 }} />
+                <Search size={18} color={colors.textTertiary || colors.textSecondary} style={{ marginRight: 12 }} />
                 <input
                     ref={inputRef}
                     type="text"
@@ -81,7 +89,7 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
                         flex: 1,
                         fontSize: '15px',
                         fontWeight: '500',
-                        color: '#0f172a',
+                        color: colors.textPrimary,
                         border: 'none',
                         outline: 'none',
                         backgroundColor: 'transparent',
@@ -89,6 +97,7 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
                 />
                 {query && (
                     <button
+                        type="button"
                         onClick={handleClear}
                         style={{
                             marginLeft: 8,
@@ -100,13 +109,13 @@ const SearchBar = forwardRef(({ onSearch, initialQuery = "" }, ref) => {
                             transition: 'all 0.2s ease',
                         }}
                         onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = '#e5e7eb';
+                            e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
                         }}
                         onMouseLeave={(e) => {
                             e.currentTarget.style.backgroundColor = 'transparent';
                         }}
                     >
-                        <X size={16} color="#9ca3af" />
+                        <X size={16} color={colors.textTertiary || colors.textSecondary} />
                     </button>
                 )}
             </div>

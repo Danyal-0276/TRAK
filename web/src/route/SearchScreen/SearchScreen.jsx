@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTheme } from "../../theme/ThemeContext";
 import { useResponsive } from "../../hooks/useResponsive";
 import { useLanguage } from "../../context/LanguageContext";
 import Tabs from "./components/tabs";
+import SearchBar from "./components/SearchBar";
 import TrendingTopics from "./components/TrendingTopics";
 import { NewsCard } from "../../components/NewsCard";
 import { MasonryFeed, MasonryFeedSkeleton } from "../../components/MasonryFeed";
@@ -16,6 +17,35 @@ import { getBookmarkIds, setBookmarkIds } from "../../utils/bookmarksStorage";
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from "../../utils/reactionsStorage";
 import { useFeedCache } from "../../context/FeedCacheContext";
 import { patchArticleVoteRow, reactionApiValue } from "../../utils/reactionVote";
+
+function filterExploreResults(allNews, searchQuery, activeTab) {
+    let results = [...allNews];
+
+    if (activeTab && activeTab !== "All") {
+        results = results.filter((item) => item?.category === activeTab);
+    }
+
+    const q = String(searchQuery || "").trim();
+    if (!q) return results;
+
+    const searchTerms = q.toLowerCase().split(/\s+/).filter(Boolean);
+    return results.filter((item) => {
+        if (!item) return false;
+        const matchesTerm = (text) => {
+            if (!text) return false;
+            const textLower = String(text).toLowerCase();
+            return searchTerms.some((term) => textLower.includes(term));
+        };
+        if (matchesTerm(item.title)) return true;
+        if (matchesTerm(item.excerpt)) return true;
+        if (matchesTerm(item.description)) return true;
+        if (matchesTerm(item.source)) return true;
+        if (matchesTerm(item.category)) return true;
+        if (Array.isArray(item.categories) && item.categories.some(matchesTerm)) return true;
+        if (Array.isArray(item.topic_keywords) && item.topic_keywords.some(matchesTerm)) return true;
+        return false;
+    });
+}
 
 function deriveTrendingFromArticles(articles) {
   const counts = {};
@@ -41,6 +71,7 @@ const SearchScreen = () => {
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const { isMobile } = useResponsive();
     const { t } = useLanguage();
     const [allNews, setAllNews] = useState([]);
@@ -52,7 +83,8 @@ const SearchScreen = () => {
     const [hasMore, setHasMore] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
     const loadSeqRef = useRef(0);
-    const [topicFilter, setTopicFilter] = useState("");
+    const forceReloadRef = useRef(false);
+    const [searchQuery, setSearchQuery] = useState(() => searchParams.get("q") || "");
     const [activeTab, setActiveTab] = useState("All");
     const [votedItems, setVotedItems] = useState({});
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
@@ -60,17 +92,24 @@ const SearchScreen = () => {
 
     const [categories, setCategories] = useState(["All"]);
 
+    const queryKey = searchQuery.trim().toLowerCase();
+
     const trendingTopics = useMemo(() => {
-        if (topicFilter.trim()) return [];
+        if (searchQuery.trim()) return [];
         return deriveTrendingFromArticles(allNews);
-    }, [allNews, topicFilter]);
+    }, [allNews, searchQuery]);
 
     useEffect(() => {
-        const queryKey = '';
+        const urlQ = searchParams.get("q") || "";
+        setSearchQuery((prev) => (prev === urlQ ? prev : urlQ));
+    }, [searchParams]);
+
+    const loadFirstPage = useCallback(async (q, { force = false } = {}) => {
+        const key = String(q || "").trim().toLowerCase();
         const seq = ++loadSeqRef.current;
 
-        const cached = getExploreFeed(queryKey);
-        if (isFresh(cached) && Array.isArray(cached?.allNews) && cached.allNews.length) {
+        const cached = getExploreFeed(key);
+        if (!force && isFresh(cached) && Array.isArray(cached?.allNews) && cached.allNews.length) {
             setAllNews(cached.allNews);
             setFilteredNews(cached.filteredNews || cached.allNews);
             setNextCursor(cached.nextCursor || '');
@@ -87,57 +126,66 @@ const SearchScreen = () => {
             return;
         }
 
-        (async () => {
-            setLoading(true);
-            setLoadError('');
-            const cachedBookmarks = new Set(getBookmarkIds());
-            if (cachedBookmarks.size) setBookmarkedItems(cachedBookmarks);
-            const cachedReactions = getReactionMap();
-            if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
+        setLoading(true);
+        setLoadError('');
+        const cachedBookmarks = new Set(getBookmarkIds());
+        if (cachedBookmarks.size) setBookmarkedItems(cachedBookmarks);
+        const cachedReactions = getReactionMap();
+        if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
 
-            try {
-                const page = await loadExplorePage({ limit: 50, cursor: '' });
-                if (seq !== loadSeqRef.current) return;
+        try {
+            const page = await loadExplorePage({ limit: 50, cursor: '', q: String(q || "").trim() });
+            if (seq !== loadSeqRef.current) return;
 
-                const newsData = page.items || [];
-                setNextCursor(page.nextCursor || '');
-                setHasMore(Boolean(page.hasMore));
-                setAllNews(newsData);
-                const categorySet = new Set();
-                newsData.forEach((article) => {
-                    if (article.category && !categorySet.has(article.category)) {
-                        categorySet.add(article.category);
-                    }
-                });
-                setCategories(["All", ...Array.from(categorySet).sort()]);
-                setFilteredNews([...newsData]);
+            const newsData = page.items || [];
+            setNextCursor(page.nextCursor || '');
+            setHasMore(Boolean(page.hasMore));
+            setAllNews(newsData);
+            const categorySet = new Set();
+            newsData.forEach((article) => {
+                if (article.category && !categorySet.has(article.category)) {
+                    categorySet.add(article.category);
+                }
+            });
+            setCategories(["All", ...Array.from(categorySet).sort()]);
+            setFilteredNews(filterExploreResults(newsData, q, activeTab));
 
-                const [bookmarks, reactions] = await Promise.all([
-                    listBookmarks().catch(() => ({ results: [] })),
-                    listReactions().catch(() => ({ results: [] })),
-                ]);
-                if (seq !== loadSeqRef.current) return;
+            const [bookmarks, reactions] = await Promise.all([
+                listBookmarks().catch(() => ({ results: [] })),
+                listReactions().catch(() => ({ results: [] })),
+            ]);
+            if (seq !== loadSeqRef.current) return;
 
-                const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
-                setBookmarkedItems(bookmarked);
-                setBookmarkIds(Array.from(bookmarked));
-                const serverReactions = mergeReactionRows(reactions.results || [], { replace: false });
-                setVotedItems({ ...cachedReactions, ...serverReactions });
-            } catch (error) {
-                if (seq !== loadSeqRef.current) return;
-                console.error("Error fetching data:", error);
-                setAllNews([]);
-                setFilteredNews([]);
-                setLoadError(error?.message || 'Could not load articles. Is Django running?');
-            } finally {
-                if (seq === loadSeqRef.current) setLoading(false);
-            }
-        })();
-    }, [retryTick, getExploreFeed, isFresh]);
+            const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
+            setBookmarkedItems(bookmarked);
+            setBookmarkIds(Array.from(bookmarked));
+            const serverReactions = mergeReactionRows(reactions.results || [], { replace: false });
+            setVotedItems({ ...cachedReactions, ...serverReactions });
+        } catch (error) {
+            if (seq !== loadSeqRef.current) return;
+            console.error("Error fetching data:", error);
+            setAllNews([]);
+            setFilteredNews([]);
+            setLoadError(error?.message || 'Could not load articles. Is Django running?');
+        } finally {
+            if (seq === loadSeqRef.current) setLoading(false);
+        }
+    }, [activeTab, getExploreFeed, isFresh]);
+
+    useEffect(() => {
+        const q = searchQuery.trim();
+        const delayMs = q ? 360 : 0;
+        const timer = setTimeout(() => {
+            const force = forceReloadRef.current;
+            forceReloadRef.current = false;
+            loadFirstPage(searchQuery, { force });
+        }, delayMs);
+        return () => clearTimeout(timer);
+    }, [searchQuery, retryTick, loadFirstPage]);
 
     useEffect(() => {
         if (!allNews.length) return;
-        saveExploreFeed('', {
+        saveExploreFeed(queryKey, {
             allNews,
             filteredNews,
             nextCursor,
@@ -149,12 +197,12 @@ const SearchScreen = () => {
             loadError,
             scrollY: window.scrollY,
         });
-    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, saveExploreFeed]);
+    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, queryKey, saveExploreFeed]);
 
     useEffect(() => {
         return () => {
             if (!allNews.length) return;
-            saveExploreFeed('', {
+            saveExploreFeed(queryKey, {
                 allNews,
                 filteredNews,
                 nextCursor,
@@ -167,7 +215,7 @@ const SearchScreen = () => {
                 scrollY: window.scrollY,
             });
         };
-    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, saveExploreFeed]);
+    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, queryKey, saveExploreFeed]);
 
     const loadMore = useCallback(async () => {
         if (!hasMore || loadingMore || !nextCursor) return;
@@ -176,6 +224,7 @@ const SearchScreen = () => {
             const page = await loadExplorePage({
                 limit: 50,
                 cursor: nextCursor,
+                q: searchQuery.trim(),
             });
             setAllNews((prev) => mergeUniqueById(prev, page.items || []));
             setNextCursor(page.nextCursor || '');
@@ -185,7 +234,7 @@ const SearchScreen = () => {
         } finally {
             setLoadingMore(false);
         }
-    }, [hasMore, loadingMore, nextCursor]);
+    }, [hasMore, loadingMore, nextCursor, searchQuery]);
 
     const scrollSentinelRef = useInfiniteScroll({
         onLoadMore: loadMore,
@@ -193,53 +242,30 @@ const SearchScreen = () => {
         loading: loading || loadingMore,
     });
 
+    const handleSearch = useCallback((query) => {
+        setSearchQuery(query);
+        const trimmed = String(query || "").trim();
+        if (trimmed) {
+            setSearchParams({ q: trimmed }, { replace: true });
+        } else {
+            setSearchParams({}, { replace: true });
+        }
+    }, [setSearchParams]);
+
     const handleTopicPress = (topicName) => {
-        setTopicFilter(topicName);
         setActiveTab("All");
+        handleSearch(topicName);
     };
 
     const handleClearFilters = () => {
-        setTopicFilter("");
         setActiveTab("All");
+        handleSearch("");
     };
 
     useEffect(() => {
-        // Don't filter if news haven't loaded yet
-        if (!allNews || allNews.length === 0) {
-            return;
-        }
-
-        // Filter immediately without delay for better responsiveness
-        let results = [...allNews];
-
-        // Filter by category tab first
-        if (activeTab && activeTab !== "All") {
-            results = results.filter(item => {
-                if (!item || !item.category) return false;
-                // Exact match for category
-                return item.category === activeTab;
-            });
-        }
-
-        if (topicFilter && topicFilter.trim()) {
-            const lower = topicFilter.toLowerCase().trim();
-            results = results.filter((item) => {
-                if (!item) return false;
-                const keywords = (item.topic_keywords || []).map((k) => String(k).toLowerCase());
-                const searchableText = [
-                    item.title || '',
-                    item.excerpt || '',
-                    item.description || '',
-                    item.source || '',
-                    item.category || '',
-                    keywords.join(' '),
-                ].join(' ').toLowerCase();
-                return keywords.includes(lower) || searchableText.includes(lower);
-            });
-        }
-
-        setFilteredNews(results);
-    }, [topicFilter, activeTab, allNews]);
+        if (!allNews || allNews.length === 0) return;
+        setFilteredNews(filterExploreResults(allNews, searchQuery, activeTab));
+    }, [searchQuery, activeTab, allNews]);
 
     const handleArticlePress = (article) => {
         openArticleDetail(navigate, article);
@@ -348,11 +374,15 @@ const SearchScreen = () => {
                         <p style={{
                             fontSize: '15px',
                             color: textSecondary,
-                            margin: '0',
+                            margin: '0 0 16px 0',
                             lineHeight: '1.5',
                         }}>
                             {t('pages.exploreSubtitle')}
                         </p>
+                        <SearchBar
+                            onSearch={handleSearch}
+                            initialQuery={searchQuery}
+                        />
                     </div>
 
                     {/* Tab Bar */}
@@ -460,7 +490,10 @@ const SearchScreen = () => {
                         </p>
                         <button
                             type="button"
-                            onClick={() => setRetryTick((t) => t + 1)}
+                            onClick={() => {
+                                forceReloadRef.current = true;
+                                setRetryTick((t) => t + 1);
+                            }}
                             style={{
                                 padding: '10px 20px',
                                 border: 'none',
@@ -498,8 +531,8 @@ const SearchScreen = () => {
                             margin: '0 0 24px 0',
                             textAlign: 'center',
                         }}>
-                            {topicFilter.trim()
-                                ? "Try a different trending topic or clear filters"
+                            {searchQuery.trim()
+                                ? "Try a different search term or clear filters"
                                 : activeTab !== "All"
                                     ? `No articles found in ${activeTab} category`
                                     : "No articles available"}
@@ -510,7 +543,7 @@ const SearchScreen = () => {
                             alignItems: 'center',
                             gap: '12px',
                         }}>
-                            {(topicFilter.trim() || (activeTab && activeTab !== "All")) && (
+                            {(searchQuery.trim() || (activeTab && activeTab !== "All")) && (
                                 <div style={{
                                     display: 'flex',
                                     alignItems: 'center',
@@ -518,7 +551,7 @@ const SearchScreen = () => {
                                     flexWrap: 'wrap',
                                     justifyContent: 'center',
                                 }}>
-                                    {topicFilter.trim() && (
+                                    {searchQuery.trim() && (
                                         <div style={{
                                             display: 'inline-flex',
                                             alignItems: 'center',
@@ -533,7 +566,7 @@ const SearchScreen = () => {
                                                 fontWeight: '600',
                                                 color: colors.textPrimary,
                                             }}>
-                                                Topic:
+                                                Search:
                                             </span>
                                             <span style={{
                                                 fontSize: '13px',
@@ -544,7 +577,7 @@ const SearchScreen = () => {
                                                 borderRadius: '6px',
                                                 border: '1px solid #d1d5db',
                                             }}>
-                                                "{topicFilter}"
+                                                "{searchQuery}"
                                             </span>
                                         </div>
                                     )}
@@ -608,12 +641,12 @@ const SearchScreen = () => {
                     </div>
                 ) : (
                     <div>
-                        {!topicFilter.trim() && (
+                        {!searchQuery.trim() && (
                             <>
                                 <TrendingTopics 
                                     topics={trendingTopics}
                                     onTopicPress={handleTopicPress}
-                                    searchQuery=""
+                                    searchQuery={searchQuery}
                                 />
                             </>
                         )}
