@@ -23,6 +23,8 @@ export function mapApiItem(a) {
   const labelStr = String(label ?? '').toLowerCase();
   const likes = Number(a.like_count ?? a.upvotes ?? 0);
   const dislikes = Number(a.dislike_count ?? 0);
+  const topicKeywords = a.topic_keywords || [];
+  const mlCategories = Array.isArray(a.categories) ? a.categories.filter(Boolean) : [];
   const summaryText = getCardSummaryText({
     title: a.title,
     summary: a.summary,
@@ -44,8 +46,9 @@ export function mapApiItem(a) {
     description: summaryText,
     content: a.content || a.full_content || '',
     fullContent: a.full_content || a.content || '',
-    categories: label ? [String(label)] : ['News'],
-    category: (a.topic_keywords?.[0] || 'News').toString().toUpperCase(),
+    primary_category: a.primary_category || '',
+    categories: mlCategories,
+    category: (topicKeywords[0] || 'News').toString().toUpperCase(),
     trending: cred.label_code === 2 || cred.label === 'suspicious' || labelStr === 'suspicious',
     votes: likes,
     credibility: a.credibility,
@@ -58,7 +61,7 @@ export function mapApiItem(a) {
     like_count: likes,
     dislike_count: dislikes,
     upvotes: likes,
-    topic_keywords: a.topic_keywords || [],
+    topic_keywords: topicKeywords,
     image_url: a.image_url || null,
     image: (a.image_url || a.image || a.thumbnail_url || '').trim() || undefined,
   };
@@ -109,6 +112,7 @@ export async function loadCategoryPage({ category = '', limit = 30, cursor = '' 
       items: results,
       nextCursor: json.next_cursor || '',
       hasMore: Boolean(json.has_more),
+      categoryTotal: json.category_total != null ? Number(json.category_total) : null,
     };
   } catch (e) {
     if (allowMockFallback) {

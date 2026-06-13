@@ -28,8 +28,9 @@ export function mapApiItem(a, userKeywords = []) {
     const label = cred.label || cred.label_code;
     const labelStr = String(label ?? '').toLowerCase();
     const topicKeywords = a.topic_keywords || [];
+    const mlCategories = Array.isArray(a.categories) ? a.categories.filter(Boolean) : [];
     const matchedKeywords = computeMatchedKeywords(topicKeywords, userKeywords);
-    const categoryLabel = matchedKeywords[0] || labelStr || 'news';
+    const categoryLabel = matchedKeywords[0] || topicKeywords[0] || labelStr || 'news';
     const cid = a.id ?? a._id;
     const url = String(a.canonical_url || a.url || '').trim();
     const id =
@@ -51,8 +52,9 @@ export function mapApiItem(a, userKeywords = []) {
         dislike_count: Number(a.dislike_count ?? 0),
         upvotes: Number(a.like_count ?? a.upvotes ?? 0),
         readTime: 4,
-        categories: matchedKeywords.length ? matchedKeywords : topicKeywords.slice(0, 3),
-        category: categoryLabel,
+        primary_category: a.primary_category || '',
+        categories: mlCategories.length ? mlCategories : (matchedKeywords.length ? matchedKeywords : topicKeywords.slice(0, 3)),
+        category: String(categoryLabel).toUpperCase(),
         trending: cred.label_code === 2 || cred.label === 'suspicious',
         matchedKeywords,
         credibilityLabel: labelStr || null,
@@ -149,6 +151,7 @@ export async function loadCategoryPage(options = {}) {
         items: filterRealFeedItems((json.results || []).map((a) => mapApiItem(a, userKeywords))),
         nextCursor: json.next_cursor || null,
         hasMore: Boolean(json.has_more),
+        categoryTotal: json.category_total != null ? Number(json.category_total) : null,
     };
 }
 

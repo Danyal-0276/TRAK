@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { NativeModules, Platform, TurboModuleRegistry } from 'react-native';
+import { NativeModules, PermissionsAndroid, Platform, TurboModuleRegistry } from 'react-native';
 
 function hasNativeModule(name) {
   if (NativeModules[name]) return true;
@@ -41,22 +41,43 @@ async function fallbackToken() {
   return token;
 }
 
+async function requestNotificationPermission() {
+  if (Platform.OS === 'ios') {
+    const messaging = tryFcmMessaging();
+    if (!messaging) return false;
+    const status = await messaging().requestPermission();
+    return (
+      status === messaging.AuthorizationStatus.AUTHORIZED
+      || status === messaging.AuthorizationStatus.PROVISIONAL
+    );
+  }
+  if (Platform.OS === 'android' && Platform.Version >= 33) {
+    const granted = await PermissionsAndroid.request(
+      PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS,
+    );
+    return granted === PermissionsAndroid.RESULTS.GRANTED;
+  }
+  return true;
+}
+
 export async function getOrCreatePushToken() {
   try {
     const messaging = tryFcmMessaging();
     if (messaging) {
       try {
-        if (Platform.OS === 'ios') {
-          await messaging().requestPermission();
-        }
+        await requestNotificationPermission();
         const token = await messaging().getToken();
         if (token && typeof token === 'string') {
           await AsyncStorage.setItem(KEY, token);
           return token;
         }
-      } catch {
-        // fall through to placeholder token
+      } catch (err) {
+        if (__DEV__) {
+          console.warn('[push] FCM token unavailable, using local fallback:', err?.message || err);
+        }
       }
+    } else if (__DEV__) {
+      console.warn('[push] @react-native-firebase/messaging not linked — rebuild the native app');
     }
   } catch {
     // Native Firebase not configured — use local device token.

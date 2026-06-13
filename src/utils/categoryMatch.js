@@ -27,6 +27,37 @@ export function categoryKey(name) {
   return String(name).toLowerCase().trim().replace(/\s+/g, '-');
 }
 
+/** Match backend platform_taxonomy._slugify for count/browse key alignment. */
+export function normalizeCategorySlug(raw) {
+  return String(raw || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+function platformCategorySlug(entry) {
+  if (entry == null || entry === '') return '';
+  if (typeof entry === 'string') return normalizeCategorySlug(entry);
+  if (typeof entry === 'object') {
+    const slug = String(entry.slug || '').trim();
+    if (slug) return normalizeCategorySlug(slug);
+    return normalizeCategorySlug(String(entry.name || entry.id || '').trim());
+  }
+  return '';
+}
+
+function buildNormalizedCountMap(categoryCounts) {
+  const out = {};
+  if (!categoryCounts || typeof categoryCounts !== 'object') return out;
+  for (const [rawKey, rawValue] of Object.entries(categoryCounts)) {
+    const key = normalizeCategorySlug(rawKey);
+    if (!key) continue;
+    out[key] = (out[key] || 0) + Number(rawValue || 0);
+  }
+  return out;
+}
+
 const CATEGORY_SYNONYMS = {
   politics: ['politics', 'political', 'election', 'government', 'parliament', 'congress', 'minister', 'biden', 'trump'],
   business: ['business', 'economy', 'market', 'stock', 'finance', 'trade', 'company', 'corporate', 'tariff', 'ceo'],
@@ -71,46 +102,83 @@ function buildArticleBlob(article) {
   return parts.filter(Boolean).join(' ').toLowerCase();
 }
 
+function articleMlCategorySlugs(article) {
+  const slugs = new Set();
+  const primary = normalizeCategorySlug(article?.primary_category || '');
+  if (primary && !CREDIBILITY_SKIP.has(primary)) slugs.add(primary);
+  for (const raw of article?.categories || []) {
+    const slug = normalizeCategorySlug(String(raw));
+    if (slug && !CREDIBILITY_SKIP.has(slug)) slugs.add(slug);
+  }
+  return slugs;
+}
+
 export function articleMatchesCategory(article, categoryName) {
   if (!categoryName) return true;
-  const key = categoryKey(categoryName);
+  const key = normalizeCategorySlug(categoryKey(categoryName));
+
+  const mlSlugs = articleMlCategorySlugs(article);
+  if (mlSlugs.size) {
+    return mlSlugs.has(key);
+  }
+
   const blob = buildArticleBlob(article);
   const display = key.replace(/-/g, ' ');
   if (blob.includes(display) || blob.includes(key)) return true;
 
   for (const syn of CATEGORY_SYNONYMS[key] || []) {
-    if (blob.includes(syn)) return true;
+    if (termInBlob(syn, blob)) return true;
   }
   for (const sub of newsTagsWithSubcategories[key] || []) {
     const subPhrase = sub.replace(/-/g, ' ');
-    if (blob.includes(subPhrase) || blob.includes(sub)) return true;
+    if (termInBlob(subPhrase, blob) || termInBlob(sub, blob)) return true;
   }
   return false;
 }
 
-export function buildCategoryList(articles, platformCategoryNames = []) {
-  const fromPlatform = (platformCategoryNames || [])
-    .map((c) => (typeof c === 'string' ? c : c?.name || c?.id || ''))
-    .map(normalizeCategoryName)
-    .filter(Boolean);
+function termInBlob(term, blob) {
+  const t = String(term || '').trim().toLowerCase();
+  if (!t || !blob) return false;
+  if (t.includes(' ') || t.length > 5) return blob.includes(t);
+  const re = new RegExp(`(?<![a-z0-9])${t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![a-z0-9])`);
+  return re.test(blob);
+}
 
-  const defaultNames = Object.keys(newsTagsWithSubcategories).map(normalizeCategoryName);
-  const canonical = [...new Set([...fromPlatform, ...defaultNames])];
+export function buildCategoryList(platformCategories = [], categoryCounts = null) {
+  const normCounts = buildNormalizedCountMap(categoryCounts);
+  const useApiCounts = Object.keys(normCounts).length > 0;
+
+  const rows = [];
+  const raw = Array.isArray(platformCategories) ? platformCategories : [];
+  if (raw.length) {
+    for (const c of raw) {
+      if (c && typeof c === 'object' && c.active === false) continue;
+      const key = platformCategorySlug(c);
+      if (!key) continue;
+      const name = typeof c === 'string'
+        ? normalizeCategoryName(c)
+        : normalizeCategoryName(String(c?.name || '').trim() || key);
+      rows.push({ name, key });
+    }
+  } else {
+    for (const slug of Object.keys(newsTagsWithSubcategories)) {
+      rows.push({ name: normalizeCategoryName(slug), key: slug });
+    }
+  }
 
   const seen = new Set();
   const list = [];
-
-  for (const name of canonical) {
-    const key = categoryKey(name);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const count = (articles || []).filter((a) => articleMatchesCategory(a, name)).length;
-    list.push({ name, key, count });
+  for (const row of rows) {
+    if (!row.key || seen.has(row.key)) continue;
+    seen.add(row.key);
+    list.push({
+      name: row.name,
+      key: row.key,
+      count: useApiCounts ? Number(normCounts[row.key] ?? 0) : 0,
+    });
   }
 
-  return list
-    .filter((c) => c.count > 0)
-    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  return list.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 const CATEGORY_ICONS = {

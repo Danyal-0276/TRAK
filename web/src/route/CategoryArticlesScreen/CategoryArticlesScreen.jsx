@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { NewsCard } from '../../components/NewsCard';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
@@ -20,6 +20,7 @@ function slugToCategoryName(slug) {
 
 const CategoryArticlesScreen = () => {
     const { categorySlug } = useParams();
+    const location = useLocation();
     const navigate = useNavigate();
     const { theme } = useTheme();
     const { colors } = theme;
@@ -36,6 +37,9 @@ const CategoryArticlesScreen = () => {
     const [nextCursor, setNextCursor] = useState('');
     const [hasMore, setHasMore] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [categoryTotal, setCategoryTotal] = useState(
+        () => (location.state?.categoryCount != null ? Number(location.state.categoryCount) : null)
+    );
 
     const loadNews = useCallback(async () => {
         if (!categoryKey) return;
@@ -46,6 +50,7 @@ const CategoryArticlesScreen = () => {
             setNewsData(page.items || []);
             setNextCursor(page.nextCursor || '');
             setHasMore(Boolean(page.hasMore));
+            if (page.categoryTotal != null) setCategoryTotal(Number(page.categoryTotal));
         } catch (error) {
             console.error('Error loading category articles:', error);
             setLoadError(error?.message || 'Could not load articles for this category.');
@@ -54,6 +59,10 @@ const CategoryArticlesScreen = () => {
             setLoading(false);
         }
     }, [categoryKey]);
+
+    useEffect(() => {
+        setCategoryTotal(location.state?.categoryCount != null ? Number(location.state.categoryCount) : null);
+    }, [categoryKey, location.state?.categoryCount]);
 
     useEffect(() => {
         loadNews();
@@ -170,7 +179,9 @@ const CategoryArticlesScreen = () => {
                     </h1>
                 </div>
                 <p style={{ fontSize: 14, color: colors.textSecondary, margin: '0 0 24px' }}>
-                    All articles related to {categoryName}.
+                    {categoryTotal != null
+                        ? `${categoryTotal} ${categoryTotal === 1 ? 'article' : 'articles'} in this category`
+                        : `All articles related to ${categoryName}.`}
                 </p>
                 {loading ? (
                     <MasonryFeedSkeleton count={isMobile ? 4 : 6} gap={24} {...getSkeletonFeedProps(isDark, colors)} />
