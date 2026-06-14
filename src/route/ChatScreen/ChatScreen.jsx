@@ -14,6 +14,7 @@ import {
   Dimensions,
   Animated,
   Pressable,
+  Easing,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
@@ -24,7 +25,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { useAuth } from '../../context/AuthContext';
 import { filledActionColors } from '../../theme/buttonContrast';
-import { resetTabBarVisibility } from '../../navigation/tabBarVisibility';
+import { resetTabBarVisibility, subscribeTabBarVisibility } from '../../navigation/tabBarVisibility';
 import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
 import { resolveTopInset } from '../../utils/screenSafeArea';
 import AccentTabHeader from '../../components/ui/AccentTabHeader';
@@ -32,8 +33,9 @@ import { CHAT_HERO_SUBTITLE, CHAT_HERO_TITLE, CHAT_PROMPTS } from './chatUiConst
 
 const TAB_BAR_CLEARANCE = 100;
 const ESTIMATED_HEADER_HEIGHT = 88;
-const COMPOSER_DOCK_HEIGHT = 96;
-const COMPOSER_TOP_GAP = 20;
+const COMPOSER_DOCK_HEIGHT = 72;
+const COMPOSER_TOP_GAP = 12;
+const KEYBOARD_COMPOSER_GAP = Platform.OS === 'android' ? 18 : 10;
 
 function getKeyboardInset(e) {
   const coords = e?.endCoordinates;
@@ -160,9 +162,16 @@ const ChatScreen = () => {
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
+  const messagesLengthRef = useRef(0);
+  const keyboardVisibleRef = useRef(false);
+  const keyboardInsetRef = useRef(0);
   const [keyboardInset, setKeyboardInset] = useState(0);
   const [measuredHeaderHeight, setMeasuredHeaderHeight] = useState(ESTIMATED_HEADER_HEIGHT + topInset);
   const [composerHeight, setComposerHeight] = useState(COMPOSER_DOCK_HEIGHT);
+  const [tabBarHidden, setTabBarHidden] = useState(false);
+  const bottomSafe = Math.max(insets.bottom, 12);
+  const tabBarPad = embeddedInTab ? TAB_BAR_CLEARANCE + bottomSafe : bottomSafe;
+  const composerBottomAnim = useRef(new Animated.Value(tabBarPad)).current;
 
   const { translateY: headerTranslateY, handleScroll, hideHeader, showHeader } = useCollapsibleHeader({
     hideOffset: measuredHeaderHeight,
@@ -183,19 +192,37 @@ const ChatScreen = () => {
   }, []);
 
   const restoreKeyboardLayout = useCallback(() => {
+    keyboardVisibleRef.current = false;
+    keyboardInsetRef.current = 0;
     setKeyboardInset(0);
     showHeader();
   }, [showHeader]);
 
+  const applyKeyboardInset = useCallback((rawValue) => {
+    const next = Math.max(0, Math.round(rawValue));
+    if (keyboardVisibleRef.current && next > 0) {
+      const stable = Math.max(keyboardInsetRef.current, next);
+      keyboardInsetRef.current = stable;
+      setKeyboardInset(stable);
+      return;
+    }
+    keyboardInsetRef.current = next;
+    setKeyboardInset(next);
+  }, []);
+
+  messagesLengthRef.current = messages.length;
+
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const frameEvent = Platform.OS === 'ios' ? 'keyboardWillChangeFrame' : 'keyboardDidShow';
 
     const onShow = (e) => {
+      keyboardVisibleRef.current = true;
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setKeyboardInset(getKeyboardInset(e));
+      applyKeyboardInset(getKeyboardInset(e));
       hideHeader();
-      if (messages.length) scrollToLatest();
+      if (messagesLengthRef.current) scrollToLatest();
     };
     const onHide = () => {
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -204,19 +231,41 @@ const ChatScreen = () => {
 
     const showSub = Keyboard.addListener(showEvent, onShow);
     const hideSub = Keyboard.addListener(hideEvent, onHide);
+    const frameSub = frameEvent !== showEvent ? Keyboard.addListener(frameEvent, onShow) : null;
     return () => {
       showSub.remove();
       hideSub.remove();
-      restoreKeyboardLayout();
+      frameSub?.remove();
     };
-  }, [hideHeader, messages.length, scrollToLatest, restoreKeyboardLayout]);
+  }, [hideHeader, scrollToLatest, restoreKeyboardLayout, applyKeyboardInset]);
 
   useFocusEffect(
     useCallback(() => {
       resetTabBarVisibility();
-      return () => resetTabBarVisibility();
-    }, [])
+      return () => {
+        resetTabBarVisibility();
+        restoreKeyboardLayout();
+      };
+    }, [restoreKeyboardLayout])
   );
+
+  useEffect(() => subscribeTabBarVisibility(setTabBarHidden), []);
+
+  useEffect(() => {
+    const target =
+      keyboardInset > 0
+        ? keyboardInset + KEYBOARD_COMPOSER_GAP
+        : embeddedInTab && !tabBarHidden
+          ? tabBarPad
+          : bottomSafe;
+    composerBottomAnim.stopAnimation();
+    Animated.timing(composerBottomAnim, {
+      toValue: target,
+      duration: keyboardInset > 0 ? 0 : 200,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [keyboardInset, tabBarHidden, embeddedInTab, tabBarPad, bottomSafe, composerBottomAnim]);
 
   useEffect(() => {
     if (!bootstrapped || !user) return;
@@ -255,16 +304,18 @@ const ChatScreen = () => {
   const sendMessage = async (textValue) => {
     const text = (textValue ?? input).trim();
     if (!text || loading) return;
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setMessages((prev) => [...prev, { role: 'user', text }]);
     setInput('');
     setLoading(true);
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      if (keyboardVisibleRef.current) hideHeader();
+    });
     try {
       const res = await chatWithBot(text);
       const top = Array.isArray(res.articles)
         ? res.articles.find((a) => isRealFeedArticle(a)) ?? res.articles[0] ?? null
         : res.primary_article || null;
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setMessages((prev) => [
         ...prev,
         {
@@ -291,12 +342,17 @@ const ChatScreen = () => {
   const action = filledActionColors(colors, isDark);
   const canSend = Boolean(input.trim()) && !loading;
   const showEmptyState = historyLoaded && messages.length === 0 && !loading;
-  const tabBarPad = embeddedInTab ? TAB_BAR_CLEARANCE + Math.max(insets.bottom, 12) : Math.max(insets.bottom, 12);
-  const composerBottom = keyboardInset > 0 ? keyboardInset + 8 : tabBarPad;
-  const scrollBottomPad = composerHeight + COMPOSER_TOP_GAP + composerBottom + 24;
+  const composerBottom =
+    keyboardInset > 0
+      ? keyboardInset + KEYBOARD_COMPOSER_GAP
+      : embeddedInTab && !tabBarHidden
+        ? tabBarPad
+        : bottomSafe;
+  const scrollBottomPad = composerHeight + COMPOSER_TOP_GAP + composerBottom + 16;
   const pageBg = colors.background;
-  const shadowColor = colors.shadowDark || '#000';
+  const composerChrome = colors.surface;
   const headerChrome = colors.surface;
+  const shadowColor = colors.shadowDark || '#000';
 
   const clearHistory = async () => {
     const accepted = await confirm({
@@ -421,26 +477,24 @@ const ChatScreen = () => {
           )}
         </ScrollView>
 
-        {keyboardInset === 0 && embeddedInTab ? (
-          <View
-            pointerEvents="none"
-            style={[styles.tabBarGutter, { height: tabBarPad, backgroundColor: pageBg }]}
-          />
-        ) : null}
-
-        <View
+        <Animated.View
           style={[
-            styles.composerDock,
+            styles.composerChrome,
             {
-              bottom: composerBottom,
+              backgroundColor: composerChrome,
+              borderTopColor: colors.border,
+              bottom: composerBottomAnim,
             },
           ]}
-          onLayout={(e) => {
-            const h = Math.max(0, Math.round(e?.nativeEvent?.layout?.height || 0));
-            if (h > 0 && Math.abs(h - composerHeight) > 2) setComposerHeight(h);
-          }}
         >
-          <View style={[styles.composerShell, { backgroundColor: colors.surface }]}>
+          <View
+            style={[styles.composerShell, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}
+            onLayout={(e) => {
+              const h = Math.max(0, Math.round(e?.nativeEvent?.layout?.height || 0));
+              const total = h + COMPOSER_TOP_GAP + StyleSheet.hairlineWidth;
+              if (total > 0 && Math.abs(total - composerHeight) > 2) setComposerHeight(total);
+            }}
+          >
             <TextInput
               ref={inputRef}
               value={input}
@@ -469,10 +523,7 @@ const ChatScreen = () => {
               <Send size={17} color={canSend ? action.foreground : colors.textTertiary} />
             </TouchableOpacity>
           </View>
-          <Text style={[styles.composerHint, { color: colors.textSecondary }]}>
-            TRAK AI can make mistakes — verify important news.
-          </Text>
-        </View>
+        </Animated.View>
       </View>
     </View>
   );
@@ -481,12 +532,6 @@ const ChatScreen = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   flex: { flex: 1 },
-  tabBarGutter: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
   statusBarCover: {
     position: 'absolute',
     top: 0,
@@ -596,19 +641,19 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
   },
   typingDot: { width: 7, height: 7, borderRadius: 3.5 },
-  composerDock: {
+  composerChrome: {
     position: 'absolute',
     left: 0,
     right: 0,
     paddingTop: COMPOSER_TOP_GAP,
     paddingHorizontal: 14,
-    paddingBottom: 4,
-    backgroundColor: 'transparent',
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   composerShell: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     borderRadius: 26,
+    borderWidth: StyleSheet.hairlineWidth,
     paddingLeft: 16,
     paddingRight: 5,
     paddingVertical: 5,
@@ -629,7 +674,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  composerHint: { fontSize: 11, textAlign: 'center', marginTop: 8, marginBottom: 2 },
   articleCard: {
     marginTop: 10,
     borderWidth: 1,

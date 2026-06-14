@@ -1,24 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
-import { 
-    Bell, 
-    Check, 
-    CheckCheck, 
-    MessageCircle, 
-    Heart, 
-    UserPlus, 
-    Hash,
-    X,
-    Clock
-} from 'lucide-react';
-import {
-    getNotificationSourceName,
-    getNotificationSourceInitial,
-    isArticleKeywordNotification,
-} from '../../utils/notificationDisplay';
+import { CheckCheck, X, Clock } from 'lucide-react';
 import { useNotifications } from '../../context/NotificationUnreadContext';
 import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
+import NotificationCard, { NotificationAvatar } from '../../components/notifications/NotificationCard';
 
 const NotificationsScreen = () => {
     const navigate = useNavigate();
@@ -81,86 +67,7 @@ const NotificationsScreen = () => {
         setSelectedNotification(null);
     };
 
-    const getNotificationIcon = (type) => {
-        switch (type) {
-            case 'mention':
-                return <MessageCircle size={20} color={colors.primary} />;
-            case 'like':
-                return <Heart size={20} color="#ef4444" />;
-            case 'comment':
-                return <MessageCircle size={20} color="#10b981" />;
-            case 'follow':
-                return <UserPlus size={20} color="#8b5cf6" />;
-            case 'keyword':
-            case 'keyword_match':
-                return <Hash size={20} color="#f59e0b" />;
-            case 'welcome_back':
-                return <Bell size={20} color={colors.primary} />;
-            default:
-                return <Bell size={20} color="#64748b" />;
-        }
-    };
-
-    const getNotificationColor = (type) => {
-        switch (type) {
-            case 'mention':
-                return colors.primary;
-            case 'like':
-                return '#ef4444';
-            case 'comment':
-                return '#10b981';
-            case 'follow':
-                return '#8b5cf6';
-            case 'keyword':
-            case 'keyword_match':
-                return '#f59e0b';
-            default:
-                return '#64748b';
-        }
-    };
-
-    const isKeywordNotification = isArticleKeywordNotification;
     const textSecondary = colors.textSecondary;
-
-    const getNotificationAvatar = (notification, variant = 'list') => {
-        const isDetail = variant === 'detail';
-        const sourceLabel = getNotificationSourceName(notification);
-        const sourceInitial = getNotificationSourceInitial(notification);
-        const markStyle = {
-            width: isDetail ? '48px' : '40px',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: isDetail ? '15px' : '13px',
-            fontWeight: 600,
-            color: textSecondary,
-            letterSpacing: '0.2px',
-        };
-
-        if (isKeywordNotification(notification)) {
-            return (
-                <span style={markStyle} title={sourceLabel}>
-                    {sourceInitial}
-                </span>
-            );
-        }
-
-        return (
-            <div style={{
-                width: isDetail ? '48px' : '40px',
-                height: isDetail ? '48px' : '40px',
-                borderRadius: isDetail ? '12px' : '10px',
-                backgroundColor: getNotificationColor(notification.type) + '20',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'center',
-                flexShrink: 0,
-            }}>
-                {getNotificationIcon(notification.type)}
-            </div>
-        );
-    };
 
     const visibleUnread = notifications.filter((n) => !n.read).length;
     const importantCount = notifications.filter(n => n.important).length;
@@ -373,7 +280,7 @@ const NotificationsScreen = () => {
                             gap: '16px',
                             marginBottom: '20px',
                         }}>
-                            {getNotificationAvatar(selectedNotification, 'detail')}
+                            <NotificationAvatar notification={selectedNotification} size={48} />
                             <div style={{ flex: 1 }}>
                                 <div style={{
                                     fontSize: '16px',
@@ -502,111 +409,15 @@ const NotificationsScreen = () => {
                     <div style={{
                         display: 'flex',
                         flexDirection: 'column',
-                        gap: '12px',
                     }}>
                         {filteredNotifications.map((notification) => (
-                            <div
+                            <NotificationCard
                                 key={notification.id}
-                                onClick={() => handleNotificationClick(notification)}
-                                style={{
-                                    padding: '16px',
-                                    border: `1px solid ${borderColor}`,
-                                    borderRadius: '8px',
-                                    backgroundColor: notification.read 
-                                        ? cardBackground 
-                                        : (isDark ? colors.surfaceElevated : '#f9fafb'),
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                    position: 'relative',
-                                    borderLeft: notification.read 
-                                        ? `1px solid ${borderColor}` 
-                                        : `4px solid ${getNotificationColor(notification.type)}`,
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.backgroundColor = colors.surfaceHover;
-                                    e.currentTarget.style.borderColor = isDark ? colors.borderLight : '#d1d5db';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.backgroundColor = notification.read 
-                                        ? cardBackground 
-                                        : (isDark ? colors.surfaceElevated : '#f9fafb');
-                                    e.currentTarget.style.borderColor = borderColor;
-                                }}
-                            >
-                                <div style={{
-                                    display: 'flex',
-                                    gap: '16px',
-                                }}>
-                                    {getNotificationAvatar(notification)}
-
-                                    {/* Content */}
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                        <div style={{
-                                            fontSize: '15px',
-                                            fontWeight: notification.read ? '500' : '600',
-                                            color: textPrimary,
-                                            marginBottom: '6px',
-                                            lineHeight: '1.4',
-                                        }}>
-                                            {notification.text}
-                                        </div>
-                                        <div style={{
-                                            display: 'flex',
-                                            alignItems: 'center',
-                                            gap: '12px',
-                                            flexWrap: 'wrap',
-                                        }}>
-                                            <div style={{
-                                                fontSize: '13px',
-                                                color: textSecondary,
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '4px',
-                                            }}>
-                                                <span>{notification.user}</span>
-                                                <span>•</span>
-                                                <span>{notification.time}</span>
-                                            </div>
-                                            {notification.keyword && (
-                                                <span style={{
-                                                    fontSize: '11px',
-                                                    fontWeight: '600',
-                                                    color: textSecondary,
-                                                    padding: '2px 8px',
-                                                    backgroundColor: isDark ? colors.surfaceElevated : '#f3f4f6',
-                                                    borderRadius: '4px',
-                                                }}>
-                                                    #{notification.keyword}
-                                                </span>
-                                            )}
-                                            {notification.important && (
-                                                <span style={{
-                                                    fontSize: '11px',
-                                                    fontWeight: '600',
-                                                    color: '#ef4444',
-                                                    padding: '2px 8px',
-                                                    backgroundColor: '#fef2f2',
-                                                    borderRadius: '4px',
-                                                }}>
-                                                    Important
-                                                </span>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Unread Indicator */}
-                                    {!notification.read && (
-                                        <div style={{
-                                            width: '8px',
-                                            height: '8px',
-                                            borderRadius: '50%',
-                                            backgroundColor: getNotificationColor(notification.type),
-                                            flexShrink: 0,
-                                            marginTop: '4px',
-                                        }} />
-                                    )}
-                                </div>
-                            </div>
+                                notification={notification}
+                                colors={colors}
+                                isDark={isDark}
+                                onClick={handleNotificationClick}
+                            />
                         ))}
                     </div>
                 )}

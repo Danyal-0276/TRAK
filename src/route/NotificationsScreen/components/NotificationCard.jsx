@@ -1,28 +1,18 @@
 // src/route/NotificationsScreen/components/NotificationCard.jsx
 
-import React, { memo } from "react";
-
-import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
-
-import { useNavigation } from "@react-navigation/native";
-
-import { useTheme } from "../../../theme/ThemeContext";
-
-import NotificationAvatar from "./NotificationAvatar";
-
-import { getNotificationTypeLabel } from "../utils/notificationDisplay";
-
-
+import React, { memo, useMemo } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useTheme } from '../../../theme/ThemeContext';
+import NotificationAvatar from './NotificationAvatar';
+import { getNotificationCardContent } from '../../../utils/notificationCardContent';
 
 const NotificationCard = ({ item, onMarkAsRead, onNotificationPress }) => {
-
   const { theme } = useTheme();
-
   const { colors } = theme;
-
   const navigation = useNavigation();
-
-
+  const content = useMemo(() => getNotificationCardContent(item), [item]);
+  const isUnread = !item.read;
 
   const handlePress = () => {
     if (onNotificationPress) {
@@ -30,335 +20,128 @@ const NotificationCard = ({ item, onMarkAsRead, onNotificationPress }) => {
       return;
     }
     if (item.id) {
-      navigation.navigate("NotificationDetail", { notificationId: item.id, onMarkAsRead });
+      navigation.navigate('NotificationDetail', { notificationId: item.id, onMarkAsRead });
     }
   };
 
-
-
-  const isUnread = !item.read;
-
-
-
   return (
+    <TouchableOpacity
+      activeOpacity={0.65}
+      onPress={handlePress}
+      style={[
+        styles.row,
+        {
+          backgroundColor: isUnread ? `${colors.primary}07` : colors.background,
+          borderBottomColor: colors.border,
+        },
+      ]}
+    >
+      <NotificationAvatar item={item} size={46} />
 
-    <View style={styles.card}>
-
-      <TouchableOpacity activeOpacity={0.85} onPress={handlePress} style={styles.touchable}>
-
-        <View
-
-          style={[
-
-            styles.messageBubble,
-
-            {
-
-              backgroundColor: isUnread ? colors.surfaceElevated : colors.surface,
-
-              borderColor: isUnread ? colors.borderFocus : colors.border,
-
-              borderLeftWidth: isUnread ? 4 : 1,
-
-              borderLeftColor: isUnread ? colors.primary : colors.border,
-
-              shadowColor: colors.shadowDark || "#000",
-
-            },
-
-          ]}
-
-        >
-
-          <View style={styles.avatarContainer}>
-
-            <NotificationAvatar item={item} size={52} />
-
+      <View style={styles.body}>
+        <View style={styles.topRow}>
+          <View style={styles.headlineWrap}>
             {isUnread ? (
-
-              <View
-
-                style={[
-
-                  styles.unreadDot,
-
-                  {
-
-                    backgroundColor: colors.primary,
-
-                    borderColor: colors.surfaceElevated,
-
-                  },
-
-                ]}
-
-              />
-
+              <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />
             ) : null}
-
-          </View>
-
-
-
-          <View style={styles.messageContent}>
-
-            <View style={styles.messageHeader}>
-
-              <Text style={[styles.senderName, { color: colors.textPrimary }]}>
-
-                {getNotificationTypeLabel(item.type)}
-
+            {content.headlinePrefix ? (
+              <Text style={[styles.headlinePrefix, { color: colors.primary }]}>
+                {content.headlinePrefix}
               </Text>
-
-              <Text style={[styles.messageTime, { color: colors.textTertiary }]}>
-
-                {item.time}
-
-              </Text>
-
-            </View>
-
-
-
+            ) : null}
             <Text
-
               style={[
-
-                styles.messageText,
-
-                {
-
-                  color: isUnread ? colors.textPrimary : colors.textSecondary,
-
-                  fontWeight: isUnread ? "600" : "500",
-
-                },
-
+                styles.headline,
+                { color: isUnread ? colors.textPrimary : colors.textSecondary },
               ]}
-
-              numberOfLines={2}
-
+              numberOfLines={1}
             >
-
-              {item.text}
-
-              {item.keyword ? (
-
-                <Text style={[styles.keyword, { color: colors.primary }]}> #{item.keyword}</Text>
-
-              ) : null}
-
+              {content.headline}
             </Text>
-
-
-
-            {item.keyword ? (
-
-              <View style={[styles.keywordBadge, { backgroundColor: `${colors.primary}15` }]}>
-
-                <Text style={[styles.keywordBadgeText, { color: colors.primary }]}>
-
-                  #{item.keyword}
-
-                </Text>
-
-              </View>
-
-            ) : null}
-
           </View>
-
-
-
-          <View style={styles.arrowContainer}>
-
-            <Text style={[styles.arrow, { color: colors.textTertiary }]}>›</Text>
-
-          </View>
-
+          <Text style={[styles.time, { color: colors.textTertiary }]}>{content.time}</Text>
         </View>
 
-      </TouchableOpacity>
+        <Text
+          style={[
+            styles.title,
+            {
+              color: colors.textPrimary,
+              fontWeight: isUnread ? '700' : '600',
+            },
+          ]}
+          numberOfLines={2}
+        >
+          {content.title}
+        </Text>
 
-    </View>
-
+        {content.meta ? (
+          <Text style={[styles.meta, { color: colors.textTertiary }]} numberOfLines={1}>
+            {content.meta}
+          </Text>
+        ) : null}
+      </View>
+    </TouchableOpacity>
   );
-
 };
 
-
-
 const styles = StyleSheet.create({
-
-  card: {
-
-    marginHorizontal: 16,
-
-    marginBottom: 12,
-
-    borderRadius: 16,
-
-    overflow: "hidden",
-
+  row: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-
-  touchable: {
-
-    width: "100%",
-
+  body: {
+    flex: 1,
+    minWidth: 0,
+    gap: 4,
   },
-
-  messageBubble: {
-
-    flexDirection: "row",
-
-    alignItems: "flex-start",
-
-    padding: 16,
-
-    borderRadius: 16,
-
-    borderWidth: 1,
-
-    shadowOffset: { width: 0, height: 2 },
-
-    shadowOpacity: 0.08,
-
-    shadowRadius: 8,
-
-    elevation: 3,
-
-    minHeight: 80,
-
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
   },
-
-  avatarContainer: {
-
-    marginRight: 12,
-
-    position: "relative",
-
-    justifyContent: "center",
-
+  headlineWrap: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 0,
   },
-
   unreadDot: {
-
-    position: "absolute",
-
-    top: -2,
-
-    right: -2,
-
-    width: 12,
-
-    height: 12,
-
-    borderRadius: 6,
-
-    borderWidth: 2,
-
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    flexShrink: 0,
   },
-
-  messageContent: {
-
-    flex: 1,
-
-    paddingRight: 8,
-
+  headlinePrefix: {
+    fontSize: 13,
+    fontWeight: '700',
   },
-
-  messageHeader: {
-
-    flexDirection: "row",
-
-    justifyContent: "space-between",
-
-    alignItems: "center",
-
-    marginBottom: 6,
-
+  headline: {
+    flexShrink: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    textTransform: 'capitalize',
   },
-
-  senderName: {
-
+  time: {
+    fontSize: 12,
+    fontWeight: '500',
+    flexShrink: 0,
+  },
+  title: {
     fontSize: 15,
-
-    fontWeight: "700",
-
-    flex: 1,
-
+    lineHeight: 21,
   },
-
-  messageTime: {
-
+  meta: {
     fontSize: 12,
-
-    fontWeight: "500",
-
-    marginLeft: 8,
-
+    fontWeight: '500',
+    marginTop: 2,
   },
-
-  messageText: {
-
-    fontSize: 14,
-
-    lineHeight: 20,
-
-    marginBottom: 8,
-
-  },
-
-  keyword: {
-
-    fontWeight: "700",
-
-  },
-
-  keywordBadge: {
-
-    alignSelf: "flex-start",
-
-    paddingHorizontal: 10,
-
-    paddingVertical: 4,
-
-    borderRadius: 8,
-
-    marginTop: 4,
-
-  },
-
-  keywordBadgeText: {
-
-    fontSize: 12,
-
-    fontWeight: "600",
-
-  },
-
-  arrowContainer: {
-
-    justifyContent: "center",
-
-    alignItems: "center",
-
-    paddingLeft: 4,
-
-  },
-
-  arrow: {
-
-    fontSize: 20,
-
-    fontWeight: "300",
-
-  },
-
 });
 
-
-
 export default memo(NotificationCard);
-
