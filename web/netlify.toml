@@ -1,14 +1,19 @@
-# Netlify → TRAK web (React/Vite). API lives on Render (see config/apiBase.js).
+# Netlify → TRAK web. /api proxied to VPS (mirror of vercel.json).
 [build]
   command = "npm run build"
   publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
-  VITE_API_URL = "https://trak-backend-upip.onrender.com"
-  VITE_ENABLE_NOTIFICATIONS_WS = "true"
+  VITE_API_URL = "https://trak-flax.vercel.app"
+  VITE_ENABLE_NOTIFICATIONS_WS = "false"
 
-# SPA routing (React Router)
+[[redirects]]
+  from = "/api/*"
+  to = "http://167.86.110.151:8000/api/:splat"
+  status = 200
+  force = true
+
 [[redirects]]
   from = "/*"
   to = "/index.html"

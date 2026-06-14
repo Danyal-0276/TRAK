@@ -5,15 +5,15 @@ const NETWORK =
   "We couldn't reach the server. Check your internet connection and try again.";
 const TIMEOUT_LOCAL =
   'The request took too long. Please try again in a moment.';
-const TIMEOUT_RENDER =
-  'The server is waking up and may take up to a minute. Wait a moment and try again.';
+const TIMEOUT_VPS =
+  'The server is taking longer than usual to respond. Wait a moment and try again.';
 const TIMEOUT_PASSWORD_RESET =
   'The reset request timed out. Please try again in a moment.';
 const TIMEOUT_TTS =
   'Speech generation is taking longer than usual. Please try again in a moment.';
 
-function isRenderUrl(url) {
-  return typeof url === 'string' && url.includes('onrender.com');
+function isVpsUrl(url) {
+  return typeof url === 'string' && url.includes('167.86.110.151');
 }
 
 function isTtsRequest(url) {
@@ -27,7 +27,7 @@ function isPasswordResetRequest(url) {
 function timeoutMessage(url) {
   if (isPasswordResetRequest(url)) return TIMEOUT_PASSWORD_RESET;
   if (isTtsRequest(url)) return TIMEOUT_TTS;
-  if (isRenderUrl(url)) return TIMEOUT_RENDER;
+  if (isVpsUrl(url)) return TIMEOUT_VPS;
   return TIMEOUT_LOCAL;
 }
 

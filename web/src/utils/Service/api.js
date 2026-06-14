@@ -2,9 +2,9 @@ import { fetchWithTimeout } from '../../api/fetchWithTimeout';
 import { normalizeApiError } from '../normalizeApiError';
 import { emitAuthSessionEnded } from '../authSessionEvents';
 
-import { RENDER_API_BASE } from '../../../../config/apiBase';
+import { PRODUCTION_WEB_API_BASE } from '../../../../config/apiBase';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || RENDER_API_BASE;
+const API_BASE_URL = import.meta.env.VITE_API_URL || PRODUCTION_WEB_API_BASE;
 
 const ACCESS_KEY = 'trak_access_token';
 const REFRESH_KEY = 'trak_refresh_token';

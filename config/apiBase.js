@@ -1,11 +1,16 @@
 /**
- * Deployed Django API origin.
+ * Deployed API origins (single source of truth for clients).
  *
- * Do not hardcode URLs here — set environment variables instead:
- * - Web (Vite): `web/.env` → VITE_API_URL
- * - Mobile: `src/config/api.local.js` (from api.local.example.js)
- * - Netlify: `web/netlify.toml` → VITE_API_URL
- * - Render: dashboard env (backend) + front-end build env
+ * Web production: Vercel same-origin + vercel.json proxies /api → VPS.
+ * Mobile production: direct VPS (src/config/api.production.js).
+ * Backend: Django on VPS (167.86.110.151:8000).
  */
-export const RENDER_API_BASE =
-  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_URL) || '';
+
+/** VPS Django API (daphne/gunicorn). */
+export const VPS_API_BASE = 'http://167.86.110.151:8000';
+
+/** Production web app — API calls go to /api on this host (Vercel rewrite → VPS). */
+export const PRODUCTION_WEB_API_BASE = 'https://trak-flax.vercel.app';
+
+/** @deprecated Use PRODUCTION_WEB_API_BASE — kept for existing imports. */
+export const RENDER_API_BASE = PRODUCTION_WEB_API_BASE;

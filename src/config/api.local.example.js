@@ -1,15 +1,13 @@
 import { Platform } from 'react-native';
 
-// Copy to api.local.js (gitignored). Values mirror TRAK/.env.example at repo root.
+// Copy to api.local.js (gitignored) — DEV ONLY.
+// Release/App Store builds use api.production.js (VPS) automatically.
 
 /** true = VPS (dev + release). false = local Django on your PC. */
 const USE_VPS = true;
 
 /** VPS production API */
 const PRODUCTION_API_BASE = 'http://167.86.110.151:8000';
-
-/** Render (paused) */
-// const PRODUCTION_API_BASE = 'https://trak-backend-upip.onrender.com';
 
 /** Your PC Wi-Fi IPv4 (ipconfig) — phone and PC must be on the same network. */
 const DEV_LAN_HOST = '192.168.100.100';
