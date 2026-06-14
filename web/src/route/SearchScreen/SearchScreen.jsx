@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTheme } from "../../theme/ThemeContext";
 import { useResponsive } from "../../hooks/useResponsive";
 import { useLanguage } from "../../context/LanguageContext";
-import Tabs from "./components/tabs";
+import ExploreCategoryBar from "./components/ExploreCategoryBar";
 import SearchBar from "./components/SearchBar";
 import TrendingTopics from "./components/TrendingTopics";
 import { NewsCard } from "../../components/NewsCard";
@@ -98,6 +98,16 @@ const SearchScreen = () => {
         if (searchQuery.trim()) return [];
         return deriveTrendingFromArticles(allNews);
     }, [allNews, searchQuery]);
+
+    const categoryCounts = useMemo(() => {
+        const counts = { All: allNews.length };
+        for (const item of allNews) {
+            const cat = item?.category;
+            if (!cat) continue;
+            counts[cat] = (counts[cat] || 0) + 1;
+        }
+        return counts;
+    }, [allNews]);
 
     useEffect(() => {
         const urlQ = searchParams.get("q") || "";
@@ -385,90 +395,13 @@ const SearchScreen = () => {
                         />
                     </div>
 
-                    {/* Tab Bar */}
-                    <div style={{
-                        display: 'flex',
-                        gap: '8px',
-                        marginBottom: '8px',
-                        borderBottom: '1px solid #e5e7eb',
-                        paddingBottom: '0',
-                        overflowX: 'auto',
-                        scrollbarWidth: 'none',
-                        msOverflowStyle: 'none',
-                    }}>
-                    {categories.map((tab) => {
-                        // Count articles for this category
-                        const count = tab === "All" 
-                            ? allNews.length 
-                            : allNews.filter(item => item.category === tab).length;
-                        
-                        return (
-                            <button
-                                key={tab}
-                                onClick={() => {
-                                    setActiveTab(tab);
-                                    // Don't clear search when clicking tabs - allow filtering by both category and search
-                                }}
-                                style={{
-                                    padding: '10px 16px',
-                                    border: 'none',
-                                    background: activeTab === tab ? colors.backgroundSecondary : 'transparent',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.2s ease',
-                                    borderBottom: activeTab === tab ? `3px solid ${colors.primary}` : '2px solid transparent',
-                                    marginBottom: activeTab === tab ? '-2px' : '-1px',
-                                    borderRadius: '0',
-                                    whiteSpace: 'nowrap',
-                                    flexShrink: 0,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '6px',
-                                    position: 'relative',
-                                    boxShadow: activeTab === tab ? '0 1px 3px rgba(0, 0, 0, 0.05)' : 'none',
-                                }}
-                                onMouseEnter={(e) => {
-                                    if (activeTab !== tab) {
-                                        e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
-                                    }
-                                }}
-                                onMouseLeave={(e) => {
-                                    if (activeTab !== tab) {
-                                        e.currentTarget.style.backgroundColor = 'transparent';
-                                    } else {
-                                        e.currentTarget.style.backgroundColor = colors.backgroundSecondary;
-                                    }
-                                }}
-                            >
-                                <span style={{
-                                    fontSize: '14px',
-                                    fontWeight: activeTab === tab ? '700' : '500',
-                                    color: activeTab === tab ? colors.textPrimary : colors.textSecondary,
-                                    letterSpacing: activeTab === tab ? '-0.2px' : '0',
-                                }}>
-                                    {tab}
-                                </span>
-                                <span style={{
-                                    fontSize: '11px',
-                                    fontWeight: '600',
-                                    color: activeTab === tab ? colors.textPrimary : colors.textTertiary,
-                                    backgroundColor: activeTab === tab ? colors.border : colors.backgroundSecondary,
-                                    padding: '3px 8px',
-                                    borderRadius: '12px',
-                                    minWidth: '28px',
-                                    textAlign: 'center',
-                                }}>
-                                    {count}
-                                </span>
-                            </button>
-                        );
-                    })}
-                    </div>
+                    <ExploreCategoryBar
+                        categories={categories}
+                        activeTab={activeTab}
+                        onTabPress={setActiveTab}
+                        counts={categoryCounts}
+                    />
                 </div>
-                <style>{`
-                    div::-webkit-scrollbar {
-                        display: none;
-                    }
-                `}</style>
 
                 {/* Content Area */}
                 {loading ? (
