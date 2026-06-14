@@ -56,17 +56,14 @@ function getSharedRedirectResult(auth) {
   return redirectResultPromise;
 }
 
-function waitForAuthUser(auth, timeoutMs = 8000) {
-  if (auth.currentUser) {
-    return Promise.resolve(auth.currentUser);
-  }
+function waitForAuthUser(auth, timeoutMs = 10000) {
   return new Promise((resolve) => {
     let settled = false;
     const timer = setTimeout(() => {
       if (settled) return;
       settled = true;
       unsubscribe();
-      resolve(null);
+      resolve(auth.currentUser || null);
     }, timeoutMs);
     const unsubscribe = auth.onAuthStateChanged((user) => {
       if (!user || settled) return;
