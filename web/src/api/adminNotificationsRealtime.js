@@ -2,8 +2,10 @@ import { getAccessToken } from '../utils/Service/api';
 import { API_BASE } from '../config/api';
 
 function wsBase() {
-  if (API_BASE.startsWith('https://')) return API_BASE.replace('https://', 'wss://');
-  return API_BASE.replace('http://', 'ws://');
+  const origin = API_BASE || (typeof window !== 'undefined' ? window.location.origin : '');
+  if (origin.startsWith('https://')) return origin.replace('https://', 'wss://');
+  if (origin.startsWith('http://')) return origin.replace('http://', 'ws://');
+  return '';
 }
 
 /** WebSocket needs ASGI (daphne). Off in Vite dev by default. */
