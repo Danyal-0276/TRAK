@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "966052710818-tkcfbgpjema3mo5ub5bc65ruendaqhf5.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.traknews.app",
+            "certificate_hash": "a7fa6ec8c80c5b3665ef6aed50bf5b54e099d85f"
+          }
+        },
+        {
           "client_id": "966052710818-9qmi9krb8675cr5ioor5c5qbuokuv393.apps.googleusercontent.com",
           "client_type": 3
         }
