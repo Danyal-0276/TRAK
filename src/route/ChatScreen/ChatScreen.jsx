@@ -161,6 +161,7 @@ const ChatScreen = () => {
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
@@ -323,6 +324,7 @@ const ChatScreen = () => {
       if (res.conversation_id) {
         setConversationId(String(res.conversation_id));
       }
+      setSidebarRefreshKey((k) => k + 1);
       const top = Array.isArray(res.articles)
         ? res.articles.find((a) => isRealFeedArticle(a)) ?? res.articles[0] ?? null
         : res.primary_article || null;
@@ -534,6 +536,7 @@ const ChatScreen = () => {
         onSelectConversation={openConversation}
         onNewChat={startNewChat}
         topInset={topInset}
+        refreshKey={sidebarRefreshKey}
       />
     </View>
   );

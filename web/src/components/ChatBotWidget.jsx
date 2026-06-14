@@ -184,6 +184,7 @@ const ChatBotWidget = () => {
   const [messages, setMessages] = useState([]);
   const [conversationId, setConversationId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarRefreshKey, setSidebarRefreshKey] = useState(0);
   const [loading, setLoading] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const scrollRef = useRef(null);
@@ -267,6 +268,7 @@ const ChatBotWidget = () => {
       if (res.conversation_id) {
         setConversationId(String(res.conversation_id));
       }
+      setSidebarRefreshKey((k) => k + 1);
       const related = Array.isArray(res.related_articles) && res.related_articles.length
         ? res.related_articles
         : Array.isArray(res.articles) && res.articles.length
@@ -422,6 +424,7 @@ const ChatBotWidget = () => {
             activeConversationId={conversationId}
             onSelectConversation={openConversation}
             onNewChat={startNewChat}
+            refreshKey={sidebarRefreshKey}
           />
 
           <div
