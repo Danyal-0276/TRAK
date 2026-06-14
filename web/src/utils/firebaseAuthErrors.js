@@ -9,8 +9,9 @@ export function getFirebaseAuthErrorMessage(err) {
   switch (code) {
     case 'auth/unauthorized-domain':
       return (
-        'This site is not authorized for Google sign-in. In Firebase Console → Authentication → ' +
-        'Settings → Authorized domains, add trak-flax.vercel.app (and localhost for dev).'
+        'This site is not authorized for Google sign-in. Add trak-flax.vercel.app in Firebase → Authentication → ' +
+        'Settings → Authorized domains. Also add https://trak-flax.vercel.app under Google Cloud Console → ' +
+        'Credentials → OAuth Web client → Authorized JavaScript origins.'
       );
     case 'auth/popup-blocked':
       return 'Google sign-in popup was blocked. Allow popups for this site and try again.';
@@ -22,6 +23,11 @@ export function getFirebaseAuthErrorMessage(err) {
       return 'Could not reach Google sign-in. Check your internet connection and try again.';
     case 'auth/operation-not-allowed':
       return 'Google sign-in is disabled in Firebase. Enable Google under Authentication → Sign-in method.';
+    case 'auth/requests-from-referer-are-blocked':
+      return (
+        'Google OAuth blocked this site. In Google Cloud Console → Credentials → OAuth Web client, add ' +
+        'https://trak-flax.vercel.app to Authorized JavaScript origins.'
+      );
     default:
       break;
   }

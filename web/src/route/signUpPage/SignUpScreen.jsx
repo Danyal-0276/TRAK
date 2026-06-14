@@ -613,6 +613,7 @@ const SignUpScreen = () => {
                             setSocialLoading('google');
                             try {
                                 const session = await loginWithGoogle();
+                                if (!session) return;
                                 const path = getPostAuthPath(session, { fromSignup: true });
                                 navigate(path, {
                                     replace: true,

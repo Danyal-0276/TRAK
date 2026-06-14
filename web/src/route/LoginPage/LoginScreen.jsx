@@ -346,8 +346,10 @@ const LoginScreen = () => {
                                 onClick={async () => {
                                     setSocialLoading('google');
                                     try {
-                                        const session = await loginWithGoogle();
-                                        navigate(getLoginRedirectPath(session, returnTo), { replace: true });
+                                        const session = await loginWithGoogle({ returnTo });
+                                        if (session) {
+                                            navigate(getLoginRedirectPath(session, returnTo), { replace: true });
+                                        }
                                     } catch (error) {
                                         showError(error.message || 'Social login failed');
                                     } finally {
