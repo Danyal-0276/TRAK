@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { isGoogleRedirectPending } from '../../utils/googleRedirectSession';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
 import { getPostAuthPath, getLoginRedirectPath } from '../../utils/authNavigation';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
@@ -18,7 +19,7 @@ const LoginScreen = () => {
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
     const action = filledActionColors(colors, isDark);
-    const { login, completeSocialLogin, loginWithGoogle } = useAuth();
+    const { login, completeSocialLogin, loginWithGoogle, finishGoogleRedirectLogin } = useAuth();
     const { error: showError } = useUIFeedback();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -26,6 +27,29 @@ const LoginScreen = () => {
     const [errors, setErrors] = useState({});
     const [showPassword, setShowPassword] = useState(false);
     const [socialLoading, setSocialLoading] = useState(null);
+    const [googleCompleting, setGoogleCompleting] = useState(() => isGoogleRedirectPending());
+
+    useEffect(() => {
+        if (!isGoogleRedirectPending()) return;
+        let cancelled = false;
+        (async () => {
+            setGoogleCompleting(true);
+            try {
+                const session = await finishGoogleRedirectLogin();
+                if (cancelled || !session) return;
+                navigate(getLoginRedirectPath(session, returnTo), { replace: true });
+            } catch (error) {
+                if (!cancelled) {
+                    showError(error?.message || 'Google sign-in failed');
+                }
+            } finally {
+                if (!cancelled) setGoogleCompleting(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [finishGoogleRedirectLogin, navigate, returnTo, showError]);
 
     useEffect(() => {
         const ticket = searchParams.get('social_ticket');
@@ -143,7 +167,9 @@ const LoginScreen = () => {
                         margin: '0',
                         lineHeight: '1.5',
                     }}>
-                        Enter your email and password to continue
+                        {googleCompleting
+                            ? 'Completing Google sign-in…'
+                            : 'Enter your email and password to continue'}
                     </p>
                 </div>
 
