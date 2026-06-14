@@ -1,11 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import Text from '../../components/ui/Text';
 import { ArrowLeft, Plus, X, ArrowRight } from 'lucide-react';
 import { loadUserKeywords, setUserKeywords } from '../../utils/userKeywordsStorage';
-import { loadTagsWithSubcategories, taxonomyTermsFromMap } from '../../utils/platformTaxonomy';
+import { loadTagsWithSubcategories, resolveSavedInterestSelections } from '../../utils/platformTaxonomy';
 import { getCurrentUser, getUserKeywordsFromServer, trackKeywords } from '../../utils/Service/api';
 import { filledActionColors } from '../../theme/buttonContrast';
 
@@ -22,10 +22,17 @@ const KeywordSelectionScreen = () => {
 
     const selectedTags = location.state?.selectedTags || [];
     const fromSettings = Boolean(location.state?.fromSettings);
+    const fromSignup = Boolean(location.state?.fromSignup);
+    const preservedCategoryTagsRef = useRef([]);
     const action = filledActionColors(colors, isDark);
 
-    // Categories and keywords share one saved list; hide admin/platform categories here.
+    // Signup: blank. Settings / return visits: preload saved custom keywords from server.
     useEffect(() => {
+        if (fromSignup) {
+            setSelectedKeywords([]);
+            preservedCategoryTagsRef.current = [];
+            return undefined;
+        }
         let cancelled = false;
         (async () => {
             const [map, saved] = await Promise.all([
@@ -33,18 +40,18 @@ const KeywordSelectionScreen = () => {
                 loadUserKeywords(getUserKeywordsFromServer),
             ]);
             if (cancelled) return;
-            const categoryTerms = taxonomyTermsFromMap(map);
-            for (const tag of selectedTags) {
-                categoryTerms.add(String(tag || '').toLowerCase());
-            }
-            setSelectedKeywords(
-                saved.filter((k) => !categoryTerms.has(String(k || '').toLowerCase()))
+            const { customKeywords, preservedCategoryTags } = resolveSavedInterestSelections(
+                saved,
+                map,
+                selectedTags
             );
+            preservedCategoryTagsRef.current = preservedCategoryTags;
+            setSelectedKeywords(customKeywords);
         })();
         return () => {
             cancelled = true;
         };
-    }, [selectedTags.join('\x1f')]);
+    }, [fromSignup, selectedTags.join('\x1f')]);
 
     const addKeyword = () => {
         const trimmedKeyword = keywordInput.trim();
@@ -80,7 +87,10 @@ const KeywordSelectionScreen = () => {
         if (navigating) return;
         setNavigating(true);
 
-        const merged = [...selectedKeywords, ...selectedTags]
+        const categoryTags = selectedTags.length
+            ? selectedTags
+            : preservedCategoryTagsRef.current;
+        const merged = [...selectedKeywords, ...categoryTags]
             .map((k) => String(k || '').trim().toLowerCase())
             .filter(Boolean)
             .filter((k, idx, arr) => arr.indexOf(k) === idx);

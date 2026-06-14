@@ -28,7 +28,7 @@ import { trackKeywords } from '../../api/newsApi';
 import { getAccessToken } from '../../api/client';
 import { loadUserKeywords, setUserKeywords, invalidateUserKeywordsCache } from '../../utils/userKeywordsStorage';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
-import { loadTagsWithSubcategories, taxonomyTermsFromMap } from '../../utils/platformTaxonomy';
+import { loadTagsWithSubcategories, resolveSavedInterestSelections } from '../../utils/platformTaxonomy';
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,9 +40,9 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
     const [keywordInput, setKeywordInput] = useState('');
     const [loading, setLoading] = useState(false);
     // Get selected tags from previous screen
-    const { fromSettings = false } = route.params || {};
+    const { fromSettings = false, fromSignup = false } = route.params || {};
     const selectedTags = Array.isArray(route.params?.selectedTags) ? route.params.selectedTags : [];
-    const keywordsLoaded = useRef(false);
+    const preservedCategoryTagsRef = useRef([]);
     const goToSettings = () => navigation.navigate('SettingsScreen');
 
     // Animation refs
@@ -111,22 +111,30 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
     }, []);
 
     useEffect(() => {
-        if (keywordsLoaded.current) return;
-        keywordsLoaded.current = true;
+        if (fromSignup) {
+            setSelectedKeywords([]);
+            preservedCategoryTagsRef.current = [];
+            return undefined;
+        }
         let mounted = true;
         (async () => {
-            const [map, saved] = await Promise.all([loadTagsWithSubcategories(), loadUserKeywords()]);
+            const [map, saved] = await Promise.all([
+                loadTagsWithSubcategories(),
+                loadUserKeywords({ force: true }),
+            ]);
             if (!mounted) return;
-            const terms = taxonomyTermsFromMap(map);
-            for (const tag of selectedTags) {
-                terms.add(String(tag || '').toLowerCase());
-            }
-            setSelectedKeywords(saved.filter((k) => !terms.has(String(k || '').toLowerCase())));
+            const { customKeywords, preservedCategoryTags } = resolveSavedInterestSelections(
+                saved,
+                map,
+                selectedTags
+            );
+            preservedCategoryTagsRef.current = preservedCategoryTags;
+            setSelectedKeywords(customKeywords);
         })();
         return () => {
             mounted = false;
         };
-    }, [selectedTags.join('\x1f')]);
+    }, [fromSignup, selectedTags.join('\x1f')]);
 
     const addKeyword = () => {
         const trimmedKeyword = keywordInput.trim();
@@ -160,11 +168,15 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
         }
     };
 
-    const buildMergedKeywords = () =>
-        [...selectedKeywords, ...selectedTags]
+    const buildMergedKeywords = () => {
+        const categoryTags = selectedTags.length
+            ? selectedTags
+            : preservedCategoryTagsRef.current;
+        return [...selectedKeywords, ...categoryTags]
             .map((k) => String(k || '').trim().toLowerCase())
             .filter(Boolean)
             .filter((k, idx, arr) => arr.indexOf(k) === idx);
+    };
 
     const exitKeywordStep = () => {
         if (fromSettings) {

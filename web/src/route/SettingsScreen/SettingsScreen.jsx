@@ -5,6 +5,7 @@ import {
     Bell, 
     Lock, 
     Tag, 
+    Hash,
     Database, 
     Info,
     MessageSquare,
@@ -425,6 +426,12 @@ export default function SettingsScreen() {
                         label={t('settings.followingChannels')}
                         description={t('settings.followingChannelsDesc')}
                         onPress={() => navigate('/tag-selection', { state: { fromSettings: true } })}
+                    />
+                    <SettingsRow
+                        icon={<Hash size={20} color={colors.textPrimary} />}
+                        label="Custom keywords"
+                        description="Extra terms for matching articles"
+                        onPress={() => navigate('/keyword-selection', { state: { fromSettings: true } })}
                     />
                 </SettingsSection>
 
