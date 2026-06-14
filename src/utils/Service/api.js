@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE } from '../../config/api';
+import { fetchWithTimeout, MOBILE_API_TIMEOUT_MS } from '../../api/fetchWithTimeout';
 import { formatNetworkError } from '../networkError';
 import { emitAuthSessionEnded } from '../authSessionEvents';
 
@@ -32,7 +33,7 @@ const parseError = async (res) => {
 async function request(path, options = {}) {
   let res;
   try {
-    res = await fetch(`${API_BASE_URL}${path}`, options);
+    res = await fetchWithTimeout(`${API_BASE_URL}${path}`, options, MOBILE_API_TIMEOUT_MS);
   } catch (err) {
     throw new Error(formatNetworkError(err));
   }
@@ -140,16 +141,25 @@ export const authRequest = async (path, options = {}) => {
     throw new Error('Please sign in to use this feature.');
   }
   const doReq = (token) =>
-    fetch(`${API_BASE_URL}${path}`, {
-      ...options,
-      headers: {
-        ...(options.headers || {}),
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
+    fetchWithTimeout(
+      `${API_BASE_URL}${path}`,
+      {
+        ...options,
+        headers: {
+          ...(options.headers || {}),
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       },
-    });
+      MOBILE_API_TIMEOUT_MS
+    );
 
-  let res = await doReq(access);
+  let res;
+  try {
+    res = await doReq(access);
+  } catch (err) {
+    throw new Error(formatNetworkError(err));
+  }
   if (res.status === 401) {
     const refresh = await AsyncStorage.getItem(REFRESH_KEY);
     if (!refresh) {
@@ -157,16 +167,29 @@ export const authRequest = async (path, options = {}) => {
       emitAuthSessionEnded();
       throw new Error('Session expired. Please sign in again.');
     }
-    const refreshRes = await fetch(`${API_BASE_URL}/api/auth/token/refresh/`, {
-      method: 'POST',
-      headers: jsonHeaders,
-      body: JSON.stringify({ refresh }),
-    });
+    let refreshRes;
+    try {
+      refreshRes = await fetchWithTimeout(
+        `${API_BASE_URL}/api/auth/token/refresh/`,
+        {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify({ refresh }),
+        },
+        MOBILE_API_TIMEOUT_MS
+      );
+    } catch (err) {
+      throw new Error(formatNetworkError(err));
+    }
     if (refreshRes.ok) {
       const payload = await refreshRes.json().catch(() => ({}));
       if (payload.access) {
         await AsyncStorage.setItem(ACCESS_KEY, payload.access);
-        res = await doReq(payload.access);
+        try {
+          res = await doReq(payload.access);
+        } catch (err) {
+          throw new Error(formatNetworkError(err));
+        }
       } else {
         await clearAuthSession();
         emitAuthSessionEnded();
