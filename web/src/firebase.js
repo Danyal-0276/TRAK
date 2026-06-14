@@ -31,13 +31,14 @@ let googleProviderInstance = null;
 function ensureFirebase() {
   if (!isFirebaseConfigured()) {
     throw new Error(
-      'Google sign-in is not configured. Add Firebase keys to TRAK/web/.env (see .env.example), then restart the dev server.'
+      'Google sign-in is not configured. Add VITE_FIREBASE_* keys in Vercel env, then redeploy.'
     );
   }
   if (!appInstance) {
     appInstance = initializeApp(readConfig());
     authInstance = getAuth(appInstance);
     googleProviderInstance = new GoogleAuthProvider();
+    googleProviderInstance.setCustomParameters({ prompt: 'select_account' });
   }
   return { auth: authInstance, googleProvider: googleProviderInstance };
 }

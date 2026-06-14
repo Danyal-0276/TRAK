@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { signInWithPopup } from 'firebase/auth';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { getRedirectResult, signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { getFirebaseAuth, getGoogleProvider, isFirebaseConfigured } from '../firebase';
 import { getFirebaseAuthErrorMessage } from '../utils/firebaseAuthErrors';
+import { stashGoogleAuthReturn } from '../navigation/GoogleAuthRedirectHandler';
 import {
     clearAuthTokens,
     completeSocialOAuth,
@@ -79,13 +80,32 @@ export const AuthProvider = ({ children }) => {
         return applySession(session);
     };
 
-    const loginWithGoogle = async () => {
+    const finishGoogleRedirectLogin = useCallback(async () => {
+        if (!isFirebaseConfigured()) return null;
+        try {
+            const result = await getRedirectResult(getFirebaseAuth());
+            if (!result?.user) return null;
+            const idToken = await result.user.getIdToken();
+            const session = await loginWithFirebase(idToken);
+            const user = applySession(session);
+            return { user, ...session };
+        } catch (err) {
+            throw new Error(getFirebaseAuthErrorMessage(err));
+        }
+    }, []);
+
+    const loginWithGoogle = async ({ returnTo } = {}) => {
         if (!isFirebaseConfigured()) {
             throw new Error(
                 'Google sign-in is not configured. Add VITE_FIREBASE_* keys in Vercel env (or TRAK/web/.env), then redeploy.'
             );
         }
         try {
+            if (import.meta.env.PROD) {
+                stashGoogleAuthReturn(returnTo);
+                await signInWithRedirect(getFirebaseAuth(), getGoogleProvider());
+                return null;
+            }
             const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
             const idToken = await result.user.getIdToken();
             const session = await loginWithFirebase(idToken);
@@ -129,6 +149,7 @@ export const AuthProvider = ({ children }) => {
         socialLogin,
         completeSocialLogin,
         loginWithGoogle,
+        finishGoogleRedirectLogin,
         isAuthenticated: Boolean(getAccessToken() && user),
         isFirebaseConfigured: isFirebaseConfigured(),
         logout,
