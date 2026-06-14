@@ -24,12 +24,16 @@ const CategoryArticlesScreen = ({ navigation, route }) => {
     const topInset = resolveTopInset(insets, 0);
     const categorySlug = String(route?.params?.categorySlug || '').trim().toLowerCase();
     const categoryName = String(route?.params?.categoryName || categorySlug).trim();
+    const initialCount = route?.params?.categoryCount;
 
     const [newsData, setNewsData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [nextCursor, setNextCursor] = useState(null);
     const [hasMore, setHasMore] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
+    const [categoryTotal, setCategoryTotal] = useState(
+        () => (initialCount != null ? Number(initialCount) : null)
+    );
 
     const {
         handleVote,
@@ -45,6 +49,7 @@ const CategoryArticlesScreen = ({ navigation, route }) => {
             setNewsData(page.items || []);
             setNextCursor(page.nextCursor || null);
             setHasMore(Boolean(page.hasMore));
+            if (page.categoryTotal != null) setCategoryTotal(Number(page.categoryTotal));
             await syncFromServer(true);
         } catch (e) {
             console.warn(e);
@@ -104,7 +109,9 @@ const CategoryArticlesScreen = ({ navigation, route }) => {
                     <View style={styles.titleText}>
                         <Text variant="title" style={{ color: colors.textPrimary }}>{categoryName}</Text>
                         <Text variant="caption" color={colors.textSecondary}>
-                            All articles in this category
+                            {categoryTotal != null
+                                ? `${categoryTotal} ${categoryTotal === 1 ? 'article' : 'articles'} in this category`
+                                : 'All articles in this category'}
                         </Text>
                     </View>
                 </View>
