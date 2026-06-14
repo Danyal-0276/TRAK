@@ -92,7 +92,10 @@ export const AuthProvider = ({ children }) => {
             try {
                 const auth = getFirebaseAuth();
                 const firebaseUser = await resolveFirebaseUserAfterRedirect(auth);
-                if (!firebaseUser) return null;
+                if (!firebaseUser) {
+                    clearGoogleRedirectPending();
+                    return null;
+                }
                 const idToken = await firebaseUser.getIdToken();
                 const session = await loginWithFirebase(idToken);
                 const user = applySession(session);
@@ -113,8 +116,6 @@ export const AuthProvider = ({ children }) => {
         }
         try {
             const auth = getFirebaseAuth();
-            // Clear cached Firebase/Google session so the account picker is shown.
-            await signOut(auth).catch(() => {});
 
             if (import.meta.env.PROD) {
                 stashGoogleAuthReturn(returnTo);
@@ -122,6 +123,9 @@ export const AuthProvider = ({ children }) => {
                 await signInWithRedirect(auth, getGoogleProvider());
                 return null;
             }
+
+            // Popup flow: safe to clear Firebase session so Google shows the account picker.
+            await signOut(auth).catch(() => {});
             const result = await signInWithPopup(auth, getGoogleProvider());
             const idToken = await result.user.getIdToken();
             const session = await loginWithFirebase(idToken);
