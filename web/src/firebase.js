@@ -26,7 +26,6 @@ export function isFirebaseConfigured() {
 
 let appInstance = null;
 let authInstance = null;
-let googleProviderInstance = null;
 
 function ensureFirebase() {
   if (!isFirebaseConfigured()) {
@@ -37,16 +36,18 @@ function ensureFirebase() {
   if (!appInstance) {
     appInstance = initializeApp(readConfig());
     authInstance = getAuth(appInstance);
-    googleProviderInstance = new GoogleAuthProvider();
-    googleProviderInstance.setCustomParameters({ prompt: 'select_account' });
   }
-  return { auth: authInstance, googleProvider: googleProviderInstance };
+  return authInstance;
 }
 
 export function getFirebaseAuth() {
-  return ensureFirebase().auth;
+  return ensureFirebase();
 }
 
+/** Fresh provider each time so account picker params apply reliably. */
 export function getGoogleProvider() {
-  return ensureFirebase().googleProvider;
+  ensureFirebase();
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account login' });
+  return provider;
 }

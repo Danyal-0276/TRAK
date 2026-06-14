@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect, signOut } from 'firebase/auth';
 import { getFirebaseAuth, getGoogleProvider, isFirebaseConfigured } from '../firebase';
 import { getFirebaseAuthErrorMessage } from '../utils/firebaseAuthErrors';
 import {
@@ -112,13 +112,17 @@ export const AuthProvider = ({ children }) => {
             );
         }
         try {
+            const auth = getFirebaseAuth();
+            // Clear cached Firebase/Google session so the account picker is shown.
+            await signOut(auth).catch(() => {});
+
             if (import.meta.env.PROD) {
                 stashGoogleAuthReturn(returnTo);
                 markGoogleRedirectPending();
-                await signInWithRedirect(getFirebaseAuth(), getGoogleProvider());
+                await signInWithRedirect(auth, getGoogleProvider());
                 return null;
             }
-            const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
+            const result = await signInWithPopup(auth, getGoogleProvider());
             const idToken = await result.user.getIdToken();
             const session = await loginWithFirebase(idToken);
             const user = applySession(session);
@@ -128,10 +132,13 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const logout = () => {
+    const logout = async () => {
         clearAuthTokens();
         setUser(null);
         emitAuthSessionEnded('manual');
+        if (isFirebaseConfigured()) {
+            await signOut(getFirebaseAuth()).catch(() => {});
+        }
     };
 
     const verifyEmail = async (code) => {

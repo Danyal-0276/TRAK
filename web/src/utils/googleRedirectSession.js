@@ -56,9 +56,31 @@ function getSharedRedirectResult(auth) {
   return redirectResultPromise;
 }
 
+function waitForAuthUser(auth, timeoutMs = 8000) {
+  if (auth.currentUser) {
+    return Promise.resolve(auth.currentUser);
+  }
+  return new Promise((resolve) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      unsubscribe();
+      resolve(null);
+    }, timeoutMs);
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (!user || settled) return;
+      settled = true;
+      clearTimeout(timer);
+      unsubscribe();
+      resolve(user);
+    });
+  });
+}
+
 /**
  * Resolve Firebase user after signInWithRedirect round-trip.
- * Falls back to auth.currentUser when getRedirectResult is empty but redirect was pending.
+ * Waits for auth state when getRedirectResult is empty but redirect was pending.
  */
 export async function resolveFirebaseUserAfterRedirect(auth) {
   const pending = isGoogleRedirectPending();
@@ -73,8 +95,8 @@ export async function resolveFirebaseUserAfterRedirect(auth) {
     return result.user;
   }
 
-  if (pending && auth.currentUser) {
-    return auth.currentUser;
+  if (pending) {
+    return waitForAuthUser(auth);
   }
 
   return null;
