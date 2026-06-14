@@ -3,6 +3,10 @@ import ReactDOM from 'react-dom/client';
 import App from './App';
 import './App.css';
 import { getUserFacingError } from './utils/getUserFacingError';
+import { captureRedirectResultAtStartup } from './firebase';
+
+// Must run before React so Firebase can read the OAuth callback from the URL.
+captureRedirectResultAtStartup();
 
 // Error boundary component
 class ErrorBoundary extends React.Component {

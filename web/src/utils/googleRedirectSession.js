@@ -1,4 +1,5 @@
 import { getRedirectResult } from 'firebase/auth';
+import { getStartupRedirectResultPromise } from '../firebase';
 
 const PENDING_KEY = 'trak_google_redirect_pending';
 const RETURN_KEY = 'trak_google_auth_return';
@@ -51,7 +52,7 @@ export async function runGoogleRedirectExchange(exchange) {
 /** getRedirectResult may only be consumed once per page load — share one promise. */
 function getSharedRedirectResult(auth) {
   if (!redirectResultPromise) {
-    redirectResultPromise = getRedirectResult(auth);
+    redirectResultPromise = getStartupRedirectResultPromise() ?? getRedirectResult(auth);
   }
   return redirectResultPromise;
 }
