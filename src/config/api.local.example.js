@@ -35,4 +35,5 @@ const LOCAL_API_BASE = Platform.select({
 
 export const API_BASE = USE_VPS ? PRODUCTION_API_BASE : LOCAL_API_BASE;
 
-// Local backend: python -m daphne -b 0.0.0.0 -p 8000 TRAK_Backend.asgi:application
+/** Live in-app notifications (requires daphne). Set true for local dev. */
+export const ENABLE_NOTIFICATIONS_WS = true;

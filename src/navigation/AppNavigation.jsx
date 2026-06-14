@@ -10,6 +10,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { defaultStackScreenOptions } from './stackScreenOptions';
 import { getInitialRouteForUser } from '../utils/authNavigation';
 import { bindPushNotificationNavigation, setPushNavigationRef } from '../notifications/pushNavigation';
+import { bindForegroundPushMessaging } from '../notifications/pushMessaging';
 import { onAuthSessionEnded } from '../utils/authSessionEvents';
 import {
     EditProfileScreen,
@@ -72,6 +73,10 @@ export default function AppNavigation() {
         if (!bootstrapped || !user) return undefined;
         setPushNavigationRef(navRef.current);
         bindPushNotificationNavigation();
+        const unsubForeground = bindForegroundPushMessaging();
+        return () => {
+            if (typeof unsubForeground === 'function') unsubForeground();
+        };
     }, [bootstrapped, user]);
 
     useEffect(() => {
