@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { isAuthPath } from '../navigation/authPaths';
 import { Bot, Send, Sparkles, Trash2, X } from 'lucide-react';
@@ -8,8 +8,8 @@ import { useChatBot } from '../context/ChatBotContext';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { filledActionColors } from '../theme/buttonContrast';
+import { CHAT_ANIMATION_CSS, CHAT_HERO_SUBTITLE, CHAT_HERO_TITLE, CHAT_PROMPTS } from './chat/chatUiConstants';
 
-/** In-app TRAK article path only — never external publisher URLs. */
 function resolveTrakArticlePath(article) {
   if (!article) return null;
   const path = article.trak_path || article.article_path;
@@ -24,20 +24,151 @@ function mapHistoryMessage(m) {
     (m.article_id ? `/article/${encodeURIComponent(String(m.article_id))}` : null);
   const relatedArticles = [];
   if (path) {
-    relatedArticles.push({
-      title: m.article_title,
-      source: m.source,
-      path,
-    });
+    relatedArticles.push({ title: m.article_title, source: m.source, path });
   }
-  return {
-    role: m.role,
-    text: m.text,
-    relatedArticles,
-  };
+  return { role: m.role, text: m.text, relatedArticles };
 }
 
+function BotAvatar({ colors, action, size = 30 }) {
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        display: 'grid',
+        placeItems: 'center',
+        flexShrink: 0,
+        background: action.background,
+        color: action.foreground,
+      }}
+    >
+      <Bot size={size * 0.52} color={action.foreground} strokeWidth={2.25} />
+    </div>
+  );
+}
 
+function TypingBubble({ colors, action }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10, marginBottom: 12 }}>
+      <BotAvatar colors={colors} action={action} />
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          padding: '12px 14px',
+          borderRadius: 18,
+          borderBottomLeftRadius: 6,
+          background: colors.backgroundSecondary,
+          border: `1px solid ${colors.border}`,
+        }}
+      >
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            style={{
+              width: 7,
+              height: 7,
+              borderRadius: '50%',
+              background: colors.textSecondary,
+              animation: `typingBounce 1s ${i * 0.16}s infinite`,
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ChatEmptyState({ colors, action, isDark, onSelect }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px 8px 12px',
+        animation: 'chatHeroIn 360ms cubic-bezier(0.22, 1, 0.36, 1) both',
+      }}
+    >
+      <div
+        style={{
+          width: 88,
+          height: 88,
+          borderRadius: 44,
+          display: 'grid',
+          placeItems: 'center',
+          marginBottom: 16,
+          background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+          border: `1px solid ${colors.border}`,
+        }}
+      >
+        <div
+          style={{
+            width: 60,
+            height: 60,
+            borderRadius: 30,
+            display: 'grid',
+            placeItems: 'center',
+            background: action.background,
+            color: action.foreground,
+          }}
+        >
+          <Bot size={30} strokeWidth={2} />
+        </div>
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: colors.textPrimary, letterSpacing: -0.3, textAlign: 'center' }}>
+        {CHAT_HERO_TITLE}
+      </div>
+      <div
+        style={{
+          fontSize: 13,
+          color: colors.textSecondary,
+          textAlign: 'center',
+          marginTop: 8,
+          marginBottom: 18,
+          lineHeight: 1.5,
+          maxWidth: 280,
+        }}
+      >
+        {CHAT_HERO_SUBTITLE}
+      </div>
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {CHAT_PROMPTS.map((item) => (
+          <button
+            key={item.prompt}
+            type="button"
+            onClick={() => onSelect(item.prompt)}
+            style={{
+              width: '100%',
+              textAlign: 'left',
+              border: `1px solid ${colors.border}`,
+              borderRadius: 14,
+              padding: '11px 13px',
+              background: colors.surface,
+              cursor: 'pointer',
+              transition: 'transform 120ms ease, opacity 120ms ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.9';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
+              <Sparkles size={13} color={colors.textSecondary} />
+              <span style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>{item.label}</span>
+            </div>
+            <div style={{ fontSize: 12, color: colors.textSecondary, paddingLeft: 21 }}>{item.hint}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 const ChatBotWidget = () => {
   const navigate = useNavigate();
@@ -52,27 +183,43 @@ const ChatBotWidget = () => {
 
   const [renderPanel, setRenderPanel] = useState(false);
   const [input, setInput] = useState('');
-  const [messages, setMessages] = useState([
-    {
-      role: 'bot',
-      text: 'Hi! I am TRAK AI — built by the TRAK team to help you explore news. Ask about headlines, topics, or stories in your feed.',
-    },
-  ]);
+  const [messages, setMessages] = useState([]);
   const [loading, setLoading] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [confirmClear, setConfirmClear] = useState(false);
   const scrollRef = useRef(null);
+  const inputRef = useRef(null);
+  const messageCountRef = useRef(0);
+
   const glow = useMemo(
-    () => ({ boxShadow: isDark ? '0 12px 40px rgba(0,0,0,0.45)' : '0 12px 40px rgba(0,0,0,0.18)' }),
+    () => ({ boxShadow: isDark ? '0 16px 48px rgba(0,0,0,0.5)' : '0 16px 48px rgba(0,0,0,0.16)' }),
     [isDark],
   );
 
+  const canSend = Boolean(input.trim()) && !loading;
+  const showEmptyState = historyLoaded && messages.length === 0 && !loading;
+
+  const scrollToLatest = useCallback(() => {
+    requestAnimationFrame(() => {
+      if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    });
+  }, []);
+
+  const resizeTextarea = useCallback(() => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 120)}px`;
+  }, []);
+
   useEffect(() => {
-    if (open) setRenderPanel(true);
-    else {
-      const id = window.setTimeout(() => setRenderPanel(false), 180);
+    if (open) {
+      setRenderPanel(true);
+      const id = window.setTimeout(() => inputRef.current?.focus(), 240);
       return () => window.clearTimeout(id);
     }
+    const id = window.setTimeout(() => setRenderPanel(false), 220);
+    return () => window.clearTimeout(id);
   }, [open]);
 
   useEffect(() => {
@@ -80,11 +227,10 @@ const ChatBotWidget = () => {
       try {
         const res = await getChatHistory();
         if (Array.isArray(res.messages) && res.messages.length) {
-          const mapped = res.messages.map(mapHistoryMessage);
-          setMessages(mapped);
+          setMessages(res.messages.map(mapHistoryMessage));
         }
       } catch (_) {
-        // keep default intro message
+        // empty
       } finally {
         setHistoryLoaded(true);
       }
@@ -97,10 +243,13 @@ const ChatBotWidget = () => {
   }, [user]);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages, loading, open]);
+    if (messages.length > messageCountRef.current || loading) scrollToLatest();
+    messageCountRef.current = messages.length;
+  }, [messages, loading, scrollToLatest]);
+
+  useEffect(() => {
+    resizeTextarea();
+  }, [input, open, resizeTextarea]);
 
   const sendMessage = async (preset) => {
     const text = (preset ?? input).trim();
@@ -131,9 +280,7 @@ const ChatBotWidget = () => {
             .filter((a) => a.path),
         },
       ]);
-      if (!open) {
-        setHasUnread(true);
-      }
+      if (!open) setHasUnread(true);
     } catch (error) {
       const fallback =
         error?.status === 502
@@ -147,7 +294,14 @@ const ChatBotWidget = () => {
     }
   };
 
-  if (!user || isAuthPath(location.pathname)) {
+  const handleComposerKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (canSend) sendMessage();
+    }
+  };
+
+  if (!user || isAuthPath(location.pathname) || location.pathname.startsWith('/admin')) {
     return null;
   }
 
@@ -155,216 +309,254 @@ const ChatBotWidget = () => {
 
   return (
     <div style={{ position: 'fixed', right: 20, bottom: dockBottom, zIndex: 1101 }}>
-      <style>{`
-        @keyframes chatMsgIn {
-          from { opacity: 0; transform: translateY(8px) scale(0.98); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes typingBounce {
-          0%, 80%, 100% { transform: translateY(0); opacity: .35; }
-          40% { transform: translateY(-4px); opacity: 1; }
-        }
-      `}</style>
+      <style>{CHAT_ANIMATION_CSS}</style>
       {renderPanel ? (
         <div
           style={{
-            width: isMobile ? 'min(360px, calc(100vw - 40px))' : 360,
-            height: isMobile ? 'min(520px, calc(100vh - 160px))' : 520,
-            background: colors.surface,
+            width: isMobile ? 'min(400px, calc(100vw - 32px))' : 400,
+            height: isMobile ? 'min(620px, calc(100vh - 140px))' : 620,
+            background: colors.background,
             border: `1px solid ${colors.border}`,
-            borderRadius: 16,
+            borderRadius: 20,
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
             ...glow,
+            animation: open ? 'chatPanelIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both' : 'none',
             opacity: open ? 1 : 0,
-            transform: `translateY(${open ? 0 : 12}px) scale(${open ? 1 : 0.98})`,
-            transition: 'all 180ms ease',
+            transform: open ? 'translateY(0) scale(1)' : 'translateY(16px) scale(0.95)',
+            transition: open ? 'none' : 'opacity 180ms ease, transform 180ms ease',
+            pointerEvents: open ? 'auto' : 'none',
           }}
         >
           <div
             style={{
-              padding: '12px 14px',
-              background: colors.backgroundSecondary,
+              position: 'relative',
+              padding: '11px 14px',
               borderBottom: `1px solid ${colors.border}`,
               display: 'flex',
-              justifyContent: 'space-between',
+              justifyContent: 'center',
               alignItems: 'center',
+              background: colors.background,
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: colors.textPrimary }}>
-              <Sparkles size={14} />
-              <strong style={{ fontSize: 14 }}>TRAK AI Assistant</strong>
+            <div style={{ flex: 1, textAlign: 'center', minWidth: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: colors.textPrimary, letterSpacing: -0.3 }}>TRAK AI</div>
+              <div style={{ fontSize: 12, color: colors.textSecondary, marginTop: 2 }}>
+                {loading ? 'Thinking…' : 'News assistant'}
+              </div>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ position: 'absolute', right: 10, display: 'flex', gap: 2 }}>
               <button
                 type="button"
                 onClick={() => setConfirmClear(true)}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textSecondary }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: colors.textSecondary,
+                  width: 34,
+                  height: 34,
+                  borderRadius: 8,
+                  display: 'grid',
+                  placeItems: 'center',
+                }}
                 title="Clear chat history"
               >
-                <Trash2 size={15} />
+                <Trash2 size={16} />
               </button>
               <button
                 type="button"
                 onClick={closeChat}
-                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: colors.textSecondary }}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: colors.textSecondary,
+                  width: 34,
+                  height: 34,
+                  borderRadius: 8,
+                  display: 'grid',
+                  placeItems: 'center',
+                }}
+                aria-label="Close chat"
               >
-                <X size={16} />
+                <X size={18} />
               </button>
             </div>
           </div>
+
           <div
             ref={scrollRef}
-            style={{ flex: 1, overflowY: 'auto', padding: 12, background: colors.background }}
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              padding: showEmptyState ? '8px 14px' : '14px 14px',
+              scrollBehavior: 'smooth',
+            }}
           >
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                style={{
-                  marginBottom: 8,
-                  textAlign: m.role === 'user' ? 'right' : 'left',
-                  animation: `chatMsgIn 220ms ease ${Math.min(i * 20, 120)}ms both`,
-                }}
-              >
-                <span
-                  style={{
-                    display: 'inline-block',
-                    fontSize: 13,
-                    padding: '10px 12px',
-                    borderRadius: 14,
-                    background: m.role === 'user' ? action.background : colors.backgroundSecondary,
-                    color: m.role === 'user' ? action.foreground : colors.textPrimary,
-                    maxWidth: '88%',
-                    lineHeight: 1.5,
-                    border: m.role === 'user' ? 'none' : `1px solid ${colors.border}`,
-                  }}
-                >
-                  {m.text}
-                </span>
-                {Array.isArray(m.relatedArticles) && m.relatedArticles.length > 0 && (
+            {showEmptyState ? (
+              <ChatEmptyState colors={colors} action={action} isDark={isDark} onSelect={sendMessage} />
+            ) : (
+              <>
+                {messages.map((m, i) => (
                   <div
+                    key={`${m.role}-${i}-${m.text?.slice(0, 16)}`}
                     style={{
-                      marginTop: 7,
                       display: 'flex',
-                      flexDirection: 'column',
-                      gap: 6,
-                      alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
+                      flexDirection: m.role === 'user' ? 'row-reverse' : 'row',
+                      alignItems: 'flex-start',
+                      gap: 10,
+                      marginBottom: 16,
+                      animation: `chatMsgIn 280ms cubic-bezier(0.22, 1, 0.36, 1) ${Math.min(i * 20, 120)}ms both`,
                     }}
                   >
-                    {m.relatedArticles.map((art, j) => (
-                      <button
-                        key={`${art.path}-${j}`}
-                        type="button"
-                        onClick={() => {
-                          setOpen(false);
-                          navigate(art.path);
-                        }}
-                        style={{
-                          border: `1px solid ${colors.border}`,
-                          borderRadius: 10,
-                          padding: 0,
-                          background: colors.backgroundSecondary,
-                          cursor: 'pointer',
-                          maxWidth: 250,
-                          textAlign: 'left',
-                        }}
-                      >
-                        <div style={{ padding: '8px 10px' }}>
-                          <div style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 4 }}>
-                            {art.source || 'TRAK'} · In app
-                          </div>
-                          <div style={{ fontSize: 12, color: colors.textPrimary, fontWeight: 600, lineHeight: 1.4 }}>
-                            {art.title || 'Open TRAK article'}
-                          </div>
-                          <div style={{ marginTop: 6, fontSize: 11, color: colors.textSecondary }}>Read in TRAK</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-            {loading && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12, color: colors.textSecondary }}>TRAK AI is typing</span>
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
-                  {[0, 1, 2].map((i) => (
-                    <span
-                      key={i}
+                    {m.role === 'bot' ? <BotAvatar colors={colors} action={action} /> : null}
+                    <div
                       style={{
-                        width: 6,
-                        height: 6,
-                        borderRadius: '50%',
-                        background: colors.textTertiary,
-                        animation: `typingBounce 1s ${i * 0.16}s infinite`,
+                        maxWidth: m.role === 'user' ? '86%' : '100%',
+                        flex: m.role === 'bot' ? 1 : undefined,
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: m.role === 'user' ? 'flex-end' : 'flex-start',
                       }}
-                    />
-                  ))}
-                </span>
-              </div>
-            )}
-            {!loading && historyLoaded && messages.length === 0 && (
-              <div style={{ fontSize: 12, color: colors.textSecondary }}>No chat history yet.</div>
+                    >
+                      {m.role === 'user' ? (
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            fontSize: 14,
+                            padding: '10px 14px',
+                            borderRadius: 20,
+                            borderBottomRightRadius: 6,
+                            background: action.background,
+                            color: action.foreground,
+                            lineHeight: 1.55,
+                            whiteSpace: 'pre-wrap',
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {m.text}
+                        </span>
+                      ) : (
+                        <div style={{ fontSize: 14, lineHeight: 1.65, color: colors.textPrimary, paddingTop: 4, paddingRight: 8 }}>
+                          {m.text}
+                        </div>
+                      )}
+                      {Array.isArray(m.relatedArticles) && m.relatedArticles.length > 0 && (
+                        <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8, width: '100%' }}>
+                          {m.relatedArticles.map((art, j) => (
+                            <button
+                              key={`${art.path}-${j}`}
+                              type="button"
+                              onClick={() => {
+                                setOpen(false);
+                                navigate(art.path);
+                              }}
+                              style={{
+                                border: `1px solid ${colors.border}`,
+                                borderRadius: 14,
+                                padding: 0,
+                                background: colors.surface,
+                                cursor: 'pointer',
+                                textAlign: 'left',
+                                transition: 'transform 120ms ease',
+                              }}
+                            >
+                              <div style={{ padding: '10px 12px' }}>
+                                <div style={{ fontSize: 10, color: colors.textTertiary, marginBottom: 4, letterSpacing: 0.3, textTransform: 'uppercase' }}>
+                                  {art.source || 'TRAK'} · Related story
+                                </div>
+                                <div style={{ fontSize: 13, color: colors.textPrimary, fontWeight: 600, lineHeight: 1.45 }}>
+                                  {art.title || 'Open TRAK article'}
+                                </div>
+                                <div style={{ marginTop: 6, fontSize: 12, color: colors.textSecondary }}>Read in TRAK →</div>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+                {loading ? <TypingBubble colors={colors} action={action} /> : null}
+              </>
             )}
           </div>
-          <div
-            style={{
-              display: 'flex',
-              gap: 6,
-              flexWrap: 'wrap',
-              padding: '8px 10px',
-              borderTop: `1px solid ${colors.border}`,
-            }}
-          >
-          </div>
+
           <div
             style={{
               borderTop: `1px solid ${colors.border}`,
-              padding: 10,
-              display: 'flex',
-              gap: 8,
-              alignItems: 'center',
+              padding: '10px 14px 12px',
+              background: colors.background,
             }}
           >
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-              placeholder="Ask about news headlines..."
+            <div
               style={{
-                flex: 1,
+                display: 'flex',
+                alignItems: 'flex-end',
+                gap: 6,
                 border: `1px solid ${colors.border}`,
-                borderRadius: 10,
-                padding: '9px 11px',
-                background: colors.backgroundSecondary,
-                color: colors.textPrimary,
-              }}
-            />
-            <button
-              type="button"
-              onClick={() => sendMessage()}
-              disabled={loading}
-              style={{
-                width: 36,
-                height: 36,
-                border: 'none',
-                background: action.background,
-                color: action.foreground,
-                borderRadius: 10,
-                cursor: 'pointer',
-                display: 'grid',
-                placeItems: 'center',
+                borderRadius: 26,
+                padding: '5px 5px 5px 14px',
+                background: colors.surface,
+                minHeight: 50,
               }}
             >
-              <Send size={14} />
-            </button>
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleComposerKeyDown}
+                placeholder="Ask anything about news…"
+                rows={1}
+                style={{
+                  flex: 1,
+                  border: 'none',
+                  outline: 'none',
+                  resize: 'none',
+                  background: 'transparent',
+                  color: colors.textPrimary,
+                  fontSize: 14,
+                  lineHeight: 1.45,
+                  maxHeight: 120,
+                  padding: '9px 0',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => sendMessage()}
+                disabled={!canSend}
+                aria-label="Send message"
+                style={{
+                  width: 38,
+                  height: 38,
+                  border: 'none',
+                  background: canSend ? action.background : colors.backgroundSecondary,
+                  color: canSend ? action.foreground : colors.textTertiary,
+                  borderRadius: '50%',
+                  cursor: canSend ? 'pointer' : 'default',
+                  display: 'grid',
+                  placeItems: 'center',
+                  flexShrink: 0,
+                  opacity: canSend ? 1 : 0.55,
+                }}
+              >
+                <Send size={16} />
+              </button>
+            </div>
+            <div style={{ fontSize: 11, color: colors.textSecondary, textAlign: 'center', marginTop: 8 }}>
+              Enter to send · Shift+Enter for new line
+            </div>
           </div>
         </div>
       ) : (
         <button
           type="button"
           onClick={toggleChat}
+          aria-label="Open TRAK AI chatbot"
+          title="TRAK AI"
           style={{
             width: 58,
             height: 58,
@@ -377,8 +569,7 @@ const ChatBotWidget = () => {
             display: 'grid',
             placeItems: 'center',
             position: 'relative',
-            transform: 'translateZ(0)',
-            transition: 'transform 160ms ease',
+            animation: 'fabPulse 3s ease-in-out infinite',
           }}
         >
           {hasUnread && (
@@ -395,7 +586,7 @@ const ChatBotWidget = () => {
               }}
             />
           )}
-          <Bot size={22} />
+          <Bot size={26} strokeWidth={2.25} />
         </button>
       )}
       {confirmClear && (
@@ -444,7 +635,7 @@ const ChatBotWidget = () => {
                 type="button"
                 onClick={async () => {
                   await clearChatHistory();
-                  setMessages([{ role: 'bot', text: 'History cleared. Ask me anything new.' }]);
+                  setMessages([]);
                   setConfirmClear(false);
                 }}
                 style={{

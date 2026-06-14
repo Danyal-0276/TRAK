@@ -43,7 +43,7 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
     useEffect(() => {
         const activeRoute = state.routes[state.index]?.name;
-        if (activeRoute === 'Settings' || activeRoute === 'Notifications') {
+        if (activeRoute === 'Chat' || activeRoute === 'Notifications') {
             resetTabBarVisibility();
         }
     }, [state.index, state.routes]);
