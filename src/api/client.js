@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { fetchWithTimeout } from './fetchWithTimeout';
+import { fetchWithTimeout, MOBILE_API_TIMEOUT_MS } from './fetchWithTimeout';
 import { emitAuthSessionEnded } from '../utils/authSessionEvents';
 
 const ACCESS_KEY = 'trak_access_token';
@@ -25,7 +25,7 @@ async function refreshAccess(baseUrl) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ refresh }),
-    });
+    }, MOBILE_API_TIMEOUT_MS);
     if (!res.ok) {
         // Refresh token rejected (e.g. account deleted or DB rebuilt).
         await clearTokens();
@@ -55,13 +55,13 @@ export async function apiFetch(url, options = {}, baseUrlForRefresh = '', timeou
     };
     if (token) headers.Authorization = `Bearer ${token}`;
 
-    let res = await fetchWithTimeout(url, { ...options, headers }, timeoutMs);
+    let res = await fetchWithTimeout(url, { ...options, headers }, timeoutMs ?? MOBILE_API_TIMEOUT_MS);
 
     if (res.status === 401 && baseUrlForRefresh) {
         const newAccess = await refreshAccess(baseUrlForRefresh);
         if (newAccess) {
             headers.Authorization = `Bearer ${newAccess}`;
-            res = await fetchWithTimeout(url, { ...options, headers }, timeoutMs);
+            res = await fetchWithTimeout(url, { ...options, headers }, timeoutMs ?? MOBILE_API_TIMEOUT_MS);
         }
         if (res.status === 401) {
             await clearTokens();
