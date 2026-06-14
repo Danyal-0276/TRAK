@@ -18,11 +18,10 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { Bot, Send, Trash2, Sparkles } from 'lucide-react-native';
-import { chatWithBot, clearChatHistory, getChatHistory } from '../../utils/Service/api';
+import { Bot, Send, SquarePen, PanelLeft, Sparkles } from 'lucide-react-native';
+import { chatWithBot, getChatConversation } from '../../utils/Service/api';
 import { isRealFeedArticle } from '../../utils/feedRealOnly';
 import { useTheme } from '../../theme/ThemeContext';
-import { useFeedback } from '../../components/ui/FeedbackProvider';
 import { useAuth } from '../../context/AuthContext';
 import { filledActionColors } from '../../theme/buttonContrast';
 import { resetTabBarVisibility, subscribeTabBarVisibility } from '../../navigation/tabBarVisibility';
@@ -30,6 +29,8 @@ import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
 import { resolveTopInset } from '../../utils/screenSafeArea';
 import AccentTabHeader from '../../components/ui/AccentTabHeader';
 import { CHAT_HERO_SUBTITLE, CHAT_HERO_TITLE, CHAT_PROMPTS } from './chatUiConstants';
+import ChatSidebar from './components/ChatSidebar';
+import { mapServerChatMessages } from './chatMessageUtils';
 
 const TAB_BAR_CLEARANCE = 100;
 const ESTIMATED_HEADER_HEIGHT = 88;
@@ -154,11 +155,12 @@ const ChatScreen = () => {
   const topInset = resolveTopInset(insets, 0);
   const { user, bootstrapped } = useAuth();
   const { theme } = useTheme();
-  const { confirm } = useFeedback();
   const colors = theme?.colors;
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState([]);
+  const [conversationId, setConversationId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
@@ -254,7 +256,7 @@ const ChatScreen = () => {
   useEffect(() => {
     const target =
       keyboardInset > 0
-        ? keyboardInset + KEYBOARD_COMPOSER_GAP
+        ? keyboardInset
         : embeddedInTab && !tabBarHidden
           ? tabBarPad
           : bottomSafe;
@@ -268,29 +270,34 @@ const ChatScreen = () => {
   }, [keyboardInset, tabBarHidden, embeddedInTab, tabBarPad, bottomSafe, composerBottomAnim]);
 
   useEffect(() => {
+    if (keyboardInset > 0) {
+      requestAnimationFrame(() => scrollToLatest());
+    }
+  }, [keyboardInset, scrollToLatest]);
+
+  useEffect(() => {
     if (!bootstrapped || !user) return;
-    const loadHistory = async () => {
-      try {
-        const res = await getChatHistory();
-        if (Array.isArray(res.messages) && res.messages.length) {
-          setMessages(
-            res.messages.map((m) => ({
-              role: m.role,
-              text: m.text,
-              articleTitle: m.article_title,
-              articleId: m.article_id,
-              source: m.source,
-            }))
-          );
-        }
-      } catch (_) {
-        // empty state
-      } finally {
-        setHistoryLoaded(true);
-      }
-    };
-    loadHistory();
+    setHistoryLoaded(true);
   }, [bootstrapped, user]);
+
+  const startNewChat = useCallback(() => {
+    setConversationId(null);
+    setMessages([]);
+    showHeader();
+  }, [showHeader]);
+
+  const openConversation = useCallback(async (id) => {
+    if (!id) return;
+    try {
+      const res = await getChatConversation(id);
+      setConversationId(String(res.id || id));
+      setMessages(mapServerChatMessages(res.messages));
+      setHistoryLoaded(true);
+      requestAnimationFrame(() => scrollToLatest());
+    } catch {
+      startNewChat();
+    }
+  }, [scrollToLatest, startNewChat]);
 
   useEffect(() => {
     if (messages.length) scrollToLatest();
@@ -312,7 +319,10 @@ const ChatScreen = () => {
       if (keyboardVisibleRef.current) hideHeader();
     });
     try {
-      const res = await chatWithBot(text);
+      const res = await chatWithBot(text, conversationId);
+      if (res.conversation_id) {
+        setConversationId(String(res.conversation_id));
+      }
       const top = Array.isArray(res.articles)
         ? res.articles.find((a) => isRealFeedArticle(a)) ?? res.articles[0] ?? null
         : res.primary_article || null;
@@ -342,30 +352,17 @@ const ChatScreen = () => {
   const action = filledActionColors(colors, isDark);
   const canSend = Boolean(input.trim()) && !loading;
   const showEmptyState = historyLoaded && messages.length === 0 && !loading;
-  const composerBottom =
+  const dockBottom =
     keyboardInset > 0
-      ? keyboardInset + KEYBOARD_COMPOSER_GAP
+      ? keyboardInset
       : embeddedInTab && !tabBarHidden
         ? tabBarPad
         : bottomSafe;
-  const scrollBottomPad = composerHeight + COMPOSER_TOP_GAP + composerBottom + 16;
+  const scrollBottomPad = composerHeight + COMPOSER_TOP_GAP + dockBottom + 16;
   const pageBg = colors.background;
-  const composerChrome = colors.surface;
   const headerChrome = colors.surface;
   const shadowColor = colors.shadowDark || '#000';
 
-  const clearHistory = async () => {
-    const accepted = await confirm({
-      title: 'Clear chat history?',
-      message: 'This cannot be undone.',
-      confirmText: 'Clear',
-      danger: true,
-    });
-    if (!accepted) return;
-    await clearChatHistory();
-    setMessages([]);
-    showHeader();
-  };
 
   const onMessagesScroll = (event) => {
     handleScroll(event);
@@ -408,9 +405,14 @@ const ChatScreen = () => {
           icon={Bot}
           subtitle={loading ? 'Thinking…' : 'News assistant'}
           rightAction={
-            <TouchableOpacity onPress={clearHistory} style={styles.clearBtn} hitSlop={8}>
-              <Trash2 size={18} color={colors.textSecondary} />
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity onPress={() => setSidebarOpen(true)} style={styles.headerIconBtn} hitSlop={8}>
+                <PanelLeft size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={startNewChat} style={styles.headerIconBtn} hitSlop={8}>
+                <SquarePen size={18} color={colors.textSecondary} />
+              </TouchableOpacity>
+            </View>
           }
         />
       </Animated.View>
@@ -480,11 +482,7 @@ const ChatScreen = () => {
         <Animated.View
           style={[
             styles.composerChrome,
-            {
-              backgroundColor: composerChrome,
-              borderTopColor: colors.border,
-              bottom: composerBottomAnim,
-            },
+            { bottom: composerBottomAnim },
           ]}
         >
           <View
@@ -502,6 +500,9 @@ const ChatScreen = () => {
               placeholder="Ask anything about news…"
               placeholderTextColor={colors.textTertiary}
               style={[styles.input, { color: colors.textPrimary }]}
+              onFocus={() => {
+                if (messages.length) scrollToLatest();
+              }}
               onSubmitEditing={() => canSend && sendMessage()}
               multiline
               blurOnSubmit={false}
@@ -525,6 +526,15 @@ const ChatScreen = () => {
           </View>
         </Animated.View>
       </View>
+
+      <ChatSidebar
+        visible={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        activeConversationId={conversationId}
+        onSelectConversation={openConversation}
+        onNewChat={startNewChat}
+        topInset={topInset}
+      />
     </View>
   );
 };
@@ -564,6 +574,18 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
   },
   clearBtn: {
+    width: 36,
+    height: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 10,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  headerIconBtn: {
     width: 36,
     height: 36,
     alignItems: 'center',
@@ -647,7 +669,7 @@ const styles = StyleSheet.create({
     right: 0,
     paddingTop: COMPOSER_TOP_GAP,
     paddingHorizontal: 14,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    zIndex: 1000,
   },
   composerShell: {
     flexDirection: 'row',

@@ -1,14 +1,19 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { isAuthPath } from '../navigation/authPaths';
-import { Bot, Send, Sparkles, Trash2, X } from 'lucide-react';
-import { chatWithBot, clearChatHistory, getChatHistory } from '../utils/Service/api';
+import { Bot, Send, Sparkles, SquarePen, PanelLeft, X } from 'lucide-react';
+import {
+  chatWithBot,
+  getChatConversation,
+} from '../utils/Service/api';
 import { useAuth } from '../context/AuthContext';
 import { useChatBot } from '../context/ChatBotContext';
 import { useTheme } from '../theme/ThemeContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { filledActionColors } from '../theme/buttonContrast';
 import { CHAT_ANIMATION_CSS, CHAT_HERO_SUBTITLE, CHAT_HERO_TITLE, CHAT_PROMPTS } from './chat/chatUiConstants';
+import ChatSidebar from './chat/ChatSidebar';
+import { mapServerChatMessages } from './chat/chatMessageUtils';
 
 function resolveTrakArticlePath(article) {
   if (!article) return null;
@@ -19,14 +24,7 @@ function resolveTrakArticlePath(article) {
 }
 
 function mapHistoryMessage(m) {
-  const path =
-    (typeof m.article_path === 'string' && m.article_path.startsWith('/article/') && m.article_path) ||
-    (m.article_id ? `/article/${encodeURIComponent(String(m.article_id))}` : null);
-  const relatedArticles = [];
-  if (path) {
-    relatedArticles.push({ title: m.article_title, source: m.source, path });
-  }
-  return { role: m.role, text: m.text, relatedArticles };
+  return mapServerChatMessages([m])[0] || { role: m.role, text: m.text, relatedArticles: [] };
 }
 
 function BotAvatar({ colors, action, size = 30 }) {
@@ -184,9 +182,10 @@ const ChatBotWidget = () => {
   const [renderPanel, setRenderPanel] = useState(false);
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState([]);
+  const [conversationId, setConversationId] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [historyLoaded, setHistoryLoaded] = useState(false);
-  const [confirmClear, setConfirmClear] = useState(false);
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const messageCountRef = useRef(0);
@@ -223,24 +222,30 @@ const ChatBotWidget = () => {
   }, [open]);
 
   useEffect(() => {
-    const loadHistory = async () => {
-      try {
-        const res = await getChatHistory();
-        if (Array.isArray(res.messages) && res.messages.length) {
-          setMessages(res.messages.map(mapHistoryMessage));
-        }
-      } catch (_) {
-        // empty
-      } finally {
-        setHistoryLoaded(true);
-      }
-    };
     if (!user) {
       setHistoryLoaded(true);
       return;
     }
-    loadHistory();
+    setHistoryLoaded(true);
   }, [user]);
+
+  const startNewChat = useCallback(() => {
+    setConversationId(null);
+    setMessages([]);
+  }, []);
+
+  const openConversation = useCallback(async (id) => {
+    if (!id) return;
+    try {
+      const res = await getChatConversation(id);
+      setConversationId(String(res.id || id));
+      setMessages(mapServerChatMessages(res.messages));
+      setHistoryLoaded(true);
+      scrollToLatest();
+    } catch {
+      startNewChat();
+    }
+  }, [scrollToLatest, startNewChat]);
 
   useEffect(() => {
     if (messages.length > messageCountRef.current || loading) scrollToLatest();
@@ -258,7 +263,10 @@ const ChatBotWidget = () => {
     setInput('');
     setLoading(true);
     try {
-      const res = await chatWithBot(text);
+      const res = await chatWithBot(text, conversationId);
+      if (res.conversation_id) {
+        setConversationId(String(res.conversation_id));
+      }
       const related = Array.isArray(res.related_articles) && res.related_articles.length
         ? res.related_articles
         : Array.isArray(res.articles) && res.articles.length
@@ -321,6 +329,7 @@ const ChatBotWidget = () => {
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
+            position: 'relative',
             ...glow,
             animation: open ? 'chatPanelIn 280ms cubic-bezier(0.22, 1, 0.36, 1) both' : 'none',
             opacity: open ? 1 : 0,
@@ -346,10 +355,10 @@ const ChatBotWidget = () => {
                 {loading ? 'Thinking…' : 'News assistant'}
               </div>
             </div>
-            <div style={{ position: 'absolute', right: 10, display: 'flex', gap: 2 }}>
+            <div style={{ position: 'absolute', left: 10, display: 'flex', gap: 2 }}>
               <button
                 type="button"
-                onClick={() => setConfirmClear(true)}
+                onClick={() => setSidebarOpen(true)}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -361,10 +370,30 @@ const ChatBotWidget = () => {
                   display: 'grid',
                   placeItems: 'center',
                 }}
-                title="Clear chat history"
+                title="Chat history"
               >
-                <Trash2 size={16} />
+                <PanelLeft size={16} />
               </button>
+              <button
+                type="button"
+                onClick={startNewChat}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: colors.textSecondary,
+                  width: 34,
+                  height: 34,
+                  borderRadius: 8,
+                  display: 'grid',
+                  placeItems: 'center',
+                }}
+                title="New chat"
+              >
+                <SquarePen size={16} />
+              </button>
+            </div>
+            <div style={{ position: 'absolute', right: 10 }}>
               <button
                 type="button"
                 onClick={closeChat}
@@ -385,6 +414,15 @@ const ChatBotWidget = () => {
               </button>
             </div>
           </div>
+
+          <ChatSidebar
+            open={sidebarOpen}
+            onClose={() => setSidebarOpen(false)}
+            colors={colors}
+            activeConversationId={conversationId}
+            onSelectConversation={openConversation}
+            onNewChat={startNewChat}
+          />
 
           <div
             ref={scrollRef}
@@ -588,70 +626,6 @@ const ChatBotWidget = () => {
           )}
           <Bot size={26} strokeWidth={2.25} />
         </button>
-      )}
-      {confirmClear && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: isDark ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.35)',
-            display: 'grid',
-            placeItems: 'center',
-            zIndex: 1001,
-          }}
-        >
-          <div
-            style={{
-              width: 320,
-              background: colors.surface,
-              borderRadius: 14,
-              border: `1px solid ${colors.border}`,
-              padding: 16,
-              boxShadow: glow.boxShadow,
-            }}
-          >
-            <div style={{ fontSize: 15, fontWeight: 700, color: colors.textPrimary, marginBottom: 8 }}>
-              Clear chat history?
-            </div>
-            <div style={{ fontSize: 13, color: colors.textSecondary, marginBottom: 14 }}>
-              This action cannot be undone.
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-              <button
-                type="button"
-                onClick={() => setConfirmClear(false)}
-                style={{
-                  border: `1px solid ${colors.border}`,
-                  background: colors.surface,
-                  color: colors.textPrimary,
-                  borderRadius: 8,
-                  padding: '7px 12px',
-                  cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await clearChatHistory();
-                  setMessages([]);
-                  setConfirmClear(false);
-                }}
-                style={{
-                  border: 'none',
-                  background: colors.error || '#dc2626',
-                  color: '#fff',
-                  borderRadius: 8,
-                  padding: '7px 12px',
-                  cursor: 'pointer',
-                }}
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

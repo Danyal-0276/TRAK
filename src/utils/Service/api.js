@@ -203,10 +203,23 @@ export const getUserBootstrap = ({ limit = 50 } = {}) => {
   return authRequest(`/api/user/bootstrap/?${params}`);
 };
 
-export const chatWithBot = (message) =>
+export const chatWithBot = (message, conversationId = null) =>
   authRequest('/api/user/chatbot/', {
     method: 'POST',
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({
+      message,
+      ...(conversationId ? { conversation_id: conversationId } : {}),
+    }),
+  });
+
+export const listChatConversations = () => authRequest('/api/user/chatbot/conversations/');
+
+export const getChatConversation = (conversationId) =>
+  authRequest(`/api/user/chatbot/conversations/${encodeURIComponent(conversationId)}/`);
+
+export const deleteChatConversation = (conversationId) =>
+  authRequest(`/api/user/chatbot/conversations/${encodeURIComponent(conversationId)}/`, {
+    method: 'DELETE',
   });
 
 export const getChatHistory = () => authRequest('/api/user/chatbot/history/');
