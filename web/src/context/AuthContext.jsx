@@ -1,8 +1,14 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getRedirectResult, signInWithPopup, signInWithRedirect } from 'firebase/auth';
+import { signInWithPopup, signInWithRedirect } from 'firebase/auth';
 import { getFirebaseAuth, getGoogleProvider, isFirebaseConfigured } from '../firebase';
 import { getFirebaseAuthErrorMessage } from '../utils/firebaseAuthErrors';
-import { stashGoogleAuthReturn } from '../navigation/GoogleAuthRedirectHandler';
+import {
+  markGoogleRedirectPending,
+  clearGoogleRedirectPending,
+  resolveFirebaseUserAfterRedirect,
+  stashGoogleAuthReturn,
+  runGoogleRedirectExchange,
+} from '../utils/googleRedirectSession';
 import {
     clearAuthTokens,
     completeSocialOAuth,
@@ -82,16 +88,21 @@ export const AuthProvider = ({ children }) => {
 
     const finishGoogleRedirectLogin = useCallback(async () => {
         if (!isFirebaseConfigured()) return null;
-        try {
-            const result = await getRedirectResult(getFirebaseAuth());
-            if (!result?.user) return null;
-            const idToken = await result.user.getIdToken();
-            const session = await loginWithFirebase(idToken);
-            const user = applySession(session);
-            return { user, ...session };
-        } catch (err) {
-            throw new Error(getFirebaseAuthErrorMessage(err));
-        }
+        return runGoogleRedirectExchange(async () => {
+            try {
+                const auth = getFirebaseAuth();
+                const firebaseUser = await resolveFirebaseUserAfterRedirect(auth);
+                if (!firebaseUser) return null;
+                const idToken = await firebaseUser.getIdToken();
+                const session = await loginWithFirebase(idToken);
+                const user = applySession(session);
+                clearGoogleRedirectPending();
+                return { user, ...session };
+            } catch (err) {
+                clearGoogleRedirectPending();
+                throw new Error(getFirebaseAuthErrorMessage(err));
+            }
+        });
     }, []);
 
     const loginWithGoogle = async ({ returnTo } = {}) => {
@@ -103,6 +114,7 @@ export const AuthProvider = ({ children }) => {
         try {
             if (import.meta.env.PROD) {
                 stashGoogleAuthReturn(returnTo);
+                markGoogleRedirectPending();
                 await signInWithRedirect(getFirebaseAuth(), getGoogleProvider());
                 return null;
             }
