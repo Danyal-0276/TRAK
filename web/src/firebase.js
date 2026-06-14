@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, getRedirectResult, GoogleAuthProvider } from 'firebase/auth';
 
 function readConfig() {
   return {
@@ -26,6 +26,8 @@ export function isFirebaseConfigured() {
 
 let appInstance = null;
 let authInstance = null;
+/** Shared promise from getRedirectResult — must be captured once at page load. */
+let startupRedirectResultPromise = null;
 
 function ensureFirebase() {
   if (!isFirebaseConfigured()) {
@@ -50,4 +52,22 @@ export function getGoogleProvider() {
   const provider = new GoogleAuthProvider();
   provider.setCustomParameters({ prompt: 'select_account' });
   return provider;
+}
+
+/**
+ * Call once before React mounts so Firebase reads the OAuth callback from the URL.
+ * getRedirectResult may only be consumed once per page load.
+ */
+export function captureRedirectResultAtStartup() {
+  if (!isFirebaseConfigured() || typeof window === 'undefined') return;
+  if (startupRedirectResultPromise) return;
+  try {
+    startupRedirectResultPromise = getRedirectResult(ensureFirebase());
+  } catch {
+    startupRedirectResultPromise = Promise.resolve(null);
+  }
+}
+
+export function getStartupRedirectResultPromise() {
+  return startupRedirectResultPromise;
 }
