@@ -30,9 +30,9 @@ function buildRoutes(isAdmin) {
   return [
     { key: 'Home', title: 'Home' },
     { key: 'Search', title: 'Search' },
+    { key: 'Chat', title: 'Chat' },
     { key: 'Notifications', title: 'Notifications' },
     { key: 'Profile', title: 'Profile' },
-    { key: 'Chat', title: 'Chat' },
   ];
 }
 

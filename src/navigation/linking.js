@@ -11,9 +11,9 @@ export const navigationLinking = {
             screens: {
               Home: 'home',
               Search: 'search',
+              Chat: 'chat',
               Notifications: 'notifications',
               Profile: 'profile',
-              Chat: 'chat',
             },
           },
           ArticleDetail: {
