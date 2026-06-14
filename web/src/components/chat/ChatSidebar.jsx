@@ -10,6 +10,7 @@ export default function ChatSidebar({
   activeConversationId,
   onSelectConversation,
   onNewChat,
+  refreshKey = 0,
 }) {
   const [conversations, setConversations] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -28,7 +29,7 @@ export default function ChatSidebar({
 
   useEffect(() => {
     if (open) loadList();
-  }, [open, loadList]);
+  }, [open, loadList, refreshKey]);
 
   const handleDelete = async (id, e) => {
     e.stopPropagation();
@@ -173,7 +174,7 @@ export default function ChatSidebar({
                       {item.preview || 'No messages'}
                     </div>
                     <div style={{ fontSize: 11, color: colors.textTertiary, marginTop: 4 }}>
-                      {formatConversationWhen(item.updated_at)}
+                      {formatConversationWhen(item.updated_at || item.created_at)}
                     </div>
                   </button>
                   <button

@@ -24,18 +24,38 @@ export function mapServerChatMessages(messages) {
   return messages.map(mapServerChatMessage).filter(Boolean);
 }
 
+export function parseApiDate(iso) {
+  if (!iso) return null;
+  let text = String(iso).trim();
+  if (!text) return null;
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(text)) {
+    text = text.replace(' ', 'T');
+  }
+  if (!/[zZ]|[+-]\d{2}:\d{2}$/.test(text)) {
+    text += 'Z';
+  }
+  const d = new Date(text);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 export function formatConversationWhen(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
+  const d = parseApiDate(iso);
+  if (!d) return '';
+
   const now = new Date();
-  const diff = now.getTime() - d.getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  if (days < 7) return `${days}d ago`;
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfDay = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dayDiff = Math.floor((startOfToday.getTime() - startOfDay.getTime()) / 86400000);
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+
+  if (dayDiff === 0) return time;
+  if (dayDiff === 1) return `Yesterday, ${time}`;
+  if (dayDiff < 7) {
+    return d.toLocaleDateString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+  }
+  return d.toLocaleDateString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    year: d.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
+  });
 }

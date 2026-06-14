@@ -25,6 +25,7 @@ export default function ChatSidebar({
   onSelectConversation,
   onNewChat,
   topInset = 0,
+  refreshKey = 0,
 }) {
   const { theme } = useTheme();
   const { colors } = theme;
@@ -47,7 +48,7 @@ export default function ChatSidebar({
 
   useEffect(() => {
     if (visible) loadList();
-  }, [visible, loadList]);
+  }, [visible, loadList, refreshKey]);
 
   useEffect(() => {
     Animated.parallel([
@@ -143,7 +144,7 @@ export default function ChatSidebar({
                         {item.preview || 'No messages'}
                       </Text>
                       <Text style={[styles.rowTime, { color: colors.textTertiary }]}>
-                        {formatConversationWhen(item.updated_at)}
+                        {formatConversationWhen(item.updated_at || item.created_at)}
                       </Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={() => handleDelete(item.id)} style={styles.deleteBtn} hitSlop={8}>
