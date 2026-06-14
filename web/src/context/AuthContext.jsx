@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { signInWithPopup } from 'firebase/auth';
 import { getFirebaseAuth, getGoogleProvider, isFirebaseConfigured } from '../firebase';
+import { getFirebaseAuthErrorMessage } from '../utils/firebaseAuthErrors';
 import {
     clearAuthTokens,
     completeSocialOAuth,
@@ -81,14 +82,18 @@ export const AuthProvider = ({ children }) => {
     const loginWithGoogle = async () => {
         if (!isFirebaseConfigured()) {
             throw new Error(
-                'Google sign-in is not configured. Add Firebase keys to TRAK/web/.env (see .env.example), then restart npm run dev.'
+                'Google sign-in is not configured. Add VITE_FIREBASE_* keys in Vercel env (or TRAK/web/.env), then redeploy.'
             );
         }
-        const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
-        const idToken = await result.user.getIdToken();
-        const session = await loginWithFirebase(idToken);
-        const user = applySession(session);
-        return { user, ...session };
+        try {
+            const result = await signInWithPopup(getFirebaseAuth(), getGoogleProvider());
+            const idToken = await result.user.getIdToken();
+            const session = await loginWithFirebase(idToken);
+            const user = applySession(session);
+            return { user, ...session };
+        } catch (err) {
+            throw new Error(getFirebaseAuthErrorMessage(err));
+        }
     };
 
     const logout = () => {
