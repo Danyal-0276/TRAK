@@ -52,3 +52,39 @@ export function getNotificationSourceInitial(notification) {
   const letter = String(name || 'S').trim().charAt(0);
   return letter ? letter.toUpperCase() : 'S';
 }
+
+export function getNotificationTypeLabel(type) {
+  const labels = {
+    mention: 'Mention',
+    keyword: 'Keyword Alert',
+    keyword_match: 'Keyword Alert',
+    like: 'Like',
+    comment: 'Comment',
+    follow: 'New Follower',
+    system: 'System',
+    welcome_back: 'Welcome back',
+  };
+  return labels[type] || 'Notification';
+}
+
+export function getNotificationIconColor(type) {
+  switch (type) {
+    case 'mention':
+      return '#FF6B6B';
+    case 'keyword':
+    case 'keyword_match':
+      return '#4ECDC4';
+    case 'like':
+      return '#FF9A8B';
+    case 'comment':
+      return '#A78BFA';
+    case 'follow':
+      return '#60A5FA';
+    case 'system':
+      return '#F59E0B';
+    case 'welcome_back':
+      return '#34D399';
+    default:
+      return '#6B7280';
+  }
+}

@@ -173,6 +173,10 @@ const NotificationTabs = ({
 
   onRefresh,
 
+  onScroll,
+
+  headerSpacerHeight = 0,
+
   index,
 
   onIndexChange,
@@ -241,12 +245,18 @@ const NotificationTabs = ({
 
         bottomInset={bottomInset}
 
+        onScroll={onScroll}
+
+        headerSpacerHeight={headerSpacerHeight}
+
         refreshControl={
 
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            {...getRefreshControlProps(colors, theme.mode)}
+            {...getRefreshControlProps(colors, theme.mode, {
+              progressViewOffset: headerSpacerHeight,
+            })}
           />
 
         }

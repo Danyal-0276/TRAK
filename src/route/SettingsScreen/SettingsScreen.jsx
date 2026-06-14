@@ -143,7 +143,6 @@ export default function SettingsScreen({ navigation, route }) {
             onPress={() =>
               openContentScreen('SettingsKeywordSelection', {
                 fromSettings: true,
-                selectedTags: [],
               })
             }
           />

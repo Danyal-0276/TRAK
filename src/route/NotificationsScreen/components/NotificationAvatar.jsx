@@ -1,73 +1,108 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
+import React, { useState } from 'react';
+import { View, Image, Text, StyleSheet } from 'react-native';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useTheme } from '../../../theme/ThemeContext';
-import { getIcon } from '../utils/getIcon';
+import { getNotificationSourceInitial, isArticleKeywordNotification } from '../utils/notificationDisplay';
 import {
-  getNotificationIconColor,
-  getNotificationSourceInitial,
-  isArticleKeywordNotification,
-} from '../utils/notificationDisplay';
+  getNotificationMciColor,
+  getNotificationMciIcon,
+  getSourceFaviconUrl,
+} from '../../../utils/notificationCardContent';
 
-/** Single-letter source mark (e.g. "D" for Dawn). */
-export function NotificationSourceMark({ label, style }) {
+export default function NotificationAvatar({ item, size = 46, style }) {
   const { theme } = useTheme();
   const { colors } = theme;
-  const letter = String(label || 'S').charAt(0).toUpperCase() || 'S';
+  const [faviconFailed, setFaviconFailed] = useState(false);
 
-  return (
-    <View style={[styles.markWrap, style]}>
-      <Text style={[styles.markText, { color: colors.textSecondary }]}>
-        {letter}
-      </Text>
-    </View>
-  );
-}
+  const faviconUrl = getSourceFaviconUrl(item);
+  const isKeyword = isArticleKeywordNotification(item);
+  const useFavicon = Boolean(faviconUrl) && !faviconFailed && isKeyword;
+  const radius = size / 2;
+  const displayType = item?.type;
+  const iconName = getNotificationMciIcon(displayType);
+  const iconColor = getNotificationMciColor(displayType);
+  const iconSize = Math.round(size * 0.46);
 
-export default function NotificationAvatar({ item, size = 52, style }) {
-  if (isArticleKeywordNotification(item)) {
+  if (useFavicon) {
     return (
-      <NotificationSourceMark
-        label={getNotificationSourceInitial(item)}
-        style={[{ width: size, minHeight: size }, style]}
-      />
+      <View
+        style={[
+          styles.ring,
+          {
+            width: size,
+            height: size,
+            borderRadius: radius,
+            backgroundColor: colors.surfaceElevated || colors.surface,
+            borderColor: colors.border,
+          },
+          style,
+        ]}
+      >
+        <Image
+          source={{ uri: faviconUrl }}
+          style={styles.favicon}
+          resizeMode="contain"
+          onError={() => setFaviconFailed(true)}
+        />
+      </View>
     );
   }
 
-  const displayType = item?.type;
-  const iconColor = getNotificationIconColor(displayType);
-  const radius = size / 2;
+  if (isKeyword) {
+    const initial = getNotificationSourceInitial(item);
+    return (
+      <View
+        style={[
+          styles.ring,
+          {
+            width: size,
+            height: size,
+            borderRadius: radius,
+            backgroundColor: `${iconColor}14`,
+            borderColor: `${iconColor}28`,
+          },
+          style,
+        ]}
+      >
+        <Text style={[styles.initial, { color: iconColor, fontSize: Math.round(size * 0.36) }]}>
+          {initial}
+        </Text>
+      </View>
+    );
+  }
 
   return (
-    <LinearGradient
-      colors={[iconColor, `${iconColor}DD`]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+    <View
       style={[
+        styles.ring,
         {
           width: size,
           height: size,
           borderRadius: radius,
-          justifyContent: 'center',
-          alignItems: 'center',
+          backgroundColor: `${iconColor}14`,
+          borderColor: `${iconColor}28`,
         },
         style,
       ]}
     >
-      {getIcon(displayType, item?.keyword, size)}
-    </LinearGradient>
+      <MaterialCommunityIcons name={iconName} size={iconSize} color={iconColor} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  markWrap: {
+  ring: {
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
-  markText: {
-    fontSize: 13,
-    fontWeight: '600',
+  favicon: {
+    width: '58%',
+    height: '58%',
+  },
+  initial: {
+    fontWeight: '700',
     letterSpacing: 0.2,
-    textAlign: 'center',
   },
 });

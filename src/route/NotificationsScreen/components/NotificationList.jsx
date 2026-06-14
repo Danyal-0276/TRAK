@@ -38,6 +38,10 @@ const NotificationList = ({
 
   refreshControl,
 
+  onScroll,
+
+  headerSpacerHeight = 0,
+
 }) => {
 
   const { theme } = useTheme();
@@ -100,6 +104,16 @@ const NotificationList = ({
 
       ]}
 
+      ListHeaderComponent={
+
+        headerSpacerHeight > 0 ? (
+
+          <View style={{ height: headerSpacerHeight + 8 }} />
+
+        ) : null
+
+      }
+
       ListEmptyComponent={
 
         <View style={styles.emptyInner}>
@@ -130,6 +144,10 @@ const NotificationList = ({
 
       refreshControl={refreshControl}
 
+      onScroll={onScroll}
+
+      scrollEventThrottle={16}
+
       {...LIST_PERF}
 
     />
@@ -150,7 +168,7 @@ const styles = StyleSheet.create({
 
   container: {
 
-    paddingTop: 12,
+    paddingTop: 4,
 
     paddingHorizontal: 0,
 

@@ -13,26 +13,12 @@ import { SelectedCount } from './components/SelectedCount';
 import { Tag } from './components/Tag';
 import { ContinueButton } from './components/ContinueButton';
 import { newsTagsWithSubcategories } from './constants/newsCategories';
-import { loadTagsWithSubcategories } from '../../utils/platformTaxonomy';
+import { loadTagsWithSubcategories, resolveSavedInterestSelections } from '../../utils/platformTaxonomy';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
 import { loadUserKeywords } from '../../utils/userKeywordsStorage';
 
 const { width, height } = Dimensions.get('window');
-
-function keywordVariants(term) {
-    const base = String(term || '').trim().toLowerCase();
-    if (!base) return [];
-    const slug = base.replace(/\s+/g, '-');
-    const spaced = base.replace(/-/g, ' ');
-    return [...new Set([base, slug, spaced])];
-}
-
-function seedMatchesTag(seed, tag) {
-    const variants = new Set(keywordVariants(seed));
-    const tagVariants = keywordVariants(tag);
-    return tagVariants.some((t) => variants.has(t));
-}
 
 const TagSelectionScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
@@ -46,7 +32,6 @@ const TagSelectionScreen = ({ navigation, route }) => {
     const { fromSettings = false, fromSignup = false } = route?.params || {};
     const incomingSelectedTags = route?.params?.selectedTags;
     const savedKeywordsRef = useRef(null);
-    const keywordsFetchStarted = useRef(false);
 
     useEffect(() => {
         if (!fromSignup) return;
@@ -146,39 +131,23 @@ const TagSelectionScreen = ({ navigation, route }) => {
 
     const applySavedSelections = useCallback(
         (saved, routeTags) => {
-            const routeList = Array.isArray(routeTags) ? routeTags : [];
-            const seed = [...(saved || []), ...routeList]
-                .map((x) => String(x || '').trim().toLowerCase())
-                .filter(Boolean);
-            if (!seed.length) return;
-
-            const next = new Set();
-            const mainTags = Object.keys(tagsMap);
-            for (const main of mainTags) {
-                const subs = tagsMap[main] || [];
-                if (seed.some((s) => seedMatchesTag(s, main))) {
-                    next.add(main);
-                }
-                for (const sub of subs) {
-                    if (seed.some((s) => seedMatchesTag(s, sub))) {
-                        next.add(main);
-                        next.add(sub);
-                    }
-                }
-            }
-            if (next.size) {
-                setSelectedTags(Array.from(next));
+            const { selectedTags: preselected } = resolveSavedInterestSelections(
+                saved,
+                tagsMap,
+                routeTags
+            );
+            if (preselected.length) {
+                setSelectedTags(preselected);
             }
         },
         [tagsMap]
     );
 
     useEffect(() => {
-        if (fromSignup || keywordsFetchStarted.current) return;
-        keywordsFetchStarted.current = true;
+        if (fromSignup) return;
         let mounted = true;
         (async () => {
-            const saved = await loadUserKeywords();
+            const saved = await loadUserKeywords({ force: true });
             if (!mounted) return;
             savedKeywordsRef.current = saved;
             applySavedSelections(saved, incomingSelectedTags);
@@ -186,8 +155,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
         return () => {
             mounted = false;
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch once; tagsMap updates handled below
-    }, [fromSignup, incomingSelectedTags]);
+    }, [fromSignup, incomingSelectedTags, applySavedSelections]);
 
     useEffect(() => {
         if (fromSignup || savedKeywordsRef.current === null) return;
@@ -284,7 +252,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
                 fromSettings && route?.name === 'SettingsTagSelection'
                     ? 'SettingsKeywordSelection'
                     : 'KeywordSelection';
-            navigation.navigate(keywordScreen, { selectedTags, fromSettings });
+            navigation.navigate(keywordScreen, { selectedTags, fromSettings, fromSignup });
         } catch (error) {
             console.error('Error:', error);
         } finally {

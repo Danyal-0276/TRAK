@@ -19,6 +19,7 @@ import { filterFeedByUserKeywords } from '../../utils/feedKeywordMatch';
 import { resolveArticleImageUrl } from '../../utils/articleMedia';
 import { useLanguage } from '../../context/LanguageContext';
 import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
+import { API_BASE } from '../../config/api';
 
 const FEED_TAB_KEYS = {
     'For you': 'feed.forYou',
@@ -481,7 +482,7 @@ const NewsFeedScreen = () => {
                                     {feedError}
                                 </p>
                                 <p style={{ fontSize: '13px', color: textSecondary, lineHeight: 1.5, marginBottom: '20px' }}>
-                                    Log in and ensure the API is reachable at {import.meta.env.VITE_API_URL || 'https://trak-backend-upip.onrender.com'}. Processed articles must exist in MongoDB (run the pipeline on Render or locally).
+                                    Log in and ensure the API is reachable at {import.meta.env.VITE_API_URL || API_BASE}. Processed articles must exist in MongoDB (run the pipeline on the VPS or locally).
                                 </p>
                                 <button
                                     type="button"

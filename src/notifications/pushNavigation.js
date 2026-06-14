@@ -17,7 +17,10 @@ function extractArticleId(data) {
 export function navigateFromPushData(data) {
   const articleId = extractArticleId(data);
   if (!articleId || !navigationRef?.isReady?.()) return false;
-  navigationRef.navigate('ArticleDetail', { articleId });
+  navigationRef.navigate('NewsFeed', {
+    screen: 'ArticleDetail',
+    params: { articleId },
+  });
   return true;
 }
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../theme/ThemeContext';
 import { SkeletonPageBlocks } from './skeletons/SkeletonLayouts';
@@ -8,6 +8,7 @@ import { disableAdminAppPreview, isAdminAppPreview } from '../utils/adminAppPrev
 /** Protected route for regular app pages — admins are sent to the admin panel unless preview mode is on. */
 const UserOnlyRoute = ({ children }) => {
   const { user, loading, isAdmin } = useAuth();
+  const location = useLocation();
   const { theme } = useTheme();
   const isDark = theme.mode === 'dark';
   const preview = isAdminAppPreview();
@@ -21,7 +22,7 @@ const UserOnlyRoute = ({ children }) => {
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
   }
 
   if (isAdmin && !preview) {

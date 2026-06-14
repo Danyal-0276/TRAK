@@ -9,15 +9,21 @@ npm run dev
 
 ## API configuration
 
-[src/config/api.js](src/config/api.js) uses `VITE_API_URL` from `.env` when set; otherwise the Render API (`https://trak-backend-upip.onrender.com`). Production builds use [`.env.production`](.env.production).
+Production uses [`.env.production`](.env.production) + [vercel.json](vercel.json):
 
-Create `.env` in this folder (see [`.env.example`](.env.example)):
+- Browser calls `https://trak-flax.vercel.app/api/...` (same origin)
+- Vercel rewrites `/api/*` → `http://167.86.110.151:8000/api/*` (VPS)
+
+[src/config/api.js](src/config/api.js) reads `VITE_API_URL` when set; otherwise defaults to the production web URL.
+
+Create `.env` in this folder for local dev (see [`.env.example`](.env.example)):
 
 ```env
-VITE_API_URL=https://trak-backend-upip.onrender.com
-# Local Django: VITE_API_URL=http://127.0.0.1:8000
-# Production: omit or set false — mock feed is disabled when not in dev unless you set:
-# VITE_ALLOW_MOCK_FEED=true
+# Local dev — Vite proxy forwards /api to Django on :8000
+VITE_API_URL=http://localhost:3000
+
+# Or direct local Django (no proxy):
+# VITE_API_URL=http://127.0.0.1:8000
 ```
 
 ## Auth
@@ -41,9 +47,9 @@ In **Firebase Console** → Authentication → Sign-in method: enable **Google**
 
 ## Real-time notifications (WebSocket)
 
-`runserver` is HTTP-only; `/ws/notifications/` returns 404 and the app will spam reconnects unless you disable the socket.
+On Vercel, WebSocket proxy to the VPS is not available — production sets `VITE_ENABLE_NOTIFICATIONS_WS=false` and uses HTTP polling.
 
-- **Default in dev:** WebSocket is off; notifications still refresh via `GET /api/notifications/` (polling on the notifications screen).
+- **Default in dev:** WebSocket is off unless enabled in `.env`.
 - **Enable locally:** run Django with ASGI, then set `VITE_ENABLE_NOTIFICATIONS_WS=true` in `.env`:
 
 ```bash

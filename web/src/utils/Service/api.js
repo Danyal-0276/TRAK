@@ -2,9 +2,9 @@ import { fetchWithTimeout } from '../../api/fetchWithTimeout';
 import { normalizeApiError } from '../normalizeApiError';
 import { emitAuthSessionEnded } from '../authSessionEvents';
 
-import { RENDER_API_BASE } from '../../../../config/apiBase';
+import { PRODUCTION_WEB_API_BASE } from '../../../../config/apiBase';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || RENDER_API_BASE;
+const API_BASE_URL = import.meta.env.VITE_API_URL || PRODUCTION_WEB_API_BASE;
 
 const ACCESS_KEY = 'trak_access_token';
 const REFRESH_KEY = 'trak_refresh_token';
@@ -211,10 +211,23 @@ export const getUserBootstrap = ({ limit = 50 } = {}) => {
   });
   return authRequest(`/api/user/bootstrap/?${params}`);
 };
-export const chatWithBot = (message) =>
+export const chatWithBot = (message, conversationId = null) =>
   authRequest('/api/user/chatbot/', {
     method: 'POST',
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({
+      message,
+      ...(conversationId ? { conversation_id: conversationId } : {}),
+    }),
+  });
+
+export const listChatConversations = () => authRequest('/api/user/chatbot/conversations/');
+
+export const getChatConversation = (conversationId) =>
+  authRequest(`/api/user/chatbot/conversations/${encodeURIComponent(conversationId)}/`);
+
+export const deleteChatConversation = (conversationId) =>
+  authRequest(`/api/user/chatbot/conversations/${encodeURIComponent(conversationId)}/`, {
+    method: 'DELETE',
   });
 
 export const getChatHistory = () => authRequest('/api/user/chatbot/history/');

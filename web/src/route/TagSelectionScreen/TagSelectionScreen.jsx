@@ -7,7 +7,7 @@ import { ArrowLeft, Search, Check, X } from 'lucide-react';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { loadUserKeywords } from '../../utils/userKeywordsStorage';
 import { getUserKeywordsFromServer } from '../../utils/Service/api';
-import { loadTagsWithSubcategories } from '../../utils/platformTaxonomy';
+import { loadTagsWithSubcategories, resolveSavedInterestSelections } from '../../utils/platformTaxonomy';
 import { filledActionColors } from '../../theme/buttonContrast';
 
 const TagSelectionScreen = () => {
@@ -56,7 +56,7 @@ const TagSelectionScreen = () => {
         };
     }, [fromSignup, navigate]);
 
-    // Restore previously selected tags once taxonomy has loaded (fetch from API when signed in).
+    // Restore previously selected tags once taxonomy has loaded (skip during signup).
     useEffect(() => {
         if (fromSignup) return;
         if (!mainTags.length) return;
@@ -64,19 +64,8 @@ const TagSelectionScreen = () => {
         (async () => {
             const saved = await loadUserKeywords(getUserKeywordsFromServer);
             if (cancelled || !saved.length) return;
-            const savedLower = saved.map((s) => s.toLowerCase());
-            const next = new Set();
-            for (const main of mainTags) {
-                const subs = tagsMap[main] || [];
-                if (savedLower.includes(main.toLowerCase())) next.add(main);
-                for (const sub of subs) {
-                    if (savedLower.includes(sub.toLowerCase())) {
-                        next.add(main);
-                        next.add(sub);
-                    }
-                }
-            }
-            if (next.size) setSelectedTags(Array.from(next));
+            const { selectedTags: preselected } = resolveSavedInterestSelections(saved, tagsMap, []);
+            if (preselected.length) setSelectedTags(preselected);
         })();
         return () => {
             cancelled = true;
@@ -113,7 +102,7 @@ const TagSelectionScreen = () => {
             error('Please select at least one tag');
             return;
         }
-        navigate('/keyword-selection', { state: { selectedTags, fromSettings } });
+        navigate('/keyword-selection', { state: { selectedTags, fromSettings, fromSignup } });
     };
 
     const backgroundColor = colors.background;

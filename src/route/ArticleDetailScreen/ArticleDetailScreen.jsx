@@ -229,11 +229,12 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     };
 
     const handleShare = () => {
-        shareArticle(article);
+        shareArticle(article, articleId);
     };
 
     const handleMoreMenu = () => {
         openArticleMenu({ ...article, id: articleId }, feedback, {
+            articleId,
             onOpenFeedback: () => setFeedbackOpen(true),
         });
     };
