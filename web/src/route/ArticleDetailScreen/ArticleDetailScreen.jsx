@@ -32,7 +32,8 @@ import { getUserFacingError } from '../../utils/getUserFacingError';
 import { useResponsive } from '../../hooks/useResponsive';
 import ArticleCardImage from '../../components/ArticleCardImage';
 import { resolveArticleImageUrl, getUserArticleImageProxyUrl } from '../../utils/articleMedia';
-import { downloadArticleJson } from '../../utils/exportArticle';
+import { downloadArticlePdf } from '../../utils/articlePdfExport';
+import { shareArticleLink } from '../../utils/articleShare';
 
 const ARTICLE_HEADER_HEIGHT = 56;
 
@@ -119,17 +120,10 @@ const ArticleDetailScreen = () => {
         }
     };
 
-    const handleShare = () => {
-        const url = article.canonical_url || article.url || window.location.href;
-        if (navigator.share) {
-            navigator.share({
-                title: article.title,
-                text: article.excerpt || article.description,
-                url,
-            }).catch(() => {});
-        } else {
-            navigator.clipboard.writeText(url);
-            success('Link copied to clipboard!');
+    const handleShare = async () => {
+        const result = await shareArticleLink(article, articleKey);
+        if (result?.method === 'clipboard') {
+            success('TRAK link copied to clipboard!');
         }
         setShowMoreMenu(false);
     };
@@ -141,8 +135,8 @@ const ArticleDetailScreen = () => {
     };
 
     const handleExport = () => {
-        downloadArticleJson(article);
-        success('Export downloaded.');
+        downloadArticlePdf(article);
+        success('PDF export downloaded.');
         setShowMoreMenu(false);
     };
 
@@ -378,11 +372,11 @@ const ArticleDetailScreen = () => {
                                     }}
                                 >
                                     {[
-                                        { label: 'Share', onClick: handleShare },
+                                        { label: 'Share TRAK link', onClick: handleShare },
                                         ...(article.canonical_url || article.url
                                             ? [{ label: 'Open original', onClick: handleOpenOriginal }]
                                             : []),
-                                        { label: 'Export', onClick: handleExport },
+                                        { label: 'Export PDF', onClick: handleExport },
                                         { label: 'Report or give feedback', onClick: handleReport, danger: true },
                                     ].map((item) => (
                                         <button

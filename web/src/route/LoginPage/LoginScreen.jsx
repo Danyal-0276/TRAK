@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams, useLocation } from 'react-router-dom';
 import { ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import NewsBackgroundAnimation from '../../components/NewsBackgroundAnimation';
-import { getPostAuthPath } from '../../utils/authNavigation';
+import { getPostAuthPath, getLoginRedirectPath } from '../../utils/authNavigation';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { useTheme } from '../../theme/ThemeContext';
 import { filledActionColors } from '../../theme/buttonContrast';
@@ -11,11 +11,13 @@ import TrakLogo from '../../components/TrakLogo';
 
 const LoginScreen = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const [searchParams] = useSearchParams();
+    const returnTo = location.state?.from || searchParams.get('next') || '';
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
     const action = filledActionColors(colors, isDark);
-    const [searchParams] = useSearchParams();
     const { login, completeSocialLogin, loginWithGoogle } = useAuth();
     const { error: showError } = useUIFeedback();
     const [email, setEmail] = useState('');
@@ -32,7 +34,10 @@ const LoginScreen = () => {
             setLoading(true);
             try {
                 const userData = await completeSocialLogin(ticket);
-                navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed', { replace: true });
+                navigate(
+                    getLoginRedirectPath({ user: userData }, returnTo),
+                    { replace: true }
+                );
             } catch (error) {
                 setErrors((prev) => ({ ...prev, password: error.message || 'Social login completion failed' }));
             } finally {
@@ -59,7 +64,7 @@ const LoginScreen = () => {
         }
         try {
             const userData = await login(email, password);
-            navigate(userData.role === 'admin' ? '/admin/dashboard' : '/newsfeed');
+            navigate(getLoginRedirectPath({ user: userData }, returnTo), { replace: true });
         } catch (error) {
             const fieldErrors = error.fields || {};
             if (fieldErrors.email) {
@@ -342,7 +347,7 @@ const LoginScreen = () => {
                                     setSocialLoading('google');
                                     try {
                                         const session = await loginWithGoogle();
-                                        navigate(getPostAuthPath(session), { replace: true });
+                                        navigate(getLoginRedirectPath(session, returnTo), { replace: true });
                                     } catch (error) {
                                         showError(error.message || 'Social login failed');
                                     } finally {

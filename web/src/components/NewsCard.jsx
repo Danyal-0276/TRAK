@@ -19,7 +19,8 @@ import { getUserArticleImageProxyUrl, resolveArticleImageUrl } from '../utils/ar
 import ArticleCardImage from './ArticleCardImage';
 import FeedbackModal from './FeedbackModal';
 import { useUIFeedback } from './ui/UIFeedback';
-import { downloadArticleJson } from '../utils/exportArticle';
+import { downloadArticlePdf } from '../utils/articlePdfExport';
+import { shareArticleLink } from '../utils/articleShare';
 
 export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark, layout = 'grid' }) => {
     const isMasonry = layout === 'masonry';
@@ -291,14 +292,12 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                             >
                                 {[
                                     {
-                                        label: 'Share',
-                                        onClick: () => {
+                                        label: 'Share TRAK link',
+                                        onClick: async () => {
                                             setShowMenu(false);
-                                            const title = item?.title || 'Article';
-                                            if (navigator.share) {
-                                                navigator.share({ title, url: itemUrl || undefined, text: title }).catch(() => {});
-                                            } else if (itemUrl) {
-                                                window.open(itemUrl, '_blank', 'noopener,noreferrer');
+                                            const result = await shareArticleLink(item, itemId);
+                                            if (result?.method === 'clipboard') {
+                                                success('TRAK link copied to clipboard!');
                                             }
                                         },
                                     },
@@ -312,11 +311,11 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                         }]
                                         : []),
                                     {
-                                        label: 'Export',
+                                        label: 'Export PDF',
                                         onClick: () => {
                                             setShowMenu(false);
-                                            downloadArticleJson(item);
-                                            success('Export downloaded.');
+                                            downloadArticlePdf(item);
+                                            success('PDF export downloaded.');
                                         },
                                     },
                                     {
@@ -577,17 +576,11 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
 
                             <button
                                 type="button"
-                                onClick={(e) => {
+                                onClick={async (e) => {
                                     e.stopPropagation();
-                                    const url = item.canonical_url || item.url || (typeof window !== 'undefined' ? window.location.href : '');
-                                    if (navigator.share) {
-                                        navigator.share({
-                                            title: item.title,
-                                            text: item.excerpt || item.description || '',
-                                            url,
-                                        }).catch(() => {});
-                                    } else if (url && navigator.clipboard?.writeText) {
-                                        navigator.clipboard.writeText(url);
+                                    const result = await shareArticleLink(item, itemId);
+                                    if (result?.method === 'clipboard') {
+                                        success('TRAK link copied to clipboard!');
                                     }
                                 }}
                                 style={{

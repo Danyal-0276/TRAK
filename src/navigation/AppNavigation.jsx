@@ -12,6 +12,7 @@ import { getInitialRouteForUser } from '../utils/authNavigation';
 import { bindPushNotificationNavigation, setPushNavigationRef } from '../notifications/pushNavigation';
 import { bindForegroundPushMessaging } from '../notifications/pushMessaging';
 import { onAuthSessionEnded } from '../utils/authSessionEvents';
+import { navigationLinking } from './linking';
 import {
     EditProfileScreen,
     PrivacyScreen,
@@ -104,7 +105,7 @@ export default function AppNavigation() {
     }
     const initialRouteName = getInitialRouteForUser(user);
     return (
-        <NavigationContainer ref={navRef}>
+        <NavigationContainer ref={navRef} linking={navigationLinking}>
             <RootStack initialRouteName={initialRouteName} />
         </NavigationContainer>
     );

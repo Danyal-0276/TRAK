@@ -359,7 +359,12 @@ function NewsCardInner({
                             </View>
                             <GHTouchableOpacity
                                 style={cardStyles.moreButton}
-                                onPress={() => openArticleMenu(item, feedback, { onOpenFeedback: () => setFeedbackOpen(true) })}
+                                onPress={() =>
+                                    openArticleMenu(item, feedback, {
+                                        articleId,
+                                        onOpenFeedback: () => setFeedbackOpen(true),
+                                    })
+                                }
                                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                                 activeOpacity={0.7}
                                 accessibilityLabel="More options"
@@ -401,7 +406,7 @@ function NewsCardInner({
                         isBookmarked={isBookmarked}
                         onVote={onVote}
                         onBookmark={onBookmark}
-                        onShare={() => shareArticle(item)}
+                        onShare={() => shareArticle(item, articleId)}
                     />
                 </View>
             </View>

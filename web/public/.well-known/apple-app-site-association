@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "TEAMID.org.reactjs.native.example.TRAK",
+        "paths": ["/article/*"]
+      }
+    ]
+  }
+}

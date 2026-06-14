@@ -52,5 +52,16 @@
 	<array>
 		<string>MaterialCommunityIcons.ttf</string>
 	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.traknews.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>trak</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>

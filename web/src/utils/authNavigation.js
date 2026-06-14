@@ -24,3 +24,20 @@ export function getPostAuthState(path, { fromSignup = false } = {}) {
   }
   return undefined;
 }
+
+/** After login — honor shared article return URL when safe. */
+export function getLoginRedirectPath(session, returnTo, { fromSignup = false } = {}) {
+  const base = returnTo && typeof returnTo === 'string' ? returnTo.split('?')[0] : '';
+  const safeReturn =
+    returnTo &&
+    typeof returnTo === 'string' &&
+    returnTo.startsWith('/') &&
+    !returnTo.startsWith('//') &&
+    base !== '/login' &&
+    base !== '/signup' &&
+    base !== '/'
+      ? returnTo
+      : null;
+  if (safeReturn && session?.user?.role !== 'admin') return safeReturn;
+  return getPostAuthPath(session, { fromSignup });
+}
