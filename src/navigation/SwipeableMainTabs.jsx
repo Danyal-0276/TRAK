@@ -1,10 +1,12 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
 import { View, useWindowDimensions } from 'react-native';
 import { TabView } from 'react-native-tab-view';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../context/AuthContext';
 import CustomTabBar from './components/CustomTabBar.jsx';
 import { TabPagerContext } from './TabPagerContext';
+import { preloadProfileData } from '../utils/profileSessionCache';
+import { hydrateAdminFromStorage, preloadAdminData } from '../utils/adminSessionCache';
 import {
   NewsFeedScreen,
   NotificationsScreen,
@@ -43,6 +45,26 @@ export default function SwipeableMainTabs() {
   const [index, setIndex] = useState(0);
 
   const routes = useMemo(() => buildRoutes(isAdmin), [isAdmin]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (isAdmin) {
+        hydrateAdminFromStorage().finally(() => preloadAdminData({ skipIfFresh: true }));
+      } else {
+        preloadProfileData({ skipIfFresh: true });
+      }
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, [isAdmin]);
+
+  useEffect(() => {
+    if (routes[index]?.key === 'Profile') {
+      preloadProfileData({ skipIfFresh: true });
+    }
+    if (routes[index]?.key === 'Admin') {
+      preloadAdminData({ skipIfFresh: true });
+    }
+  }, [index, routes, isAdmin]);
 
   const jumpToTab = useCallback(
     (name) => {

@@ -41,13 +41,18 @@ const BrowseCategoriesScreen = ({ navigation }) => {
     const [expandedCategory, setExpandedCategory] = useState(null);
     const [showMoreCategories, setShowMoreCategories] = useState(false);
     const [previewByKey, setPreviewByKey] = useState({});
-    const [previewLoadingKey, setPreviewLoadingKey] = useState('');
+    const [previewStatusByKey, setPreviewStatusByKey] = useState({});
+
+    const previewArticlesFlat = useMemo(
+        () => Object.values(previewByKey).flat(),
+        [previewByKey],
+    );
 
     const {
         handleVote,
         handleBookmark,
         syncFromServer,
-    } = useArticleInteractions({ articles: Object.values(previewByKey).flat(), onArticlesPatch: () => {} });
+    } = useArticleInteractions({ articles: previewArticlesFlat, onArticlesPatch: () => {} });
 
     const loadCategories = useCallback(async () => {
         try {
@@ -70,20 +75,33 @@ const BrowseCategoriesScreen = ({ navigation }) => {
         loadCategories();
     }, [loadCategories]);
 
-    const loadCategoryPreview = useCallback(async (categoryKey) => {
-        if (!categoryKey || previewByKey[categoryKey]) return;
-        setPreviewLoadingKey(categoryKey);
+    const loadCategoryPreview = useCallback(async (categoryKey, { force = false } = {}) => {
+        if (!categoryKey) return;
+        const status = previewStatusByKey[categoryKey];
+        if (!force && (status === 'loading' || status === 'loaded')) return;
+
+        setPreviewStatusByKey((prev) => ({ ...prev, [categoryKey]: 'loading' }));
         try {
-            const page = await loadCategoryPage({ category: categoryKey, limit: ARTICLES_PREVIEW_COUNT, cursor: '' });
-            setPreviewByKey((prev) => ({ ...prev, [categoryKey]: page.items || [] }));
-            await syncFromServer(true);
+            const page = await loadCategoryPage({
+                category: categoryKey,
+                limit: ARTICLES_PREVIEW_COUNT,
+                cursor: '',
+            });
+            const items = page.items || [];
+            setPreviewByKey((prev) => ({ ...prev, [categoryKey]: items }));
+            setPreviewStatusByKey((prev) => ({
+                ...prev,
+                [categoryKey]: items.length ? 'loaded' : 'error',
+            }));
+            if (items.length) {
+                syncFromServer(true).catch(() => {});
+            }
         } catch (e) {
             console.warn('Category preview failed:', e?.message);
             setPreviewByKey((prev) => ({ ...prev, [categoryKey]: [] }));
-        } finally {
-            setPreviewLoadingKey('');
+            setPreviewStatusByKey((prev) => ({ ...prev, [categoryKey]: 'error' }));
         }
-    }, [previewByKey, syncFromServer]);
+    }, [previewStatusByKey, syncFromServer]);
 
     const searchedCategories = categories.filter((c) =>
         c.name.toLowerCase().includes(categorySearch.trim().toLowerCase())
@@ -108,6 +126,8 @@ const BrowseCategoriesScreen = ({ navigation }) => {
         ? searchedCategories
         : [...popularCategories, ...(showMoreCategories ? moreCategories : [])];
 
+    const categoriesWithArticles = categories.filter((c) => c.count > 0).length;
+
     const handleArticlePress = (article) => {
         navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
     };
@@ -118,6 +138,24 @@ const BrowseCategoriesScreen = ({ navigation }) => {
             categoryName: category.name,
             categoryCount: category.count,
         });
+    };
+
+    const handleCategoryHeaderPress = (category) => {
+        const opening = expandedCategory !== category.name;
+        setExpandedCategory(opening ? category.name : null);
+        if (opening && category.key) {
+            loadCategoryPreview(category.key);
+        }
+    };
+
+    const retryPreview = (category) => {
+        if (!category?.key) return;
+        setPreviewStatusByKey((prev) => {
+            const next = { ...prev };
+            delete next[category.key];
+            return next;
+        });
+        loadCategoryPreview(category.key, { force: true });
     };
 
     return (
@@ -132,6 +170,10 @@ const BrowseCategoriesScreen = ({ navigation }) => {
                 <View style={styles.centered}>
                     <ActivityIndicator color={colors.primary} size="large" />
                 </View>
+            ) : categories.length === 0 ? (
+                <View style={styles.centered}>
+                    <Text variant="body" color={colors.textSecondary}>No categories with articles yet.</Text>
+                </View>
             ) : (
                 <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                     <View style={[styles.searchRow, { borderColor: colors.border, backgroundColor: colors.surface }]}>
@@ -145,15 +187,21 @@ const BrowseCategoriesScreen = ({ navigation }) => {
                         />
                     </View>
 
+                    <Text variant="caption" color={colors.textSecondary} style={styles.metaLine}>
+                        {categoriesWithArticles} {categoriesWithArticles === 1 ? 'category' : 'categories'} with articles
+                    </Text>
+
                     {categoriesToRender.length === 0 ? (
                         <Text variant="body" color={colors.textSecondary} style={styles.emptyText}>
-                            No categories with articles yet.
+                            No matching categories.
                         </Text>
                     ) : (
                         categoriesToRender.map((category) => {
                             const isExpanded = expandedCategory === category.name;
                             const previewArticles = previewByKey[category.key] || [];
-                            const previewLoading = previewLoadingKey === category.key;
+                            const previewStatus = previewStatusByKey[category.key];
+                            const previewLoading = previewStatus === 'loading';
+                            const previewFailed = previewStatus === 'error';
                             const showMoreLink = category.count > ARTICLES_PREVIEW_COUNT;
 
                             return (
@@ -170,11 +218,7 @@ const BrowseCategoriesScreen = ({ navigation }) => {
                                     <TouchableOpacity
                                         style={styles.categoryHeader}
                                         activeOpacity={0.8}
-                                        onPress={() => {
-                                            const opening = expandedCategory !== category.name;
-                                            setExpandedCategory(opening ? category.name : null);
-                                            if (opening) loadCategoryPreview(category.key);
-                                        }}
+                                        onPress={() => handleCategoryHeaderPress(category)}
                                     >
                                         <Text style={styles.categoryIcon}>{getCategoryIcon(category.name)}</Text>
                                         <Text variant="body" style={[styles.categoryName, { color: colors.textPrimary }]}>
@@ -195,17 +239,38 @@ const BrowseCategoriesScreen = ({ navigation }) => {
                                     {isExpanded ? (
                                         <View style={[styles.expandedBody, { borderTopColor: colors.border }]}>
                                             {previewLoading ? (
-                                                <ActivityIndicator color={colors.primary} size="small" />
-                                            ) : category.count === 0 ? (
-                                                <Text variant="caption" color={colors.textSecondary}>
-                                                    No articles in this category yet.
-                                                </Text>
-                                            ) : previewArticles.length === 0 ? (
-                                                <Text variant="caption" color={colors.textSecondary}>
-                                                    Could not load preview.
-                                                </Text>
+                                                <Text variant="caption" color={colors.textSecondary}>Loading articles…</Text>
+                                            ) : previewFailed || previewArticles.length === 0 ? (
+                                                <View style={styles.previewErrorBlock}>
+                                                    <Text variant="caption" color={colors.textSecondary}>
+                                                        Could not load preview. Open the full category page.
+                                                    </Text>
+                                                    <View style={styles.previewErrorActions}>
+                                                        <TouchableOpacity
+                                                            style={[styles.showMoreBtn, { borderColor: colors.border, backgroundColor: colors.backgroundSecondary }]}
+                                                            onPress={() => retryPreview(category)}
+                                                            activeOpacity={0.85}
+                                                        >
+                                                            <Text variant="body" style={{ color: colors.textPrimary, fontWeight: '600' }}>
+                                                                Retry
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                        <TouchableOpacity
+                                                            style={[styles.showMoreBtn, { borderColor: colors.primary, backgroundColor: `${colors.primary}12` }]}
+                                                            onPress={() => openCategory(category)}
+                                                            activeOpacity={0.85}
+                                                        >
+                                                            <Text variant="body" style={{ color: colors.primary, fontWeight: '600' }}>
+                                                                View all
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    </View>
+                                                </View>
                                             ) : (
                                                 <>
+                                                    <Text variant="caption" color={colors.textSecondary} style={styles.previewMeta}>
+                                                        Showing {Math.min(previewArticles.length, category.count)} of {category.count} articles
+                                                    </Text>
                                                     <ArticleFeedList
                                                         data={previewArticles}
                                                         onArticlePress={handleArticlePress}
@@ -262,7 +327,7 @@ const styles = StyleSheet.create({
         paddingBottom: 14,
         borderBottomWidth: 1,
     },
-    centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
     scrollContent: { padding: 16, paddingBottom: 32 },
     searchRow: {
         flexDirection: 'row',
@@ -272,9 +337,10 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         paddingHorizontal: 14,
         paddingVertical: 10,
-        marginBottom: 16,
+        marginBottom: 10,
     },
     searchInput: { flex: 1, fontSize: 15, paddingVertical: 0 },
+    metaLine: { marginBottom: 16 },
     emptyText: { textAlign: 'center', marginTop: 24 },
     categoryCard: {
         borderWidth: 1,
@@ -293,8 +359,11 @@ const styles = StyleSheet.create({
     categoryName: { flex: 1, fontWeight: '600', fontSize: 16 },
     countBadge: { borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, marginRight: 4 },
     expandedBody: { borderTopWidth: 1, padding: 12 },
+    previewMeta: { marginBottom: 10 },
+    previewErrorBlock: { gap: 10 },
+    previewErrorActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     showMoreBtn: {
-        marginTop: 12,
+        marginTop: 4,
         alignSelf: 'flex-start',
         borderWidth: 1,
         borderRadius: 8,

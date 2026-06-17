@@ -8,6 +8,8 @@ import { verifyEmailCode } from '../api/authEmailApi';
 import { getOrCreatePushToken } from '../api/pushToken';
 import { formatNetworkError } from '../utils/networkError';
 import { emitAuthSessionEnded, onAuthSessionEnded } from '../utils/authSessionEvents';
+import { clearProfileSessionCache } from '../utils/profileSessionCache';
+import { clearAdminSessionCache } from '../utils/adminSessionCache';
 
 const AuthContext = createContext(null);
 const USER_CACHE_KEY = 'trak_user_cache_v1';
@@ -92,6 +94,8 @@ export function AuthProvider({ children }) {
     useEffect(() => {
         return onAuthSessionEnded(() => {
             clearStoredAuthSession();
+            clearProfileSessionCache();
+            clearAdminSessionCache();
             AsyncStorage.removeItem(USER_CACHE_KEY).catch(() => {});
             setUser(null);
         });
@@ -175,6 +179,8 @@ export function AuthProvider({ children }) {
 
     const logout = async () => {
         await clearStoredAuthSession();
+        clearProfileSessionCache();
+        clearAdminSessionCache();
         await AsyncStorage.removeItem(USER_CACHE_KEY).catch(() => {});
         setUser(null);
         emitAuthSessionEnded('manual');

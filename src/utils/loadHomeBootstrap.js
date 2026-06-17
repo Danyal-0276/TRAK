@@ -47,5 +47,7 @@ export async function loadHomeBootstrap({ limit = 50 } = {}) {
     feedMode,
     bookmarked,
     reactionMap,
+    bookmarkRows: data?.bookmarks?.results || [],
+    reactionResults: data?.reactions?.results || [],
   };
 }

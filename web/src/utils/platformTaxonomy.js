@@ -110,19 +110,72 @@ export function formatPlatformCategoryLabel(cat) {
   return slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-/** Explore/search category chips from platform taxonomy. */
+function buildExploreTabsFromPlatform(data) {
+  const apiCounts = data?.category_counts || {};
+  const cats = (data?.categories || []).filter((c) => c?.active !== false);
+
+  const rows = cats
+    .map((cat) => {
+      const slug = String(cat?.slug || cat?.id || '').trim();
+      const label = formatPlatformCategoryLabel(cat);
+      const count = Number(apiCounts[slug] || 0);
+      return { slug, label, count };
+    })
+    .filter((row) => row.label && row.count > 0)
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
+
+  const countsByLabel = { All: rows.reduce((sum, row) => sum + row.count, 0) };
+  for (const row of rows) {
+    countsByLabel[row.label] = row.count;
+  }
+
+  return {
+    tabs: ['All', ...rows.map((row) => row.label)],
+    categories: cats,
+    categoryCounts: apiCounts,
+    countsByLabel,
+  };
+}
+
+/** Count explore chips from a loaded article batch (search/filter context). */
+export function buildExploreCountsFromArticles(articles = [], platformCategories = []) {
+  const counts = { All: articles.length };
+  for (const item of articles) {
+    const slug = String(item?.primary_category || '').trim();
+    if (!slug) continue;
+    const platformCat = platformCategories.find((c) => String(c?.slug || '').trim() === slug);
+    const label = platformCat
+      ? formatPlatformCategoryLabel(platformCat)
+      : slug.replace(/_/g, ' ').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+    counts[label] = (counts[label] || 0) + 1;
+  }
+  return counts;
+}
+
+/** Labels with articles in the batch, sorted by count (All first). */
+export function exploreTabsFromCounts(counts = {}) {
+  const tabs = Object.entries(counts)
+    .filter(([label, count]) => label !== 'All' && Number(count) > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([label]) => label);
+  return ['All', ...tabs];
+}
+
+/** Explore/search category chips — only categories that have articles. */
 export async function loadExploreCategoryTabs() {
   try {
     const data = await fetchPlatformCategories();
-    const labels = (data?.categories || [])
-      .map(formatPlatformCategoryLabel)
-      .filter(Boolean);
-    const unique = [...new Set(labels)];
-    if (unique.length) return { tabs: ['All', ...unique.sort()], categories: data.categories || [] };
+    const built = buildExploreTabsFromPlatform(data);
+    if (built.tabs.length > 1) return built;
   } catch {
     /* offline — use bundled defaults */
   }
-  return { tabs: [...DEFAULT_EXPLORE_TABS], categories: [] };
+  return {
+    tabs: [...DEFAULT_EXPLORE_TABS],
+    categories: [],
+    categoryCounts: {},
+    countsByLabel: { All: 0 },
+  };
 }
 
 export function exploreTabToCategorySlug(tab, categories = []) {

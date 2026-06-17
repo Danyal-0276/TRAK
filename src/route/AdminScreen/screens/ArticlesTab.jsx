@@ -246,28 +246,6 @@ const ArticlesTab = ({
     [palette, showFailedActions, failedBulkBusy]
   );
 
-  if (loading && articles.length === 0) {
-    return (
-      <View style={styles.root}>
-        {listHeader}
-        <FeedSkeleton colors={palette} count={4} />
-      </View>
-    );
-  }
-
-  if (!loading && articles.length === 0) {
-    return (
-      <View style={styles.root}>
-        {listHeader}
-        <EmptyState
-          icon={FileText}
-          title="No articles found"
-          subtitle={searchQuery ? 'Try adjusting your search' : 'No articles match these filters'}
-        />
-      </View>
-    );
-  }
-
   const handleEndReached = useCallback(() => {
     if (loading || loadingMore || !hasMore) return;
     onLoadMore?.();
@@ -295,6 +273,28 @@ const ArticlesTab = ({
     }
     return <View style={{ height: 24 }} />;
   }, [loadingMore, hasMore, articles.length, onLoadMore, palette]);
+
+  if (loading && articles.length === 0) {
+    return (
+      <View style={styles.root}>
+        {listHeader}
+        <FeedSkeleton colors={palette} count={4} />
+      </View>
+    );
+  }
+
+  if (!loading && articles.length === 0) {
+    return (
+      <View style={styles.root}>
+        {listHeader}
+        <EmptyState
+          icon={FileText}
+          title="No articles found"
+          subtitle={searchQuery ? 'Try adjusting your search' : 'No articles match these filters'}
+        />
+      </View>
+    );
+  }
 
   return (
     <FlatList

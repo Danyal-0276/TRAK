@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useLayoutEffect, useRef, useMemo, useCallback } from "react";
+import "./components/ExploreStickyToolbar.css";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useTheme } from "../../theme/ThemeContext";
 import { useResponsive } from "../../hooks/useResponsive";
@@ -10,7 +11,12 @@ import { NewsCard } from "../../components/NewsCard";
 import { MasonryFeed, MasonryFeedSkeleton } from "../../components/MasonryFeed";
 import { getSkeletonFeedProps } from "../../components/skeletons/SkeletonLayouts";
 import { loadExplorePage, mergeUniqueById } from "../../utils/loadFeed";
-import { loadExploreCategoryTabs, exploreTabToCategorySlug } from "../../utils/platformTaxonomy";
+import {
+    loadExploreCategoryTabs,
+    exploreTabToCategorySlug,
+    buildExploreCountsFromArticles,
+    exploreTabsFromCounts,
+} from "../../utils/platformTaxonomy";
 import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
 import { openArticleDetail } from "../../utils/openArticleDetail";
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from "../../utils/Service/api";
@@ -19,41 +25,53 @@ import { getReactionMap, mergeReactionRows, setReactionForArticle } from "../../
 import { useFeedCache } from "../../context/FeedCacheContext";
 import { patchArticleVoteRow, reactionApiValue } from "../../utils/reactionVote";
 
-function filterExploreResults(allNews, searchQuery, activeTab, { apiSearch = false, apiCategory = false, platformCategories = [] } = {}) {
+function articleMatchesExploreTab(item, activeTab, platformCategories = []) {
+    if (!activeTab || activeTab === "All") return true;
+    const slug = exploreTabToCategorySlug(activeTab, platformCategories);
+    const primary = String(item?.primary_category || "").trim().toLowerCase();
+    if (slug && primary === slug) return true;
+    if (Array.isArray(item?.categories) && item.categories.some((c) => String(c).trim().toLowerCase() === slug)) {
+        return true;
+    }
+    const tabLower = String(activeTab).trim().toLowerCase();
+    const label = String(item?.category || "").trim().toLowerCase();
+    if (label === tabLower) return true;
+    if (slug && label === slug.replace(/-/g, " ")) return true;
+    return false;
+}
+
+function matchesExploreSearch(item, searchQuery) {
+    const terms = String(searchQuery || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
+    if (!terms.length) return true;
+
+    const fields = [
+        item?.title,
+        item?.excerpt,
+        item?.description,
+        item?.source,
+        item?.primary_category,
+        item?.category,
+        ...(Array.isArray(item?.categories) ? item.categories : []),
+        ...(Array.isArray(item?.topic_keywords) ? item.topic_keywords : []),
+    ]
+        .map((v) => String(v || "").toLowerCase())
+        .filter(Boolean);
+
+    return terms.every((term) => fields.some((text) => text.includes(term)));
+}
+
+function filterExploreResults(allNews, searchQuery, activeTab, { platformCategories = [] } = {}) {
     let results = [...allNews];
 
-    if (!apiCategory && activeTab && activeTab !== "All") {
-        const slug = exploreTabToCategorySlug(activeTab, platformCategories);
-        results = results.filter((item) => {
-            const primary = String(item?.primary_category || "").trim().toLowerCase();
-            if (slug && primary === slug) return true;
-            if (Array.isArray(item?.categories) && item.categories.some((c) => String(c).trim().toLowerCase() === slug)) {
-                return true;
-            }
-            const label = String(item?.category || "").trim().toLowerCase();
-            return label === String(activeTab).trim().toLowerCase();
-        });
+    if (activeTab && activeTab !== "All") {
+        results = results.filter((item) => articleMatchesExploreTab(item, activeTab, platformCategories));
     }
 
-    if (apiSearch || !String(searchQuery || "").trim()) return results;
+    if (String(searchQuery || "").trim()) {
+        results = results.filter((item) => matchesExploreSearch(item, searchQuery));
+    }
 
-    const searchTerms = String(searchQuery || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
-    return results.filter((item) => {
-        if (!item) return false;
-        const matchesTerm = (text) => {
-            if (!text) return false;
-            const textLower = String(text).toLowerCase();
-            return searchTerms.some((term) => textLower.includes(term));
-        };
-        if (matchesTerm(item.title)) return true;
-        if (matchesTerm(item.excerpt)) return true;
-        if (matchesTerm(item.description)) return true;
-        if (matchesTerm(item.source)) return true;
-        if (matchesTerm(item.category)) return true;
-        if (Array.isArray(item.categories) && item.categories.some(matchesTerm)) return true;
-        if (Array.isArray(item.topic_keywords) && item.topic_keywords.some(matchesTerm)) return true;
-        return false;
-    });
+    return results;
 }
 
 function deriveTrendingFromArticles(articles) {
@@ -70,7 +88,9 @@ function deriveTrendingFromArticles(articles) {
     .map(([name, count], i) => ({
       id: `${i}-${name}`,
       name: name.charAt(0).toUpperCase() + name.slice(1),
-      articleCount: count,
+      count: `${count} in feed`,
+      icon: "🔥",
+      trending: count >= 2,
     }));
 }
 const SearchScreen = () => {
@@ -79,10 +99,9 @@ const SearchScreen = () => {
     const isDark = theme.mode === 'dark';
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
-    const { isMobile } = useResponsive();
+    const { isMobile, isDesktop } = useResponsive();
     const { t } = useLanguage();
     const [allNews, setAllNews] = useState([]);
-    const [filteredNews, setFilteredNews] = useState([]);
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState('');
     const [retryTick, setRetryTick] = useState(0);
@@ -91,6 +110,11 @@ const SearchScreen = () => {
     const [loadingMore, setLoadingMore] = useState(false);
     const loadSeqRef = useRef(0);
     const forceReloadRef = useRef(false);
+    const stickySentinelRef = useRef(null);
+    const toolbarRef = useRef(null);
+    const [toolbarPinned, setToolbarPinned] = useState(false);
+    const [toolbarHeight, setToolbarHeight] = useState(0);
+    const [headerOffset, setHeaderOffset] = useState(64);
     const [searchQuery, setSearchQuery] = useState(() => searchParams.get("q") || "");
     const [activeTab, setActiveTab] = useState("All");
     const [votedItems, setVotedItems] = useState({});
@@ -99,17 +123,18 @@ const SearchScreen = () => {
 
     const [categories, setCategories] = useState(["All"]);
     const [platformCategories, setPlatformCategories] = useState([]);
+    const [serverCountsByLabel, setServerCountsByLabel] = useState({ All: 0 });
 
     const queryKey = searchQuery.trim().toLowerCase();
-    const activeCategorySlug = exploreTabToCategorySlug(activeTab, platformCategories);
 
     useEffect(() => {
         let cancelled = false;
         (async () => {
-            const { tabs, categories: platformCats } = await loadExploreCategoryTabs();
+            const { tabs, categories: platformCats, countsByLabel } = await loadExploreCategoryTabs();
             if (cancelled) return;
             setCategories(tabs);
             setPlatformCategories(platformCats);
+            setServerCountsByLabel(countsByLabel || { All: 0 });
         })();
         return () => {
             cancelled = true;
@@ -121,20 +146,71 @@ const SearchScreen = () => {
         return deriveTrendingFromArticles(allNews);
     }, [allNews, searchQuery]);
 
-    const categoryCounts = useMemo(() => {
-        const counts = { All: allNews.length };
-        for (const item of allNews) {
-            const cat = item?.category;
-            if (!cat) continue;
-            counts[cat] = (counts[cat] || 0) + 1;
+    const { visibleCategories, categoryCounts } = useMemo(() => {
+        const searching = Boolean(searchQuery.trim());
+
+        if (searching) {
+            const searchResults = filterExploreResults(allNews, searchQuery, "All", { platformCategories });
+            const counts = buildExploreCountsFromArticles(searchResults, platformCategories);
+            return {
+                visibleCategories: exploreTabsFromCounts(counts),
+                categoryCounts: counts,
+            };
         }
-        return counts;
-    }, [allNews]);
+
+        return {
+            visibleCategories: categories,
+            categoryCounts: serverCountsByLabel,
+        };
+    }, [searchQuery, allNews, platformCategories, categories, serverCountsByLabel]);
+
+    useEffect(() => {
+        if (activeTab !== "All" && !visibleCategories.includes(activeTab)) {
+            setActiveTab("All");
+        }
+    }, [visibleCategories, activeTab]);
+
+    const filteredNews = useMemo(
+        () => filterExploreResults(allNews, searchQuery, activeTab, { platformCategories }),
+        [allNews, searchQuery, activeTab, platformCategories]
+    );
 
     useEffect(() => {
         const urlQ = searchParams.get("q") || "";
         setSearchQuery((prev) => (prev === urlQ ? prev : urlQ));
     }, [searchParams]);
+
+    const measureExploreToolbar = useCallback(() => {
+        const header = document.querySelector('header');
+        if (header) {
+            setHeaderOffset(Math.round(header.getBoundingClientRect().height));
+        }
+        if (toolbarRef.current) {
+            setToolbarHeight(Math.round(toolbarRef.current.offsetHeight));
+        }
+    }, []);
+
+    useLayoutEffect(() => {
+        measureExploreToolbar();
+        window.addEventListener('resize', measureExploreToolbar);
+        return () => window.removeEventListener('resize', measureExploreToolbar);
+    }, [measureExploreToolbar, visibleCategories, activeTab, searchQuery, isMobile]);
+
+    useEffect(() => {
+        const sentinel = stickySentinelRef.current;
+        if (!sentinel) return undefined;
+
+        const observer = new IntersectionObserver(
+            ([entry]) => setToolbarPinned(!entry.isIntersecting),
+            {
+                root: null,
+                threshold: 0,
+                rootMargin: `-${headerOffset}px 0px 0px 0px`,
+            },
+        );
+        observer.observe(sentinel);
+        return () => observer.disconnect();
+    }, [headerOffset]);
 
     const loadFirstPage = useCallback(async (q, tab = activeTab, { force = false } = {}) => {
         const key = String(q || "").trim().toLowerCase();
@@ -145,11 +221,8 @@ const SearchScreen = () => {
         const cached = getExploreFeed(cacheKey);
         if (!force && isFresh(cached) && Array.isArray(cached?.allNews) && cached.allNews.length) {
             setAllNews(cached.allNews);
-            setFilteredNews(cached.filteredNews || cached.allNews);
             setNextCursor(cached.nextCursor || '');
             setHasMore(Boolean(cached.hasMore));
-            setCategories(cached.categories || ['All']);
-            setActiveTab(cached.activeTab || 'All');
             setVotedItems(cached.votedItems || {});
             setBookmarkedItems(new Set(cached.bookmarkIds || []));
             setLoadError(cached.loadError || '');
@@ -180,22 +253,6 @@ const SearchScreen = () => {
             setNextCursor(page.nextCursor || '');
             setHasMore(Boolean(page.hasMore));
             setAllNews(newsData);
-            const categorySet = new Set();
-            newsData.forEach((article) => {
-                const label = article.primary_category || article.category;
-                if (label && !categorySet.has(label)) {
-                    categorySet.add(label);
-                }
-            });
-            setCategories(["All", ...Array.from(categorySet).sort()]);
-            setFilteredNews(
-                filterExploreResults(newsData, q, tab, {
-                    apiSearch: Boolean(String(q || "").trim()),
-                    apiCategory: Boolean(category),
-                    platformCategories,
-                })
-            );
-
             const [bookmarks, reactions] = await Promise.all([
                 listBookmarks().catch(() => ({ results: [] })),
                 listReactions().catch(() => ({ results: [] })),
@@ -211,7 +268,6 @@ const SearchScreen = () => {
             if (seq !== loadSeqRef.current) return;
             console.error("Error fetching data:", error);
             setAllNews([]);
-            setFilteredNews([]);
             setLoadError(error?.message || 'Could not load articles. Is Django running?');
         } finally {
             if (seq === loadSeqRef.current) setLoading(false);
@@ -243,7 +299,7 @@ const SearchScreen = () => {
             loadError,
             scrollY: window.scrollY,
         });
-    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, queryKey, saveExploreFeed]);
+    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, queryKey, saveExploreFeed, platformCategories]);
 
     useEffect(() => {
         return () => {
@@ -261,7 +317,7 @@ const SearchScreen = () => {
                 scrollY: window.scrollY,
             });
         };
-    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, queryKey, saveExploreFeed]);
+    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, queryKey, saveExploreFeed, platformCategories]);
 
     const loadMore = useCallback(async () => {
         if (!hasMore || loadingMore || !nextCursor) return;
@@ -281,7 +337,7 @@ const SearchScreen = () => {
         } finally {
             setLoadingMore(false);
         }
-    }, [hasMore, loadingMore, nextCursor, searchQuery, activeTab]);
+    }, [hasMore, loadingMore, nextCursor, searchQuery, activeTab, platformCategories]);
 
     const scrollSentinelRef = useInfiniteScroll({
         onLoadMore: loadMore,
@@ -304,21 +360,15 @@ const SearchScreen = () => {
         handleSearch(topicName);
     };
 
+    const handleTabPress = useCallback((tab) => {
+        setActiveTab(tab);
+        window.scrollTo({ top: 0, behavior: "smooth" });
+    }, []);
+
     const handleClearFilters = () => {
         setActiveTab("All");
         handleSearch("");
     };
-
-    useEffect(() => {
-        if (!allNews || allNews.length === 0) return;
-        setFilteredNews(
-            filterExploreResults(allNews, searchQuery, activeTab, {
-                apiSearch: Boolean(searchQuery.trim()),
-                apiCategory: Boolean(activeCategorySlug),
-                platformCategories,
-            })
-        );
-    }, [searchQuery, activeTab, allNews, activeCategorySlug, platformCategories]);
 
     const handleArticlePress = (article) => {
         openArticleDetail(navigate, article);
@@ -401,49 +451,60 @@ const SearchScreen = () => {
                 padding: '0 clamp(16px, 4vw, 24px) 24px clamp(16px, 4vw, 24px)',
             }}>
                 <div style={{
-                    position: 'sticky',
-                    top: 0,
-                    zIndex: 20,
-                    backgroundColor,
+                    marginTop: '0',
+                    marginBottom: '16px',
                     paddingTop: isMobile ? '8px' : '6px',
-                    marginBottom: '12px',
                 }}>
-                    {/* Header Section */}
-                    <div style={{
-                        marginTop: '0',
-                        marginBottom: '20px',
+                    <h1 style={{
+                        fontSize: '28px',
+                        fontWeight: '700',
+                        color: textPrimary,
+                        margin: '0 0 8px 0',
                         paddingTop: '0',
+                        letterSpacing: '-0.5px',
                     }}>
-                        <h1 style={{
-                            fontSize: '28px',
-                            fontWeight: '700',
-                            color: textPrimary,
-                            margin: '0 0 8px 0',
-                            paddingTop: '0',
-                            letterSpacing: '-0.5px',
-                        }}>
-                            {t('pages.exploreTitle')}
-                        </h1>
-                        <p style={{
-                            fontSize: '15px',
-                            color: textSecondary,
-                            margin: '0 0 16px 0',
-                            lineHeight: '1.5',
-                        }}>
-                            {t('pages.exploreSubtitle')}
-                        </p>
-                        <SearchBar
-                            onSearch={handleSearch}
-                            initialQuery={searchQuery}
-                        />
-                    </div>
+                        {t('pages.exploreTitle')}
+                    </h1>
+                    <p style={{
+                        fontSize: '15px',
+                        color: textSecondary,
+                        margin: '0',
+                        lineHeight: '1.5',
+                    }}>
+                        {t('pages.exploreSubtitle')}
+                    </p>
+                </div>
 
-                    <ExploreCategoryBar
-                        categories={categories}
-                        activeTab={activeTab}
-                        onTabPress={setActiveTab}
-                        counts={categoryCounts}
-                    />
+                <div ref={stickySentinelRef} style={{ height: 1 }} aria-hidden />
+
+                <div
+                    className="explore-sticky-toolbar-slot"
+                    style={toolbarPinned && toolbarHeight ? { height: toolbarHeight } : undefined}
+                >
+                    <div
+                        ref={toolbarRef}
+                        className={`explore-sticky-toolbar${toolbarPinned ? ' explore-sticky-toolbar--pinned' : ''}`}
+                        style={toolbarPinned ? {
+                            top: headerOffset,
+                            right: isDesktop ? 280 : 0,
+                        } : undefined}
+                    >
+                        <div className="explore-sticky-toolbar__inner">
+                            <div style={{ marginBottom: 16 }}>
+                                <SearchBar
+                                    onSearch={handleSearch}
+                                    initialQuery={searchQuery}
+                                />
+                            </div>
+
+                            <ExploreCategoryBar
+                                categories={visibleCategories}
+                                activeTab={activeTab}
+                                onTabPress={handleTabPress}
+                                counts={categoryCounts}
+                            />
+                        </div>
+                    </div>
                 </div>
 
                 {/* Content Area */}
