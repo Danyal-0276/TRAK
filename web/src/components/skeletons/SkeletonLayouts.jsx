@@ -203,6 +203,130 @@ export function SkeletonListRows({ rows = 10, isDark, colors = {} }) {
     );
 }
 
+/** Admin dashboard loading state — mirrors KPI grid, charts, pipeline row, and sources panel. */
+export function SkeletonAdminDashboard({ isDark, colors = {}, isMobile = false, isTablet = false }) {
+    const border = isDark ? colors.border || '#334155' : '#e5e7eb';
+    const bg = isDark ? colors.surface : '#ffffff';
+    const bar = isDark ? '#334155' : '#e5e7eb';
+    const bar2 = isDark ? '#475569' : '#f1f5f9';
+    const kpiColumns = isMobile ? '1fr' : isTablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(4, minmax(0, 1fr))';
+    const chartColumns = isMobile ? '1fr' : isTablet ? 'repeat(2, minmax(0, 1fr))' : 'repeat(3, minmax(0, 1fr))';
+    const panelColumns = isMobile ? '1fr' : '1.2fr 0.8fr';
+
+    const chartCard = (key) => (
+        <div
+            key={key}
+            className="trak-sk-pulse"
+            style={{
+                borderRadius: 14,
+                border: `1px solid ${border}`,
+                backgroundColor: bg,
+                overflow: 'hidden',
+                minHeight: 320,
+            }}
+        >
+            <div style={{ padding: '16px 18px 12px', borderBottom: `1px solid ${border}` }}>
+                <div style={{ width: '42%', height: 14, borderRadius: 4, backgroundColor: bar, marginBottom: 8 }} />
+                <div style={{ width: '58%', height: 11, borderRadius: 4, backgroundColor: bar2 }} />
+            </div>
+            <div style={{ height: 248, backgroundColor: bar2, margin: '8px 12px 12px' }} />
+        </div>
+    );
+
+    return (
+        <div style={{ width: '100%' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: kpiColumns, gap: 16, marginBottom: 24 }}>
+                {Array.from({ length: 8 }).map((_, i) => (
+                    <div
+                        key={`kpi-${i}`}
+                        className="trak-sk-pulse"
+                        style={{
+                            height: 108,
+                            borderRadius: 14,
+                            border: `1px solid ${border}`,
+                            backgroundColor: bg,
+                            padding: 18,
+                            borderLeft: `4px solid ${bar}`,
+                        }}
+                    >
+                        <div style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: bar2, marginBottom: 14 }} />
+                        <div style={{ width: '55%', height: 26, borderRadius: 6, backgroundColor: bar, marginBottom: 8 }} />
+                        <div style={{ width: '70%', height: 12, borderRadius: 4, backgroundColor: bar2 }} />
+                    </div>
+                ))}
+            </div>
+
+            <div
+                className="trak-sk-pulse"
+                style={{
+                    height: 10,
+                    borderRadius: 999,
+                    backgroundColor: bar2,
+                    marginBottom: 20,
+                    border: `1px solid ${border}`,
+                }}
+            />
+
+            <div style={{ display: 'grid', gridTemplateColumns: chartColumns, gap: 16, marginBottom: 24 }}>
+                {Array.from({ length: 6 }).map((_, i) => chartCard(`chart-${i}`))}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: panelColumns, gap: 16, marginBottom: 20 }}>
+                <div
+                    className="trak-sk-pulse"
+                    style={{
+                        borderRadius: 14,
+                        border: `1px solid ${border}`,
+                        backgroundColor: bg,
+                        padding: 20,
+                        minHeight: 180,
+                    }}
+                >
+                    <div style={{ width: '35%', height: 16, borderRadius: 4, backgroundColor: bar, marginBottom: 10 }} />
+                    <div style={{ width: '90%', height: 12, borderRadius: 4, backgroundColor: bar2, marginBottom: 18 }} />
+                    <div style={{ width: 220, height: 44, borderRadius: 10, backgroundColor: bar }} />
+                </div>
+                <div
+                    className="trak-sk-pulse"
+                    style={{
+                        borderRadius: 14,
+                        border: `1px solid ${border}`,
+                        backgroundColor: bg,
+                        padding: 18,
+                        minHeight: 180,
+                    }}
+                >
+                    <div style={{ width: '45%', height: 14, borderRadius: 4, backgroundColor: bar, marginBottom: 14 }} />
+                    {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={`fail-${i}`} style={{ marginBottom: 12 }}>
+                            <div style={{ width: '85%', height: 11, borderRadius: 4, backgroundColor: bar2, marginBottom: 6 }} />
+                            <div style={{ width: '55%', height: 10, borderRadius: 4, backgroundColor: bar2 }} />
+                        </div>
+                    ))}
+                </div>
+            </div>
+
+            <div
+                className="trak-sk-pulse"
+                style={{
+                    borderRadius: 14,
+                    border: `1px solid ${border}`,
+                    backgroundColor: bg,
+                    padding: 18,
+                    minHeight: 120,
+                }}
+            >
+                <div style={{ width: '30%', height: 14, borderRadius: 4, backgroundColor: bar, marginBottom: 14 }} />
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    {Array.from({ length: 6 }).map((_, i) => (
+                        <div key={`src-${i}`} style={{ width: 96, height: 28, borderRadius: 999, backgroundColor: bar2 }} />
+                    ))}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 /** Generic full-page blocks (auth bootstrap, simple pages). */
 export function SkeletonPageBlocks({ isDark, colors = {}, minHeight = '70vh' }) {
     const border = isDark ? colors.border || '#334155' : '#e5e7eb';

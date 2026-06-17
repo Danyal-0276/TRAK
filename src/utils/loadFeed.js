@@ -116,11 +116,20 @@ export async function loadFeedItems(options = {}) {
     return response.data;
 }
 
-/**
- * Cursor-based Explore page loader for infinite scroll UIs.
- * @param {{ q?: string, cursor?: string, limit?: number }} options
- */
-export async function loadExplorePage(options = {}) {
+export function mergeUniqueById(prev, incoming) {
+    const seen = new Set((prev || []).map((item) => String(item.id)));
+    const merged = [...(prev || [])];
+    for (const item of incoming || []) {
+        const id = String(item.id);
+        if (!seen.has(id)) {
+            seen.add(id);
+            merged.push(item);
+        }
+    }
+    return merged;
+}
+
+export async function loadFeedPage(options = {}) {
     const q = options.q || '';
     const cursor = options.cursor || '';
     const limit = Math.max(1, Number(options.limit || 30));
@@ -129,7 +138,28 @@ export async function loadExplorePage(options = {}) {
         return { items: [], nextCursor: null, hasMore: false };
     }
     const userKeywords = await loadUserKeywords();
-    const json = await fetchExplorePage(limit, q, cursor);
+    const json = await fetchFeed(limit, q, cursor);
+    return {
+        items: filterRealFeedItems((json.results || []).map((a) => mapApiItem(a, userKeywords))),
+        nextCursor: json.next_cursor || null,
+        hasMore: Boolean(json.has_more),
+    };
+}
+
+/**
+ * @param {{ q?: string, cursor?: string, limit?: number }} options
+ */
+export async function loadExplorePage(options = {}) {
+    const q = options.q || '';
+    const cursor = options.cursor || '';
+    const category = options.category || '';
+    const limit = Math.max(1, Number(options.limit || 30));
+    const token = await getAccessToken();
+    if (!token) {
+        return { items: [], nextCursor: null, hasMore: false };
+    }
+    const userKeywords = await loadUserKeywords();
+    const json = await fetchExplorePage(limit, q, cursor, category);
     return {
         items: filterRealFeedItems((json.results || []).map((a) => mapApiItem(a, userKeywords))),
         nextCursor: json.next_cursor || null,

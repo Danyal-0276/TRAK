@@ -163,6 +163,12 @@ const AdminScreen = ({ navigation, route }) => {
   const [articleCounts, setArticleCounts] = useState(null);
   const [failedBulkBusy, setFailedBulkBusy] = useState(false);
   const [articlesLoading, setArticlesLoading] = useState(false);
+  const [articlesLoadingMore, setArticlesLoadingMore] = useState(false);
+  const [articlesHasMore, setArticlesHasMore] = useState(false);
+  const [articlesPage, setArticlesPage] = useState(1);
+  const articlesPageRef = useRef(1);
+  const searchQueryRef = useRef('');
+  const ADMIN_ARTICLES_PAGE_SIZE = 100;
   const [listsLoading, setListsLoading] = useState(false);
   const [connectionUrlInput, setConnectionUrlInput] = useState('');
   const [overviewLoading, setOverviewLoading] = useState(true);
@@ -345,30 +351,42 @@ const AdminScreen = ({ navigation, route }) => {
     }
   }, [updateConnectionsIfChanged]);
 
-  const loadArticles = useCallback(async ({ silent = false } = {}) => {
+  const loadArticles = useCallback(async ({ silent = false, page = 1, append = false, q = '' } = {}) => {
     const { scope, pipelineStatus, moderationStatus, credibilityLabel } = getArticlesFetchParams(articlePipelineFilter);
-    if (!silent) setArticlesLoading(true);
+    if (!silent && !append) setArticlesLoading(true);
+    if (append) setArticlesLoadingMore(true);
     try {
       const res = await getAdminArticles({
-        page: 1,
-        pageSize: 100,
+        page,
+        pageSize: ADMIN_ARTICLES_PAGE_SIZE,
         scope,
         pipelineStatus,
         moderationStatus,
         credibilityLabel,
+        q: String(q || '').trim().length >= 2 ? String(q).trim() : '',
       });
-      setApiArticles((res.results || []).map(mapAdminArticleRow));
+      const mapped = (res.results || []).map(mapAdminArticleRow);
+      setApiArticles((prev) => (append ? [...prev, ...mapped] : mapped));
       setArticleCounts(res.counts || null);
+      setArticlesHasMore(Boolean(res.has_more));
+      setArticlesPage(page);
     } catch (e) {
-      if (!silent) {
+      if (!silent && !append) {
         Alert.alert('Articles', e?.message || 'Could not load articles.');
         setApiArticles([]);
         setArticleCounts(null);
+        setArticlesHasMore(false);
       }
     } finally {
-      if (!silent) setArticlesLoading(false);
+      if (!silent && !append) setArticlesLoading(false);
+      if (append) setArticlesLoadingMore(false);
     }
   }, [articlePipelineFilter]);
+
+  const loadMoreArticles = useCallback(() => {
+    if (articlesLoadingMore || !articlesHasMore) return;
+    loadArticles({ silent: true, page: articlesPage + 1, append: true, q: searchQuery });
+  }, [articlesLoadingMore, articlesHasMore, articlesPage, loadArticles, searchQuery]);
 
   const loadLists = useCallback(async () => {
     setListsLoading(true);
@@ -459,18 +477,33 @@ const AdminScreen = ({ navigation, route }) => {
   }, [bootstrapped, isAdmin, loadData]);
 
   useEffect(() => {
-    if (!bootstrapped || !isAdmin || activeTab !== 'articles') return;
-    loadArticles();
-  }, [activeTab, articlePipelineFilter, bootstrapped, isAdmin, loadArticles]);
+    if (!bootstrapped || !isAdmin || activeTab !== 'articles') return undefined;
+    const timer = setTimeout(() => {
+      loadArticles({ q: searchQuery, page: 1, append: false });
+    }, searchQuery.trim() ? 320 : 0);
+    return () => clearTimeout(timer);
+  }, [activeTab, articlePipelineFilter, searchQuery, bootstrapped, isAdmin, loadArticles]);
+
+  useEffect(() => {
+    articlesPageRef.current = articlesPage;
+  }, [articlesPage]);
+
+  useEffect(() => {
+    searchQueryRef.current = searchQuery;
+  }, [searchQuery]);
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || activeTab !== 'articles') return undefined;
     const poll = () => {
-      if (AppState.currentState === 'active') loadArticles({ silent: true });
+      if (AppState.currentState !== 'active') return;
+      if (articlesPageRef.current > 1) return;
+      loadArticles({ silent: true, q: searchQueryRef.current, page: 1, append: false });
     };
     const id = setInterval(poll, ARTICLES_POLL_INTERVAL_MS);
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active') loadArticles({ silent: true });
+      if (state === 'active' && articlesPageRef.current <= 1) {
+        loadArticles({ silent: true, q: searchQueryRef.current, page: 1, append: false });
+      }
     });
     return () => {
       clearInterval(id);
@@ -840,10 +873,10 @@ const AdminScreen = ({ navigation, route }) => {
     }
   };
 
-  const filteredArticles = useMemo(
-    () => filterArticlesForDisplay(apiArticles, articlePipelineFilter, searchQuery),
-    [apiArticles, articlePipelineFilter, searchQuery]
-  );
+  const filteredArticles = useMemo(() => {
+    if (searchQuery.trim().length >= 2) return apiArticles;
+    return filterArticlesForDisplay(apiArticles, articlePipelineFilter, searchQuery);
+  }, [apiArticles, articlePipelineFilter, searchQuery]);
 
   const failedCount = articleCounts?.filtered_total ?? filteredArticles.length;
 
@@ -941,7 +974,11 @@ const AdminScreen = ({ navigation, route }) => {
               pipelineRunLabel={pipelineRunLabel}
               liveUpdatedLabel={liveUpdatedLabel}
             />
-            <AnalyticsTab serverAnalytics={hasAnalytics ? chartData : null} modelMetrics={modelMetrics} />
+            <AnalyticsTab
+              serverAnalytics={hasAnalytics ? chartData : null}
+              modelMetrics={modelMetrics}
+              loading={overviewLoading}
+            />
           </>
         );
       case 'users':
@@ -984,6 +1021,9 @@ const AdminScreen = ({ navigation, route }) => {
             pipelineFilter={articlePipelineFilter}
             onPipelineFilterChange={handleArticlePipelineFilterChange}
             loading={articlesLoading}
+            loadingMore={articlesLoadingMore}
+            hasMore={articlesHasMore}
+            onLoadMore={loadMoreArticles}
             articleCounts={articleCounts}
             palette={adminPalette}
           />

@@ -99,6 +99,16 @@ const DashboardTab = ({
         <View style={{ paddingHorizontal: 20 }}>
           <AdminKpiSkeleton palette={palette} count={8} cardWidth={kpiWidth} />
           <AdminChartSkeleton palette={palette} count={2} />
+          <View style={[styles.pipelineCard, { backgroundColor: palette.card, borderColor: palette.border, marginTop: 4 }]}>
+            <View style={{ height: 16, width: '35%', borderRadius: 4, backgroundColor: palette.pageAlt, marginBottom: 10 }} />
+            <View style={{ height: 12, width: '85%', borderRadius: 4, backgroundColor: palette.borderLight, marginBottom: 16 }} />
+            <View style={{ height: 44, width: 220, borderRadius: 10, backgroundColor: palette.pageAlt }} />
+          </View>
+          <View style={[styles.failuresCard, { backgroundColor: palette.card, borderColor: palette.border, marginTop: 12 }]}>
+            <View style={{ height: 14, width: '45%', borderRadius: 4, backgroundColor: palette.pageAlt, marginBottom: 12 }} />
+            <View style={{ height: 10, width: '80%', borderRadius: 4, backgroundColor: palette.borderLight, marginBottom: 8 }} />
+            <View style={{ height: 10, width: '60%', borderRadius: 4, backgroundColor: palette.borderLight }} />
+          </View>
         </View>
       ) : (
         <>

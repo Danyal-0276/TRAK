@@ -23,6 +23,7 @@ import ArticleFeedList from '../../components/ArticleFeedList';
 import { FeedSkeleton } from '../../components/FeedSkeleton';
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
 import { loadHomeBootstrap } from '../../utils/loadHomeBootstrap';
+import { loadExplorePage, loadFeedPage, mergeUniqueById } from '../../utils/loadFeed';
 import { useTheme } from '../../theme/ThemeContext';
 import { getRefreshControlProps } from '../../theme/refreshControl';
 import { useFilledActionColors } from '../../theme/buttonContrast';
@@ -172,6 +173,9 @@ const NewsFeedScreen = ({ navigation }) => {
     );
     const [votedItems, setVotedItems] = useState(() => (hasCachedHome ? cachedHome.votedItems || {} : {}));
     const [newsData, setNewsData] = useState(() => (hasCachedHome ? cachedHome.newsData : []));
+    const [nextCursor, setNextCursor] = useState(() => (hasCachedHome ? cachedHome.nextCursor || '' : ''));
+    const [hasMore, setHasMore] = useState(() => (hasCachedHome ? Boolean(cachedHome.hasMore) : false));
+    const [loadingMore, setLoadingMore] = useState(false);
     const [loading, setLoading] = useState(!hasCachedHome);
     const [refreshing, setRefreshing] = useState(false);
     const [feedKeywords, setFeedKeywords] = useState(() => (hasCachedHome ? cachedHome.feedKeywords || [] : []));
@@ -242,6 +246,8 @@ const NewsFeedScreen = ({ navigation }) => {
             feedModeRef.current = cached.feedMode || 'explore';
             setFeedKeywords(cached.feedKeywords || []);
             setNewsData(cached.newsData);
+            setNextCursor(cached.nextCursor || '');
+            setHasMore(Boolean(cached.hasMore));
             setVotedItems(cached.votedItems || {});
             setBookmarkedItems(new Set((cached.bookmarkIds || []).map(String)));
             const tabKey = cached.activeTab || 'For you';
@@ -261,6 +267,8 @@ const NewsFeedScreen = ({ navigation }) => {
 
             if (!keywords.length && !boot.items.length) {
                 setNewsData([]);
+                setNextCursor('');
+                setHasMore(false);
                 setVotedItems(boot.reactionMap || {});
                 setBookmarkedItems(boot.bookmarked || new Set());
                 await setBookmarkIds(Array.from(boot.bookmarked || [])).catch(() => {});
@@ -269,6 +277,8 @@ const NewsFeedScreen = ({ navigation }) => {
 
             const mapped = mapBootstrapItems(boot.items, boot.reactionMap || {});
             setNewsData(mapped);
+            setNextCursor(boot.nextCursor || '');
+            setHasMore(Boolean(boot.hasMore));
             setVotedItems(boot.reactionMap || {});
             setBookmarkedItems(boot.bookmarked || new Set());
             await setBookmarkIds(Array.from(boot.bookmarked || [])).catch(() => {});
@@ -279,6 +289,8 @@ const NewsFeedScreen = ({ navigation }) => {
                 bookmarkIds: Array.from(boot.bookmarked || []),
                 feedKeywords: keywords,
                 feedMode: boot.feedMode,
+                nextCursor: boot.nextCursor || '',
+                hasMore: Boolean(boot.hasMore),
                 activeTab,
                 scrollY: scrollYByTab.current[activeTab] || 0,
             });
@@ -289,6 +301,27 @@ const NewsFeedScreen = ({ navigation }) => {
             if (!silent) setLoading(false);
         }
     }, [activeTab]);
+
+    const loadMore = useCallback(async () => {
+        if (!hasMore || loadingMore || !nextCursor || activeTab !== 'For you') return;
+        setLoadingMore(true);
+        try {
+            const page =
+                feedModeRef.current === 'feed'
+                    ? await loadFeedPage({ limit: 50, cursor: nextCursor })
+                    : await loadExplorePage({ limit: 50, cursor: nextCursor });
+            const reactionMap = { ...getReactionMap(), ...votedItems };
+            setNewsData((prev) =>
+                mapBootstrapItems(mergeUniqueById(prev, page.items), reactionMap)
+            );
+            setNextCursor(page.nextCursor || '');
+            setHasMore(Boolean(page.hasMore));
+        } catch (error) {
+            console.warn('Load more failed:', error?.message || error);
+        } finally {
+            setLoadingMore(false);
+        }
+    }, [hasMore, loadingMore, nextCursor, activeTab, votedItems]);
 
     const lastSyncRef = useRef(0);
     const voteTimerRef = useRef({});
@@ -329,6 +362,8 @@ const NewsFeedScreen = ({ navigation }) => {
             const cached = getHomeFeedCache();
             if (isFeedCacheFresh(cached) && Array.isArray(cached?.newsData) && cached.newsData.length) {
                 setNewsData(cached.newsData);
+                setNextCursor(cached.nextCursor || '');
+                setHasMore(Boolean(cached.hasMore));
                 setVotedItems(cached.votedItems || {});
                 setBookmarkedItems(new Set((cached.bookmarkIds || []).map(String)));
                 setFeedKeywords(cached.feedKeywords || []);
@@ -368,6 +403,8 @@ const NewsFeedScreen = ({ navigation }) => {
                 bookmarkIds: Array.from(bookmarkedItems),
                 feedKeywords,
                 feedMode: feedModeRef.current,
+                nextCursor,
+                hasMore,
                 activeTab,
                 scrollY: scrollYByTab.current[activeTab] || 0,
             });
@@ -375,7 +412,7 @@ const NewsFeedScreen = ({ navigation }) => {
         return () => {
             if (cacheSaveTimerRef.current) clearTimeout(cacheSaveTimerRef.current);
         };
-    }, [newsData, votedItems, bookmarkedItems, feedKeywords, activeTab]);
+    }, [newsData, votedItems, bookmarkedItems, feedKeywords, activeTab, nextCursor, hasMore]);
 
     useEffect(() => {
         resetTabBarVisibility();
@@ -598,7 +635,17 @@ const NewsFeedScreen = ({ navigation }) => {
                     onBookmark={handleBookmark}
                     ListHeaderComponent={listHeader}
                     ListEmptyComponent={listEmpty}
-                    ListFooterComponent={<View style={styles.endPadding} />}
+                    ListFooterComponent={
+                        loadingMore ? (
+                            <Text style={{ textAlign: 'center', color: colors.textSecondary, padding: 16 }}>
+                                Loading more…
+                            </Text>
+                        ) : (
+                            <View style={styles.endPadding} />
+                        )
+                    }
+                    onEndReached={tabKey === 'For you' ? loadMore : undefined}
+                    onEndReachedThreshold={0.4}
                     onScroll={onFeedScroll}
                     scrollEventThrottle={16}
                     refreshControl={
@@ -627,6 +674,8 @@ const NewsFeedScreen = ({ navigation }) => {
             topInset,
             measuredHeaderHeight,
             loading,
+            loadingMore,
+            loadMore,
             navigation,
             newsByTab,
             refreshing,

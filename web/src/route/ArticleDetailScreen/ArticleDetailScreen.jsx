@@ -134,10 +134,14 @@ const ArticleDetailScreen = () => {
         setShowMoreMenu(false);
     };
 
-    const handleExport = () => {
-        downloadArticlePdf(article);
-        success('PDF export downloaded.');
+    const handleExport = async () => {
         setShowMoreMenu(false);
+        try {
+            await downloadArticlePdf(article);
+            success('PDF export downloaded.');
+        } catch (e) {
+            notifyError(e?.message || 'Could not export PDF.');
+        }
     };
 
     const handleReport = () => {

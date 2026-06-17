@@ -2,6 +2,9 @@ import { jsPDF } from 'jspdf';
 import { normalizeArticleForDetail } from './articleNavigation';
 import { getFeedItemCredibilityMeta } from './credibilityIndicator';
 import { buildArticleShareUrl } from './articleShare';
+import { getUserArticleDetail } from './Service/api';
+import { mapApiItem } from './loadFeed';
+import { getCachedArticleDetail, setCachedArticleDetail } from './articleDetailCache';
 
 const PAGE_W = 210;
 const PAGE_H = 297;
@@ -65,6 +68,48 @@ function writeSectionTitle(doc, label, y) {
   doc.setDrawColor(226, 232, 240);
   doc.line(MARGIN, y + 2, PAGE_W - MARGIN, y + 2);
   return y + 10;
+}
+
+function articleBodyText(article) {
+  return String(
+    article?.fullContent || article?.full_content || article?.content || ''
+  ).trim();
+}
+
+function articleSummaryText(article) {
+  return String(
+    article?.summary || article?.excerpt || article?.ai_summary || article?.description || ''
+  ).trim();
+}
+
+/** Feed cards often only carry summary — fetch full detail when body is missing or truncated. */
+function needsFullArticleFetch(article) {
+  const body = articleBodyText(article);
+  const summary = articleSummaryText(article);
+  if (!body) return true;
+  if (body.length < 200) return true;
+  if (summary && body.length <= summary.length + 80) return true;
+  return false;
+}
+
+export async function resolveArticleForPdfExport(item) {
+  const normalized = normalizeArticleForDetail(item);
+  if (!needsFullArticleFetch(normalized)) return normalized;
+
+  const id = String(normalized.id || item?.id || item?.article_id || '').trim();
+  if (!id) return normalized;
+
+  try {
+    let doc = getCachedArticleDetail(id);
+    if (!doc) {
+      doc = await getUserArticleDetail(id);
+      if (doc) setCachedArticleDetail(id, doc);
+    }
+    if (!doc) return normalized;
+    return normalizeArticleForDetail(mapApiItem({ ...doc, id }));
+  } catch {
+    return normalized;
+  }
 }
 
 /** Build a formatted TRAK article PDF (summary, body, credibility). */
@@ -156,9 +201,9 @@ export function createArticlePdfDocument(item) {
   return doc;
 }
 
-export function downloadArticlePdf(item) {
-  const article = normalizeArticleForDetail(item);
+export async function downloadArticlePdf(item) {
+  const article = await resolveArticleForPdfExport(item);
   const id = String(article.id || 'article').replace(/[^\w.-]+/g, '_');
-  const doc = createArticlePdfDocument(item);
+  const doc = createArticlePdfDocument(article);
   doc.save(`trak-article-${id}.pdf`);
 }

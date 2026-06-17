@@ -32,6 +32,7 @@ import { useCollapsibleHeader } from "../../hooks/useCollapsibleHeader";
 import { useTheme } from "../../theme/ThemeContext";
 import { getRefreshControlProps } from "../../theme/refreshControl";
 import { loadExplorePage } from "../../utils/loadFeed";
+import { loadExploreCategoryTabs, exploreTabToCategorySlug } from "../../utils/platformTaxonomy";
 import Text from "../../components/ui/Text";
 import { Search } from "lucide-react-native";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
@@ -42,10 +43,16 @@ const { width, height } = Dimensions.get('window');
 const PAGER_LAYOUT = { width };
 const AnimatedDiscoverScrollView = Animated.createAnimatedComponent(GHScrollView);
 
-function buildDiscoverNewsByTab(allNews, searchQuery, routes) {
+function buildDiscoverNewsByTab(allNews, searchQuery, routes, activeTab, platformCategories = []) {
+  const apiSearch = Boolean(String(searchQuery || '').trim());
   const out = {};
   routes.forEach((route) => {
-    out[route.key] = filterDiscoverNews(allNews, searchQuery, route.key);
+    const slug = exploreTabToCategorySlug(route.key, platformCategories);
+    out[route.key] = filterDiscoverNews(allNews, searchQuery, route.key, {
+      apiSearch,
+      apiCategory: Boolean(slug) && route.key === activeTab,
+      platformCategories,
+    });
   });
   return out;
 }
@@ -54,8 +61,10 @@ const DISCOVER_PREFETCH_PX = 900;
 const DISCOVER_CACHE_TTL_MS = 10 * 60 * 1000;
 const discoverFeedCache = new Map();
 
-function discoverCacheKey(q) {
-  return String(q || '').trim().toLowerCase();
+const DEFAULT_DISCOVER_CATEGORIES = ["All", "Sports", "Technology", "Environment", "Business", "Wildlife"];
+
+function discoverCacheKey(q, tab, platformCategories = []) {
+  return `${String(q || '').trim().toLowerCase()}|${exploreTabToCategorySlug(tab, platformCategories)}`;
 }
 
 function deriveTrendingFromArticles(articles) {
@@ -87,40 +96,41 @@ const DISCOVER_TAB_SYNONYMS = {
   wildlife: ['wildlife', 'animal', 'species', 'zoo', 'nature', 'forest', 'marine', 'bird'],
 };
 
-const DISCOVER_CATEGORIES = ["All", "Sports", "Technology", "Environment", "Business", "Wildlife"];
-const DISCOVER_TAB_ROUTES = DISCOVER_CATEGORIES.map((c) => ({ key: c, title: c }));
-
-function filterDiscoverNews(allNews, searchQuery, tabKey) {
+function filterDiscoverNews(allNews, searchQuery, tabKey, { apiSearch = false, apiCategory = false, platformCategories = [] } = {}) {
   let results = [...allNews];
-  if (tabKey !== "All") {
-    results = results.filter((item) => itemMatchesDiscoverTab(item, tabKey));
+  if (!apiCategory && tabKey !== "All") {
+    results = results.filter((item) => itemMatchesDiscoverTab(item, tabKey, platformCategories));
   }
-  if (searchQuery && searchQuery.trim()) {
-    const lower = searchQuery.toLowerCase().trim();
-    const searchTerms = lower.split(" ").filter((term) => term.length > 0);
-    results = results.filter((item) => {
-      const matchesTerm = (text) => {
-        if (!text) return false;
-        const textLower = text.toLowerCase();
-        return searchTerms.some((term) => textLower.includes(term));
-      };
-      if (item.title && matchesTerm(item.title)) return true;
-      if (item.excerpt && matchesTerm(item.excerpt)) return true;
-      if (item.source && matchesTerm(item.source)) return true;
-      if (item.category && matchesTerm(item.category)) return true;
-      if (item.categories && item.categories.some((cat) => matchesTerm(cat))) return true;
-      if (item.content && matchesTerm(item.content)) return true;
-      if (item.fullContent && matchesTerm(item.fullContent)) return true;
-      if (item.topic_keywords && item.topic_keywords.some((k) => matchesTerm(k))) return true;
-      return false;
-    });
-  }
-  return results;
+  if (apiSearch || !searchQuery || !searchQuery.trim()) return results;
+  const lower = searchQuery.toLowerCase().trim();
+  const searchTerms = lower.split(" ").filter((term) => term.length > 0);
+  return results.filter((item) => {
+    const matchesTerm = (text) => {
+      if (!text) return false;
+      const textLower = text.toLowerCase();
+      return searchTerms.some((term) => textLower.includes(term));
+    };
+    if (item.title && matchesTerm(item.title)) return true;
+    if (item.excerpt && matchesTerm(item.excerpt)) return true;
+    if (item.source && matchesTerm(item.source)) return true;
+    if (item.category && matchesTerm(item.category)) return true;
+    if (item.categories && item.categories.some((cat) => matchesTerm(cat))) return true;
+    if (item.content && matchesTerm(item.content)) return true;
+    if (item.fullContent && matchesTerm(item.fullContent)) return true;
+    if (item.topic_keywords && item.topic_keywords.some((k) => matchesTerm(k))) return true;
+    return false;
+  });
 }
 
-function itemMatchesDiscoverTab(item, activeTab) {
+function itemMatchesDiscoverTab(item, activeTab, platformCategories = []) {
   if (!activeTab || activeTab === 'All') return true;
   const tab = activeTab.toLowerCase().trim();
+  const slug = exploreTabToCategorySlug(activeTab, platformCategories);
+  const primary = String(item?.primary_category || '').trim().toLowerCase();
+  if (slug && primary === slug) return true;
+  if (Array.isArray(item?.categories) && item.categories.some((c) => String(c).trim().toLowerCase() === slug)) {
+    return true;
+  }
   const blob = [
     item.title,
     item.excerpt,
@@ -216,12 +226,37 @@ const SearchScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [discoverCategories, setDiscoverCategories] = useState(DEFAULT_DISCOVER_CATEGORIES);
+  const [platformCategories, setPlatformCategories] = useState([]);
+  const discoverTabRoutes = useMemo(
+    () => discoverCategories.map((c) => ({ key: c, title: c })),
+    [discoverCategories]
+  );
   const [tabIndex, setTabIndex] = useState(0);
-  const activeTab = DISCOVER_TAB_ROUTES[tabIndex]?.key ?? "All";
+  const activeTab = discoverTabRoutes[tabIndex]?.key ?? "All";
   const setActiveTab = useCallback((tab) => {
-    const i = DISCOVER_TAB_ROUTES.findIndex((r) => r.key === tab);
+    const i = discoverTabRoutes.findIndex((r) => r.key === tab);
     if (i >= 0) setTabIndex(i);
+  }, [discoverTabRoutes]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { tabs, categories } = await loadExploreCategoryTabs();
+      if (cancelled) return;
+      setDiscoverCategories(tabs);
+      setPlatformCategories(categories);
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
+
+  useEffect(() => {
+    if (!discoverCategories.includes(activeTab)) {
+      setTabIndex(0);
+    }
+  }, [discoverCategories, activeTab]);
   const {
     votedItems,
     bookmarkedItems,
@@ -267,8 +302,9 @@ const SearchScreen = ({ navigation }) => {
     return next;
   };
 
-  const loadFirstPage = useCallback(async (q, { refreshAux = true, preferCache = true } = {}) => {
-    const cacheKey = discoverCacheKey(q);
+  const loadFirstPage = useCallback(async (q, tab = activeTab, { refreshAux = true, preferCache = true } = {}) => {
+    const cacheKey = discoverCacheKey(q, tab, platformCategories);
+    const category = exploreTabToCategorySlug(tab, platformCategories);
     if (preferCache) {
       const cached = discoverFeedCache.get(cacheKey);
       if (cached && Date.now() - cached.ts < DISCOVER_CACHE_TTL_MS) {
@@ -285,7 +321,7 @@ const SearchScreen = ({ navigation }) => {
     prefetchAttemptsRef.current = 0;
     setLoading(true);
     try {
-      const page = await loadExplorePage({ q, limit: DISCOVER_PAGE_SIZE, cursor: '' });
+      const page = await loadExplorePage({ q, limit: DISCOVER_PAGE_SIZE, cursor: '', category });
       setAllNews(page.items);
       setNextCursor(page.nextCursor);
       setHasMore(page.hasMore);
@@ -307,19 +343,24 @@ const SearchScreen = ({ navigation }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeTab, platformCategories]);
 
   const loadMorePage = useCallback(async () => {
     if (loading || loadingMore || !hasMore || !nextCursor) return;
     setLoadingMore(true);
     try {
       const q = searchQuery.trim();
-      const page = await loadExplorePage({ q, limit: DISCOVER_PAGE_SIZE, cursor: nextCursor });
+      const page = await loadExplorePage({
+        q,
+        limit: DISCOVER_PAGE_SIZE,
+        cursor: nextCursor,
+        category: exploreTabToCategorySlug(activeTab, platformCategories),
+      });
       let added = 0;
       setAllNews((prev) => {
         const merged = mergeUniqueById(prev, page.items);
         added = merged.length - prev.length;
-        discoverFeedCache.set(discoverCacheKey(q), {
+        discoverFeedCache.set(discoverCacheKey(q, activeTab, platformCategories), {
           ts: Date.now(),
           items: merged,
           nextCursor: page.nextCursor || null,
@@ -339,21 +380,26 @@ const SearchScreen = ({ navigation }) => {
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loading, loadingMore, nextCursor, searchQuery]);
+  }, [loading, loadingMore, hasMore, nextCursor, searchQuery, activeTab, platformCategories]);
 
   const filteredNews = useMemo(
-    () => filterDiscoverNews(allNews, searchQuery, activeTab),
-    [allNews, searchQuery, activeTab]
+    () =>
+      filterDiscoverNews(allNews, searchQuery, activeTab, {
+        apiSearch: Boolean(searchQuery.trim()),
+        apiCategory: Boolean(exploreTabToCategorySlug(activeTab, platformCategories)),
+        platformCategories,
+      }),
+    [allNews, searchQuery, activeTab, platformCategories]
   );
 
   useEffect(() => {
     const q = searchQuery.trim();
     const delayMs = q ? 360 : 0;
     const timer = setTimeout(async () => {
-      await loadFirstPage(q, { preferCache: true });
+      await loadFirstPage(q, activeTab, { preferCache: !q });
     }, delayMs);
     return () => clearTimeout(timer);
-  }, [searchQuery, loadFirstPage]);
+  }, [searchQuery, activeTab, loadFirstPage]);
 
   useEffect(() => {
     // Entrance animations
@@ -423,7 +469,7 @@ const SearchScreen = ({ navigation }) => {
     const keywords = topicName.toLowerCase().split(' ').filter(k => k.length > 2);
     
     // Try to find matching category first
-    const matchingCategory = DISCOVER_CATEGORIES.find(cat => {
+    const matchingCategory = discoverCategories.find(cat => {
       const catLower = cat.toLowerCase();
       if (catLower === 'all') return false;
       return keywords.some(keyword => catLower.includes(keyword)) ||
@@ -456,7 +502,7 @@ const SearchScreen = ({ navigation }) => {
     try {
       showDiscoverHeader();
       const q = searchQuery.trim();
-      await loadFirstPage(q, { refreshAux: true, preferCache: false });
+      await loadFirstPage(q, activeTab, { refreshAux: true, preferCache: false });
     } catch (e) {
       console.error(e);
     } finally {
@@ -499,8 +545,8 @@ const SearchScreen = ({ navigation }) => {
   };
 
   const discoverNewsByTab = useMemo(
-    () => buildDiscoverNewsByTab(allNews, searchQuery, DISCOVER_TAB_ROUTES),
-    [allNews, searchQuery]
+    () => buildDiscoverNewsByTab(allNews, searchQuery, discoverTabRoutes, activeTab, platformCategories),
+    [allNews, searchQuery, discoverTabRoutes, activeTab, platformCategories]
   );
 
   const renderDiscoverScene = useCallback(
@@ -723,14 +769,14 @@ const SearchScreen = ({ navigation }) => {
           </View>
 
           <Tabs
-            categories={DISCOVER_CATEGORIES}
+            categories={discoverCategories}
             activeTab={activeTab}
             onTabPress={handleTabPress}
           />
         </Animated.View>
 
         <TabView
-          navigationState={{ index: tabIndex, routes: DISCOVER_TAB_ROUTES }}
+          navigationState={{ index: tabIndex, routes: discoverTabRoutes }}
           renderScene={renderDiscoverScene}
           onIndexChange={setTabIndex}
           initialLayout={PAGER_LAYOUT}

@@ -29,7 +29,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const isDark = theme.mode === 'dark';
     const [showMenu, setShowMenu] = useState(false);
     const [feedbackOpen, setFeedbackOpen] = useState(false);
-    const { success } = useUIFeedback();
+    const { success, error: notifyError } = useUIFeedback();
     const menuRef = useRef(null);
     const itemId = item?.id != null ? String(item.id) : '';
     const isBookmarked = bookmarkedItems?.has(itemId) || bookmarkedItems?.has(item.id);
@@ -312,10 +312,14 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
                                         : []),
                                     {
                                         label: 'Export PDF',
-                                        onClick: () => {
+                                        onClick: async () => {
                                             setShowMenu(false);
-                                            downloadArticlePdf(item);
-                                            success('PDF export downloaded.');
+                                            try {
+                                                await downloadArticlePdf(item);
+                                                success('PDF export downloaded.');
+                                            } catch (e) {
+                                                notifyError(e?.message || 'Could not export PDF.');
+                                            }
                                         },
                                     },
                                     {

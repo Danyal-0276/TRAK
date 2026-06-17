@@ -31,7 +31,7 @@ import AdminDashboardCharts from './components/AdminDashboardCharts';
 import AdminScrapeSourcesPanel from './components/AdminScrapeSourcesPanel';
 import AdminStatKpiCard from './components/AdminStatKpiCard';
 import AdminPipelineProgressBar from './components/AdminPipelineProgressBar';
-import { SkeletonStatCards } from '../../components/skeletons/SkeletonLayouts';
+import { SkeletonAdminDashboard } from '../../components/skeletons/SkeletonLayouts';
 
 const SCRAPE_ONLY_LIMIT = 10;
 
@@ -335,7 +335,7 @@ const AdminDashboardScreen = () => {
 
       <div className="admin-page-body">
         {showInitialSkeleton ? (
-          <SkeletonStatCards count={8} isDark={isDark} colors={colors} />
+          <SkeletonAdminDashboard isDark={isDark} colors={colors} isMobile={isMobile} isTablet={isTablet} />
         ) : (
           <>
             <div
