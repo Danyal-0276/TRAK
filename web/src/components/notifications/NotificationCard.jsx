@@ -101,11 +101,14 @@ export default function NotificationCard({ notification, colors, isDark, onClick
   const content = useMemo(() => getNotificationCardContent(notification), [notification]);
   const isUnread = !notification.read;
 
+  const cardSurface = colors.surface || (isDark ? '#141414' : '#ffffff');
   const backgroundColor = hovered
-    ? colors.surfaceHover
+    ? colors.surfaceHover || (isDark ? '#1a1a1a' : '#f8fafc')
     : isUnread
-      ? `${colors.primary}07`
-      : colors.background;
+      ? isDark
+        ? `${colors.primary}14`
+        : `${colors.primary}0a`
+      : cardSurface;
 
   return (
     <button
@@ -116,17 +119,21 @@ export default function NotificationCard({ notification, colors, isDark, onClick
         style={{
           display: 'flex',
           alignItems: 'flex-start',
-          gap: 12,
+          gap: 14,
           width: '100%',
-          padding: '14px 16px',
+          padding: '16px 18px',
           margin: 0,
-          border: 'none',
-          borderBottom: `1px solid ${colors.border}`,
+          border: `1px solid ${isUnread ? `${colors.primary}40` : colors.border}`,
+          borderLeft: isUnread ? `3px solid ${colors.primary}` : `1px solid ${colors.border}`,
+          borderRadius: 14,
           backgroundColor,
+          boxShadow: isDark
+            ? '0 1px 0 rgba(255,255,255,0.04) inset, 0 2px 8px rgba(0,0,0,0.18)'
+            : '0 1px 2px rgba(15, 23, 42, 0.06)',
           cursor: 'pointer',
           textAlign: 'left',
           fontFamily: 'inherit',
-          transition: 'background-color 0.15s ease',
+          transition: 'background-color 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease',
         }}
       >
         <NotificationAvatar notification={notification} colors={colors} />

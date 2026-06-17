@@ -409,6 +409,7 @@ const NotificationsScreen = () => {
                     <div style={{
                         display: 'flex',
                         flexDirection: 'column',
+                        gap: 10,
                     }}>
                         {filteredNotifications.map((notification) => (
                             <NotificationCard

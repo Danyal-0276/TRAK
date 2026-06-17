@@ -81,7 +81,7 @@ const SearchScreen = () => {
     const isDark = theme.mode === 'dark';
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
-    const { isMobile } = useResponsive();
+    const { isMobile, isTablet } = useResponsive();
     const { t } = useLanguage();
     const [allNews, setAllNews] = useState([]);
     const [filteredNews, setFilteredNews] = useState([]);
@@ -618,23 +618,68 @@ const SearchScreen = () => {
                         </div>
                     </div>
                 ) : (
-                    <div>
+                    <div
+                        style={{
+                            marginTop: 4,
+                            paddingTop: 24,
+                            borderTop: `1px solid ${borderColor}`,
+                        }}
+                    >
                         {!searchQuery.trim() && (
-                            <>
-                                <TrendingTopics 
-                                    topics={trendingTopics}
-                                    onTopicPress={handleTopicPress}
-                                    searchQuery={searchQuery}
-                                />
-                            </>
+                            <TrendingTopics
+                                topics={trendingTopics}
+                                onTopicPress={handleTopicPress}
+                                searchQuery={searchQuery}
+                            />
                         )}
-                        
-                        <MasonryFeed gap={24}>
+
+                        <div
+                            style={{
+                                display: 'flex',
+                                alignItems: 'baseline',
+                                justifyContent: 'space-between',
+                                gap: 12,
+                                marginBottom: 18,
+                                flexWrap: 'wrap',
+                            }}
+                        >
+                            <h2
+                                style={{
+                                    margin: 0,
+                                    fontSize: 15,
+                                    fontWeight: 700,
+                                    color: textPrimary,
+                                    letterSpacing: '-0.02em',
+                                }}
+                            >
+                                {searchQuery.trim()
+                                    ? 'Search results'
+                                    : activeTab !== 'All'
+                                      ? `${activeTab} stories`
+                                      : 'Discover stories'}
+                            </h2>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: textSecondary }}>
+                                {filteredNews.length} article{filteredNews.length === 1 ? '' : 's'}
+                            </span>
+                        </div>
+
+                        <div
+                            style={{
+                                display: 'grid',
+                                gridTemplateColumns: isMobile
+                                    ? '1fr'
+                                    : isTablet
+                                      ? 'repeat(2, minmax(0, 1fr))'
+                                      : 'repeat(3, minmax(0, 1fr))',
+                                gap: isMobile ? 16 : 20,
+                                alignItems: 'stretch',
+                            }}
+                        >
                             {filteredNews.map((item) => (
-                                <NewsCard 
-                                    key={item.id} 
+                                <NewsCard
+                                    key={item.id}
                                     item={item}
-                                    layout="masonry"
+                                    layout="grid"
                                     onPress={() => handleArticlePress(item)}
                                     votedItems={votedItems}
                                     bookmarkedItems={bookmarkedItems}
@@ -642,7 +687,7 @@ const SearchScreen = () => {
                                     onBookmark={handleBookmark}
                                 />
                             ))}
-                        </MasonryFeed>
+                        </div>
                         <div ref={scrollSentinelRef} style={{ height: 1 }} aria-hidden />
                         {loadingMore ? (
                             <p style={{ textAlign: 'center', color: textSecondary, padding: 16, fontSize: 14 }}>

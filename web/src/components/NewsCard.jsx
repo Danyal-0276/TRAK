@@ -97,7 +97,7 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
         >
             <div style={{
                 backgroundColor: cardBackground,
-                borderRadius: isMasonry ? '16px' : '8px',
+                borderRadius: '16px',
                 border: `1px solid ${borderColor}`,
                 overflow: 'hidden',
                 height: isMasonry ? 'auto' : '100%',
