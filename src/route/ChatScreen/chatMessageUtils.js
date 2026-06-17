@@ -1,12 +1,44 @@
+export function mapChatRelatedArticles(res) {
+  const raw =
+    Array.isArray(res?.related_articles) && res.related_articles.length
+      ? res.related_articles
+      : Array.isArray(res?.articles) && res.articles.length
+        ? res.articles
+        : res?.has_trak_article && res?.primary_article
+          ? [res.primary_article]
+          : [];
+  return raw
+    .map((a) => ({
+      articleId: a?.id || a?.article_id,
+      articleTitle: a?.title,
+      source: a?.source_key || a?.source,
+    }))
+    .filter((a) => a.articleId || a.articleTitle);
+}
+
 export function mapServerChatMessage(m) {
   if (!m || typeof m !== 'object') return null;
-  return {
-    role: m.role,
-    text: m.text,
-    articleTitle: m.article_title,
-    articleId: m.article_id,
-    source: m.source,
-  };
+  const relatedArticles = [];
+  if (m.article_id || m.article_title) {
+    relatedArticles.push({
+      articleId: m.article_id,
+      articleTitle: m.article_title,
+      source: m.source,
+    });
+  }
+  if (Array.isArray(m.related_articles)) {
+    for (const a of m.related_articles) {
+      const articleId = a?.id || a?.article_id;
+      if (!articleId && !a?.title) continue;
+      if (relatedArticles.some((row) => String(row.articleId) === String(articleId))) continue;
+      relatedArticles.push({
+        articleId,
+        articleTitle: a?.title,
+        source: a?.source_key || a?.source,
+      });
+    }
+  }
+  return { role: m.role, text: m.text, relatedArticles };
 }
 
 export function mapServerChatMessages(messages) {

@@ -20,7 +20,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Bot, Send, SquarePen, PanelLeft, Sparkles } from 'lucide-react-native';
 import { chatWithBot, getChatConversation } from '../../utils/Service/api';
-import { isRealFeedArticle } from '../../utils/feedRealOnly';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { filledActionColors } from '../../theme/buttonContrast';
@@ -30,7 +29,7 @@ import { resolveTopInset } from '../../utils/screenSafeArea';
 import AccentTabHeader from '../../components/ui/AccentTabHeader';
 import { CHAT_HERO_SUBTITLE, CHAT_HERO_TITLE, CHAT_PROMPTS } from './chatUiConstants';
 import ChatSidebar from './components/ChatSidebar';
-import { mapServerChatMessages } from './chatMessageUtils';
+import { mapChatRelatedArticles, mapServerChatMessages } from './chatMessageUtils';
 
 const TAB_BAR_CLEARANCE = 100;
 const ESTIMATED_HEADER_HEIGHT = 88;
@@ -325,17 +324,12 @@ const ChatScreen = () => {
         setConversationId(String(res.conversation_id));
       }
       setSidebarRefreshKey((k) => k + 1);
-      const top = Array.isArray(res.articles)
-        ? res.articles.find((a) => isRealFeedArticle(a)) ?? res.articles[0] ?? null
-        : res.primary_article || null;
       setMessages((prev) => [
         ...prev,
         {
           role: 'bot',
           text: res.reply || 'No response',
-          articleTitle: top?.title,
-          articleId: top?.id || top?.article_id,
-          source: top?.source_key || top?.source,
+          relatedArticles: mapChatRelatedArticles(res),
         },
       ]);
     } catch (chatError) {
@@ -455,24 +449,30 @@ const ChatScreen = () => {
                         <Text style={[styles.userText, { color: action.foreground }]}>{m.text}</Text>
                       </View>
                     )}
-                    {m.articleId || m.articleTitle ? (
+                    {(Array.isArray(m.relatedArticles) && m.relatedArticles.length
+                      ? m.relatedArticles
+                      : m.articleId || m.articleTitle
+                        ? [{ articleId: m.articleId, articleTitle: m.articleTitle, source: m.source }]
+                        : []
+                    ).map((art, j) => (
                       <TouchableOpacity
+                        key={`${art.articleId || art.articleTitle}-${j}`}
                         style={[styles.articleCard, { borderColor: colors.border, backgroundColor: colors.surface }]}
-                        onPress={() => openArticle(m.articleId)}
+                        onPress={() => openArticle(art.articleId)}
                         activeOpacity={0.85}
-                        disabled={!m.articleId}
+                        disabled={!art.articleId}
                       >
                         <Text style={[styles.articleSource, { color: colors.textTertiary }]}>
-                          {m.source || 'TRAK'} · Related story
+                          {art.source || 'TRAK'} · Related story
                         </Text>
                         <Text style={[styles.articleTitle, { color: colors.textPrimary }]} numberOfLines={2}>
-                          {m.articleTitle || 'Open article'}
+                          {art.articleTitle || 'Open article'}
                         </Text>
-                        {m.articleId ? (
+                        {art.articleId ? (
                           <Text style={[styles.articleLink, { color: colors.textSecondary }]}>Read in TRAK →</Text>
                         ) : null}
                       </TouchableOpacity>
-                    ) : null}
+                    ))}
                   </View>
                 </View>
               ))}
