@@ -70,9 +70,7 @@ function deriveTrendingFromArticles(articles) {
     .map(([name, count], i) => ({
       id: `${i}-${name}`,
       name: name.charAt(0).toUpperCase() + name.slice(1),
-      count: `${count} in feed`,
-      icon: "🔥",
-      trending: count >= 2,
+      articleCount: count,
     }));
 }
 const SearchScreen = () => {

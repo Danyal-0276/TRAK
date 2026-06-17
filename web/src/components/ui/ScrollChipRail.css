@@ -1,0 +1,107 @@
+.trak-chip-rail {
+  position: relative;
+  width: 100%;
+}
+
+.trak-chip-rail__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.trak-chip-rail__title {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--trak-textPrimary);
+}
+
+.trak-chip-rail__hint {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--trak-textTertiary);
+}
+
+.trak-chip-rail__viewport {
+  position: relative;
+}
+
+.trak-chip-rail__fade {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 32px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.trak-chip-rail__fade--left {
+  left: 0;
+  background: linear-gradient(90deg, var(--trak-page-bg, var(--trak-background)) 0%, transparent 100%);
+}
+
+.trak-chip-rail__fade--right {
+  right: 0;
+  background: linear-gradient(270deg, var(--trak-page-bg, var(--trak-background)) 0%, transparent 100%);
+}
+
+.trak-chip-rail__row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trak-chip-rail__track {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  padding: 2px 2px 4px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.trak-chip-rail__track::-webkit-scrollbar {
+  display: none;
+}
+
+.trak-chip-rail__nav {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 9999px;
+  border: 1px solid var(--trak-border);
+  background: var(--trak-surface);
+  color: var(--trak-textSecondary);
+  cursor: pointer;
+  transition:
+    background-color 0.15s ease,
+    color 0.15s ease,
+    border-color 0.15s ease;
+}
+
+.trak-chip-rail__nav:hover {
+  background: var(--trak-surfaceHover);
+  color: var(--trak-textPrimary);
+  border-color: var(--trak-borderDark);
+}
+
+.trak-chip-rail__nav:focus-visible {
+  outline: 2px solid var(--trak-borderFocus, var(--trak-primary));
+  outline-offset: 2px;
+}
+
+.trak-chip-rail--muted .trak-chip-rail__track {
+  padding: 4px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--trak-backgroundSecondary) 70%, transparent);
+}
