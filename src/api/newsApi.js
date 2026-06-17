@@ -2,9 +2,10 @@ import { USER_PREFIX } from '../config/api';
 import { API_BASE } from '../config/api';
 import { apiFetch } from './client';
 
-export async function fetchFeed(limit = 50, q = '') {
+export async function fetchFeed(limit = 50, q = '', cursor = '') {
     const params = new URLSearchParams({ limit: String(limit) });
     if (q && String(q).trim()) params.set('q', String(q).trim());
+    if (cursor && String(cursor).trim()) params.set('cursor', String(cursor).trim());
     const res = await apiFetch(`${USER_PREFIX}/feed/?${params}`, {}, API_BASE);
     if (!res.ok) {
         const t = await res.text();

@@ -119,6 +119,15 @@ const AdminAnalyticsScreen = () => {
       </AdminPageHeader>
 
       <div className="admin-page-body">
+        {loading ? (
+          <div style={{ padding: '8px 0 24px' }}>
+            <SkeletonStatCards count={4} isDark={isDark} colors={colors} />
+            <div style={{ marginTop: 20 }}>
+              <SkeletonTableRows rows={8} isDark={isDark} colors={colors} />
+            </div>
+          </div>
+        ) : (
+          <>
         <div
           style={{
             display: 'grid',
@@ -175,7 +184,7 @@ const AdminAnalyticsScreen = () => {
                     marginBottom: '4px',
                   }}
                 >
-                  {loading ? '...' : stat.value}
+                  {stat.value}
                 </div>
                 <div style={{ fontSize: '14px', color: textSecondary, fontWeight: '500' }}>{stat.label}</div>
               </div>
@@ -183,14 +192,7 @@ const AdminAnalyticsScreen = () => {
           })}
         </div>
 
-        {loading ? (
-          <div style={{ padding: '8px 0 24px' }}>
-            <SkeletonStatCards count={4} isDark={isDark} colors={colors} />
-            <div style={{ marginTop: 20 }}>
-              <SkeletonTableRows rows={8} isDark={isDark} colors={colors} />
-            </div>
-          </div>
-        ) : snapshot == null ? (
+        {snapshot == null ? (
           <p style={{ color: textSecondary }}>Could not load analytics. Sign in as an admin and ensure the API is up.</p>
         ) : (
           <>
@@ -299,6 +301,8 @@ const AdminAnalyticsScreen = () => {
                 {JSON.stringify(snapshot, null, 2)}
               </pre>
             </div>
+          </>
+        )}
           </>
         )}
       </div>

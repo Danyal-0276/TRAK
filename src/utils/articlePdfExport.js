@@ -4,6 +4,8 @@ import { jsPDF } from 'jspdf';
 import { normalizeArticleForDetail } from './articleNavigation';
 import { getArticleCredibilityMeta } from './credibilityIndicator';
 import { buildArticleShareUrl, getArticleId } from './articleShare';
+import { getUserArticleDetail } from './Service/api';
+import { mapApiItem } from './loadFeed';
 
 const PAGE_W = 210;
 const PAGE_H = 297;
@@ -67,6 +69,43 @@ function writeSectionTitle(doc, label, y) {
   doc.setDrawColor(226, 232, 240);
   doc.line(MARGIN, y + 2, PAGE_W - MARGIN, y + 2);
   return y + 10;
+}
+
+function articleBodyText(article) {
+  return String(
+    article?.fullContent || article?.full_content || article?.content || ''
+  ).trim();
+}
+
+function articleSummaryText(article) {
+  return String(
+    article?.summary || article?.excerpt || article?.ai_summary || article?.description || ''
+  ).trim();
+}
+
+function needsFullArticleFetch(article) {
+  const body = articleBodyText(article);
+  const summary = articleSummaryText(article);
+  if (!body) return true;
+  if (body.length < 200) return true;
+  if (summary && body.length <= summary.length + 80) return true;
+  return false;
+}
+
+export async function resolveArticleForPdfExport(item) {
+  const normalized = normalizeArticleForDetail(item);
+  if (!needsFullArticleFetch(normalized)) return normalized;
+
+  const id = String(getArticleId(item) || normalized.id || '').trim();
+  if (!id) return normalized;
+
+  try {
+    const doc = await getUserArticleDetail(id);
+    if (!doc) return normalized;
+    return normalizeArticleForDetail(mapApiItem({ ...doc, id }));
+  } catch {
+    return normalized;
+  }
 }
 
 export function createArticlePdfDocument(item) {
@@ -201,7 +240,8 @@ export async function exportArticlePdf(item) {
   const title = String(item?.title || 'TRAK article').trim();
   const filename = `trak-article-${safeId}.pdf`;
 
-  const doc = createArticlePdfDocument(item);
+  const article = await resolveArticleForPdfExport(item);
+  const doc = createArticlePdfDocument(article);
   const base64 = doc.output('datauristring').split(',')[1];
   if (!base64) {
     throw new Error('Could not generate PDF');

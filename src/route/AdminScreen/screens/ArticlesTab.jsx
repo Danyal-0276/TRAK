@@ -22,7 +22,7 @@ import SearchBar from '../components/SearchBar';
 import ArticleCard from '../components/ArticleCard';
 import Text from '../../../components/ui/Text';
 import EmptyState from '../components/EmptyState';
-import AdminListRowSkeleton from '../components/skeletons/AdminListRowSkeleton';
+import { FeedSkeleton } from '../../../components/FeedSkeleton';
 import AdminArticleCountBar from '../components/AdminArticleCountBar';
 import { NEEDS_REVIEW_HELP, FEED_FILTERS, PIPELINE_FILTERS } from '../../../utils/adminArticleFilters';
 
@@ -75,6 +75,9 @@ const ArticlesTab = ({
   pipelineFilter = '',
   onPipelineFilterChange,
   loading = false,
+  loadingMore = false,
+  hasMore = false,
+  onLoadMore,
   articleCounts = null,
   palette: paletteProp,
 }) => {
@@ -247,7 +250,7 @@ const ArticlesTab = ({
     return (
       <View style={styles.root}>
         {listHeader}
-        <AdminListRowSkeleton palette={palette} count={6} />
+        <FeedSkeleton colors={palette} count={4} />
       </View>
     );
   }
@@ -265,6 +268,34 @@ const ArticlesTab = ({
     );
   }
 
+  const handleEndReached = useCallback(() => {
+    if (loading || loadingMore || !hasMore) return;
+    onLoadMore?.();
+  }, [loading, loadingMore, hasMore, onLoadMore]);
+
+  const listFooter = useCallback(() => {
+    if (loadingMore) {
+      return (
+        <View style={{ paddingVertical: 16, alignItems: 'center' }}>
+          <Text variant="caption" color={palette.textSecondary}>Loading more…</Text>
+        </View>
+      );
+    }
+    if (hasMore && articles.length > 0) {
+      return (
+        <TouchableOpacity
+          onPress={onLoadMore}
+          style={[styles.loadMoreBtn, { borderColor: palette.borderLight, backgroundColor: palette.card }]}
+        >
+          <Text variant="caption" color={palette.textPrimary} style={{ fontWeight: '700' }}>
+            Load more articles
+          </Text>
+        </TouchableOpacity>
+      );
+    }
+    return <View style={{ height: 24 }} />;
+  }, [loadingMore, hasMore, articles.length, onLoadMore, palette]);
+
   return (
     <FlatList
       style={styles.root}
@@ -272,6 +303,9 @@ const ArticlesTab = ({
       keyExtractor={keyExtractor}
       renderItem={renderItem}
       ListHeaderComponent={listHeader}
+      ListFooterComponent={listFooter}
+      onEndReached={handleEndReached}
+      onEndReachedThreshold={0.35}
       contentContainerStyle={styles.listContent}
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
@@ -328,6 +362,14 @@ const styles = StyleSheet.create({
   },
   failedBulkBtnDanger: {},
   failedBulkBtnText: { fontSize: 12, fontWeight: '600' },
+  loadMoreBtn: {
+    alignSelf: 'center',
+    marginVertical: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+  },
 });
 
 export default React.memo(ArticlesTab);

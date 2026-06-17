@@ -10,6 +10,7 @@ import { NewsCard } from "../../components/NewsCard";
 import { MasonryFeed, MasonryFeedSkeleton } from "../../components/MasonryFeed";
 import { getSkeletonFeedProps } from "../../components/skeletons/SkeletonLayouts";
 import { loadExplorePage, mergeUniqueById } from "../../utils/loadFeed";
+import { loadExploreCategoryTabs, exploreTabToCategorySlug } from "../../utils/platformTaxonomy";
 import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
 import { openArticleDetail } from "../../utils/openArticleDetail";
 import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from "../../utils/Service/api";
@@ -18,17 +19,25 @@ import { getReactionMap, mergeReactionRows, setReactionForArticle } from "../../
 import { useFeedCache } from "../../context/FeedCacheContext";
 import { patchArticleVoteRow, reactionApiValue } from "../../utils/reactionVote";
 
-function filterExploreResults(allNews, searchQuery, activeTab) {
+function filterExploreResults(allNews, searchQuery, activeTab, { apiSearch = false, apiCategory = false, platformCategories = [] } = {}) {
     let results = [...allNews];
 
-    if (activeTab && activeTab !== "All") {
-        results = results.filter((item) => item?.category === activeTab);
+    if (!apiCategory && activeTab && activeTab !== "All") {
+        const slug = exploreTabToCategorySlug(activeTab, platformCategories);
+        results = results.filter((item) => {
+            const primary = String(item?.primary_category || "").trim().toLowerCase();
+            if (slug && primary === slug) return true;
+            if (Array.isArray(item?.categories) && item.categories.some((c) => String(c).trim().toLowerCase() === slug)) {
+                return true;
+            }
+            const label = String(item?.category || "").trim().toLowerCase();
+            return label === String(activeTab).trim().toLowerCase();
+        });
     }
 
-    const q = String(searchQuery || "").trim();
-    if (!q) return results;
+    if (apiSearch || !String(searchQuery || "").trim()) return results;
 
-    const searchTerms = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const searchTerms = String(searchQuery || "").trim().toLowerCase().split(/\s+/).filter(Boolean);
     return results.filter((item) => {
         if (!item) return false;
         const matchesTerm = (text) => {
@@ -91,8 +100,23 @@ const SearchScreen = () => {
     const { getExploreFeed, saveExploreFeed, isFresh } = useFeedCache();
 
     const [categories, setCategories] = useState(["All"]);
+    const [platformCategories, setPlatformCategories] = useState([]);
 
     const queryKey = searchQuery.trim().toLowerCase();
+    const activeCategorySlug = exploreTabToCategorySlug(activeTab, platformCategories);
+
+    useEffect(() => {
+        let cancelled = false;
+        (async () => {
+            const { tabs, categories: platformCats } = await loadExploreCategoryTabs();
+            if (cancelled) return;
+            setCategories(tabs);
+            setPlatformCategories(platformCats);
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, []);
 
     const trendingTopics = useMemo(() => {
         if (searchQuery.trim()) return [];
@@ -114,11 +138,13 @@ const SearchScreen = () => {
         setSearchQuery((prev) => (prev === urlQ ? prev : urlQ));
     }, [searchParams]);
 
-    const loadFirstPage = useCallback(async (q, { force = false } = {}) => {
+    const loadFirstPage = useCallback(async (q, tab = activeTab, { force = false } = {}) => {
         const key = String(q || "").trim().toLowerCase();
+        const category = exploreTabToCategorySlug(tab, platformCategories);
+        const cacheKey = `${key}|${category}`;
         const seq = ++loadSeqRef.current;
 
-        const cached = getExploreFeed(key);
+        const cached = getExploreFeed(cacheKey);
         if (!force && isFresh(cached) && Array.isArray(cached?.allNews) && cached.allNews.length) {
             setAllNews(cached.allNews);
             setFilteredNews(cached.filteredNews || cached.allNews);
@@ -144,7 +170,12 @@ const SearchScreen = () => {
         if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
 
         try {
-            const page = await loadExplorePage({ limit: 50, cursor: '', q: String(q || "").trim() });
+            const page = await loadExplorePage({
+                limit: 50,
+                cursor: '',
+                q: String(q || "").trim(),
+                category,
+            });
             if (seq !== loadSeqRef.current) return;
 
             const newsData = page.items || [];
@@ -153,12 +184,19 @@ const SearchScreen = () => {
             setAllNews(newsData);
             const categorySet = new Set();
             newsData.forEach((article) => {
-                if (article.category && !categorySet.has(article.category)) {
-                    categorySet.add(article.category);
+                const label = article.primary_category || article.category;
+                if (label && !categorySet.has(label)) {
+                    categorySet.add(label);
                 }
             });
             setCategories(["All", ...Array.from(categorySet).sort()]);
-            setFilteredNews(filterExploreResults(newsData, q, activeTab));
+            setFilteredNews(
+                filterExploreResults(newsData, q, tab, {
+                    apiSearch: Boolean(String(q || "").trim()),
+                    apiCategory: Boolean(category),
+                    platformCategories,
+                })
+            );
 
             const [bookmarks, reactions] = await Promise.all([
                 listBookmarks().catch(() => ({ results: [] })),
@@ -180,7 +218,7 @@ const SearchScreen = () => {
         } finally {
             if (seq === loadSeqRef.current) setLoading(false);
         }
-    }, [activeTab, getExploreFeed, isFresh]);
+    }, [activeTab, getExploreFeed, isFresh, platformCategories]);
 
     useEffect(() => {
         const q = searchQuery.trim();
@@ -188,14 +226,14 @@ const SearchScreen = () => {
         const timer = setTimeout(() => {
             const force = forceReloadRef.current;
             forceReloadRef.current = false;
-            loadFirstPage(searchQuery, { force });
+            loadFirstPage(searchQuery, activeTab, { force });
         }, delayMs);
         return () => clearTimeout(timer);
-    }, [searchQuery, retryTick, loadFirstPage]);
+    }, [searchQuery, activeTab, retryTick, loadFirstPage]);
 
     useEffect(() => {
         if (!allNews.length) return;
-        saveExploreFeed(queryKey, {
+        saveExploreFeed(`${queryKey}|${exploreTabToCategorySlug(activeTab, platformCategories)}`, {
             allNews,
             filteredNews,
             nextCursor,
@@ -212,7 +250,7 @@ const SearchScreen = () => {
     useEffect(() => {
         return () => {
             if (!allNews.length) return;
-            saveExploreFeed(queryKey, {
+            saveExploreFeed(`${queryKey}|${exploreTabToCategorySlug(activeTab, platformCategories)}`, {
                 allNews,
                 filteredNews,
                 nextCursor,
@@ -235,6 +273,7 @@ const SearchScreen = () => {
                 limit: 50,
                 cursor: nextCursor,
                 q: searchQuery.trim(),
+                category: exploreTabToCategorySlug(activeTab, platformCategories),
             });
             setAllNews((prev) => mergeUniqueById(prev, page.items || []));
             setNextCursor(page.nextCursor || '');
@@ -244,7 +283,7 @@ const SearchScreen = () => {
         } finally {
             setLoadingMore(false);
         }
-    }, [hasMore, loadingMore, nextCursor, searchQuery]);
+    }, [hasMore, loadingMore, nextCursor, searchQuery, activeTab]);
 
     const scrollSentinelRef = useInfiniteScroll({
         onLoadMore: loadMore,
@@ -274,8 +313,14 @@ const SearchScreen = () => {
 
     useEffect(() => {
         if (!allNews || allNews.length === 0) return;
-        setFilteredNews(filterExploreResults(allNews, searchQuery, activeTab));
-    }, [searchQuery, activeTab, allNews]);
+        setFilteredNews(
+            filterExploreResults(allNews, searchQuery, activeTab, {
+                apiSearch: Boolean(searchQuery.trim()),
+                apiCategory: Boolean(activeCategorySlug),
+                platformCategories,
+            })
+        );
+    }, [searchQuery, activeTab, allNews, activeCategorySlug, platformCategories]);
 
     const handleArticlePress = (article) => {
         openArticleDetail(navigate, article);

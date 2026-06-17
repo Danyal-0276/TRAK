@@ -101,3 +101,35 @@ export function resolveSavedInterestSelections(saved, tagsMap, routeSelectedTags
     preservedCategoryTags: [...new Set(preservedCategoryTags)],
   };
 }
+
+const DEFAULT_EXPLORE_TABS = ['All', 'Sports', 'Technology', 'Environment', 'Business', 'Wildlife'];
+
+export function formatPlatformCategoryLabel(cat) {
+  const name = String(cat?.name || '').trim();
+  if (name) return name;
+  const slug = String(cat?.slug || cat?.id || '').trim();
+  if (!slug) return '';
+  return slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/** Explore/search category chips from platform taxonomy. */
+export async function loadExploreCategoryTabs() {
+  try {
+    const data = await fetchPlatformCategories();
+    const labels = (data?.categories || [])
+      .map(formatPlatformCategoryLabel)
+      .filter(Boolean);
+    const unique = [...new Set(labels)];
+    if (unique.length) return { tabs: ['All', ...unique.sort()], categories: data.categories || [] };
+  } catch {
+    /* offline — use bundled defaults */
+  }
+  return { tabs: [...DEFAULT_EXPLORE_TABS], categories: [] };
+}
+
+export function exploreTabToCategorySlug(tab, categories = []) {
+  if (!tab || tab === 'All') return '';
+  const match = (categories || []).find((cat) => formatPlatformCategoryLabel(cat) === tab);
+  if (match?.slug) return String(match.slug).trim();
+  return String(tab).trim().toLowerCase().replace(/\s+/g, '-');
+}

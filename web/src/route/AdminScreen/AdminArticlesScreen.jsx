@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { useAdminTheme } from './useAdminTheme';
 import { useResponsive } from '../../hooks/useResponsive';
-import { MasonryFeed } from '../../components/MasonryFeed';
+import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
+import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
 import {
     FileText,
     Search,
@@ -30,7 +31,6 @@ import {
     parseArticleRouteParams,
     filterArticlesForDisplay,
 } from '../../utils/adminArticleFilters';
-import { SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
 import ArticleInsightBadges, {
     ArticleCredibilitySourceDot,
     ArticleTopicKeywords,
@@ -56,6 +56,12 @@ const AdminArticlesScreen = () => {
     const { confirm, success, error: notifyError } = useUIFeedback();
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
+    const [hasMoreArticles, setHasMoreArticles] = useState(false);
+    const [articlesPage, setArticlesPage] = useState(1);
+    const articlesPageRef = useRef(1);
+    const searchQueryRef = useRef('');
+    const ADMIN_PAGE_SIZE = 100;
     const initialRoute = parseArticleRouteParams(searchParams);
     const [pipelineFilter, setPipelineFilter] = useState(initialRoute.pipelineFilter);
     const [statusById, setStatusById] = useState({});
@@ -116,44 +122,77 @@ const AdminArticlesScreen = () => {
     };
 
     const loadArticles = useCallback(
-        async (fetchScope, pipeFilter, { silent = false } = {}) => {
+        async (fetchScope, pipeFilter, { silent = false, page = 1, append = false, q = '' } = {}) => {
             try {
-                if (!silent) setLoading(true);
+                if (!silent && !append) setLoading(true);
+                if (append) setLoadingMore(true);
                 const { scope, pipelineStatus, moderationStatus, credibilityLabel } = getArticlesFetchParams(pipeFilter);
                 const response = await getAdminArticles({
-                    page: 1,
-                    pageSize: 100,
+                    page,
+                    pageSize: ADMIN_PAGE_SIZE,
                     scope: fetchScope || scope,
                     pipelineStatus,
                     moderationStatus,
                     credibilityLabel,
+                    q: q.trim().length >= 2 ? q.trim() : '',
                 });
-                setArticles((response.results || []).map(mapApiDoc));
+                const mapped = (response.results || []).map(mapApiDoc);
+                setArticles((prev) => (append ? [...prev, ...mapped] : mapped));
                 setArticleCounts(response.counts || null);
+                setHasMoreArticles(Boolean(response.has_more));
+                setArticlesPage(page);
             } catch (error) {
                 console.error('Error loading articles:', error);
-                if (!silent) {
+                if (!silent && !append) {
                     notifyError(error?.message || 'Could not load articles.');
                     setArticles([]);
                     setArticleCounts(null);
+                    setHasMoreArticles(false);
                 }
             } finally {
-                if (!silent) setLoading(false);
+                if (!silent && !append) setLoading(false);
+                if (append) setLoadingMore(false);
             }
         },
         [notifyError]
     );
 
+    const loadMoreArticles = useCallback(() => {
+        if (loadingMore || !hasMoreArticles) return;
+        loadArticles(apiScope, pipelineFilter, {
+            silent: true,
+            page: articlesPage + 1,
+            append: true,
+            q: searchQuery,
+        });
+    }, [loadingMore, hasMoreArticles, articlesPage, loadArticles, apiScope, pipelineFilter, searchQuery]);
+
     useEffect(() => {
-        loadArticles(apiScope, pipelineFilter);
-    }, [apiScope, pipelineFilter, loadArticles]);
+        const timer = setTimeout(() => {
+            loadArticles(apiScope, pipelineFilter, { q: searchQuery, page: 1, append: false });
+        }, searchQuery.trim() ? 320 : 0);
+        return () => clearTimeout(timer);
+    }, [apiScope, pipelineFilter, searchQuery, loadArticles]);
+
+    useEffect(() => {
+        articlesPageRef.current = articlesPage;
+    }, [articlesPage]);
+
+    useEffect(() => {
+        searchQueryRef.current = searchQuery;
+    }, [searchQuery]);
 
     useEffect(() => {
         if (!articlesTabActive) return undefined;
         const poll = () => {
-            if (document.visibilityState === 'visible') {
-                loadArticles(apiScope, pipelineFilter, { silent: true });
-            }
+            if (document.visibilityState !== 'visible') return;
+            if (articlesPageRef.current > 1) return;
+            loadArticles(apiScope, pipelineFilter, {
+                silent: true,
+                q: searchQueryRef.current,
+                page: 1,
+                append: false,
+            });
         };
         const id = window.setInterval(poll, ARTICLES_POLL_INTERVAL_MS);
         const onVisibility = () => {
@@ -204,7 +243,10 @@ const AdminArticlesScreen = () => {
         }
     };
 
-    const filteredArticles = filterArticlesForDisplay(articles, pipelineFilter, searchQuery);
+    const filteredArticles = useMemo(() => {
+        if (searchQuery.trim().length >= 2) return articles;
+        return filterArticlesForDisplay(articles, pipelineFilter, searchQuery);
+    }, [articles, pipelineFilter, searchQuery]);
 
     const failedCount = articleCounts?.filtered_total ?? filteredArticles.length;
 
@@ -350,7 +392,7 @@ const AdminArticlesScreen = () => {
 
                 {/* Articles Grid */}
                 {loading ? (
-                    <SkeletonListRows rows={10} isDark={isDark} colors={colors} />
+                    <MasonryFeedSkeleton {...getSkeletonFeedProps(isDark, colors)} count={6} />
                 ) : filteredArticles.length === 0 ? (
                     <div style={{
                         display: 'flex',
@@ -692,6 +734,26 @@ const AdminArticlesScreen = () => {
                             </div>
                         ))}
                     </MasonryFeed>
+                )}
+                {!loading && hasMoreArticles && filteredArticles.length > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', padding: '24px 0 8px' }}>
+                        <button
+                            type="button"
+                            onClick={loadMoreArticles}
+                            disabled={loadingMore}
+                            style={{
+                                padding: '12px 24px',
+                                borderRadius: 10,
+                                border: `1px solid ${borderColor}`,
+                                background: cardBackground,
+                                color: textPrimary,
+                                fontWeight: 600,
+                                cursor: loadingMore ? 'wait' : 'pointer',
+                            }}
+                        >
+                            {loadingMore ? 'Loading…' : 'Load more articles'}
+                        </button>
+                    </div>
                 )}
                 </div>
             </AdminPageLayout>

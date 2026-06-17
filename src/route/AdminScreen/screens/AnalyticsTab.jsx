@@ -5,6 +5,8 @@ import { useAdminTheme } from '../useAdminTheme';
 import { pipelineColor, credibilityColor, CRED_NAMES } from '../adminTheme';
 import StatRow from '../components/StatRow';
 import Text from '../../../components/ui/Text';
+import AdminKpiSkeleton from '../components/skeletons/AdminKpiSkeleton';
+import AdminChartSkeleton from '../components/skeletons/AdminChartSkeleton';
 
 function ServerAnalyticsView({ data, palette, modelMetrics }) {
   const rawBy = data.raw_by_pipeline_status || {};
@@ -100,8 +102,17 @@ function ServerAnalyticsView({ data, palette, modelMetrics }) {
   );
 }
 
-const AnalyticsTab = ({ serverAnalytics, modelMetrics }) => {
+const AnalyticsTab = ({ serverAnalytics, modelMetrics, loading = false }) => {
   const { palette } = useAdminTheme();
+
+  if (loading) {
+    return (
+      <View style={{ paddingHorizontal: 20, paddingTop: 8, paddingBottom: 16 }}>
+        <AdminKpiSkeleton palette={palette} count={4} cardWidth="48%" />
+        <AdminChartSkeleton palette={palette} count={2} />
+      </View>
+    );
+  }
 
   if (!serverAnalytics) {
     return (

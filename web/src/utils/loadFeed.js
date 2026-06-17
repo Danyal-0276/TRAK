@@ -124,9 +124,9 @@ export async function loadCategoryPage({ category = '', limit = 30, cursor = '' 
   }
 }
 
-export async function loadExplorePage({ q = '', limit = 30, cursor = '' } = {}) {
+export async function loadExplorePage({ q = '', limit = 30, cursor = '', category = '' } = {}) {
   try {
-    const json = await fetchExplore(limit, q, cursor);
+    const json = await fetchExplore(limit, q, cursor, category);
     const results = filterRealFeedItems((json.results || []).map(mapApiItem));
     return {
       items: results,
