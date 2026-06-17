@@ -14,6 +14,8 @@ import { resolveTopInset } from '../../utils/screenSafeArea';
 import { loadCategoryPage } from '../../utils/loadFeed';
 import { getCategoryIcon } from '../../utils/categoryMatch';
 import { useArticleInteractions } from '../../hooks/useArticleInteractions';
+import { useStackBackHandler } from '../../hooks/useStackBackHandler';
+import { isSettingsFlowRoute } from '../../navigation/appStackNavigation';
 import ArticleFeedList from '../../components/ArticleFeedList';
 import { buildArticleDetailParams } from '../../utils/articleNavigation';
 
@@ -25,6 +27,9 @@ const CategoryArticlesScreen = ({ navigation, route }) => {
     const categorySlug = String(route?.params?.categorySlug || '').trim().toLowerCase();
     const categoryName = String(route?.params?.categoryName || categorySlug).trim();
     const initialCount = route?.params?.categoryCount;
+    const fromSettings = isSettingsFlowRoute(route);
+    const returnTab = String(route?.params?.returnTab || 'Profile');
+    useStackBackHandler(navigation, fromSettings, returnTab);
 
     const [newsData, setNewsData] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -96,14 +101,16 @@ const CategoryArticlesScreen = ({ navigation, route }) => {
         <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]} edges={['left', 'right', 'bottom']}>
             <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             <View style={[styles.header, { paddingTop: topInset, borderBottomColor: colors.border, backgroundColor: colors.surface }]}>
-                <TouchableOpacity
-                    style={styles.backBtn}
-                    onPress={() => navigation.goBack()}
-                    activeOpacity={0.8}
-                >
-                    <ArrowLeft size={20} color={colors.textSecondary} />
-                    <Text variant="body" color={colors.textSecondary}>Back</Text>
-                </TouchableOpacity>
+                {!fromSettings ? (
+                    <TouchableOpacity
+                        style={styles.backBtn}
+                        onPress={() => navigation.goBack()}
+                        activeOpacity={0.8}
+                    >
+                        <ArrowLeft size={20} color={colors.textSecondary} />
+                        <Text variant="body" color={colors.textSecondary}>Back</Text>
+                    </TouchableOpacity>
+                ) : null}
                 <View style={styles.titleRow}>
                     <Text style={styles.categoryIcon}>{getCategoryIcon(categoryName)}</Text>
                     <View style={styles.titleText}>

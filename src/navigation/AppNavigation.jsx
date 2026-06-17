@@ -1,7 +1,7 @@
-import React, { useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, BackHandler } from 'react-native';
 import TrakLogo from '../components/TrakLogo';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import AuthStack from './AuthStack.jsx';
 import MainAppStack from './MainAppStack.jsx';
@@ -14,18 +14,10 @@ import { bindForegroundPushMessaging } from '../notifications/pushMessaging';
 import { onAuthSessionEnded } from '../utils/authSessionEvents';
 import { navigationLinking } from './linking';
 import {
-    EditProfileScreen,
-    PrivacyScreen,
-    DataScreen,
     CategoriesScreen,
-    AboutScreen,
     ProfileScreen,
     AdminScreen,
     LoginScreen,
-    SettingsScreen,
-    TermsScreen,
-    TagSelectionScreen,
-    KeywordSelectionScreen,
 } from './config/screenImports.js';
 
 const Stack = createNativeStackNavigator();
@@ -35,7 +27,6 @@ const RootStack = ({ initialRouteName }) => (
         initialRouteName={initialRouteName}
         screenOptions={defaultStackScreenOptions}
     >
-        {/* Auth Stack - contains OpeningScreen as initial */}
         <Stack.Screen name="OpeningScreen" component={AuthStack} />
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="SignUp" component={AuthStack} />
@@ -45,40 +36,30 @@ const RootStack = ({ initialRouteName }) => (
         <Stack.Screen name="ForgotPasswordCode" component={AuthStack} />
         <Stack.Screen name="ResetPassword" component={AuthStack} />
         <Stack.Screen name="PasswordChanged" component={AuthStack} />
-        
-        {/* Main App with Tabs - THIS IS THE KEY! */}
+
         <Stack.Screen name="NewsFeed" component={MainAppStack} />
-        
-        {/* Additional Screens */}
+
         <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
         <Stack.Screen name="AdminScreen" component={AdminScreen} />
-        <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} options={{ title: 'Edit Profile' }} />
-        <Stack.Screen name="SettingsScreen" component={SettingsScreen} options={{ title: 'Settings' }} />
         <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ title: 'Log In' }} />
-        <Stack.Screen name="PrivacyScreen" component={PrivacyScreen} options={{ title: 'Privacy & Security' }} />
-        <Stack.Screen name="DataScreen" component={DataScreen} options={{ title: 'Data & Storage' }} />
         <Stack.Screen name="CategoriesScreen" component={CategoriesScreen} options={{ title: 'Manage Categories' }} />
-        <Stack.Screen name="SettingsTagSelection" component={TagSelectionScreen} />
-        <Stack.Screen name="SettingsKeywordSelection" component={KeywordSelectionScreen} />
-        <Stack.Screen name="AboutScreen" component={AboutScreen} options={{ title: 'About' }} />
-        <Stack.Screen name="TermsScreen" component={TermsScreen} options={{ title: 'Terms of Service' }} />
     </Stack.Navigator>
 );
 
 export default function AppNavigation() {
     const { user, bootstrapped } = useAuth();
     const { theme } = useTheme();
-    const navRef = useRef(null);
+    const navRef = useNavigationContainerRef();
 
     useEffect(() => {
         if (!bootstrapped || !user) return undefined;
-        setPushNavigationRef(navRef.current);
+        setPushNavigationRef(navRef);
         bindPushNotificationNavigation();
         const unsubForeground = bindForegroundPushMessaging();
         return () => {
             if (typeof unsubForeground === 'function') unsubForeground();
         };
-    }, [bootstrapped, user]);
+    }, [bootstrapped, user, navRef]);
 
     useEffect(() => {
         return onAuthSessionEnded((reason) => {
@@ -87,8 +68,20 @@ export default function AppNavigation() {
             const routeName = reason === 'manual' ? 'OpeningScreen' : 'Login';
             nav.reset({ index: 0, routes: [{ name: routeName }] });
         });
-    }, []);
-    // Show a fast branded loader instead of a black frame.
+    }, [navRef]);
+
+    useEffect(() => {
+        if (!bootstrapped || !user) return undefined;
+        const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+            if (navRef.isReady() && navRef.canGoBack()) {
+                navRef.goBack();
+                return true;
+            }
+            return false;
+        });
+        return () => sub.remove();
+    }, [bootstrapped, user, navRef]);
+
     if (!bootstrapped) {
         return (
             <View

@@ -3,8 +3,11 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from "react-nati
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { resolveTopInset } from "../../utils/screenSafeArea";
 import { useTheme } from "../../theme/ThemeContext";
+import { useStackBackHandler } from "../../hooks/useStackBackHandler";
 
-const PrivacyScreen = ({ navigation }) => {
+const PrivacyScreen = ({ navigation, route }) => {
+  const returnTab = String(route?.params?.returnTab || 'Profile');
+  useStackBackHandler(navigation, true, returnTab);
   const { theme } = useTheme();
   const { colors } = theme;
   const insets = useSafeAreaInsets();

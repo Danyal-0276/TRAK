@@ -28,7 +28,13 @@ import { trackKeywords } from '../../api/newsApi';
 import { getAccessToken } from '../../api/client';
 import { loadUserKeywords, setUserKeywords, invalidateUserKeywordsCache } from '../../utils/userKeywordsStorage';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
+import {
+    isSettingsFlowRoute,
+    navigateToSettings,
+    goBackOrReturnToTab,
+} from '../../navigation/appStackNavigation';
 import { loadTagsWithSubcategories, resolveSavedInterestSelections } from '../../utils/platformTaxonomy';
+import { useStackBackHandler } from '../../hooks/useStackBackHandler';
 
 const { width, height } = Dimensions.get('window');
 
@@ -40,10 +46,18 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
     const [keywordInput, setKeywordInput] = useState('');
     const [loading, setLoading] = useState(false);
     // Get selected tags from previous screen
-    const { fromSettings = false, fromSignup = false } = route.params || {};
+    const { fromSettings = false, fromSignup = false, returnTab = 'Profile' } = route.params || {};
+    const settingsFlow = isSettingsFlowRoute(route) || fromSettings;
+    useStackBackHandler(navigation, settingsFlow && !fromSignup, returnTab);
     const selectedTags = Array.isArray(route.params?.selectedTags) ? route.params.selectedTags : [];
     const preservedCategoryTagsRef = useRef([]);
-    const goToSettings = () => navigation.navigate('SettingsScreen');
+    const goToSettings = () => {
+        if (settingsFlow) {
+            goBackOrReturnToTab(navigation, returnTab);
+            return;
+        }
+        navigateToSettings(navigation, { returnTab });
+    };
 
     // Animation refs
     const fadeAnim = useRef(new Animated.Value(0)).current;

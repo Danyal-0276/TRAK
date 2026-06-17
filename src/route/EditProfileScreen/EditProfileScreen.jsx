@@ -10,10 +10,12 @@ import ProfileInput from "./components/ProfileInput";
 import SaveButton from "./components/SaveButton";
 import AlertModal from "./components/AlertModal";
 import { getProfile, updateProfile } from "../../utils/Service/api";
+import { useStackBackHandler } from "../../hooks/useStackBackHandler";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function EditProfileScreen({ navigation }) {
+  useStackBackHandler(navigation, true, 'Profile');
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");

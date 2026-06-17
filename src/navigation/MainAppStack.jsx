@@ -19,6 +19,11 @@ import {
     CategoryArticlesScreen,
     AdminScreen,
     NewsFeedScreen,
+    EditProfileScreen,
+    SettingsScreen,
+    PrivacyScreen,
+    DataScreen,
+    AboutScreen,
 } from './config/screenImports';
 
 const Stack = createNativeStackNavigator();
@@ -50,6 +55,20 @@ const MainAppStack = () => {
     return (
         <Stack.Navigator screenOptions={defaultStackScreenOptions}>
             <Stack.Screen name="MainTabs" component={TabNavigator} />
+            <Stack.Screen name="EditProfileScreen" component={EditProfileScreen} />
+            {/* Settings hub + all settings sub-flows on one stack for reliable swipe/back */}
+            <Stack.Screen name="SettingsHome" component={SettingsScreen} />
+            <Stack.Screen
+                name="SettingsBrowseCategories"
+                component={BrowseCategoriesScreen}
+                initialParams={{ fromSettings: true }}
+            />
+            <Stack.Screen name="SettingsCategoryArticles" component={CategoryArticlesScreen} />
+            <Stack.Screen name="SettingsTagSelection" component={TagSelectionScreen} />
+            <Stack.Screen name="SettingsKeywordSelection" component={KeywordSelectionScreen} />
+            <Stack.Screen name="PrivacyScreen" component={PrivacyScreen} />
+            <Stack.Screen name="DataScreen" component={DataScreen} />
+            <Stack.Screen name="AboutScreen" component={AboutScreen} />
             <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} options={articleDetailOptions} />
             <Stack.Screen name="Trending" component={TrendingScreen} />
             <Stack.Screen name="Bookmarks" component={BookmarksScreen} />

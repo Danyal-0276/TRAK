@@ -1,679 +1,447 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import {
+  ArrowLeft,
+  Database,
+  Download,
+  FileText,
+  HardDrive,
+  Image,
+  RefreshCw,
+  Trash2,
+  Video,
+} from 'lucide-react';
 import { useTheme } from '../../theme/ThemeContext';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
-import { 
-    Database, 
-    HardDrive, 
-    Trash2, 
-    Download, 
-    Upload,
-    FileText,
-    Image,
-    Video,
-    Music,
-    Archive,
-    AlertCircle,
-    CheckCircle,
-    RefreshCw
-} from 'lucide-react';
+import { themedPageRoot } from '../../theme/themePageStyles';
 import { SkeletonStatCards, SkeletonListRows } from '../../components/skeletons/SkeletonLayouts';
+import {
+  STORAGE_CATEGORIES,
+  buildLocalStorageExport,
+  calculateLocalStorageSummary,
+  clearLocalStorageByType,
+  downloadJsonExport,
+  formatBytes,
+  getPercentage,
+  getUsageTone,
+} from '../../utils/deviceStorageStats';
+
+const CATEGORY_ICONS = {
+  articles: FileText,
+  images: Image,
+  videos: Video,
+  cache: RefreshCw,
+  other: Database,
+};
+
+const EMPTY_SUMMARY = {
+  total: 0,
+  used: 0,
+  available: 0,
+  breakdown: { articles: 0, images: 0, videos: 0, cache: 0, other: 0 },
+};
 
 const DataScreen = () => {
-    const { theme } = useTheme();
-    const { colors } = theme;
-    const isDark = theme.mode === 'dark';
+  const navigate = useNavigate();
+  const { theme } = useTheme();
+  const { colors } = theme;
+  const isDark = theme.mode === 'dark';
+  const { confirm, error: showError, success } = useUIFeedback();
 
-    const [storageData, setStorageData] = useState({
-        total: 0,
-        used: 0,
-        available: 0,
-        breakdown: {
-            articles: 0,
-            images: 0,
-            videos: 0,
-            cache: 0,
-            other: 0,
-        }
+  const [storageData, setStorageData] = useState(EMPTY_SUMMARY);
+  const [loading, setLoading] = useState(true);
+  const [clearing, setClearing] = useState(null);
+
+  const refreshStorage = useCallback(() => {
+    setLoading(true);
+    try {
+      setStorageData(calculateLocalStorageSummary());
+    } catch (err) {
+      console.error('Error calculating storage:', err);
+      showError('Could not read storage usage.');
+    } finally {
+      setLoading(false);
+    }
+  }, [showError]);
+
+  useEffect(() => {
+    refreshStorage();
+  }, [refreshStorage]);
+
+  const usedPercent = getPercentage(storageData.used, storageData.total);
+  const usageTone = getUsageTone(usedPercent);
+
+  const segmentedBar = useMemo(() => {
+    if (!storageData.used) return [];
+    return STORAGE_CATEGORIES.map((cat) => ({
+      ...cat,
+      width: (storageData.breakdown[cat.key] / storageData.used) * 100,
+    })).filter((segment) => segment.width > 0);
+  }, [storageData]);
+
+  const clearData = async (type) => {
+    const labels = {
+      cache: 'cache & temporary files',
+      articles: 'saved articles and bookmarks',
+      all: 'all local data except your login and theme',
+    };
+
+    const accepted = await confirm({
+      title: `Clear ${type === 'all' ? 'all data' : type}?`,
+      message: `This will remove ${labels[type] || type}. This cannot be undone.`,
+      confirmText: 'Clear',
+      danger: true,
     });
+    if (!accepted) return;
 
-    const [loading, setLoading] = useState(true);
-    const [clearing, setClearing] = useState(null);
-    const { confirm, error: showError, success } = useUIFeedback();
+    setClearing(type);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      clearLocalStorageByType(type);
+      refreshStorage();
+      success('Storage cleared.');
+    } catch (err) {
+      console.error('Error clearing data:', err);
+      showError('Failed to clear data. Please try again.');
+    } finally {
+      setClearing(null);
+    }
+  };
 
-    useEffect(() => {
-        calculateStorage();
-    }, []);
+  const exportData = () => {
+    try {
+      downloadJsonExport(buildLocalStorageExport());
+      success('Export started.');
+    } catch (err) {
+      console.error('Error exporting data:', err);
+      showError('Failed to export data.');
+    }
+  };
 
-    const calculateStorage = () => {
-        setLoading(true);
-        // Calculate localStorage size
-        let totalSize = 0;
-        const breakdown = {
-            articles: 0,
-            images: 0,
-            videos: 0,
-            cache: 0,
-            other: 0,
-        };
+  const cardBg = colors.surface;
+  const border = colors.borderLight || colors.border;
+  const mutedBg = isDark ? 'rgba(255,255,255,0.04)' : '#f8fafc';
 
-        try {
-            for (let key in localStorage) {
-                if (localStorage.hasOwnProperty(key)) {
-                    const item = localStorage.getItem(key);
-                    const size = new Blob([item]).size;
-                    totalSize += size;
+  return (
+    <div style={themedPageRoot(colors)}>
+      <div style={{ maxWidth: 920, margin: '0 auto', padding: '20px 24px 48px' }}>
+        <button
+          type="button"
+          onClick={() => navigate(-1)}
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '8px 0',
+            border: 'none',
+            background: 'transparent',
+            color: colors.textSecondary,
+            fontSize: 14,
+            fontWeight: 500,
+            cursor: 'pointer',
+            marginBottom: 20,
+          }}
+        >
+          <ArrowLeft size={16} />
+          Back
+        </button>
 
-                    // Categorize by key
-                    if (key.includes('bookmark') || key.includes('article')) {
-                        breakdown.articles += size;
-                    } else if (key.includes('image') || key.includes('avatar')) {
-                        breakdown.images += size;
-                    } else if (key.includes('video')) {
-                        breakdown.videos += size;
-                    } else if (key.includes('cache')) {
-                        breakdown.cache += size;
-                    } else {
-                        breakdown.other += size;
-                    }
-                }
-            }
-        } catch (error) {
-            console.error('Error calculating storage:', error);
-        }
-
-        // Simulate total storage (5MB limit for demo)
-        const totalStorage = 5 * 1024 * 1024; // 5MB
-        const used = totalSize;
-        const available = totalStorage - used;
-
-        setStorageData({
-            total: totalStorage,
-            used: used,
-            available: available,
-            breakdown
-        });
-        setLoading(false);
-    };
-
-    const formatBytes = (bytes) => {
-        if (bytes === 0) return '0 Bytes';
-        const k = 1024;
-        const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-    };
-
-    const getPercentage = (value, total) => {
-        return total > 0 ? Math.round((value / total) * 100) : 0;
-    };
-
-    const clearData = async (type) => {
-        const accepted = await confirm({
-            title: `Clear ${type}?`,
-            message: `Are you sure you want to clear ${type}? This action cannot be undone.`,
-            confirmText: 'Clear',
-            danger: true,
-        });
-        if (!accepted) {
-            return;
-        }
-
-        setClearing(type);
-        try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-
-            if (type === 'cache') {
-                // Clear cache-related items
-                Object.keys(localStorage).forEach(key => {
-                    if (key.includes('cache') || key.includes('temp')) {
-                        localStorage.removeItem(key);
-                    }
-                });
-            } else if (type === 'articles') {
-                // Clear bookmarks and articles
-                localStorage.removeItem('bookmarks');
-                Object.keys(localStorage).forEach(key => {
-                    if (key.includes('article') && !key.includes('bookmark')) {
-                        localStorage.removeItem(key);
-                    }
-                });
-            } else if (type === 'all') {
-                // Clear everything except essential settings
-                const essentialKeys = ['userSettings', 'userProfile', 'userAvatar', 'theme'];
-                Object.keys(localStorage).forEach(key => {
-                    if (!essentialKeys.includes(key)) {
-                        localStorage.removeItem(key);
-                    }
-                });
-            }
-
-            calculateStorage();
-            success(`${type} cleared successfully.`);
-        } catch (err) {
-            console.error('Error clearing data:', err);
-            showError('Failed to clear data. Please try again.');
-        } finally {
-            setClearing(null);
-        }
-    };
-
-    const exportData = () => {
-        try {
-            const data = {
-                profile: localStorage.getItem('userProfile'),
-                settings: localStorage.getItem('userSettings'),
-                bookmarks: localStorage.getItem('bookmarks'),
-                exportDate: new Date().toISOString(),
-            };
-
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `trak-data-${new Date().toISOString().split('T')[0]}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        } catch (err) {
-            console.error('Error exporting data:', err);
-            showError('Failed to export data. Please try again.');
-        }
-    };
-
-    const storageItems = [
-        { 
-            key: 'articles', 
-            label: 'Articles & Bookmarks', 
-            icon: FileText, 
-            color: '#3b82f6',
-            size: storageData.breakdown.articles 
-        },
-        { 
-            key: 'images', 
-            label: 'Images', 
-            icon: Image, 
-            color: '#10b981',
-            size: storageData.breakdown.images 
-        },
-        { 
-            key: 'videos', 
-            label: 'Videos', 
-            icon: Video, 
-            color: '#ef4444',
-            size: storageData.breakdown.videos 
-        },
-        { 
-            key: 'cache', 
-            label: 'Cache', 
-            icon: RefreshCw, 
-            color: '#f59e0b',
-            size: storageData.breakdown.cache 
-        },
-        { 
-            key: 'other', 
-            label: 'Other Data', 
-            icon: Database, 
-            color: '#8b5cf6',
-            size: storageData.breakdown.other 
-        },
-    ];
-
-    const backgroundColor = colors.background;
-    const cardBackground = colors.surface;
-    const textPrimary = colors.textPrimary;
-    const textSecondary = colors.textSecondary;
-    const borderColor = colors.border;
-
-    return (
-        <div style={{
-            minHeight: '100vh',
-            backgroundColor: backgroundColor,
-            paddingTop: '0',
-            marginTop: '0',
-        }}>
-            <div style={{
-                maxWidth: '900px',
-                margin: '0 auto',
-                width: '100%',
-                padding: '0 24px 24px 24px',
-            }}>
-                {/* Header */}
-                <div style={{
-                    marginTop: '0',
-                    marginBottom: '24px',
-                    paddingTop: '0',
-                }}>
-                    <h1 style={{
-                        fontSize: '28px',
-                        fontWeight: '700',
-                        color: textPrimary,
-                        margin: '0 0 8px 0',
-                        paddingTop: '0',
-                        letterSpacing: '-0.5px',
-            }}>
-                Data & Storage
-                    </h1>
-                    <p style={{
-                        fontSize: '15px',
-                        color: textSecondary,
-                        margin: '0',
-                        lineHeight: '1.5',
-                    }}>
-                        Manage your stored data and storage usage
-                    </p>
-                </div>
-
-                {/* Storage Overview */}
-                <div style={{
-                    backgroundColor: cardBackground,
-                    borderRadius: '12px',
-                    border: `1px solid ${borderColor}`,
-                    padding: '32px',
-                    marginBottom: '24px',
-                }}>
-                    <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '12px',
-                        marginBottom: '24px',
-                    }}>
-                        <HardDrive size={24} color={colors.primary} />
-                        <h2 style={{
-                            fontSize: '20px',
-                            fontWeight: '700',
-                            color: textPrimary,
-                            margin: '0',
-                        }}>
-                            Storage Overview
-                        </h2>
-                    </div>
-
-                    {loading ? (
-                        <div>
-                            <SkeletonStatCards count={3} isDark={isDark} colors={colors} />
-                            <div style={{ marginTop: 20 }}>
-                                <SkeletonListRows rows={6} isDark={isDark} colors={colors} />
-                            </div>
-                        </div>
-                    ) : (
-                        <>
-                            {/* Storage Bar */}
-                            <div style={{
-                                marginBottom: '24px',
-                            }}>
-                                <div style={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    marginBottom: '12px',
-                                }}>
-                                    <div>
-                                        <div style={{
-                                            fontSize: '24px',
-                                            fontWeight: '700',
-                                            color: textPrimary,
-                                            marginBottom: '4px',
-                                        }}>
-                                            {formatBytes(storageData.used)} / {formatBytes(storageData.total)}
-                                        </div>
-                                        <div style={{
-                                            fontSize: '14px',
-                                            color: textSecondary,
-                                        }}>
-                                            {getPercentage(storageData.used, storageData.total)}% used
-                                        </div>
-                                    </div>
-                                    <div style={{
-                                        fontSize: '14px',
-                                        color: textSecondary,
-                                    }}>
-                                        {formatBytes(storageData.available)} available
-                                    </div>
-                                </div>
-                                <div style={{
-                                    width: '100%',
-                                    height: '12px',
-                                    backgroundColor: isDark ? '#334155' : '#f3f4f6',
-                                    borderRadius: '6px',
-                                    overflow: 'hidden',
-                                }}>
-                                    <div style={{
-                                        width: `${getPercentage(storageData.used, storageData.total)}%`,
-                                        height: '100%',
-                                        backgroundColor: getPercentage(storageData.used, storageData.total) > 80 
-                                            ? '#ef4444' 
-                                            : getPercentage(storageData.used, storageData.total) > 60 
-                                            ? '#f59e0b' 
-                                            : '#10b981',
-                                        transition: 'width 0.3s ease',
-                                    }} />
-                                </div>
-                            </div>
-
-                            {/* Storage Breakdown */}
-                            <div style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                                gap: '16px',
-                            }}>
-                                {storageItems.map((item) => {
-                                    const Icon = item.icon;
-                                    const percentage = getPercentage(item.size, storageData.total);
-                                    return (
-                                        <div
-                                            key={item.key}
-                                            style={{
-                                                padding: '16px',
-                                                backgroundColor: isDark ? '#334155' : '#f9fafb',
-                                                borderRadius: '8px',
-                                                border: `1px solid ${borderColor}`,
-                                            }}
-                                        >
-                                            <div style={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: '10px',
-                                                marginBottom: '12px',
-                                            }}>
-                                                <Icon size={18} color={item.color} />
-                                                <div style={{
-                                                    fontSize: '13px',
-                                                    fontWeight: '600',
-                                                    color: textPrimary,
-                                                }}>
-                                                    {item.label}
-                                                </div>
-                                            </div>
-                                            <div style={{
-                                                fontSize: '18px',
-                                                fontWeight: '700',
-                                                color: textPrimary,
-                                                marginBottom: '4px',
-                                            }}>
-                                                {formatBytes(item.size)}
-                                            </div>
-                                            <div style={{
-                                                fontSize: '11px',
-                                                color: textSecondary,
-                                            }}>
-                                                {percentage}% of total
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </>
-                    )}
-                </div>
-
-                {/* Data Management */}
-                <div style={{
-                    backgroundColor: cardBackground,
-                    borderRadius: '12px',
-                    border: `1px solid ${borderColor}`,
-                    padding: '32px',
-                    marginBottom: '24px',
-                }}>
-                    <h2 style={{
-                        fontSize: '20px',
-                        fontWeight: '700',
-                        color: textPrimary,
-                        margin: '0 0 24px 0',
-                    }}>
-                        Data Management
-                    </h2>
-
-                    <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '12px',
-                    }}>
-                        <button
-                            onClick={() => clearData('cache')}
-                            disabled={clearing === 'cache'}
-                            style={{
-                                padding: '14px 20px',
-                                border: `1px solid ${borderColor}`,
-                                background: cardBackground,
-                                borderRadius: '8px',
-                                cursor: clearing === 'cache' ? 'not-allowed' : 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '600',
-                                color: textPrimary,
-                                transition: 'all 0.2s ease',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                opacity: clearing === 'cache' ? 0.6 : 1,
-                            }}
-                            onMouseEnter={(e) => {
-                                if (clearing !== 'cache') {
-                                    e.currentTarget.style.backgroundColor = isDark ? '#334155' : '#f9fafb';
-                                    e.currentTarget.style.borderColor = isDark ? '#475569' : '#d1d5db';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (clearing !== 'cache') {
-                                    e.currentTarget.style.backgroundColor = cardBackground;
-                                    e.currentTarget.style.borderColor = borderColor;
-                                }
-                            }}
-                        >
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                            }}>
-                                <RefreshCw size={18} color={textSecondary} />
-                                <div>
-                                    <div style={{
-                                        fontSize: '15px',
-                                        fontWeight: '600',
-                                        color: textPrimary,
-                                    }}>
-                                        Clear Cache
-                                    </div>
-                                    <div style={{
-                                        fontSize: '13px',
-                                        color: textSecondary,
-                                    }}>
-                                        Remove temporary files and cached data
-                                    </div>
-                                </div>
-                            </div>
-                            {clearing === 'cache' && (
-                                <RefreshCw size={16} color={textSecondary} style={{
-                                    animation: 'spin 1s linear infinite',
-                                }} />
-                            )}
-                        </button>
-
-                        <button
-                            onClick={() => clearData('articles')}
-                            disabled={clearing === 'articles'}
-                            style={{
-                                padding: '14px 20px',
-                                border: `1px solid ${borderColor}`,
-                                background: cardBackground,
-                                borderRadius: '8px',
-                                cursor: clearing === 'articles' ? 'not-allowed' : 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '600',
-                                color: textPrimary,
-                                transition: 'all 0.2s ease',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                opacity: clearing === 'articles' ? 0.6 : 1,
-                            }}
-                            onMouseEnter={(e) => {
-                                if (clearing !== 'articles') {
-                                    e.currentTarget.style.backgroundColor = isDark ? '#334155' : '#f9fafb';
-                                    e.currentTarget.style.borderColor = isDark ? '#475569' : '#d1d5db';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (clearing !== 'articles') {
-                                    e.currentTarget.style.backgroundColor = cardBackground;
-                                    e.currentTarget.style.borderColor = borderColor;
-                                }
-                            }}
-                        >
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                            }}>
-                                <FileText size={18} color={textSecondary} />
-                                <div>
-                                    <div style={{
-                                        fontSize: '15px',
-                                        fontWeight: '600',
-                                        color: textPrimary,
-                                    }}>
-                                        Clear Articles & Bookmarks
-                                    </div>
-                                    <div style={{
-                                        fontSize: '13px',
-                                        color: textSecondary,
-                                    }}>
-                                        Remove all saved articles and bookmarks
-                                    </div>
-                                </div>
-                            </div>
-                            {clearing === 'articles' && (
-                                <RefreshCw size={16} color={textSecondary} style={{
-                                    animation: 'spin 1s linear infinite',
-                                }} />
-                            )}
-                        </button>
-
-                        <button
-                            onClick={() => clearData('all')}
-                            disabled={clearing === 'all'}
-                            style={{
-                                padding: '14px 20px',
-                                border: `1px solid ${clearing === 'all' ? borderColor : '#ef4444'}`,
-                                background: cardBackground,
-                                borderRadius: '8px',
-                                cursor: clearing === 'all' ? 'not-allowed' : 'pointer',
-                                fontSize: '15px',
-                                fontWeight: '600',
-                                color: clearing === 'all' ? textPrimary : '#ef4444',
-                                transition: 'all 0.2s ease',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'space-between',
-                                opacity: clearing === 'all' ? 0.6 : 1,
-                            }}
-                            onMouseEnter={(e) => {
-                                if (clearing !== 'all') {
-                                    e.currentTarget.style.backgroundColor = '#fef2f2';
-                                    e.currentTarget.style.borderColor = '#fecaca';
-                                }
-                            }}
-                            onMouseLeave={(e) => {
-                                if (clearing !== 'all') {
-                                    e.currentTarget.style.backgroundColor = cardBackground;
-                                    e.currentTarget.style.borderColor = '#ef4444';
-                                }
-                            }}
-                        >
-                            <div style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '12px',
-                            }}>
-                                <Trash2 size={18} color={clearing === 'all' ? textSecondary : '#ef4444'} />
-                                <div>
-                                    <div style={{
-                                        fontSize: '15px',
-                                        fontWeight: '600',
-                                        color: clearing === 'all' ? textPrimary : '#ef4444',
-                                    }}>
-                                        Clear All Data
-                                    </div>
-                                    <div style={{
-                                        fontSize: '13px',
-                                        color: textSecondary,
-                                    }}>
-                                        Remove all stored data (except settings)
-                                    </div>
-                                </div>
-                            </div>
-                            {clearing === 'all' && (
-                                <RefreshCw size={16} color={textSecondary} style={{
-                                    animation: 'spin 1s linear infinite',
-                                }} />
-                            )}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Export Data */}
-                <div style={{
-                    backgroundColor: cardBackground,
-                    borderRadius: '12px',
-                    border: `1px solid ${borderColor}`,
-                    padding: '32px',
-                }}>
-                    <h2 style={{
-                        fontSize: '20px',
-                        fontWeight: '700',
-                        color: textPrimary,
-                        margin: '0 0 16px 0',
-                    }}>
-                        Export Data
-                    </h2>
-                    <p style={{
-                        fontSize: '14px',
-                        color: textSecondary,
-                        margin: '0 0 20px 0',
-                        lineHeight: '1.6',
-                    }}>
-                        Download a copy of your data including profile, settings, and bookmarks.
-                    </p>
-                    <button
-                        onClick={exportData}
-                        style={{
-                            padding: '12px 24px',
-                            border: `1px solid ${borderColor}`,
-                            background: isDark ? '#334155' : '#0f172a',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            fontSize: '15px',
-                            fontWeight: '600',
-                            color: '#ffffff',
-                            transition: 'all 0.2s ease',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '10px',
-                        }}
-                        onMouseEnter={(e) => {
-                            e.currentTarget.style.backgroundColor = isDark ? '#475569' : '#1e293b';
-                            e.currentTarget.style.transform = 'translateY(-1px)';
-                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
-                        }}
-                        onMouseLeave={(e) => {
-                            e.currentTarget.style.backgroundColor = isDark ? '#334155' : '#0f172a';
-                            e.currentTarget.style.transform = 'translateY(0)';
-                            e.currentTarget.style.boxShadow = 'none';
-                        }}
-                    >
-                        <Download size={18} />
-                        Export Data
-                    </button>
-                </div>
-            </div>
-            <style>{`
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-            `}</style>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 30, fontWeight: 700, color: colors.textPrimary, margin: '0 0 8px', letterSpacing: '-0.4px' }}>
+            Data & Storage
+          </h1>
+          <p style={{ fontSize: 15, color: colors.textSecondary, margin: 0, lineHeight: 1.55 }}>
+            See what TRAK keeps on this browser and free up space when you need to.
+          </p>
         </div>
-    );
+
+        <div
+          style={{
+            background: cardBg,
+            border: `1px solid ${border}`,
+            borderRadius: 18,
+            padding: 28,
+            marginBottom: 20,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, marginBottom: 22 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 14,
+                  display: 'grid',
+                  placeItems: 'center',
+                  background: isDark ? 'rgba(255,255,255,0.06)' : `${colors.primary || '#2563eb'}14`,
+                }}
+              >
+                <HardDrive size={22} color={colors.primary || colors.textPrimary} />
+              </div>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: colors.textPrimary }}>On this device</div>
+                <div style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>
+                  Browser local storage for TRAK
+                </div>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={refreshStorage}
+              disabled={loading}
+              style={{
+                border: `1px solid ${border}`,
+                background: mutedBg,
+                color: colors.textSecondary,
+                borderRadius: 10,
+                padding: '8px 12px',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+              }}
+            >
+              <RefreshCw size={14} style={loading ? { animation: 'spin 1s linear infinite' } : undefined} />
+              Refresh
+            </button>
+          </div>
+
+          {loading ? (
+            <div>
+              <SkeletonStatCards count={3} isDark={isDark} colors={colors} />
+              <div style={{ marginTop: 20 }}>
+                <SkeletonListRows rows={5} isDark={isDark} colors={colors} />
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 12, marginBottom: 22 }}>
+                {[
+                  { label: 'Used', value: formatBytes(storageData.used), accent: usageTone.color },
+                  { label: 'Available', value: formatBytes(storageData.available), accent: colors.textPrimary },
+                  { label: 'Budget', value: formatBytes(storageData.total), accent: colors.textSecondary },
+                ].map((stat) => (
+                  <div
+                    key={stat.label}
+                    style={{
+                      padding: '14px 16px',
+                      borderRadius: 14,
+                      background: mutedBg,
+                      border: `1px solid ${border}`,
+                    }}
+                  >
+                    <div style={{ fontSize: 12, color: colors.textSecondary, marginBottom: 6, fontWeight: 600 }}>
+                      {stat.label}
+                    </div>
+                    <div style={{ fontSize: 20, fontWeight: 700, color: stat.accent }}>{stat.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ marginBottom: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: 14, fontWeight: 600, color: colors.textPrimary }}>
+                  {usedPercent}% used
+                </span>
+                <span style={{ fontSize: 13, color: colors.textSecondary }}>
+                  {formatBytes(storageData.used)} of {formatBytes(storageData.total)}
+                </span>
+              </div>
+
+              <div
+                style={{
+                  height: 12,
+                  borderRadius: 999,
+                  overflow: 'hidden',
+                  background: isDark ? '#334155' : '#e5e7eb',
+                  display: 'flex',
+                  marginBottom: 22,
+                }}
+              >
+                {segmentedBar.length ? (
+                  segmentedBar.map((segment) => (
+                    <div
+                      key={segment.key}
+                      style={{
+                        width: `${segment.width}%`,
+                        background: segment.color,
+                        minWidth: segment.width > 0 ? 4 : 0,
+                      }}
+                    />
+                  ))
+                ) : (
+                  <div style={{ width: `${usedPercent}%`, background: usageTone.color }} />
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12 }}>
+                {STORAGE_CATEGORIES.map((cat) => {
+                  const Icon = CATEGORY_ICONS[cat.key];
+                  const size = storageData.breakdown[cat.key] || 0;
+                  return (
+                    <div
+                      key={cat.key}
+                      style={{
+                        padding: 14,
+                        borderRadius: 14,
+                        border: `1px solid ${border}`,
+                        background: mutedBg,
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                        <Icon size={16} color={cat.color} />
+                        <span style={{ fontSize: 13, fontWeight: 600, color: colors.textPrimary }}>{cat.label}</span>
+                      </div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: colors.textPrimary }}>{formatBytes(size)}</div>
+                      <div style={{ fontSize: 11, color: colors.textSecondary, marginTop: 4 }}>
+                        {getPercentage(size, storageData.total)}% of budget
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.6, textTransform: 'uppercase', color: colors.textSecondary, marginBottom: 10 }}>
+            Manage storage
+          </div>
+          <div style={{ background: cardBg, border: `1px solid ${border}`, borderRadius: 18, overflow: 'hidden' }}>
+            {[
+              {
+                key: 'cache',
+                title: 'Clear cache',
+                subtitle: 'Remove temporary files and cached responses',
+                icon: RefreshCw,
+                danger: false,
+              },
+              {
+                key: 'articles',
+                title: 'Clear articles & bookmarks',
+                subtitle: 'Remove saved articles and offline bookmark copies',
+                icon: FileText,
+                danger: false,
+              },
+              {
+                key: 'all',
+                title: 'Clear all local data',
+                subtitle: 'Keeps your login session and theme preference',
+                icon: Trash2,
+                danger: true,
+              },
+            ].map((action, index, list) => (
+              <button
+                key={action.key}
+                type="button"
+                onClick={() => clearData(action.key)}
+                disabled={clearing === action.key}
+                style={{
+                  width: '100%',
+                  border: 'none',
+                  borderBottom: index < list.length - 1 ? `1px solid ${border}` : 'none',
+                  background: cardBg,
+                  padding: '16px 18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  cursor: clearing === action.key ? 'not-allowed' : 'pointer',
+                  opacity: clearing === action.key ? 0.65 : 1,
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 12,
+                      display: 'grid',
+                      placeItems: 'center',
+                      background: action.danger ? '#fef2f2' : mutedBg,
+                    }}
+                  >
+                    <action.icon size={18} color={action.danger ? '#ef4444' : colors.textSecondary} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: action.danger ? '#ef4444' : colors.textPrimary }}>
+                      {action.title}
+                    </div>
+                    <div style={{ fontSize: 13, color: colors.textSecondary, marginTop: 2 }}>{action.subtitle}</div>
+                  </div>
+                </div>
+                {clearing === action.key ? (
+                  <RefreshCw size={16} color={colors.textSecondary} style={{ animation: 'spin 1s linear infinite' }} />
+                ) : null}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div
+          style={{
+            background: cardBg,
+            border: `1px solid ${border}`,
+            borderRadius: 18,
+            padding: 24,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
+            <div
+              style={{
+                width: 42,
+                height: 42,
+                borderRadius: 12,
+                display: 'grid',
+                placeItems: 'center',
+                background: isDark ? 'rgba(255,255,255,0.06)' : `${colors.primary || '#2563eb'}14`,
+              }}
+            >
+              <Download size={20} color={colors.primary || colors.textPrimary} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 18, fontWeight: 700, color: colors.textPrimary, marginBottom: 6 }}>
+                Export your data
+              </div>
+              <p style={{ fontSize: 14, color: colors.textSecondary, margin: '0 0 16px', lineHeight: 1.6 }}>
+                Download a JSON copy of your profile, settings, and bookmarks stored in this browser.
+              </p>
+              <button
+                type="button"
+                onClick={exportData}
+                style={{
+                  border: 'none',
+                  borderRadius: 12,
+                  padding: '12px 18px',
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  color: '#fff',
+                  background: isDark ? '#334155' : colors.textPrimary || '#0f172a',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <Download size={16} />
+                Download JSON
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </div>
+  );
 };
 
 export default DataScreen;

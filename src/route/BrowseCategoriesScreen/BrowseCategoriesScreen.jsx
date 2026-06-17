@@ -20,6 +20,8 @@ import {
     getCategoryIcon,
 } from '../../utils/categoryMatch';
 import { useArticleInteractions } from '../../hooks/useArticleInteractions';
+import { useStackBackHandler } from '../../hooks/useStackBackHandler';
+import { isSettingsFlowRoute } from '../../navigation/appStackNavigation';
 import ArticleFeedList from '../../components/ArticleFeedList';
 import { buildArticleDetailParams } from '../../utils/articleNavigation';
 
@@ -30,11 +32,14 @@ const POPULAR_CATEGORY_KEYS = new Set([
 const ARTICLES_PREVIEW_COUNT = 6;
 const INITIAL_VISIBLE_COUNT = 8;
 
-const BrowseCategoriesScreen = ({ navigation }) => {
+const BrowseCategoriesScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
     const { colors } = theme;
     const insets = useSafeAreaInsets();
     const topInset = resolveTopInset(insets, 0);
+    const fromSettings = isSettingsFlowRoute(route);
+    const returnTab = String(route?.params?.returnTab || 'Profile');
+    useStackBackHandler(navigation, fromSettings, returnTab);
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [categorySearch, setCategorySearch] = useState('');
@@ -133,7 +138,9 @@ const BrowseCategoriesScreen = ({ navigation }) => {
     };
 
     const openCategory = (category) => {
-        navigation.navigate('CategoryArticles', {
+        navigation.push(fromSettings ? 'SettingsCategoryArticles' : 'CategoryArticles', {
+            fromSettings,
+            returnTab,
             categorySlug: category.key,
             categoryName: category.name,
             categoryCount: category.count,

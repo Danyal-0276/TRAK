@@ -4,9 +4,17 @@ import { ChevronLeft } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import Text from '../../../components/ui/Text';
 
-export default function SettingsHeader({ navigation, embeddedInTab = false }) {
+export default function SettingsHeader({ navigation, embeddedInTab = false, onBack }) {
   const { theme } = useTheme();
   const { colors } = theme;
+
+  const handleBack = () => {
+    if (typeof onBack === 'function') {
+      onBack();
+      return;
+    }
+    navigation?.goBack?.();
+  };
 
   return (
     <View style={[styles.header, { backgroundColor: colors.surface, borderBottomColor: colors.borderLight }]}>
@@ -14,7 +22,7 @@ export default function SettingsHeader({ navigation, embeddedInTab = false }) {
         <View style={styles.backBtn} />
       ) : (
         <TouchableOpacity
-          onPress={() => navigation?.goBack?.()}
+          onPress={handleBack}
           style={styles.backBtn}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"

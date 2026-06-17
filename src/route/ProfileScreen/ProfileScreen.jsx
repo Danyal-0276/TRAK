@@ -19,6 +19,7 @@ import {
   stripLastLogin,
 } from "../../utils/profileSessionCache";
 import { buildArticleDetailParams } from "../../utils/articleNavigation";
+import { pushMainStackScreen } from "../../navigation/appStackNavigation";
 import { queueAdminTab } from "../../utils/adminNavigationIntent";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
 import Text from "../../components/ui/Text";
@@ -366,7 +367,7 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
           }}
         />
 
-        <ProfileActions navigation={navigation} onLogout={handleLogout} />
+        <ProfileActions navigation={stackNavigation} onLogout={handleLogout} />
         <BookmarkList
           bookmarks={bookmarks}
           onPressArticle={(article) => {
@@ -387,7 +388,7 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
               style={styles.actionItem}
               onPress={() => {
                 setAvatarActionOpen(false);
-                navigation.navigate("EditProfileScreen");
+                pushMainStackScreen(stackNavigation, "EditProfileScreen");
               }}
             >
               <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "600" }}>Change image</Text>
