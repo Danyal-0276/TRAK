@@ -3,9 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AUTH_PREFIX, API_BASE } from '../config/api';
 import { apiFetch, getAccessToken, setTokens } from '../api/client';
 import { clearAuthSession as clearStoredAuthSession, saveAuthSession } from '../utils/Service/api';
-import { registerDeviceToken } from '../api/notificationsApi';
+import { registerDeviceToken, unregisterDeviceToken } from '../api/notificationsApi';
 import { verifyEmailCode } from '../api/authEmailApi';
-import { getOrCreatePushToken } from '../api/pushToken';
+import { syncPushTokenWithBackend, unregisterPushTokenFromBackend } from '../api/pushToken';
 import { formatNetworkError } from '../utils/networkError';
 import { emitAuthSessionEnded, onAuthSessionEnded } from '../utils/authSessionEvents';
 import { clearProfileSessionCache } from '../utils/profileSessionCache';
@@ -71,8 +71,7 @@ export function AuthProvider({ children }) {
                     }
                     if (me) setUser(me);
                     if (me) {
-                        const deviceToken = await getOrCreatePushToken();
-                        await registerDeviceToken(deviceToken, 'mobile');
+                        await syncPushTokenWithBackend(registerDeviceToken);
                     }
                 } catch {
                     // Keep cached/saved session on transient failures (network only).
@@ -144,8 +143,7 @@ export function AuthProvider({ children }) {
         await saveAuthSession({ access: data.access, refresh: data.refresh, user: u });
         setUser(u);
         await AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(u || {})).catch(() => {});
-        const deviceToken = await getOrCreatePushToken();
-        await registerDeviceToken(deviceToken, 'mobile');
+        await syncPushTokenWithBackend(registerDeviceToken);
         return u;
     };
 
@@ -172,12 +170,16 @@ export function AuthProvider({ children }) {
         await saveAuthSession({ access: data.access, refresh: data.refresh, user: u });
         setUser(u);
         await AsyncStorage.setItem(USER_CACHE_KEY, JSON.stringify(u || {})).catch(() => {});
-        const deviceToken = await getOrCreatePushToken();
-        await registerDeviceToken(deviceToken, 'mobile');
+        await syncPushTokenWithBackend(registerDeviceToken);
         return u;
     };
 
     const logout = async () => {
+        try {
+            await unregisterPushTokenFromBackend(unregisterDeviceToken);
+        } catch {
+            /* best-effort before clearing session */
+        }
         await clearStoredAuthSession();
         clearProfileSessionCache();
         clearAdminSessionCache();

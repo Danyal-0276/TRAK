@@ -17,7 +17,7 @@ import { loadPicsPage } from '../../utils/loadFeed';
 import ArticleCardImage from '../../components/ArticleCardImage';
 import { resolveArticleImageUrl } from '../../utils/articleMedia';
 import Text from '../../components/ui/Text';
-import { buildArticleDetailParams } from '../../utils/articleNavigation';
+import { navigateToArticleDetail, getCurrentMainTab } from '../../utils/articleNavigation';
 import { useStackBackHandler } from '../../hooks/useStackBackHandler';
 
 const GAP = 10;
@@ -81,7 +81,7 @@ const PicsScreen = ({ navigation }) => {
     }, [hasMore, loadingMore, nextCursor]);
 
     const handleArticlePress = (article) => {
-        navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
+        navigateToArticleDetail(navigation, article, { returnTab: getCurrentMainTab(navigation) });
     };
 
     const renderItem = ({ item }) => {

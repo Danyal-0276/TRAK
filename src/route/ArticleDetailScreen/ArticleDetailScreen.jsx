@@ -28,6 +28,8 @@ import { useTheme } from '../../theme/ThemeContext';
 import { fetchArticle } from '../../api/newsApi';
 import { mapApiItem } from '../../utils/loadFeed';
 import { normalizeArticleForDetail, getArticleListenText } from '../../utils/articleNavigation';
+import { returnToMainTab } from '../../navigation/appStackNavigation';
+import { useStackBackHandler } from '../../hooks/useStackBackHandler';
 import { buildHighlightLinesFromContent } from '../../utils/ttsHighlight';
 import ArticleTtsPlayer from '../../components/ArticleTtsPlayer';
 import ArticleCardImage from '../../components/ArticleCardImage';
@@ -56,6 +58,8 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     );
     const [fetchError, setFetchError] = useState('');
     const articleId = String(route.params?.articleId || initialArticle.id || '');
+    const returnTab = route.params?.returnTab || 'Home';
+    useStackBackHandler(navigation, true, returnTab);
     const [activeTtsLineIndex, setActiveTtsLineIndex] = useState(-1);
     const [feedbackOpen, setFeedbackOpen] = useState(false);
 
@@ -241,11 +245,11 @@ const ArticleDetailScreen = ({ navigation, route }) => {
 
     const handleBack = () => {
         stopNativePlayback();
-        if (navigation.canGoBack()) {
+        if (navigation.canGoBack?.()) {
             navigation.goBack();
             return;
         }
-        navigation.navigate('MainTabs', { screen: 'Home' });
+        returnToMainTab(navigation, returnTab);
     };
 
     const handleHome = () => {

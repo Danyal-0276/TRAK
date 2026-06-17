@@ -34,7 +34,7 @@ import { resolveTopInset } from '../../utils/screenSafeArea';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { resolveArticleSource } from '../../utils/articleSource';
-import { buildArticleDetailParams } from '../../utils/articleNavigation';
+import { navigateToArticleDetail } from '../../utils/articleNavigation';
 import {
     getHomeFeedCache,
     isFeedCacheFresh,
@@ -465,7 +465,7 @@ const NewsFeedScreen = ({ navigation }) => {
     };
 
     const handleArticlePress = (article) => {
-        navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
+        navigateToArticleDetail(navigation, article, { returnTab: 'Home' });
     };
 
     const handleVote = async (itemId, type) => {

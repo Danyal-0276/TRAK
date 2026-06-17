@@ -61,7 +61,7 @@ import SettingsTab from './screens/SettingsTab';
 import AdminArticleReviewModal from './components/AdminArticleReviewModal';
 import EditModal from './components/EditModal';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
-import { buildArticleDetailParams } from '../../utils/articleNavigation';
+import { navigateToArticleDetail } from '../../utils/articleNavigation';
 import { getArticlesFetchParams, filterArticlesForDisplay } from '../../utils/adminArticleFilters';
 import { ADMIN_TAB_ROUTES } from '../../navigation/adminTabIds';
 import { takeQueuedAdminTab } from '../../utils/adminNavigationIntent';
@@ -1186,7 +1186,7 @@ const AdminScreen = ({ navigation, route }) => {
             onSearchChange={setSearchQuery}
             onReviewArticle={setReviewArticle}
             onViewArticle={(article) =>
-              navigation.navigate('ArticleDetail', buildArticleDetailParams(article))
+              navigateToArticleDetail(navigation, article)
             }
             onDelete={(article) => handleDelete(article, 'article')}
             onRequeue={handleRequeueOne}
@@ -1341,7 +1341,7 @@ const AdminScreen = ({ navigation, route }) => {
         }}
         onOpenInApp={(article) => {
           setReviewArticle(null);
-          navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
+          navigateToArticleDetail(navigation, article);
         }}
       />
 

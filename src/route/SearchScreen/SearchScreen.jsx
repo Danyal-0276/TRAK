@@ -23,7 +23,7 @@ import SearchBar from "./components/SearchBar";
 import DiscoverScreenHeader from "./components/DiscoverScreenHeader";
 import { useFilledActionColors } from "../../theme/buttonContrast";
 import Tabs from "./components/tabs";
-import { buildArticleDetailParams } from "../../utils/articleNavigation";
+import { navigateToArticleDetail } from "../../utils/articleNavigation";
 import TrendingTopics from "./components/TrendingTopics";
 import ArticleFeedList from "../../components/ArticleFeedList";
 import { FeedSkeleton } from "../../components/FeedSkeleton";
@@ -537,7 +537,7 @@ const SearchScreen = ({ navigation }) => {
   );
 
   const handleArticlePress = (article) => {
-    navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
+    navigateToArticleDetail(navigation, article, { returnTab: 'Search' });
   };
 
   const handleTabPress = (category) => {

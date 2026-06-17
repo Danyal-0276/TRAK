@@ -32,6 +32,7 @@ const articleDetailOptions = {
     gestureEnabled: true,
     fullScreenGestureEnabled: true,
     animation: 'slide_from_right',
+    presentation: 'card',
 };
 
 /** Admins only see the admin panel (+ article preview), not the consumer app tabs. */

@@ -12,6 +12,7 @@ import { getInitialRouteForUser } from '../utils/authNavigation';
 import { bindPushNotificationNavigation, setPushNavigationRef } from '../notifications/pushNavigation';
 import { bindForegroundPushMessaging } from '../notifications/pushMessaging';
 import { onAuthSessionEnded } from '../utils/authSessionEvents';
+import { goBackInNavigationTree } from './appStackNavigation';
 import { navigationLinking } from './linking';
 import {
     CategoriesScreen,
@@ -73,8 +74,9 @@ export default function AppNavigation() {
     useEffect(() => {
         if (!bootstrapped || !user) return undefined;
         const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-            if (navRef.isReady() && navRef.canGoBack()) {
-                navRef.goBack();
+            if (!navRef.isReady()) return false;
+            const nav = navRef.current;
+            if (nav && goBackInNavigationTree(nav)) {
                 return true;
             }
             return false;

@@ -2,6 +2,8 @@
  * Navigate to article detail when user opens a push notification.
  */
 
+import { navigateToArticleDetailFromRoot } from '../utils/articleNavigation';
+
 let navigationRef = null;
 
 export function setPushNavigationRef(ref) {
@@ -16,12 +18,8 @@ function extractArticleId(data) {
 
 export function navigateFromPushData(data) {
   const articleId = extractArticleId(data);
-  if (!articleId || !navigationRef?.isReady?.()) return false;
-  navigationRef.navigate('NewsFeed', {
-    screen: 'ArticleDetail',
-    params: { articleId },
-  });
-  return true;
+  if (!articleId) return false;
+  return navigateToArticleDetailFromRoot(navigationRef, articleId, 'Notifications');
 }
 
 export async function bindPushNotificationNavigation() {

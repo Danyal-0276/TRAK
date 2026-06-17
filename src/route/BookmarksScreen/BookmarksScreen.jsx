@@ -15,7 +15,7 @@ import { useTheme } from '../../theme/ThemeContext';
 import { getRefreshControlProps } from '../../theme/refreshControl';
 import { addBookmark, getUserArticleDetail, listBookmarks, removeBookmark, setReaction } from '../../utils/Service/api';
 import Text from '../../components/ui/Text';
-import { buildArticleDetailParams } from '../../utils/articleNavigation';
+import { navigateToArticleDetail } from '../../utils/articleNavigation';
 import { mapApiItem } from '../../utils/loadFeed';
 import { filterRealFeedItems } from '../../utils/feedRealOnly';
 import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
@@ -82,7 +82,7 @@ const BookmarksScreen = ({ navigation }) => {
     }, [loadNews]);
 
     const handleArticlePress = (article) => {
-        navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
+        navigateToArticleDetail(navigation, article, { returnTab: 'Profile' });
     };
 
     const handleVote = (itemId, type) => {

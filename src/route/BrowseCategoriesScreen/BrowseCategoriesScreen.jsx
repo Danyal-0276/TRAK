@@ -23,7 +23,7 @@ import { useArticleInteractions } from '../../hooks/useArticleInteractions';
 import { useStackBackHandler } from '../../hooks/useStackBackHandler';
 import { isSettingsFlowRoute } from '../../navigation/appStackNavigation';
 import ArticleFeedList from '../../components/ArticleFeedList';
-import { buildArticleDetailParams } from '../../utils/articleNavigation';
+import { navigateToArticleDetail } from '../../utils/articleNavigation';
 
 const POPULAR_CATEGORY_KEYS = new Set([
     'technology', 'politics', 'business', 'sports', 'health',
@@ -134,7 +134,7 @@ const BrowseCategoriesScreen = ({ navigation, route }) => {
     const categoriesWithArticles = categories.filter((c) => c.count > 0).length;
 
     const handleArticlePress = (article) => {
-        navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
+        navigateToArticleDetail(navigation, article, { returnTab });
     };
 
     const openCategory = (category) => {

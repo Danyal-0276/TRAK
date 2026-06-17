@@ -33,6 +33,15 @@ function tryFcmMessaging() {
   }
 }
 
+export function isRealFcmToken(token) {
+  const t = String(token || '').trim();
+  return (
+    t.length >= 32
+    && !t.startsWith('trak-mobile-')
+    && !t.startsWith('trak-web-')
+  );
+}
+
 async function fallbackToken() {
   const existing = await AsyncStorage.getItem(KEY);
   if (existing) return existing;
@@ -83,4 +92,25 @@ export async function getOrCreatePushToken() {
     // Native Firebase not configured — use local device token.
   }
   return fallbackToken();
+}
+
+/** Register only a real FCM token with the backend (skips local fallback placeholders). */
+export async function syncPushTokenWithBackend(registerFn) {
+  const token = await getOrCreatePushToken();
+  if (!isRealFcmToken(token)) {
+    if (__DEV__) {
+      console.warn('[push] Skipping backend registration — not a real FCM token');
+    }
+    return null;
+  }
+  await registerFn(token, 'mobile');
+  return token;
+}
+
+/** Remove the stored FCM token from the backend (e.g. on logout). */
+export async function unregisterPushTokenFromBackend(unregisterFn) {
+  const token = await AsyncStorage.getItem(KEY);
+  if (!isRealFcmToken(token)) return null;
+  await unregisterFn(token);
+  return token;
 }

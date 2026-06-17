@@ -23,7 +23,7 @@ import { useFeedback } from '../../../components/ui/FeedbackProvider';
 import { FEEDBACK_POLL_INTERVAL_MS, adminFilledButtonColors } from '../adminTheme';
 import { subscribeAdminFeedbackRefresh } from '../../../utils/adminNotificationsEvents';
 import { FEEDBACK_STATUS_META } from '../../../constants/feedbackCategoryMeta';
-import { buildArticleDetailParams } from '../../../utils/articleNavigation';
+import { navigateToArticleDetail } from '../../../utils/articleNavigation';
 import {
   getAdminFeedbackCache,
   isAdminFeedbackFresh,
@@ -283,7 +283,7 @@ const FeedbackTab = ({ navigation, isActive = true }) => {
         onClose={() => setReviewArticle(null)}
         onSaved={() => loadRows({ silent: true })}
         onOpenInApp={(article) => {
-          navigation?.navigate?.('ArticleDetail', buildArticleDetailParams(article));
+          navigateToArticleDetail(navigation, article);
         }}
         feedbackBanner={
           selected
