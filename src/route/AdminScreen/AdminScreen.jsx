@@ -70,6 +70,14 @@ import {
   isAdminNotificationsWsEnabled,
 } from '../../api/adminNotificationsRealtime';
 import { dispatchAdminFeedbackRefresh } from '../../utils/adminNotificationsEvents';
+import {
+  getAdminSessionCache,
+  hydrateAdminFromStorage,
+  isAdminListsFresh,
+  isAdminOverviewFresh,
+  setAdminListsCache,
+  setAdminOverviewCache,
+} from '../../utils/adminSessionCache';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SCRAPE_ONLY_LIMIT = 10;
@@ -148,11 +156,12 @@ const AdminScreen = ({ navigation, route }) => {
       navigation.setParams({ tab: undefined });
     }, [navigation, route?.params?.tab, setActiveTab])
   );
-  const [users, setUsers] = useState([]);
-  const [admins, setAdmins] = useState([]);
+  const initialAdminCache = getAdminSessionCache();
+  const [users, setUsers] = useState(() => initialAdminCache.lists?.users || []);
+  const [admins, setAdmins] = useState(() => initialAdminCache.lists?.admins || []);
   const [apiArticles, setApiArticles] = useState([]);
-  const [serverAnalytics, setServerAnalytics] = useState(null);
-  const [modelMetrics, setModelMetrics] = useState(null);
+  const [serverAnalytics, setServerAnalytics] = useState(() => initialAdminCache.overview?.serverAnalytics || null);
+  const [modelMetrics, setModelMetrics] = useState(() => initialAdminCache.overview?.modelMetrics || null);
   const [activePipelineAction, setActivePipelineAction] = useState(null);
   const [pipelineProgress, setPipelineProgress] = useState(0);
   const [pipelineRunPhase, setPipelineRunPhase] = useState('idle');
@@ -169,16 +178,16 @@ const AdminScreen = ({ navigation, route }) => {
   const articlesPageRef = useRef(1);
   const searchQueryRef = useRef('');
   const ADMIN_ARTICLES_PAGE_SIZE = 100;
-  const [listsLoading, setListsLoading] = useState(false);
+  const [listsLoading, setListsLoading] = useState(() => !isAdminListsFresh(initialAdminCache.lists));
   const [connectionUrlInput, setConnectionUrlInput] = useState('');
-  const [overviewLoading, setOverviewLoading] = useState(true);
-  const [analyticsError, setAnalyticsError] = useState(null);
-  const hasSnapshotRef = useRef(false);
+  const [overviewLoading, setOverviewLoading] = useState(() => !isAdminOverviewFresh(initialAdminCache.overview));
+  const [analyticsError, setAnalyticsError] = useState(() => initialAdminCache.overview?.analyticsError || null);
+  const hasSnapshotRef = useRef(Boolean(initialAdminCache.overview?.serverAnalytics));
   const analyticsSigRef = useRef('');
-  const [notifications, setNotifications] = useState([]);
-  const [settings, setSettings] = useState({});
-  const [categories, setCategories] = useState([]);
-  const [connections, setConnections] = useState([]);
+  const [notifications, setNotifications] = useState(() => initialAdminCache.lists?.notifications || []);
+  const [settings, setSettings] = useState(() => initialAdminCache.lists?.settings || {});
+  const [categories, setCategories] = useState(() => initialAdminCache.lists?.categories || []);
+  const [connections, setConnections] = useState(() => initialAdminCache.lists?.connections || []);
   const connectionsRef = useRef([]);
   const hasBootstrappedRef = useRef(false);
   const [categoryInput, setCategoryInput] = useState('');
@@ -303,7 +312,35 @@ const AdminScreen = ({ navigation, route }) => {
     hasSnapshotRef.current = Boolean(serverAnalytics);
   }, [serverAnalytics]);
 
-  const loadOverview = useCallback(async ({ manual = false, silent = false } = {}) => {
+  const applyListsCache = useCallback((cached) => {
+    if (!cached) return;
+    if (Array.isArray(cached.users)) setUsers(cached.users);
+    if (Array.isArray(cached.admins)) setAdmins(cached.admins);
+    if (Array.isArray(cached.notifications)) setNotifications(cached.notifications);
+    if (cached.settings) setSettings(cached.settings);
+    if (Array.isArray(cached.categories)) setCategories(cached.categories);
+    if (Array.isArray(cached.connections)) updateConnectionsIfChanged(cached.connections);
+  }, [updateConnectionsIfChanged]);
+
+  const applyOverviewCache = useCallback((cached) => {
+    if (!cached) return;
+    if (cached.serverAnalytics) {
+      setServerAnalytics(cached.serverAnalytics);
+      setLiveUpdatedAt(cached.refreshedAt ? new Date(cached.refreshedAt) : new Date());
+    }
+    if (cached.modelMetrics) setModelMetrics(cached.modelMetrics);
+    if (cached.analyticsError !== undefined) setAnalyticsError(cached.analyticsError);
+    if (cached.connections?.length) updateConnectionsIfChanged(cached.connections);
+  }, [updateConnectionsIfChanged]);
+
+  const loadOverview = useCallback(async ({ manual = false, silent = false, force = false } = {}) => {
+    const cachedOverview = getAdminSessionCache().overview;
+    if (!force && !manual && isAdminOverviewFresh(cachedOverview)) {
+      applyOverviewCache(cachedOverview);
+      setOverviewLoading(false);
+      return;
+    }
+
     const isInitial = !hasSnapshotRef.current;
     try {
       if (!silent) setRefreshing(true);
@@ -323,7 +360,6 @@ const AdminScreen = ({ navigation, route }) => {
       const hasKpis =
         isAnalyticsPayload(data.serverAnalytics) ||
         mapped.length > 0 ||
-        (data.users?.length ?? 0) > 0 ||
         (data.connections?.length ?? connectionsRef.current.length) > 0;
       if (hasKpis) {
         const nextPayload = { ...enriched, _refreshedAt: Date.now() };
@@ -333,11 +369,20 @@ const AdminScreen = ({ navigation, route }) => {
           setServerAnalytics(nextPayload);
           setLiveUpdatedAt(new Date());
         }
-        setAnalyticsError(
-          data.serverAnalytics ? null : data.analyticsError || 'Using article and settings counts (analytics API unavailable).'
-        );
+        const nextError = data.serverAnalytics
+          ? null
+          : data.analyticsError || 'Using article and settings counts (analytics API unavailable).';
+        setAnalyticsError(nextError);
+        setAdminOverviewCache({
+          serverAnalytics: nextPayload,
+          modelMetrics: data.modelMetrics || null,
+          connections: data.connections || [],
+          analyticsError: nextError,
+          refreshedAt: Date.now(),
+        });
       } else {
-        setAnalyticsError(data.analyticsError || 'Could not load dashboard data from the server.');
+        const nextError = data.analyticsError || 'Could not load dashboard data from the server.';
+        setAnalyticsError(nextError);
         if (manual || !silent) setServerAnalytics(null);
       }
       if (data.modelMetrics) setModelMetrics(data.modelMetrics);
@@ -349,7 +394,7 @@ const AdminScreen = ({ navigation, route }) => {
       if (!silent) setRefreshing(false);
       setOverviewLoading(false);
     }
-  }, [updateConnectionsIfChanged]);
+  }, [applyOverviewCache, updateConnectionsIfChanged]);
 
   const loadArticles = useCallback(async ({ silent = false, page = 1, append = false, q = '' } = {}) => {
     const { scope, pipelineStatus, moderationStatus, credibilityLabel } = getArticlesFetchParams(articlePipelineFilter);
@@ -388,81 +433,149 @@ const AdminScreen = ({ navigation, route }) => {
     loadArticles({ silent: true, page: articlesPage + 1, append: true, q: searchQuery });
   }, [articlesLoadingMore, articlesHasMore, articlesPage, loadArticles, searchQuery]);
 
-  const loadLists = useCallback(async () => {
-    setListsLoading(true);
+  const loadLists = useCallback(async ({
+    silent = false,
+    force = false,
+    includeUsers = null,
+    includeAdmins = null,
+  } = {}) => {
+    const wantUsers = includeUsers ?? activeTab === 'users';
+    const wantAdmins = includeAdmins ?? activeTab === 'admins';
+    const cached = getAdminSessionCache().lists;
+
+    if (
+      !force &&
+      isAdminListsFresh(cached) &&
+      (!wantUsers || cached.usersFetched) &&
+      (!wantAdmins || cached.adminsFetched) &&
+      Array.isArray(cached.notifications)
+    ) {
+      applyListsCache(cached);
+      return;
+    }
+
+    if (!silent) setListsLoading(true);
     try {
       const listQ = activeTab === 'users' || activeTab === 'admins' ? searchQuery.trim() : '';
-      const [usersRes, adminsRes, notificationsRes, settingsRes] = await Promise.all([
-        getAdminUsers({ q: activeTab === 'users' ? listQ : '', role: 'user' }),
-        getAdminUsers({ q: activeTab === 'admins' ? listQ : '', role: 'admin' }),
-        getAdminNotifications(),
-        getAdminSettings(),
-      ]);
-      const usersData = (usersRes.results || []).map((u) => ({
-        id: u.id,
-        name: u.email?.split('@')[0] || 'user',
-        email: u.email,
-        status: u.is_active ? 'active' : 'inactive',
-        role: u.role,
-        isAdmin: false,
-      }));
-      const adminsData = (adminsRes.results || []).map((u) => ({
-        id: u.id,
-        name: u.email?.split('@')[0] || 'admin',
-        email: u.email,
-        status: u.is_active ? 'active' : 'inactive',
-        is_active: !!u.is_active,
-        role: u.role,
-        is_super_admin: u.is_super_admin,
-        created_at: u.created_at,
-        last_login: u.last_login,
-      }));
-      const notificationsData = (notificationsRes.results || []).map((n) => ({
-        id: n.id,
-        type: n.type,
-        title: n.type,
-        source: n.type?.replace(/_/g, ' ') || 'Alert',
-        message: n.text,
-        details: n.details || '',
-        status: n.read ? 'read' : 'unread',
-        read: !!n.read,
-        important: !!n.important,
-        meta: n.meta || {},
-        time: n.created_at
-          ? (typeof n.created_at === 'string'
-            ? n.created_at.slice(0, 16).replace('T', ' ')
-            : new Date(n.created_at).toLocaleString())
-          : '',
-        created_at: n.created_at,
-      }));
-      const settingsData = {
-        notifications: !!settingsRes.notifications_enabled_default,
-        pushNotification: !!settingsRes.notifications_enabled_default,
-        emailNotification: !!settingsRes.notifications_enabled_default,
-        inAppNotification: !!settingsRes.notifications_enabled_default,
-        connections: !!settingsRes.allow_external_connections,
-        moderationMode: settingsRes.moderation_mode || 'review',
-        language: settingsRes.language || 'English',
-        timezone: settingsRes.timezone || 'UTC',
-      };
-      const categoriesData = normAdminCategories(settingsRes.categories || []);
-      const connectionsData = normAdminConnections(settingsRes.connections || []);
-      setUsers(usersData);
-      setAdmins(adminsData);
+      const tasks = [
+        getAdminNotifications().then((res) => ({ key: 'notifications', res })),
+        getAdminSettings().then((res) => ({ key: 'settings', res })),
+      ];
+      if (wantUsers) {
+        tasks.push(
+          getAdminUsers({ q: activeTab === 'users' ? listQ : '', role: 'user' }).then((res) => ({
+            key: 'users',
+            res,
+          }))
+        );
+      }
+      if (wantAdmins) {
+        tasks.push(
+          getAdminUsers({ q: activeTab === 'admins' ? listQ : '', role: 'admin' }).then((res) => ({
+            key: 'admins',
+            res,
+          }))
+        );
+      }
+
+      const results = await Promise.all(tasks);
+      let usersData = cached?.users || [];
+      let adminsData = cached?.admins || [];
+      let notificationsData = cached?.notifications || [];
+      let settingsData = cached?.settings || settings;
+      let categoriesData = cached?.categories || categories;
+      let connectionsData = cached?.connections || connections;
+
+      for (const row of results) {
+        if (row.key === 'users') {
+          usersData = (row.res.results || []).map((u) => ({
+            id: u.id,
+            name: u.email?.split('@')[0] || 'user',
+            email: u.email,
+            status: u.is_active ? 'active' : 'inactive',
+            role: u.role,
+            isAdmin: false,
+          }));
+        } else if (row.key === 'admins') {
+          adminsData = (row.res.results || []).map((u) => ({
+            id: u.id,
+            name: u.email?.split('@')[0] || 'admin',
+            email: u.email,
+            status: u.is_active ? 'active' : 'inactive',
+            is_active: !!u.is_active,
+            role: u.role,
+            is_super_admin: u.is_super_admin,
+            created_at: u.created_at,
+            last_login: u.last_login,
+          }));
+        } else if (row.key === 'notifications') {
+          notificationsData = (row.res.results || []).map((n) => ({
+            id: n.id,
+            type: n.type,
+            title: n.type,
+            source: n.type?.replace(/_/g, ' ') || 'Alert',
+            message: n.text,
+            details: n.details || '',
+            status: n.read ? 'read' : 'unread',
+            read: !!n.read,
+            important: !!n.important,
+            meta: n.meta || {},
+            time: n.created_at
+              ? (typeof n.created_at === 'string'
+                ? n.created_at.slice(0, 16).replace('T', ' ')
+                : new Date(n.created_at).toLocaleString())
+              : '',
+            created_at: n.created_at,
+          }));
+        } else if (row.key === 'settings') {
+          const settingsRes = row.res;
+          settingsData = {
+            notifications: !!settingsRes.notifications_enabled_default,
+            pushNotification: !!settingsRes.notifications_enabled_default,
+            emailNotification: !!settingsRes.notifications_enabled_default,
+            inAppNotification: !!settingsRes.notifications_enabled_default,
+            connections: !!settingsRes.allow_external_connections,
+            moderationMode: settingsRes.moderation_mode || 'review',
+            language: settingsRes.language || 'English',
+            timezone: settingsRes.timezone || 'UTC',
+          };
+          categoriesData = normAdminCategories(settingsRes.categories || []);
+          connectionsData = normAdminConnections(settingsRes.connections || []);
+        }
+      }
+
+      const prevLists = getAdminSessionCache().lists || {};
+      const nextUsers = wantUsers ? usersData : (prevLists.users ?? usersData);
+      const nextAdmins = wantAdmins ? adminsData : (prevLists.admins ?? adminsData);
+
+      setUsers(nextUsers);
+      setAdmins(nextAdmins);
       setNotifications(notificationsData);
       setSettings(settingsData);
       setCategories(categoriesData);
       updateConnectionsIfChanged(connectionsData);
+      setAdminListsCache({
+        users: nextUsers,
+        admins: nextAdmins,
+        usersFetched: wantUsers ? true : Boolean(prevLists.usersFetched),
+        adminsFetched: wantAdmins ? true : Boolean(prevLists.adminsFetched),
+        notifications: notificationsData,
+        settings: settingsData,
+        categories: categoriesData,
+        connections: connectionsData,
+      });
     } catch (e) {
       showError(e?.message || 'Could not load admin lists.');
     } finally {
       setListsLoading(false);
     }
-  }, [activeTab, searchQuery, showError, updateConnectionsIfChanged]);
+  }, [activeTab, applyListsCache, searchQuery, settings, categories, connections, showError, updateConnectionsIfChanged]);
 
-  const loadData = useCallback(async () => {
-    await loadOverview({ silent: true });
-    await loadLists();
+  const loadData = useCallback(async ({ force = false } = {}) => {
+    await Promise.all([
+      loadOverview({ silent: true, force }),
+      loadLists({ silent: true, force, includeUsers: true, includeAdmins: true }),
+    ]);
   }, [loadOverview, loadLists]);
 
   const handleCreateAdmin = async (email, password) => {
@@ -473,8 +586,26 @@ const AdminScreen = ({ navigation, route }) => {
   useEffect(() => {
     if (!bootstrapped || !isAdmin || hasBootstrappedRef.current) return;
     hasBootstrappedRef.current = true;
-    loadData();
-  }, [bootstrapped, isAdmin, loadData]);
+
+    let cancelled = false;
+    (async () => {
+      await hydrateAdminFromStorage();
+      if (cancelled) return;
+      const cache = getAdminSessionCache();
+      if (cache.overview) applyOverviewCache(cache.overview);
+      if (cache.lists) applyListsCache(cache.lists);
+      if (cache.overview || cache.lists) {
+        setOverviewLoading(false);
+        setListsLoading(false);
+      }
+      const needsRefresh = !isAdminOverviewFresh(cache.overview) || !isAdminListsFresh(cache.lists);
+      await loadData({ force: needsRefresh });
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyListsCache, applyOverviewCache, bootstrapped, isAdmin, loadData]);
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || activeTab !== 'articles') return undefined;
@@ -512,13 +643,40 @@ const AdminScreen = ({ navigation, route }) => {
   }, [activeTab, bootstrapped, isAdmin, loadArticles]);
 
   useEffect(() => {
-    if (!bootstrapped || !isAdmin || (activeTab !== 'users' && activeTab !== 'admins')) return;
-    const id = setTimeout(() => loadLists(), 350);
+    if (!bootstrapped || !isAdmin || activeTab !== 'users') return undefined;
+    const cached = getAdminSessionCache().lists;
+    const id = setTimeout(
+      () =>
+        loadLists({
+          silent: Boolean(cached?.usersFetched && users.length > 0),
+          force: !cached?.usersFetched,
+          includeUsers: true,
+          includeAdmins: false,
+        }),
+      searchQuery.trim() ? 350 : 0
+    );
     return () => clearTimeout(id);
-  }, [searchQuery, activeTab, bootstrapped, isAdmin, loadLists]);
+  }, [searchQuery, activeTab, bootstrapped, isAdmin, loadLists, users.length]);
+
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin || activeTab !== 'admins') return undefined;
+    const cached = getAdminSessionCache().lists;
+    const id = setTimeout(
+      () =>
+        loadLists({
+          silent: Boolean(cached?.adminsFetched && admins.length > 0),
+          force: !cached?.adminsFetched,
+          includeUsers: false,
+          includeAdmins: true,
+        }),
+      searchQuery.trim() ? 350 : 0
+    );
+    return () => clearTimeout(id);
+  }, [searchQuery, activeTab, bootstrapped, isAdmin, loadLists, admins.length]);
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || activeTab !== 'overview') return;
+    if (isAdminOverviewFresh(getAdminSessionCache().overview)) return;
     loadOverview({ silent: true });
   }, [bootstrapped, isAdmin, activeTab, loadOverview]);
 
@@ -726,9 +884,25 @@ const AdminScreen = ({ navigation, route }) => {
       const settingsRes = await getAdminSettings();
       applySettingsFromApi(settingsRes);
       const cats = normAdminCategories(settingsRes.categories || []);
+      const connectionsData = normAdminConnections(settingsRes.connections || []);
       setCategories(cats);
-      updateConnectionsIfChanged(settingsRes.connections || []);
+      updateConnectionsIfChanged(connectionsData);
       setSelectedCategorySlug((prev) => (prev && cats.some((c) => c.slug === prev) ? prev : ''));
+      setAdminListsCache({
+        ...(getAdminSessionCache().lists || {}),
+        settings: {
+          notifications: !!settingsRes.notifications_enabled_default,
+          pushNotification: !!settingsRes.notifications_enabled_default,
+          emailNotification: !!settingsRes.notifications_enabled_default,
+          inAppNotification: !!settingsRes.notifications_enabled_default,
+          connections: !!settingsRes.allow_external_connections,
+          moderationMode: settingsRes.moderation_mode || 'review',
+          language: settingsRes.language || 'English',
+          timezone: settingsRes.timezone || 'UTC',
+        },
+        categories: cats,
+        connections: connectionsData,
+      });
       return cats;
     } catch (e) {
       showError(e?.message || 'Could not load settings from server.');
@@ -738,8 +912,9 @@ const AdminScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || activeTab !== 'settings') return;
+    if (isAdminListsFresh(getAdminSessionCache().lists) && categories.length) return;
     reloadSettings();
-  }, [bootstrapped, isAdmin, activeTab, reloadSettings]);
+  }, [bootstrapped, isAdmin, activeTab, reloadSettings, categories.length]);
 
   const handleSettingsChange = async (updates) => {
     const pushOn =

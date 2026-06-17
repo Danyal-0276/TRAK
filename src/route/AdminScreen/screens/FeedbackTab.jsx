@@ -24,6 +24,11 @@ import { FEEDBACK_POLL_INTERVAL_MS, adminFilledButtonColors } from '../adminThem
 import { subscribeAdminFeedbackRefresh } from '../../../utils/adminNotificationsEvents';
 import { FEEDBACK_STATUS_META } from '../../../constants/feedbackCategoryMeta';
 import { buildArticleDetailParams } from '../../../utils/articleNavigation';
+import {
+  getAdminFeedbackCache,
+  isAdminFeedbackFresh,
+  setAdminFeedbackCache,
+} from '../../../utils/adminSessionCache';
 
 const STATUS_CHIPS = [
   { key: 'pending', label: 'Pending' },
@@ -36,10 +41,13 @@ const FeedbackTab = ({ navigation, isActive = true }) => {
   const { palette } = useAdminTheme();
   const actionBtn = adminFilledButtonColors(palette);
   const { success, error: notifyError } = useFeedback();
-  const [rows, setRows] = useState([]);
-  const [stats, setStats] = useState({ pending: 0, reviewed: 0, dismissed: 0, total: 0 });
-  const [loading, setLoading] = useState(true);
   const [statusTab, setStatusTab] = useState('pending');
+  const initialFeedback = getAdminFeedbackCache(statusTab);
+  const [rows, setRows] = useState(() => initialFeedback?.rows || []);
+  const [stats, setStats] = useState(
+    () => initialFeedback?.stats || { pending: 0, reviewed: 0, dismissed: 0, total: 0 }
+  );
+  const [loading, setLoading] = useState(() => !isAdminFeedbackFresh(statusTab, initialFeedback));
   const [selected, setSelected] = useState(null);
   const [adminNotes, setAdminNotes] = useState('');
   const [saving, setSaving] = useState(false);
@@ -47,13 +55,24 @@ const FeedbackTab = ({ navigation, isActive = true }) => {
   const [articleLoading, setArticleLoading] = useState(false);
   const [articleError, setArticleError] = useState('');
 
-  const loadRows = useCallback(async ({ silent = false } = {}) => {
+  const loadRows = useCallback(async ({ silent = false, force = false } = {}) => {
+    const cached = getAdminFeedbackCache(statusTab);
+    if (!force && isAdminFeedbackFresh(statusTab, cached)) {
+      setRows(cached.rows || []);
+      setStats(cached.stats || { pending: 0, reviewed: 0, dismissed: 0, total: 0 });
+      setLoading(false);
+      return;
+    }
+
     try {
       if (!silent) setLoading(true);
       const status = statusTab === 'all' ? '' : statusTab;
       const data = await getAdminFeedback({ status, limit: 100 });
-      setRows(data.results || []);
-      setStats(data.stats || { pending: 0, reviewed: 0, dismissed: 0, total: 0 });
+      const nextRows = data.results || [];
+      const nextStats = data.stats || { pending: 0, reviewed: 0, dismissed: 0, total: 0 };
+      setRows(nextRows);
+      setStats(nextStats);
+      setAdminFeedbackCache(statusTab, { rows: nextRows, stats: nextStats });
     } catch {
       if (!silent) setRows([]);
     } finally {

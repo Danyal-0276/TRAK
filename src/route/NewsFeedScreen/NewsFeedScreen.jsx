@@ -40,6 +40,7 @@ import {
     isFeedCacheFresh,
     saveHomeFeedCache,
 } from '../../utils/feedSessionCache';
+import { preloadProfileData, seedProfileFromBootstrap } from '../../utils/profileSessionCache';
 
 const { width, height } = Dimensions.get('window');
 const PAGER_LAYOUT = { width };
@@ -255,6 +256,7 @@ const NewsFeedScreen = ({ navigation }) => {
                 restoreScrollPosition(scrollRefs.current[tabKey], cached.scrollY);
             });
             if (!silent) setLoading(false);
+            preloadProfileData({ skipIfFresh: true });
             return;
         }
 
@@ -272,6 +274,11 @@ const NewsFeedScreen = ({ navigation }) => {
                 setVotedItems(boot.reactionMap || {});
                 setBookmarkedItems(boot.bookmarked || new Set());
                 await setBookmarkIds(Array.from(boot.bookmarked || [])).catch(() => {});
+                seedProfileFromBootstrap({
+                    bookmarkRows: boot.bookmarkRows || [],
+                    reactionResults: boot.reactionResults || [],
+                });
+                preloadProfileData({ skipIfFresh: true });
                 return;
             }
 
@@ -282,6 +289,12 @@ const NewsFeedScreen = ({ navigation }) => {
             setVotedItems(boot.reactionMap || {});
             setBookmarkedItems(boot.bookmarked || new Set());
             await setBookmarkIds(Array.from(boot.bookmarked || [])).catch(() => {});
+
+            seedProfileFromBootstrap({
+                bookmarkRows: boot.bookmarkRows || [],
+                reactionResults: boot.reactionResults || [],
+            });
+            preloadProfileData({ skipIfFresh: true });
 
             saveHomeFeedCache({
                 newsData: mapped,

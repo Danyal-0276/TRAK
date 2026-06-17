@@ -3,6 +3,7 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native';
 import { Edit, Settings, Shield, ChevronRight, LogOut } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import { useAuth } from '../../../context/AuthContext';
+import { navigateToSettings, pushMainStackScreen, navigateRootScreen } from '../../../navigation/appStackNavigation';
 import Text from '../../../components/ui/Text';
 
 const ActionRow = ({ icon: Icon, label, subtitle, onPress, colors, accent, danger }) => (
@@ -44,9 +45,9 @@ const ProfileActions = ({ navigation, onLogout }) => {
       ? 'rgba(129,140,248,0.14)'
       : '#eff6ff';
 
-  const openSettings = () => navigation.navigate('SettingsScreen');
+  const openSettings = () => navigateToSettings(navigation, { returnTab: 'Profile' });
 
-  const openAdmin = () => navigation.navigate('AdminScreen');
+  const openAdmin = () => navigateRootScreen(navigation, 'AdminScreen');
 
   return (
     <View style={styles.wrap}>
@@ -55,7 +56,7 @@ const ProfileActions = ({ navigation, onLogout }) => {
         icon={Edit}
         label="Edit profile"
         subtitle="Name, bio, avatar, contact info"
-        onPress={() => navigation.navigate('EditProfileScreen')}
+        onPress={() => pushMainStackScreen(navigation, 'EditProfileScreen')}
         colors={colors}
         accent={accentSoft}
       />

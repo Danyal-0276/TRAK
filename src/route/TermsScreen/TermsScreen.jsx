@@ -1,8 +1,10 @@
 import React from 'react';
 import { ScrollView, View, StyleSheet, StatusBar } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../theme/ThemeContext';
 import Text from '../../components/ui/Text';
+import { useStackBackHandler } from '../../hooks/useStackBackHandler';
 
 const Section = ({ title, children, colors }) => (
     <View style={styles.section}>
@@ -16,6 +18,8 @@ const Section = ({ title, children, colors }) => (
 );
 
 const TermsScreen = () => {
+    const navigation = useNavigation();
+    useStackBackHandler(navigation, true);
     const { theme } = useTheme();
     const { colors } = theme;
 

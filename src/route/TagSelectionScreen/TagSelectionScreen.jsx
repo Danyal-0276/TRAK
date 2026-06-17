@@ -14,6 +14,8 @@ import { Tag } from './components/Tag';
 import { ContinueButton } from './components/ContinueButton';
 import { newsTagsWithSubcategories } from './constants/newsCategories';
 import { loadTagsWithSubcategories, resolveSavedInterestSelections } from '../../utils/platformTaxonomy';
+import { useStackBackHandler } from '../../hooks/useStackBackHandler';
+import { isSettingsFlowRoute } from '../../navigation/appStackNavigation';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
 import { loadUserKeywords } from '../../utils/userKeywordsStorage';
@@ -29,7 +31,9 @@ const TagSelectionScreen = ({ navigation, route }) => {
     const [searchText, setSearchText] = useState('');
     const [loading, setLoading] = useState(false);
     const [tagsMap, setTagsMap] = useState(newsTagsWithSubcategories);
-    const { fromSettings = false, fromSignup = false } = route?.params || {};
+    const { fromSettings = false, fromSignup = false, returnTab = 'Profile' } = route?.params || {};
+    const settingsFlow = isSettingsFlowRoute(route) || fromSettings;
+    useStackBackHandler(navigation, settingsFlow && !fromSignup, returnTab);
     const incomingSelectedTags = route?.params?.selectedTags;
     const savedKeywordsRef = useRef(null);
 
@@ -252,7 +256,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
                 fromSettings && route?.name === 'SettingsTagSelection'
                     ? 'SettingsKeywordSelection'
                     : 'KeywordSelection';
-            navigation.navigate(keywordScreen, { selectedTags, fromSettings, fromSignup });
+            navigation.push(keywordScreen, { selectedTags, fromSettings, fromSignup });
         } catch (error) {
             console.error('Error:', error);
         } finally {

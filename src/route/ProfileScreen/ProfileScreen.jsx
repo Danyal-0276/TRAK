@@ -1,6 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
-import { useCallback } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { resolveTopInset } from "../../utils/screenSafeArea";
 import { ScrollView, StatusBar, StyleSheet, Animated, View, TouchableOpacity, Modal, Pressable, Image } from "react-native";
@@ -12,22 +10,31 @@ import BookmarkList from "./components/BookmarkList";
 import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
-import { addBookmark, confirmProfileVerification, getProfile, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, requestProfileVerification, setReaction } from "../../utils/Service/api";
+import { addBookmark, confirmProfileVerification, removeBookmark, requestProfileVerification, setReaction } from "../../utils/Service/api";
+import {
+  getProfileSessionCache,
+  hydrateProfileFromStorage,
+  isProfileCacheFresh,
+  loadProfileBundle,
+  stripLastLogin,
+} from "../../utils/profileSessionCache";
 import { buildArticleDetailParams } from "../../utils/articleNavigation";
+import { pushMainStackScreen } from "../../navigation/appStackNavigation";
 import { queueAdminTab } from "../../utils/adminNavigationIntent";
-import { mapApiItem } from "../../utils/loadFeed";
-import { filterRealFeedItems } from "../../utils/feedRealOnly";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
 import Text from "../../components/ui/Text";
 import SkeletonPlaceholder from "react-native-skeleton-placeholder";
 
-const PROFILE_CACHE_KEY = "trak_profile_cache_v1";
-const PROFILE_BOOKMARKS_CACHE_KEY = "trak_profile_bookmarks_cache_v1";
-
-function stripLastLogin(obj) {
-  if (!obj || typeof obj !== "object") return obj;
-  const { last_login: _ignored, ...rest } = obj;
-  return rest;
+function applyProfileBundle(setters, bundle) {
+  if (!bundle) return;
+  const { setProfile, setBookmarks, setBookmarkedItems, setVotedItems, setStats } = setters;
+  if (bundle.profile) setProfile(bundle.profile);
+  if (Array.isArray(bundle.bookmarks)) {
+    setBookmarks(bundle.bookmarks);
+    setBookmarkedItems(new Set(bundle.bookmarks.map((b) => String(b.id))));
+  }
+  if (bundle.votedItems) setVotedItems(bundle.votedItems);
+  if (bundle.stats) setStats(bundle.stats);
 }
 
 const UserProfileScreen = ({ navigation: navigationProp }) => {
@@ -39,148 +46,51 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
   const topInset = resolveTopInset(insets, 0);
   const { logout, isAdmin, isSuperAdmin, user } = useAuth();
   const { confirm, error: showError } = useFeedback();
-  const [bookmarks, setBookmarks] = useState([]);
-  const [profile, setProfile] = useState(() => stripLastLogin(user || null));
-  const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
-  const [votedItems, setVotedItems] = useState({});
+  const initialCache = getProfileSessionCache();
+  const [bookmarks, setBookmarks] = useState(() => initialCache?.bookmarks || []);
+  const [profile, setProfile] = useState(() => stripLastLogin(initialCache?.profile || user || null));
+  const [bookmarkedItems, setBookmarkedItems] = useState(
+    () => new Set((initialCache?.bookmarks || []).map((b) => String(b.id)))
+  );
+  const [votedItems, setVotedItems] = useState(() => initialCache?.votedItems || {});
   const [verificationChannel, setVerificationChannel] = useState("email");
   const [verificationCode, setVerificationCode] = useState("");
   const [sendingCode, setSendingCode] = useState(false);
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [devCodeHint, setDevCodeHint] = useState("");
   const [verifyMessage, setVerifyMessage] = useState("");
-  const [stats, setStats] = useState({ liked: 0, disliked: 0, saved: 0 });
+  const [stats, setStats] = useState(
+    () => initialCache?.stats || { liked: 0, disliked: 0, saved: initialCache?.bookmarks?.length || 0 }
+  );
   const [avatarActionOpen, setAvatarActionOpen] = useState(false);
   const [avatarPreviewOpen, setAvatarPreviewOpen] = useState(false);
-  const [uiReady, setUiReady] = useState(false);
+  const [uiReady, setUiReady] = useState(() => Boolean(getProfileSessionCache()) || Boolean(user));
   
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(20)).current;
+  const fadeAnim = useRef(new Animated.Value(getProfileSessionCache() || user ? 1 : 0)).current;
+  const slideAnim = useRef(new Animated.Value(getProfileSessionCache() || user ? 0 : 20)).current;
   const lastScrollY = useRef(0);
-  const hydrateFromCache = useCallback(async () => {
-    try {
-      const rawProfile = await AsyncStorage.getItem(PROFILE_CACHE_KEY);
-      if (rawProfile) {
-        const cachedProfile = JSON.parse(rawProfile);
-        if (cachedProfile && typeof cachedProfile === "object") {
-          const cleaned = stripLastLogin(cachedProfile);
-          setProfile((prev) => prev || cleaned);
-        }
-      }
-    } catch (_) {
-      // ignore cache parse issues
-    }
-    try {
-      const rawBookmarks = await AsyncStorage.getItem(PROFILE_BOOKMARKS_CACHE_KEY);
-      if (rawBookmarks) {
-        const cachedRows = JSON.parse(rawBookmarks);
-        if (Array.isArray(cachedRows) && cachedRows.length) {
-          setBookmarks(cachedRows);
-          setBookmarkedItems(new Set(cachedRows.map((b) => String(b.id))));
-          setStats((prev) => ({
-        ...prev,
-        saved: cachedRows.length,
-      }));
-        }
-      }
-    } catch (_) {
-      // ignore cache parse issues
-    }
+  const loadingRef = useRef(false);
+
+  const applyBundle = useCallback((bundle) => {
+    applyProfileBundle(
+      { setProfile, setBookmarks, setBookmarkedItems, setVotedItems, setStats },
+      bundle
+    );
   }, []);
 
-  const loadProfileData = useCallback(async () => {
+  const refreshProfileData = useCallback(async ({ force = false } = {}) => {
+    if (loadingRef.current && !force) return;
+    loadingRef.current = true;
     try {
-      const p = stripLastLogin(await getProfile());
-      setProfile(p);
-      await AsyncStorage.setItem(PROFILE_CACHE_KEY, JSON.stringify(p));
+      const bundle = await loadProfileBundle({ force });
+      applyBundle(bundle);
     } catch {
-      setProfile(null);
-    }
-
-    let liked = 0;
-    let disliked = 0;
-    try {
-      const reactPayload = await listReactions();
-      const reactions = reactPayload.results || [];
-      liked = reactions.filter((r) => String(r.reaction || '').toLowerCase() === 'like').length;
-      disliked = reactions.filter((r) => String(r.reaction || '').toLowerCase() === 'dislike').length;
-      const reactionMap = {};
-      for (const r of reactions) {
-        const aid = String(r.article_id ?? '').trim();
-        const react = String(r.reaction || '').toLowerCase();
-        if (!aid) continue;
-        if (react === 'like') reactionMap[aid] = 'up';
-        else if (react === 'dislike') reactionMap[aid] = 'down';
-      }
-      setVotedItems(reactionMap);
-    } catch {
-      liked = 0;
-      disliked = 0;
-    }
-
-    try {
-      const response = await listBookmarks();
-      const rows = response.results || [];
-      const detailed = await Promise.all(
-        rows.map(async (row) => {
-          const aid = String(row.article_id ?? row.id ?? '').trim();
-          if (!aid) return null;
-          try {
-            const full = await getUserArticleDetail(aid);
-            const mapped = mapApiItem({ ...full, id: aid });
-            return {
-              ...mapped,
-              id: aid,
-              description: mapped.excerpt || mapped.summary || '',
-              excerpt: mapped.excerpt || mapped.summary || '',
-              content: mapped.content || mapped.fullContent || '',
-              fullContent: mapped.fullContent || mapped.content || '',
-              canonical_url: mapped.canonical_url || row.url || row.canonical_url || '',
-              url: mapped.canonical_url || row.url || '',
-              category: full.topic_keywords?.[0] || mapped.category || 'Saved',
-              time: full.published_at
-                ? new Date(full.published_at).toLocaleString()
-                : (row.created_at ? new Date(row.created_at).toLocaleString() : mapped.time || 'Recently'),
-              date: full.published_at
-                ? new Date(full.published_at).toLocaleString()
-                : (row.created_at ? new Date(row.created_at).toLocaleString() : 'Recently'),
-              image: full.image || full.image_url || mapped.image,
-              image_url: full.image_url || full.image || mapped.image_url,
-            };
-          } catch {
-            return {
-              id: aid,
-              title: row.title || 'Saved article',
-              source: 'TRAK',
-              excerpt: '',
-              description: '',
-              content: '',
-              canonical_url: row.url || row.canonical_url || '',
-              url: row.url || row.canonical_url || '',
-              category: 'Saved',
-              time: row.created_at ? new Date(row.created_at).toLocaleString() : 'Recently',
-              date: row.created_at ? new Date(row.created_at).toLocaleString() : 'Recently',
-              like_count: 0,
-              dislike_count: 0,
-              upvotes: 0,
-              votes: 0,
-            };
-          }
-        })
-      );
-      const bookmarkedArticles = filterRealFeedItems(detailed.filter(Boolean));
-      setBookmarks(bookmarkedArticles);
-      setBookmarkedItems(new Set(bookmarkedArticles.map((b) => String(b.id))));
-      setStats({ liked, disliked, saved: bookmarkedArticles.length });
-      await AsyncStorage.setItem(PROFILE_BOOKMARKS_CACHE_KEY, JSON.stringify(bookmarkedArticles));
-    } catch {
-      setBookmarks([]);
-      setBookmarkedItems(new Set());
-      setStats((prev) => ({ ...prev, liked, disliked, saved: 0 }));
+      // keep cached UI
     } finally {
+      loadingRef.current = false;
       setUiReady(true);
     }
-  }, []);
+  }, [applyBundle]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -188,32 +98,58 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
       setUiReady(true);
       return;
     }
-    hydrateFromCache();
-    loadProfileData();
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fadeAnim, slideAnim, hydrateFromCache, loadProfileData, isAdmin, user]);
+
+    let cancelled = false;
+    const memory = getProfileSessionCache();
+    const hasInstantData = Boolean(memory || user);
+
+    (async () => {
+      if (memory) {
+        applyBundle(memory);
+        setUiReady(true);
+      } else {
+        const stored = await hydrateProfileFromStorage();
+        if (cancelled) return;
+        if (stored) applyBundle(stored);
+        setUiReady(true);
+      }
+
+      if (!cancelled) {
+        refreshProfileData({ force: !isProfileCacheFresh(getProfileSessionCache()) });
+      }
+    })();
+
+    if (!hasInstantData) {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          friction: 8,
+          tension: 40,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      fadeAnim.setValue(1);
+      slideAnim.setValue(0);
+    }
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyBundle, fadeAnim, isAdmin, refreshProfileData, slideAnim, user]);
 
   useFocusEffect(
     useCallback(() => {
       if (isAdmin) return;
-      try {
-        loadProfileData();
-      } catch (_) {
-        // ignore
+      if (!isProfileCacheFresh(getProfileSessionCache())) {
+        refreshProfileData({ force: false });
       }
-    }, [loadProfileData, isAdmin])
+    }, [isAdmin, refreshProfileData])
   );
 
   useEffect(() => {
@@ -282,7 +218,7 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
       if (exists) await removeBookmark(id);
       else await addBookmark(id, item?.title || "", item?.canonical_url || item?.url || "");
     } catch (err) {
-      await loadProfileData();
+      await refreshProfileData({ force: true });
       showError?.(err?.message || 'Could not update bookmark');
     }
   };
@@ -431,7 +367,7 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
           }}
         />
 
-        <ProfileActions navigation={navigation} onLogout={handleLogout} />
+        <ProfileActions navigation={stackNavigation} onLogout={handleLogout} />
         <BookmarkList
           bookmarks={bookmarks}
           onPressArticle={(article) => {
@@ -452,7 +388,7 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
               style={styles.actionItem}
               onPress={() => {
                 setAvatarActionOpen(false);
-                navigation.navigate("EditProfileScreen");
+                pushMainStackScreen(stackNavigation, "EditProfileScreen");
               }}
             >
               <Text style={{ color: colors.textPrimary, fontSize: 15, fontWeight: "600" }}>Change image</Text>

@@ -1,0 +1,46 @@
+.explore-sticky-toolbar-slot {
+  position: relative;
+  z-index: 40;
+}
+
+.explore-sticky-toolbar {
+  padding-top: 8px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  background: var(--trak-page-bg, var(--trak-background));
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.explore-sticky-toolbar--pinned {
+  position: fixed;
+  left: 0;
+  z-index: 40;
+  margin-bottom: 0;
+  pointer-events: auto;
+  border-bottom-color: var(--trak-border);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}
+
+.trak-chip-rail__track {
+  pointer-events: auto;
+}
+
+.trak-chip {
+  pointer-events: auto;
+}
+
+[data-theme='dark'] .explore-sticky-toolbar--pinned {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
+}
+
+.explore-sticky-toolbar__inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.explore-sticky-toolbar--pinned .explore-sticky-toolbar__inner {
+  padding-left: clamp(16px, 4vw, 24px);
+  padding-right: clamp(16px, 4vw, 24px);
+}

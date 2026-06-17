@@ -30,11 +30,14 @@ import { useFeedback } from '../../components/ui/FeedbackProvider';
 import Text from '../../components/ui/Text';
 import { resetTabBarVisibility } from '../../navigation/tabBarVisibility';
 import FeedbackModal from '../../components/FeedbackModal';
+import { useStackBackHandler } from '../../hooks/useStackBackHandler';
+import { goBackOrReturnToTab } from '../../navigation/appStackNavigation';
 
 const ICON_SIZE = 18;
 
 export default function SettingsScreen({ navigation, route }) {
   const embeddedInTab = Boolean(route?.params?.embeddedInTab);
+  const returnTab = String(route?.params?.returnTab || 'Profile');
   const [pushEnabled, setPushEnabled] = useState(true);
   const [emailEnabled, setEmailEnabled] = useState(true);
   const [keywordAlerts, setKeywordAlerts] = useState(true);
@@ -48,8 +51,14 @@ export default function SettingsScreen({ navigation, route }) {
   const insets = useSafeAreaInsets();
   const iconColor = colors.primary || colors.textPrimary;
 
-  const openContentScreen = (routeName, params = {}) => {
-    navigation.navigate(routeName, params);
+  useStackBackHandler(navigation, !embeddedInTab, returnTab);
+
+  const handleSettingsBack = () => {
+    goBackOrReturnToTab(navigation, returnTab);
+  };
+
+  const openSettingsScreen = (screen, params = {}) => {
+    navigation.push(screen, { ...params, returnTab });
   };
 
   useEffect(() => {
@@ -76,7 +85,7 @@ export default function SettingsScreen({ navigation, route }) {
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: topInset }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-      <SettingsHeader navigation={navigation} embeddedInTab={embeddedInTab} />
+      <SettingsHeader navigation={navigation} embeddedInTab={embeddedInTab} onBack={handleSettingsBack} />
 
       <ScrollView
         contentContainerStyle={[
@@ -116,7 +125,7 @@ export default function SettingsScreen({ navigation, route }) {
             icon={<User size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Profile"
             subtitle="View and edit your account"
-            onPress={() => navigation.navigate('ProfileScreen')}
+            onPress={() => navigation.navigate('MainTabs', { screen: 'Profile' })}
           />
         </SettingsSection>
 
@@ -128,23 +137,19 @@ export default function SettingsScreen({ navigation, route }) {
             icon={<Tag size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Browse categories"
             subtitle="Explore articles by topic"
-            onPress={() => navigation.navigate('NewsFeed', { screen: 'BrowseCategories' })}
+            onPress={() => openSettingsScreen('SettingsBrowseCategories', { fromSettings: true })}
           />
           <SettingsRow
             icon={<Tag size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Manage categories"
             subtitle="Topics you follow"
-            onPress={() => openContentScreen('SettingsTagSelection', { fromSettings: true })}
+            onPress={() => openSettingsScreen('SettingsTagSelection', { fromSettings: true })}
           />
           <SettingsRow
             icon={<Hash size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Custom keywords"
             subtitle="Extra terms for matching articles"
-            onPress={() =>
-              openContentScreen('SettingsKeywordSelection', {
-                fromSettings: true,
-              })
-            }
+            onPress={() => openSettingsScreen('SettingsKeywordSelection', { fromSettings: true })}
           />
         </SettingsSection>
 
@@ -208,12 +213,12 @@ export default function SettingsScreen({ navigation, route }) {
           <SettingsRow
             icon={<Lock size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Privacy & security"
-            onPress={() => navigation.navigate('PrivacyScreen')}
+            onPress={() => openSettingsScreen('PrivacyScreen')}
           />
           <SettingsRow
             icon={<FileText size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Terms of service"
-            onPress={() => navigation.getParent()?.navigate('TermsScreen')}
+            onPress={() => navigation.push('TermsScreen')}
           />
         </SettingsSection>
 
@@ -232,13 +237,13 @@ export default function SettingsScreen({ navigation, route }) {
           <SettingsRow
             icon={<Database size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Data & storage"
-            onPress={() => navigation.navigate('DataScreen')}
+            onPress={() => openSettingsScreen('DataScreen')}
           />
           <SettingsRow
             icon={<Image size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Pics"
             subtitle="Image-first discovery feed"
-            onPress={() => navigation.getParent()?.navigate('Pics')}
+            onPress={() => navigation.push('Pics')}
           />
           <SettingsRow
             icon={<MessageSquare size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
@@ -248,7 +253,7 @@ export default function SettingsScreen({ navigation, route }) {
           <SettingsRow
             icon={<Info size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="About TRAK"
-            onPress={() => navigation.navigate('AboutScreen')}
+            onPress={() => openSettingsScreen('AboutScreen')}
           />
         </SettingsSection>
 

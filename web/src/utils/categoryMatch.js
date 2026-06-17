@@ -178,7 +178,11 @@ export function buildCategoryList(platformCategories = [], categoryCounts = null
     });
   }
 
-  return list.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  const sorted = list.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+  if (useApiCounts) {
+    return sorted.filter((row) => row.count > 0);
+  }
+  return sorted;
 }
 
 const CATEGORY_ICONS = {

@@ -38,7 +38,7 @@ const CategoriesScreen = () => {
     const [expandedCategory, setExpandedCategory] = useState(null);
     const [showMore, setShowMore] = useState(false);
     const [previewByKey, setPreviewByKey] = useState({});
-    const [previewLoadingKey, setPreviewLoadingKey] = useState('');
+    const [previewStatusByKey, setPreviewStatusByKey] = useState({});
 
     const loadCategories = async () => {
         try {
@@ -62,19 +62,36 @@ const CategoriesScreen = () => {
         loadCategories();
     }, []);
 
-    const loadCategoryPreview = useCallback(async (categoryKey) => {
-        if (!categoryKey || previewByKey[categoryKey]) return;
-        setPreviewLoadingKey(categoryKey);
+    const loadCategoryPreview = useCallback(async (categoryKey, { force = false } = {}) => {
+        if (!categoryKey) return;
+        const status = previewStatusByKey[categoryKey];
+        if (!force && (status === 'loading' || status === 'loaded')) return;
+
+        setPreviewStatusByKey((prev) => ({ ...prev, [categoryKey]: 'loading' }));
         try {
             const page = await loadCategoryPage({ category: categoryKey, limit: ARTICLES_PREVIEW_COUNT });
-            setPreviewByKey((prev) => ({ ...prev, [categoryKey]: page.items || [] }));
+            const items = page.items || [];
+            setPreviewByKey((prev) => ({ ...prev, [categoryKey]: items }));
+            setPreviewStatusByKey((prev) => ({
+                ...prev,
+                [categoryKey]: items.length ? 'loaded' : 'error',
+            }));
         } catch (e) {
             console.warn('Category preview failed:', e?.message);
             setPreviewByKey((prev) => ({ ...prev, [categoryKey]: [] }));
-        } finally {
-            setPreviewLoadingKey('');
+            setPreviewStatusByKey((prev) => ({ ...prev, [categoryKey]: 'error' }));
         }
-    }, [previewByKey]);
+    }, [previewStatusByKey]);
+
+    const retryPreview = (category) => {
+        if (!category?.key) return;
+        setPreviewStatusByKey((prev) => {
+            const next = { ...prev };
+            delete next[category.key];
+            return next;
+        });
+        loadCategoryPreview(category.key, { force: true });
+    };
 
     const handleCategoryClick = (category) => {
         const opening = expandedCategory !== category.name;
@@ -216,7 +233,9 @@ const CategoriesScreen = () => {
                             {categoriesToRender.map((category) => {
                                 const isExpanded = expandedCategory === category.name;
                                 const previewArticles = previewByKey[category.key] || [];
-                                const previewLoading = previewLoadingKey === category.key;
+                                const previewStatus = previewStatusByKey[category.key];
+                                const previewLoading = previewStatus === 'loading';
+                                const previewFailed = previewStatus === 'error';
                                 const showMoreLink = category.count > ARTICLES_PREVIEW_COUNT;
 
                                 return (
@@ -267,10 +286,48 @@ const CategoriesScreen = () => {
                                                     <p style={{ margin: 0, fontSize: 14, color: textSecondary }}>
                                                         No articles in this category yet.
                                                     </p>
-                                                ) : previewArticles.length === 0 ? (
-                                                    <p style={{ margin: 0, fontSize: 14, color: textSecondary }}>
-                                                        Could not load preview. Open the full category page.
-                                                    </p>
+                                                ) : previewFailed || previewArticles.length === 0 ? (
+                                                    <div>
+                                                        <p style={{ margin: '0 0 12px', fontSize: 14, color: textSecondary }}>
+                                                            Could not load preview. Open the full category page.
+                                                        </p>
+                                                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => retryPreview(category)}
+                                                                style={{
+                                                                    padding: '10px 18px',
+                                                                    borderRadius: 8,
+                                                                    border: `1px solid ${borderColor}`,
+                                                                    background: colors.backgroundSecondary,
+                                                                    color: textPrimary,
+                                                                    fontWeight: 600,
+                                                                    fontSize: 14,
+                                                                    cursor: 'pointer',
+                                                                }}
+                                                            >
+                                                                Retry
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => navigate(`/categories/${encodeURIComponent(category.key)}`, {
+                                                                    state: { categoryCount: category.count },
+                                                                })}
+                                                                style={{
+                                                                    padding: '10px 18px',
+                                                                    borderRadius: 8,
+                                                                    border: `1px solid ${accentColor}`,
+                                                                    background: `${accentColor}12`,
+                                                                    color: accentColor,
+                                                                    fontWeight: 600,
+                                                                    fontSize: 14,
+                                                                    cursor: 'pointer',
+                                                                }}
+                                                            >
+                                                                View all
+                                                            </button>
+                                                        </div>
+                                                    </div>
                                                 ) : (
                                                     <>
                                                         <p style={{ margin: '0 0 8px', fontSize: 13, color: textSecondary }}>

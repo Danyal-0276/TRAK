@@ -18,12 +18,14 @@ import ArticleCardImage from '../../components/ArticleCardImage';
 import { resolveArticleImageUrl } from '../../utils/articleMedia';
 import Text from '../../components/ui/Text';
 import { buildArticleDetailParams } from '../../utils/articleNavigation';
+import { useStackBackHandler } from '../../hooks/useStackBackHandler';
 
 const GAP = 10;
 const NUM_COLUMNS = 2;
 const CARD_WIDTH = (Dimensions.get('window').width - 24 - GAP) / NUM_COLUMNS;
 
 const PicsScreen = ({ navigation }) => {
+    useStackBackHandler(navigation, true);
     const { theme } = useTheme();
     const { colors } = theme;
     const insets = useSafeAreaInsets();

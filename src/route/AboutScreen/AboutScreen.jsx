@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
 import { Heart, Newspaper, Users } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeContext';
 import Text from '../../components/ui/Text';
+import { useStackBackHandler } from '../../hooks/useStackBackHandler';
 import {
   ABOUT_META,
   ABOUT_STATS,
@@ -11,7 +13,10 @@ import {
   ABOUT_TEAM,
 } from './aboutContent';
 
-const AboutScreen = () => {
+const AboutScreen = ({ route }) => {
+  const navigation = useNavigation();
+  const returnTab = String(route?.params?.returnTab || 'Profile');
+  useStackBackHandler(navigation, true, returnTab);
   const { theme } = useTheme();
   const { colors } = theme;
   const insets = useSafeAreaInsets();
