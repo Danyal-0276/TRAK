@@ -30,6 +30,7 @@ import AccentTabHeader from '../../components/ui/AccentTabHeader';
 import { CHAT_HERO_SUBTITLE, CHAT_HERO_TITLE, CHAT_PROMPTS } from './chatUiConstants';
 import ChatSidebar from './components/ChatSidebar';
 import { mapChatRelatedArticles, mapServerChatMessages } from './chatMessageUtils';
+import { navigateToArticleDetail } from '../../utils/articleNavigation';
 
 const TAB_BAR_CLEARANCE = 100;
 const ESTIMATED_HEADER_HEIGHT = 88;
@@ -305,7 +306,7 @@ const ChatScreen = () => {
 
   const openArticle = (articleId) => {
     if (!articleId) return;
-    navigation.navigate('NewsFeed', { screen: 'ArticleDetail', params: { articleId: String(articleId) } });
+    navigateToArticleDetail(navigation, articleId, { returnTab: 'Chat' });
   };
 
   const sendMessage = async (textValue) => {

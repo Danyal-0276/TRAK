@@ -6,6 +6,7 @@ import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../../../theme/ThemeContext';
 import NotificationAvatar from './NotificationAvatar';
 import { getNotificationCardContent } from '../../../utils/notificationCardContent';
+import { pushMainStackScreen } from '../../../navigation/appStackNavigation';
 
 const NotificationCard = ({ item, onMarkAsRead, onNotificationPress }) => {
   const { theme } = useTheme();
@@ -20,7 +21,7 @@ const NotificationCard = ({ item, onMarkAsRead, onNotificationPress }) => {
       return;
     }
     if (item.id) {
-      navigation.navigate('NotificationDetail', { notificationId: item.id, onMarkAsRead });
+      pushMainStackScreen(navigation, 'NotificationDetail', { notificationId: item.id, onMarkAsRead });
     }
   };
 

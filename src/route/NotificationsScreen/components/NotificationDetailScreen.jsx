@@ -20,6 +20,8 @@ import { getNotificationTypeLabel, getNotificationIconColor } from "../utils/not
 import NotificationAvatar from "./NotificationAvatar";
 import { useFilledActionColors } from "../../../theme/buttonContrast";
 import * as notificationsApi from "../../../api/notificationsApi";
+import { navigateToArticleDetail } from '../../../utils/articleNavigation';
+import { useStackBackHandler } from '../../../hooks/useStackBackHandler';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -34,6 +36,7 @@ const NotificationDetailScreen = () => {
   const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  useStackBackHandler(navigation, true, 'Notifications');
 
   // Animations
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -163,7 +166,7 @@ const NotificationDetailScreen = () => {
 
   const openArticle = () => {
     if (!articleId) return;
-    navigation.navigate('ArticleDetail', { articleId: String(articleId) });
+    navigateToArticleDetail(navigation, articleId, { returnTab: 'Notifications' });
   };
 
   return (

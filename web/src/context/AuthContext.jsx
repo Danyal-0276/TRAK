@@ -21,8 +21,6 @@ import {
     requestOtp,
     saveAuthSession,
 } from '../utils/Service/api';
-import { registerDeviceToken } from '../api/notificationsApi';
-import { getOrCreatePushToken } from '../api/pushToken';
 import {
     resendEmailVerification,
     verifyEmailCode,
@@ -50,10 +48,7 @@ export const AuthProvider = ({ children }) => {
     const applySession = (session) => {
         saveAuthSession(session);
         setUser(session.user);
-        // Fire-and-forget — do not block login/signup completion
-        setTimeout(() => {
-            registerDeviceToken(getOrCreatePushToken(), 'web').catch(() => {});
-        }, 0);
+        // Web FCM push is not configured yet — mobile registers real FCM tokens only.
         return session.user;
     };
 

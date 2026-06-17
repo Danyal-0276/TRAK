@@ -15,7 +15,7 @@ import { getRefreshControlProps } from '../../theme/refreshControl';
 import { loadFeedItems } from '../../utils/loadFeed';
 import { addBookmark, removeBookmark, setReaction } from '../../utils/Service/api';
 import Text from '../../components/ui/Text';
-import { buildArticleDetailParams } from '../../utils/articleNavigation';
+import { navigateToArticleDetail, getCurrentMainTab } from '../../utils/articleNavigation';
 import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
 
 const TrendingScreen = ({ navigation }) => {
@@ -46,7 +46,7 @@ const TrendingScreen = ({ navigation }) => {
     }, [loadNews]);
 
     const handleArticlePress = (article) => {
-        navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
+        navigateToArticleDetail(navigation, article, { returnTab: getCurrentMainTab(navigation) });
     };
 
     const handleVote = (itemId, type) => {

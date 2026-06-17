@@ -22,6 +22,8 @@ import { resetTabBarVisibility } from "../../navigation/tabBarVisibility";
 import { useFilledActionColors } from "../../theme/buttonContrast";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
 import { useCollapsibleHeader } from "../../hooks/useCollapsibleHeader";
+import { navigateToArticleDetail } from "../../utils/articleNavigation";
+import { pushMainStackScreen } from "../../navigation/appStackNavigation";
 
 const TAB_BAR_CLEARANCE = 100;
 const ESTIMATED_HEADER_HEIGHT = 148;
@@ -93,10 +95,10 @@ const NotificationsScreen = () => {
       if (!notification.read && notification.id) {
         markAsRead(notification.id);
       }
-      navigation.navigate("ArticleDetail", { articleId: String(articleId) });
+      navigateToArticleDetail(navigation, articleId, { returnTab: 'Notifications' });
       return;
     }
-    navigation.navigate("NotificationDetail", {
+    pushMainStackScreen(navigation, "NotificationDetail", {
       notificationId: notification.id,
       onMarkAsRead: markAsRead,
     });

@@ -20,7 +20,7 @@ import {
   setReaction,
 } from '../../utils/Service/api';
 import Text from '../../components/ui/Text';
-import { buildArticleDetailParams } from '../../utils/articleNavigation';
+import { navigateToArticleDetail } from '../../utils/articleNavigation';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
@@ -79,7 +79,7 @@ const ReactionArticlesScreen = ({ navigation, route }) => {
   }, [loadItems]);
 
   const handleArticlePress = (article) => {
-    navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
+    navigateToArticleDetail(navigation, article, { returnTab: 'Profile' });
   };
 
   const handleVote = (itemId, type) => {

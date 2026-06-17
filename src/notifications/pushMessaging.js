@@ -4,6 +4,8 @@
  */
 
 import { Platform } from 'react-native';
+import { registerDeviceToken } from '../api/notificationsApi';
+import { syncPushTokenWithBackend } from '../api/pushToken';
 import { dispatchNotificationsRefresh } from '../utils/userNotificationsEvents';
 
 function tryFcmMessaging() {
@@ -31,7 +33,20 @@ export function bindForegroundPushMessaging() {
     });
   }
 
-  return messaging().onMessage(async () => {
+  const unsubMessage = messaging().onMessage(async () => {
     dispatchNotificationsRefresh();
   });
+
+  const unsubRefresh = messaging().onTokenRefresh(async () => {
+    try {
+      await syncPushTokenWithBackend(registerDeviceToken);
+    } catch {
+      /* ignore transient registration failures */
+    }
+  });
+
+  return () => {
+    unsubMessage();
+    unsubRefresh();
+  };
 }

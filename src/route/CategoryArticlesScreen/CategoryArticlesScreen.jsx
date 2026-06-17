@@ -17,7 +17,7 @@ import { useArticleInteractions } from '../../hooks/useArticleInteractions';
 import { useStackBackHandler } from '../../hooks/useStackBackHandler';
 import { isSettingsFlowRoute } from '../../navigation/appStackNavigation';
 import ArticleFeedList from '../../components/ArticleFeedList';
-import { buildArticleDetailParams } from '../../utils/articleNavigation';
+import { navigateToArticleDetail } from '../../utils/articleNavigation';
 
 const CategoryArticlesScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
@@ -94,7 +94,7 @@ const CategoryArticlesScreen = ({ navigation, route }) => {
     }, [categorySlug, hasMore, loadingMore, nextCursor]);
 
     const handleArticlePress = (article) => {
-        navigation.navigate('ArticleDetail', buildArticleDetailParams(article));
+        navigateToArticleDetail(navigation, article, { returnTab });
     };
 
     return (

@@ -253,3 +253,29 @@ export async function registerDeviceToken(token, platform = 'mobile') {
 }
 
 
+
+export async function unregisterDeviceToken(token) {
+
+  const res = await apiFetch(
+
+    `${PREFIX}/device-token/`,
+
+    {
+
+      method: 'DELETE',
+
+      headers: { 'Content-Type': 'application/json' },
+
+      body: JSON.stringify({ token }),
+
+    },
+
+    API_BASE
+
+  );
+
+  return parseJson(res);
+
+}
+
+

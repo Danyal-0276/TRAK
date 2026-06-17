@@ -18,7 +18,7 @@ import {
   loadProfileBundle,
   stripLastLogin,
 } from "../../utils/profileSessionCache";
-import { buildArticleDetailParams } from "../../utils/articleNavigation";
+import { navigateToArticleDetail } from "../../utils/articleNavigation";
 import { pushMainStackScreen } from "../../navigation/appStackNavigation";
 import { queueAdminTab } from "../../utils/adminNavigationIntent";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
@@ -371,7 +371,7 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
         <BookmarkList
           bookmarks={bookmarks}
           onPressArticle={(article) => {
-            stackNavigation.navigate('ArticleDetail', buildArticleDetailParams(article));
+            navigateToArticleDetail(stackNavigation, article, { returnTab: 'Profile' });
           }}
           onViewAll={() => stackNavigation.navigate('Bookmarks')}
           votedItems={votedItems}
