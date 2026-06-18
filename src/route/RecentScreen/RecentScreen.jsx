@@ -19,6 +19,7 @@ import { navigateToArticleDetail, getCurrentMainTab } from '../../utils/articleN
 import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
 import { setBookmarkIds } from '../../utils/bookmarksStorage';
 import { emitArticleInteractionChange } from '../../utils/articleInteractionEvents';
+import { useSyncFeedInteractionsOnFocus } from '../../hooks/useSyncFeedInteractionsOnFocus';
 
 /** Higher = more recent (for descending sort). */
 function recencySortKey(timeStr) {
@@ -44,6 +45,8 @@ const RecentScreen = ({ navigation }) => {
     const [newsData, setNewsData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+
+    useSyncFeedInteractionsOnFocus({ setVotedItems, setBookmarkedItems, setNewsData });
 
     const loadNews = useCallback(async () => {
         try {

@@ -52,51 +52,20 @@ import { navigateToArticleDetail } from '../../utils/articleNavigation';
 import { pushMainStackScreen } from '../../navigation/appStackNavigation';
 import {
     getHomeFeedCache,
+    getBookmarkTabCache,
     isFeedCacheFresh,
+    isBookmarkTabCacheFresh,
     saveHomeFeedCache,
+    saveBookmarkTabCache,
 } from '../../utils/feedSessionCache';
 import { preloadProfileData, seedProfileFromBootstrap } from '../../utils/profileSessionCache';
 import { syncFeedInteractionsFromStorage } from '../../utils/syncFeedInteractions';
-import { loadBookmarkFeedItems } from '../../utils/loadBookmarkFeedItems';
-
-function buildBookmarksTabNews(newsData, bookmarkedItems, bookmarkTabItems, votedItems = {}) {
-    const merged = new Map();
-
-    // API bookmark rows are authoritative — do not filter by local id set (may be stale).
-    (bookmarkTabItems || []).forEach((item) => {
-        const id = String(item.id);
-        merged.set(id, { ...item, isBookmarked: true });
-    });
-
-    // Enrich with feed rows when the same article is already loaded.
-    (newsData || []).forEach((item) => {
-        const id = String(item.id);
-        if (!merged.has(id) && !bookmarkedItems?.has(id)) return;
-        merged.set(id, {
-            ...item,
-            ...(merged.get(id) || {}),
-            isBookmarked: true,
-            userReaction: item.userReaction ?? merged.get(id)?.userReaction ?? votedItems[id] ?? null,
-            like_count: item.like_count ?? merged.get(id)?.like_count,
-            dislike_count: item.dislike_count ?? merged.get(id)?.dislike_count,
-        });
-    });
-
-    return Array.from(merged.values());
-}
-
-const { width, height } = Dimensions.get('window');
-const PAGER_LAYOUT = { width };
-
-const HEADER_HEIGHT = 60;
-const TAB_HEIGHT = 50;
-const TOTAL_HEADER_HEIGHT = HEADER_HEIGHT + TAB_HEIGHT;
-
-const FEED_TAB_ROUTES = [
-    { key: 'For you', title: 'For you' },
-    { key: 'Bookmarks', title: 'Bookmarks' },
-    { key: 'Trending', title: 'Trending' },
-];
+import {
+    loadBookmarkFeedItemsFast,
+    enrichBookmarkFeedItems,
+    bookmarkCardsFromRows,
+} from '../../utils/loadBookmarkFeedItems';
+import { buildBookmarksTabNews, patchBookmarkTabItems } from '../../utils/buildBookmarksTabNews';
 
 function filterNewsForTab(tabKey, newsData, bookmarkedItems, bookmarkTabItems, votedItems) {
     if (tabKey === 'Bookmarks') {
@@ -111,6 +80,35 @@ function filterNewsForTab(tabKey, newsData, bookmarkedItems, bookmarkTabItems, v
     }
     return newsData;
 }
+
+function buildKnownArticlesMap(newsData) {
+    const map = {};
+    for (const item of newsData || []) {
+        const id = String(item?.id ?? '').trim();
+        if (id) map[id] = item;
+    }
+    return map;
+}
+
+function seedBookmarkTabFromRows(rows, reactionMap, newsData, setBookmarkTabItems) {
+    const items = bookmarkCardsFromRows(rows, reactionMap || {}, buildKnownArticlesMap(newsData));
+    if (!items.length) return;
+    setBookmarkTabItems(items);
+    saveBookmarkTabCache(items);
+}
+
+const { width, height } = Dimensions.get('window');
+const PAGER_LAYOUT = { width };
+
+const HEADER_HEIGHT = 60;
+const TAB_HEIGHT = 50;
+const TOTAL_HEADER_HEIGHT = HEADER_HEIGHT + TAB_HEIGHT;
+
+const FEED_TAB_ROUTES = [
+    { key: 'For you', title: 'For you' },
+    { key: 'Bookmarks', title: 'Bookmarks' },
+    { key: 'Trending', title: 'Trending' },
+];
 
 /** FlatList uses scrollToOffset; ScrollView uses scrollTo. */
 function restoreScrollPosition(ref, scrollY) {
@@ -223,7 +221,14 @@ const NewsFeedScreen = ({ navigation }) => {
     const [hasMore, setHasMore] = useState(() => (hasCachedHome ? Boolean(cachedHome.hasMore) : false));
     const [loadingMore, setLoadingMore] = useState(false);
     const [loading, setLoading] = useState(!hasCachedHome);
-    const [bookmarkTabItems, setBookmarkTabItems] = useState([]);
+    const cachedBookmarkTab = getBookmarkTabCache();
+    const [bookmarkTabItems, setBookmarkTabItems] = useState(() =>
+        isBookmarkTabCacheFresh(cachedBookmarkTab) ? cachedBookmarkTab.items : [],
+    );
+    const [bookmarksTabLoading, setBookmarksTabLoading] = useState(false);
+    const bookmarkTabItemsRef = useRef([]);
+    bookmarkTabItemsRef.current = bookmarkTabItems;
+
     const [refreshing, setRefreshing] = useState(false);
     const [feedKeywords, setFeedKeywords] = useState(() => (hasCachedHome ? cachedHome.feedKeywords || [] : []));
     const [skipEntryAnim, setSkipEntryAnim] = useState(false);
@@ -324,6 +329,12 @@ const NewsFeedScreen = ({ navigation }) => {
                     bookmarkRows: boot.bookmarkRows || [],
                     reactionResults: boot.reactionResults || [],
                 });
+                seedBookmarkTabFromRows(
+                    boot.bookmarkRows || [],
+                    boot.reactionMap,
+                    [],
+                    setBookmarkTabItems,
+                );
                 preloadProfileData({ skipIfFresh: true });
                 return;
             }
@@ -340,6 +351,12 @@ const NewsFeedScreen = ({ navigation }) => {
                 bookmarkRows: boot.bookmarkRows || [],
                 reactionResults: boot.reactionResults || [],
             });
+            seedBookmarkTabFromRows(
+                boot.bookmarkRows || [],
+                boot.reactionMap,
+                mapped,
+                setBookmarkTabItems,
+            );
             preloadProfileData({ skipIfFresh: true });
 
             saveHomeFeedCache({
@@ -394,18 +411,22 @@ const NewsFeedScreen = ({ navigation }) => {
             listReactions().catch(() => ({ results: [] })),
         ]);
         const ids = (bmRes.results || []).map((b) => String(b.article_id));
-        setBookmarkedItems(new Set(ids));
-        await setBookmarkIds(ids).catch(() => {});
+        const apiSet = new Set(ids);
+        const storedSet = new Set((await getBookmarkIds().catch(() => [])).map(String));
+        const displaySet = force ? apiSet : storedSet;
+        setBookmarkedItems(displaySet);
+        if (force) {
+            await setBookmarkIds(ids).catch(() => {});
+        }
 
         const reactionMap = await mergeReactionRows(reactRes.results || [], { replace: true }).catch(() => ({}));
         setVotedItems(reactionMap);
         seedVoteRegistry(reactionMap);
-        const idSet = new Set(ids);
         setNewsData((prev) =>
             prev.map((n) => {
                 const nid = String(n.id);
                 const userReaction = reactionMap[nid] || null;
-                const isBookmarked = idSet.has(nid);
+                const isBookmarked = displaySet.has(nid);
                 if (n.userReaction === userReaction && !!n.isBookmarked === isBookmarked) return n;
                 return { ...n, userReaction, isBookmarked };
             })
@@ -415,41 +436,71 @@ const NewsFeedScreen = ({ navigation }) => {
     const lastFeedLoadRef = useRef(hasCachedHome ? Date.now() : 0);
     const FEED_STALE_MS = 10 * 60 * 1000;
 
+    const lastBookmarkTabLoadRef = useRef(0);
+    const BOOKMARK_TAB_STALE_MS = 3 * 60 * 1000;
+
     useArticleInteractionListener({
         setVotedItems,
         setBookmarkedItems,
         onArticlesPatch: setNewsData,
+        setBookmarkTabItems,
     });
+
+    const refreshBookmarkTabItems = useCallback(async ({ force = false } = {}) => {
+        const cached = getBookmarkTabCache();
+        if (!force && isBookmarkTabCacheFresh(cached) && cached.items?.length) {
+            setBookmarkTabItems(cached.items);
+            return cached.items;
+        }
+
+        const now = Date.now();
+        const currentItems = bookmarkTabItemsRef.current;
+        if (!force && now - lastBookmarkTabLoadRef.current < BOOKMARK_TAB_STALE_MS && currentItems.length) {
+            return currentItems;
+        }
+
+        lastBookmarkTabLoadRef.current = now;
+        const knownById = buildKnownArticlesMap(newsDataRef.current);
+        const showSpinner = currentItems.length === 0;
+        if (showSpinner) setBookmarksTabLoading(true);
+
+        try {
+            const items = await loadBookmarkFeedItemsFast({ knownById });
+            setBookmarkTabItems(items);
+            saveBookmarkTabCache(items);
+            enrichBookmarkFeedItems(items).then((enriched) => {
+                setBookmarkTabItems(enriched);
+                saveBookmarkTabCache(enriched);
+            }).catch(() => {});
+            return items;
+        } catch (e) {
+            console.warn('Bookmark tab load failed:', e?.message || e);
+            return currentItems;
+        } finally {
+            if (showSpinner) setBookmarksTabLoading(false);
+        }
+    }, []);
 
     useEffect(() => {
         if (activeTab !== 'Bookmarks') return undefined;
         let cancelled = false;
         (async () => {
-            try {
-                const items = await loadBookmarkFeedItems();
-                if (cancelled) return;
-                setBookmarkTabItems(items);
-                const ids = items.map((item) => String(item.id)).filter(Boolean);
-                if (ids.length) {
-                    setBookmarkedItems((prev) => {
-                        const next = new Set([...prev, ...ids]);
-                        if (next.size === prev.size) return prev;
-                        return next;
-                    });
-                    const stored = await getBookmarkIds().catch(() => []);
-                    const merged = [...new Set([...stored, ...ids])];
-                    if (merged.length !== stored.length) {
-                        await setBookmarkIds(merged).catch(() => {});
-                    }
-                }
-            } catch (e) {
-                console.warn('Bookmark tab load failed:', e?.message || e);
-            }
+            const items = await refreshBookmarkTabItems();
+            if (cancelled || !items?.length) return;
+            const storedSet = new Set((await getBookmarkIds().catch(() => [])).map(String));
+            setBookmarkedItems(storedSet);
+            setBookmarkTabItems(items.filter((item) => storedSet.has(String(item.id))));
         })();
         return () => {
             cancelled = true;
         };
-    }, [activeTab, bookmarkedItems]);
+    }, [activeTab, refreshBookmarkTabItems]);
+
+    useEffect(() => {
+        if (bookmarkTabItems.length) {
+            saveBookmarkTabCache(bookmarkTabItems);
+        }
+    }, [bookmarkTabItems]);
 
     useFocusEffect(
         useCallback(() => {
@@ -469,7 +520,7 @@ const NewsFeedScreen = ({ navigation }) => {
                 setBookmarkedItems(bmSet);
                 setVotedItems(reactionMap);
                 setNewsData((prev) => stampArticleInteractions(prev, reactionMap, bmSet));
-                await syncInteractionsFromServer(true);
+                await syncInteractionsFromServer(false);
             })();
 
             const cached = getHomeFeedCache();
@@ -552,25 +603,26 @@ const NewsFeedScreen = ({ navigation }) => {
     }, [hasCachedHome, cachedHome]);
 
     useEffect(() => {
+        if (bookmarkTabItems.length) return;
         (async () => {
             const cached = await getBookmarkIds().catch(() => []);
             if (cached.length) {
                 setBookmarkedItems(new Set(cached.map(String)));
             }
-            const res = await listBookmarks().catch(() => ({ results: [] }));
-            const ids = (res.results || []).map((b) => String(b.article_id));
-            setBookmarkedItems(new Set(ids));
-            await setBookmarkIds(ids).catch(() => {});
         })();
-    }, []);
-
+    }, [bookmarkTabItems.length]);
 
     const handleRefresh = async () => {
         setRefreshing(true);
         showHeader();
         lastFeedLoadRef.current = Date.now();
-        await loadNews({ silent: true, force: true });
-        await syncInteractionsFromServer(true);
+        if (activeTab === 'Bookmarks') {
+            lastBookmarkTabLoadRef.current = 0;
+            await refreshBookmarkTabItems({ force: true });
+        } else {
+            await loadNews({ silent: true, force: true });
+            await syncInteractionsFromServer(true);
+        }
         setRefreshing(false);
     };
 
@@ -646,12 +698,20 @@ const NewsFeedScreen = ({ navigation }) => {
     const handleBookmark = (itemId) => {
         const id = String(itemId || '').trim();
         if (!id) return;
-        const article = newsDataRef.current.find((n) => String(n.id) === id);
-        const { wasBookmarked } = applyOptimisticBookmarkToggle({
+        const article =
+            newsDataRef.current.find((n) => String(n.id) === id) ||
+            bookmarkTabItems.find((n) => String(n.id) === id);
+        const { wasBookmarked, isBookmarked } = applyOptimisticBookmarkToggle({
             articleId: id,
             article,
             setBookmarkedItems,
             setNewsData,
+            removeFromListOnUnbookmark: activeTab === 'Bookmarks',
+        });
+        patchBookmarkTabItems(setBookmarkTabItems, {
+            articleId: id,
+            isBookmarked,
+            article,
         });
 
         queueBookmarkApi(id, wasBookmarked ? 'remove' : 'add', article).catch((error) => {
@@ -663,6 +723,11 @@ const NewsFeedScreen = ({ navigation }) => {
                 article,
                 setBookmarkedItems,
                 setNewsData,
+            });
+            patchBookmarkTabItems(setBookmarkTabItems, {
+                articleId: id,
+                isBookmarked: wasBookmarked,
+                article,
             });
         });
     };
@@ -698,7 +763,12 @@ const NewsFeedScreen = ({ navigation }) => {
                 <View style={{ height: measuredHeaderHeight + 8 }} />
             );
 
-            const listEmpty = loading ? (
+            const waitingForFirstPaint =
+                tabKey === 'Bookmarks'
+                    ? bookmarksTabLoading && tabNews.length === 0
+                    : loading && tabNews.length === 0;
+
+            const listEmpty = waitingForFirstPaint ? (
                 <FeedSkeleton colors={colors} count={5} />
             ) : (
                 <View style={{ paddingHorizontal: 24, paddingTop: 24, alignItems: 'center' }}>
@@ -740,7 +810,7 @@ const NewsFeedScreen = ({ navigation }) => {
                     keyPrefix={tabKey}
                     style={[styles.feed, { backgroundColor: 'transparent' }]}
                     contentContainerStyle={[styles.feedContent, { backgroundColor: 'transparent', paddingTop: 8 }]}
-                    data={loading || tabNews.length === 0 ? [] : tabNews}
+                    data={waitingForFirstPaint ? [] : tabNews}
                     onArticlePress={handleArticlePress}
                     onVote={handleVote}
                     onBookmark={handleBookmark}
@@ -785,6 +855,7 @@ const NewsFeedScreen = ({ navigation }) => {
             topInset,
             measuredHeaderHeight,
             loading,
+            bookmarksTabLoading,
             loadingMore,
             loadMore,
             navigation,

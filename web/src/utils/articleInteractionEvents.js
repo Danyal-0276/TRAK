@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { setRegisteredCounts } from './articleVoteController';
+import { patchBookmarkTabItems } from './buildBookmarksTabNews';
 
 const listeners = new Set();
 
@@ -123,6 +124,7 @@ export function useArticleInteractionListener({
   setVotedItems,
   setBookmarkedItems,
   onArticlesPatch,
+  setBookmarkTabItems,
 } = {}) {
   useEffect(() => {
     return subscribeArticleInteractionChange((patch) => {
@@ -131,6 +133,9 @@ export function useArticleInteractionListener({
         setBookmarkedItems,
         onArticlesPatch,
       });
+      if (setBookmarkTabItems) {
+        patchBookmarkTabItems(setBookmarkTabItems, patch);
+      }
     });
-  }, [setVotedItems, setBookmarkedItems, onArticlesPatch]);
+  }, [setVotedItems, setBookmarkedItems, onArticlesPatch, setBookmarkTabItems]);
 }

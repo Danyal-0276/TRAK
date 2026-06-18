@@ -13,11 +13,16 @@ import { ChevronLeft } from 'lucide-react-native';
 import ArticleFeedList from '../../components/ArticleFeedList';
 import { useTheme } from '../../theme/ThemeContext';
 import { getRefreshControlProps } from '../../theme/refreshControl';
-import { getUserArticleDetail, listBookmarks, setReaction } from '../../utils/Service/api';
+import { setReaction } from '../../utils/Service/api';
 import Text from '../../components/ui/Text';
 import { navigateToArticleDetail } from '../../utils/articleNavigation';
-import { mapApiItem } from '../../utils/loadFeed';
 import { filterRealFeedItems } from '../../utils/feedRealOnly';
+import { loadBookmarkFeedItemsFast, enrichBookmarkFeedItems } from '../../utils/loadBookmarkFeedItems';
+import {
+    getBookmarkTabCache,
+    isBookmarkTabCacheFresh,
+    saveBookmarkTabCache,
+} from '../../utils/feedSessionCache';
 import { patchArticleVoteRow } from '../../utils/reactionVote';
 import {
     subscribeArticleInteractionChange,
@@ -46,51 +51,36 @@ const BookmarksScreen = ({ navigation }) => {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
 
-    const loadNews = useCallback(async () => {
+    const applyBookmarkRows = useCallback((items) => {
+        const rows = filterRealFeedItems(items || []).map((n) => ({ ...n, isBookmarked: true }));
+        const idSet = new Set(rows.map((item) => String(item.id)));
+        setBookmarkedItems(idSet);
+        setNewsData(rows);
+        if (rows.length) saveBookmarkTabCache(rows);
+    }, []);
+
+    const loadNews = useCallback(async ({ silent = false } = {}) => {
+        const cached = getBookmarkTabCache();
+        if (!silent && isBookmarkTabCacheFresh(cached) && cached.items?.length) {
+            applyBookmarkRows(cached.items);
+            setLoading(false);
+        } else if (!silent) {
+            setLoading(true);
+        }
+
         try {
-            const response = await listBookmarks();
-            const rows = response.results || [];
-            const detailed = await Promise.all(
-                rows.map(async (r) => {
-                    try {
-                        const full = await getUserArticleDetail(r.article_id);
-                        const mapped = mapApiItem(full);
-                        return {
-                            ...mapped,
-                            id: mapped.id || r.article_id || r.id,
-                            time: mapped.time || (r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently'),
-                            category: mapped.category || 'Saved',
-                        };
-                    } catch {
-                        return {
-                            id: r.article_id || r.id,
-                            title: r.title || 'Saved article',
-                            source: 'TRAK',
-                            excerpt: '',
-                            description: '',
-                            content: '',
-                            canonical_url: r.url || '',
-                            category: 'Saved',
-                            time: r.created_at ? new Date(r.created_at).toLocaleString() : 'Recently',
-                            upvotes: 0,
-                            votes: 0,
-                        };
-                    }
-                })
-            );
-            const idSet = new Set((detailed || []).map((item) => String(item.id)));
-            setBookmarkedItems(idSet);
-            setNewsData(
-                filterRealFeedItems(detailed || [])
-                    .map((n) => ({ ...n, isBookmarked: true }))
-            );
+            const items = await loadBookmarkFeedItemsFast({});
+            applyBookmarkRows(items);
+            enrichBookmarkFeedItems(items)
+                .then((enriched) => applyBookmarkRows(enriched))
+                .catch(() => {});
         } catch (e) {
             console.warn(e);
-            setNewsData([]);
+            if (!cached?.items?.length) setNewsData([]);
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [applyBookmarkRows]);
 
     useEffect(() => {
         loadNews();

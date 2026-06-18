@@ -285,6 +285,8 @@ const UserProfileScreen = () => {
             articleId: id,
             article: item,
             setBookmarkedItems,
+            onArticlesPatch: setBookmarks,
+            removeFromListOnUnbookmark: true,
         });
 
         queueBookmarkApi(id, wasBookmarked ? 'remove' : 'add', item).catch(() => {
@@ -295,7 +297,6 @@ const UserProfileScreen = () => {
                 setBookmarkedItems,
                 onArticlesPatch: setBookmarks,
             });
-            loadBookmarks();
         });
     };
 

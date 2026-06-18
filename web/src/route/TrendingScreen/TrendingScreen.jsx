@@ -12,6 +12,7 @@ import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, setReactionForArticle } from '../../utils/reactionsStorage';
 import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
 import { emitArticleInteractionChange } from '../../utils/articleInteractionEvents';
+import { useSyncFeedInteractionsOnNavigate } from '../../hooks/useSyncFeedInteractionsOnNavigate';
 
 const TrendingScreen = () => {
     const navigate = useNavigate();
@@ -29,6 +30,8 @@ const TrendingScreen = () => {
     const [nextCursor, setNextCursor] = useState('');
     const [hasMore, setHasMore] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
+
+    useSyncFeedInteractionsOnNavigate({ setVotedItems, setBookmarkedItems, setNewsData });
 
     const loadNews = useCallback(async () => {
         try {
