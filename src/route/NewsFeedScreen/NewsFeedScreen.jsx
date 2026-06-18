@@ -80,6 +80,8 @@ function buildBookmarksTabNews(newsData, bookmarkedItems, bookmarkTabItems, vote
     });
     return Array.from(merged.values());
 }
+
+const { width, height } = Dimensions.get('window');
 const PAGER_LAYOUT = { width };
 
 const HEADER_HEIGHT = 60;
