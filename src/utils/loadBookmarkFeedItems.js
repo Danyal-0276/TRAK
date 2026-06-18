@@ -10,6 +10,26 @@ function mapBookmarkRow(row, full, reactionMap) {
   const aid = String(row?.article_id ?? full?.id ?? '').trim();
   if (!aid) return null;
 
+  if (full?.title && (full.excerpt || full.description || full.image || full.image_url)) {
+    const summaryText = getCardSummaryText(full);
+    const imageUrl = resolveArticleImageUrl(full);
+    const likes = Number(full.like_count ?? full.upvotes ?? 0);
+    const dislikes = Number(full.dislike_count ?? 0);
+    return {
+      ...toBookmarkCard(full),
+      id: aid,
+      image_url: full.image_url || imageUrl || null,
+      image: imageUrl || full.image,
+      description: summaryText || full.description || full.excerpt || '',
+      excerpt: full.excerpt || summaryText || '',
+      like_count: likes,
+      dislike_count: dislikes,
+      upvotes: likes,
+      isBookmarked: true,
+      userReaction: getRegisteredVote(aid) ?? reactionMap[aid] ?? full.userReaction ?? null,
+    };
+  }
+
   if (full) {
     const mapped = mapApiItem(full);
     const likes = Number(full.like_count ?? mapped.like_count ?? 0);
@@ -41,23 +61,71 @@ function mapBookmarkRow(row, full, reactionMap) {
   });
 }
 
-export async function loadBookmarkFeedItems() {
-  const response = await listBookmarks().catch(() => ({ results: [] }));
-  const rows = response.results || [];
-  const reactionMap = await getReactionMap().catch(() => ({}));
-
-  const detailed = await Promise.all(
-    rows.map(async (row) => {
+export function bookmarkCardsFromRows(rows, reactionMap = {}, knownById = {}) {
+  return (rows || [])
+    .map((row) => {
       const aid = String(row.article_id ?? '').trim();
       if (!aid) return null;
-      try {
-        const full = await getUserArticleDetail(aid);
-        return mapBookmarkRow(row, full, reactionMap);
-      } catch {
-        return mapBookmarkRow(row, null, reactionMap);
-      }
-    }),
+      return mapBookmarkRow(row, knownById[aid], reactionMap);
+    })
+    .filter(Boolean);
+}
+
+async function mapWithConcurrency(items, mapper, limit = 4) {
+  const out = new Array(items.length);
+  let index = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (index < items.length) {
+      const i = index;
+      index += 1;
+      out[i] = await mapper(items[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return out;
+}
+
+function needsDetailEnrichment(item) {
+  return !item?.excerpt && !item?.description && !item?.image && !item?.image_url;
+}
+
+/** Fast cards from bookmark list + in-memory feed rows (no per-article detail fetch). */
+export async function loadBookmarkFeedItemsFast({ knownById = {}, rows: prefetchedRows } = {}) {
+  const rows =
+    prefetchedRows ||
+    (await listBookmarks().catch(() => ({ results: [] }))).results ||
+    [];
+  const reactionMap = await getReactionMap().catch(() => ({}));
+  return bookmarkCardsFromRows(rows, reactionMap, knownById);
+}
+
+/** Optional background enrichment for cards missing image/summary. */
+export async function enrichBookmarkFeedItems(items, { rows = [] } = {}) {
+  const list = items || [];
+  if (!list.length) return list;
+
+  const rowById = Object.fromEntries(
+    (rows || []).map((r) => [String(r.article_id ?? ''), r]).filter(([id]) => id),
   );
 
-  return detailed.filter(Boolean);
+  return mapWithConcurrency(list, async (item) => {
+    if (!needsDetailEnrichment(item)) return item;
+    const aid = String(item.id);
+    try {
+      const full = await getUserArticleDetail(aid);
+      const reactionMap = await getReactionMap().catch(() => ({}));
+      return mapBookmarkRow(rowById[aid] || { article_id: aid, title: item.title }, full, reactionMap) || item;
+    } catch {
+      return item;
+    }
+  });
+}
+
+/** Load saved bookmarks as feed cards — fast first, enrich only when requested. */
+export async function loadBookmarkFeedItems({ knownById = {}, enrichDetails = false, rows } = {}) {
+  const bookmarkRows =
+    rows || (await listBookmarks().catch(() => ({ results: [] }))).results || [];
+  const items = await loadBookmarkFeedItemsFast({ knownById, rows: bookmarkRows });
+  if (!enrichDetails) return items;
+  return enrichBookmarkFeedItems(items, { rows: bookmarkRows });
 }

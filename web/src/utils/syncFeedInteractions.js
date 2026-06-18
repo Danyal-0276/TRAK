@@ -25,7 +25,7 @@ export function syncFeedInteractionsFromStorage({
   }
 
   if (setBookmarkedItems) {
-    setBookmarkedItems((prev) => new Set([...(prev || []), ...bmSet]));
+    setBookmarkedItems(bmSet);
   }
 
   if (setNewsData) {

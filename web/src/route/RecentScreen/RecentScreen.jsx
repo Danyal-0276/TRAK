@@ -12,6 +12,7 @@ import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, setReactionForArticle } from '../../utils/reactionsStorage';
 import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
 import { emitArticleInteractionChange } from '../../utils/articleInteractionEvents';
+import { useSyncFeedInteractionsOnNavigate } from '../../hooks/useSyncFeedInteractionsOnNavigate';
 
 function recencySortKey(item) {
     const s = item?.time || item?.published_at || '';
@@ -35,6 +36,8 @@ const RecentScreen = () => {
     const [nextCursor, setNextCursor] = useState('');
     const [hasMore, setHasMore] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
+
+    useSyncFeedInteractionsOnNavigate({ setVotedItems, setBookmarkedItems, setNewsData });
 
     const sortRecent = (items) =>
         [...(items || [])].sort((a, b) => recencySortKey(b) - recencySortKey(a));

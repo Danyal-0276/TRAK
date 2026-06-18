@@ -20,6 +20,7 @@ import Text from '../../components/ui/Text';
 import { navigateToArticleDetail, getCurrentMainTab } from '../../utils/articleNavigation';
 import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
 import { emitArticleInteractionChange } from '../../utils/articleInteractionEvents';
+import { useSyncFeedInteractionsOnFocus } from '../../hooks/useSyncFeedInteractionsOnFocus';
 
 const TrendingScreen = ({ navigation }) => {
     const { theme } = useTheme();
@@ -31,6 +32,8 @@ const TrendingScreen = ({ navigation }) => {
     const [newsData, setNewsData] = useState([]);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+
+    useSyncFeedInteractionsOnFocus({ setVotedItems, setBookmarkedItems, setNewsData });
 
     const loadNews = useCallback(async () => {
         try {

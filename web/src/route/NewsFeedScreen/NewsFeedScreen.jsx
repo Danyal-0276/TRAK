@@ -34,6 +34,7 @@ import {
 import { API_BASE, API_ORIGIN } from '../../config/api';
 import { syncFeedInteractionsFromStorage } from '../../utils/syncFeedInteractions';
 import { loadBookmarkFeedItems } from '../../utils/loadBookmarkFeedItems';
+import { buildBookmarksTabNews, patchBookmarkTabItems } from '../../utils/buildBookmarksTabNews';
 
 const FEED_TAB_KEYS = {
     'For you': 'feed.forYou',
@@ -308,6 +309,7 @@ const NewsFeedScreen = () => {
         setVotedItems,
         setBookmarkedItems,
         onArticlesPatch: setNewsData,
+        setBookmarkTabItems,
     });
 
     useEffect(() => {
@@ -327,17 +329,9 @@ const NewsFeedScreen = () => {
                 const items = await loadBookmarkFeedItems();
                 if (cancelled) return;
                 setBookmarkTabItems(items);
-                const ids = items.map((item) => String(item.id)).filter(Boolean);
-                if (ids.length) {
-                    setBookmarkedItems((prev) => {
-                        const next = new Set([...prev, ...ids]);
-                        if (next.size === prev.size) return prev;
-                        return next;
-                    });
-                    const stored = getBookmarkIds();
-                    const merged = [...new Set([...stored, ...ids])];
-                    if (merged.length !== stored.length) setBookmarkIds(merged);
-                }
+                const storedSet = new Set(getBookmarkIds().map(String));
+                setBookmarkedItems(storedSet);
+                setBookmarkTabItems(items.filter((item) => storedSet.has(String(item.id))));
             } catch (e) {
                 console.warn('Bookmark tab load failed:', e?.message || e);
             } finally {
@@ -347,7 +341,7 @@ const NewsFeedScreen = () => {
         return () => {
             cancelled = true;
         };
-    }, [activeTab, bookmarkedItems]);
+    }, [activeTab]);
 
     useEffect(() => {
         const onVisible = () => {
@@ -427,12 +421,20 @@ const NewsFeedScreen = () => {
     const handleBookmark = (itemId) => {
         const id = String(itemId || '').trim();
         if (!id) return;
-        const article = newsDataRef.current.find((n) => String(n.id) === id);
-        const { wasBookmarked } = applyOptimisticBookmarkToggle({
+        const article =
+            newsDataRef.current.find((n) => String(n.id) === id) ||
+            bookmarkTabItems.find((n) => String(n.id) === id);
+        const { wasBookmarked, isBookmarked } = applyOptimisticBookmarkToggle({
             articleId: id,
             article,
             setBookmarkedItems,
             setNewsData,
+            removeFromListOnUnbookmark: activeTab === 'Bookmarks',
+        });
+        patchBookmarkTabItems(setBookmarkTabItems, {
+            articleId: id,
+            isBookmarked,
+            article,
         });
 
         queueBookmarkApi(id, wasBookmarked ? 'remove' : 'add', article).catch((error) => {
@@ -444,6 +446,11 @@ const NewsFeedScreen = () => {
                 setBookmarkedItems,
                 setNewsData,
             });
+            patchBookmarkTabItems(setBookmarkTabItems, {
+                articleId: id,
+                isBookmarked: wasBookmarked,
+                article,
+            });
         });
     };
 
@@ -454,24 +461,7 @@ const NewsFeedScreen = () => {
 
     const visibleNews = useMemo(() => {
         if (activeTab === 'Bookmarks') {
-            const merged = new Map();
-            bookmarkTabItems.forEach((item) => {
-                const id = String(item.id);
-                merged.set(id, { ...item, isBookmarked: true });
-            });
-            newsData.forEach((item) => {
-                const id = String(item.id);
-                if (!merged.has(id) && !bookmarkedItems.has(id)) return;
-                merged.set(id, {
-                    ...item,
-                    ...(merged.get(id) || {}),
-                    isBookmarked: true,
-                    userReaction: item.userReaction ?? merged.get(id)?.userReaction ?? votedItems[id] ?? null,
-                    like_count: item.like_count ?? merged.get(id)?.like_count,
-                    dislike_count: item.dislike_count ?? merged.get(id)?.dislike_count,
-                });
-            });
-            return Array.from(merged.values());
+            return buildBookmarksTabNews(newsData, bookmarkedItems, bookmarkTabItems, votedItems);
         }
         if (activeTab === 'Trending') {
             return [...newsData].sort((a, b) => {
