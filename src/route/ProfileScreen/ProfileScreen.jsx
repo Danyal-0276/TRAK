@@ -10,7 +10,23 @@ import BookmarkList from "./components/BookmarkList";
 import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { resetTabBarVisibility, setTabBarHidden } from "../../navigation/tabBarVisibility";
-import { addBookmark, confirmProfileVerification, removeBookmark, requestProfileVerification, setReaction } from "../../utils/Service/api";
+import { confirmProfileVerification, requestProfileVerification, setReaction } from "../../utils/Service/api";
+import {
+  subscribeArticleInteractionChange,
+  applyArticleInteractionPatch,
+  applyBookmarkListPatch,
+} from "../../utils/articleInteractionEvents";
+import {
+  toggleVoteRegistered,
+  scheduleVotePersist,
+  setRegisteredVote,
+} from "../../utils/articleVoteController";
+import {
+  applyOptimisticBookmarkToggle,
+  queueBookmarkApi,
+  rollbackBookmarkToggle,
+} from "../../utils/articleBookmarkController";
+import { patchArticleVoteRow } from "../../utils/reactionVote";
 import {
   getProfileSessionCache,
   hydrateProfileFromStorage,
@@ -76,6 +92,24 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
       { setProfile, setBookmarks, setBookmarkedItems, setVotedItems, setStats },
       bundle
     );
+  }, []);
+
+  useEffect(() => {
+    return subscribeArticleInteractionChange((patch) => {
+      applyArticleInteractionPatch(patch, {
+        setVotedItems,
+        setBookmarkedItems,
+        onArticlesPatch: setBookmarks,
+      });
+      applyBookmarkListPatch(patch, {
+        setBookmarks,
+        setBookmarkedItems,
+        setStats,
+      });
+      if (patch.userReaction !== undefined) {
+        setRegisteredVote(patch.articleId, patch.userReaction);
+      }
+    });
   }, []);
 
   const refreshProfileData = useCallback(async ({ force = false } = {}) => {
@@ -167,60 +201,60 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
     lastScrollY.current = currentY;
   };
 
-  const handleVote = async (itemId, type) => {
+  const handleVote = (itemId, type) => {
     const id = String(itemId);
-    let previousVote = null;
-    let newVote = null;
-    setVotedItems((prev) => {
-      previousVote = prev[id] ?? null;
-      newVote = previousVote === type ? null : type;
-      return { ...prev, [id]: newVote };
-    });
+    const { previousVote, newVote } = toggleVoteRegistered(id, type);
+    setVotedItems((prev) => ({ ...prev, [id]: newVote }));
     setBookmarks((prev) =>
       prev.map((n) => {
         if (String(n.id) !== id) return n;
-        let likes = Number(n.like_count ?? n.upvotes ?? 0);
-        let dislikes = Number(n.dislike_count ?? 0);
-        if (previousVote === 'up') likes -= 1;
-        if (previousVote === 'down') dislikes -= 1;
-        if (newVote === 'up') likes += 1;
-        if (newVote === 'down') dislikes += 1;
-        return {
-          ...n,
-          like_count: Math.max(0, likes),
-          dislike_count: Math.max(0, dislikes),
-          upvotes: Math.max(0, likes),
-          userReaction: newVote,
-        };
+        return patchArticleVoteRow(n, previousVote, newVote);
       })
     );
-    try {
-      await setReaction(id, newVote === "up" ? "like" : newVote === "down" ? "dislike" : "none");
-    } catch (err) {
-      setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
-      showError?.(err?.message || 'Could not save reaction');
-    }
+
+    scheduleVotePersist(id, {
+      persist: (articleId, apiValue) => setReaction(articleId, apiValue),
+      onReconcile: (data, vote) => {
+        const likes = Number(data.like_count ?? 0);
+        const dislikes = Number(data.dislike_count ?? 0);
+        setBookmarks((prev) =>
+          prev.map((n) =>
+            String(n.id) !== id
+              ? n
+              : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes, userReaction: vote }
+          )
+        );
+      },
+      onRollback: (err) => {
+        setRegisteredVote(id, previousVote);
+        setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
+        setBookmarks((prev) =>
+          prev.map((n) => (String(n.id) !== id ? n : patchArticleVoteRow(n, newVote, previousVote)))
+        );
+        showError?.(err?.message || 'Could not save reaction');
+      },
+    });
   };
 
-  const handleBookmark = async (itemId) => {
+  const handleBookmark = (itemId) => {
     const id = String(itemId);
-    const exists = bookmarkedItems.has(id);
     const item = bookmarks.find((n) => String(n.id) === id);
-    setBookmarkedItems((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
+    const { wasBookmarked } = applyOptimisticBookmarkToggle({
+      articleId: id,
+      article: item,
+      setBookmarkedItems,
     });
-    setBookmarks((prev) => (exists ? prev.filter((b) => String(b.id) !== id) : prev));
-    setStats((prev) => ({ ...prev, saved: Math.max(0, prev.saved + (exists ? -1 : 0)) }));
-    try {
-      if (exists) await removeBookmark(id);
-      else await addBookmark(id, item?.title || "", item?.canonical_url || item?.url || "");
-    } catch (err) {
-      await refreshProfileData({ force: true });
+
+    queueBookmarkApi(id, wasBookmarked ? 'remove' : 'add', item).catch((err) => {
+      rollbackBookmarkToggle({
+        articleId: id,
+        wasBookmarked,
+        article: item,
+        setBookmarkedItems,
+        onArticlesPatch: setBookmarks,
+      });
       showError?.(err?.message || 'Could not update bookmark');
-    }
+    });
   };
 
   const sendVerificationCode = async () => {
@@ -354,11 +388,11 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
           stats={stats}
           onStatPress={(key) => {
             if (key === 'liked') {
-              stackNavigation.navigate('ReactionArticles', { reaction: 'like' });
+              pushMainStackScreen(stackNavigation, 'ReactionArticles', { reaction: 'like' });
             } else if (key === 'disliked') {
-              stackNavigation.navigate('ReactionArticles', { reaction: 'dislike' });
+              pushMainStackScreen(stackNavigation, 'ReactionArticles', { reaction: 'dislike' });
             } else if (key === 'saved') {
-              stackNavigation.navigate('Bookmarks');
+              pushMainStackScreen(stackNavigation, 'Bookmarks');
             }
           }}
           onLongPressAvatar={() => setAvatarActionOpen(true)}
@@ -373,7 +407,7 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
           onPressArticle={(article) => {
             navigateToArticleDetail(stackNavigation, article, { returnTab: 'Profile' });
           }}
-          onViewAll={() => stackNavigation.navigate('Bookmarks')}
+          onViewAll={() => pushMainStackScreen(stackNavigation, 'Bookmarks')}
           votedItems={votedItems}
           bookmarkedItems={bookmarkedItems}
           onVote={handleVote}

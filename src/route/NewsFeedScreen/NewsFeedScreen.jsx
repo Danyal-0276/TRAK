@@ -21,7 +21,7 @@ import { FeedHeader } from './components/FeedHeader';
 import { TabBar } from './components/TabBar';
 import ArticleFeedList from '../../components/ArticleFeedList';
 import { FeedSkeleton } from '../../components/FeedSkeleton';
-import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { listBookmarks, listReactions, setReaction } from '../../utils/Service/api';
 import { loadHomeBootstrap } from '../../utils/loadHomeBootstrap';
 import { loadExplorePage, loadFeedPage, mergeUniqueById } from '../../utils/loadFeed';
 import { useTheme } from '../../theme/ThemeContext';
@@ -33,8 +33,23 @@ import { useCollapsibleHeader } from '../../hooks/useCollapsibleHeader';
 import { resolveTopInset } from '../../utils/screenSafeArea';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
+import { patchArticleVoteRow } from '../../utils/reactionVote';
+import { stampArticleInteractions } from '../../utils/articleCardInteraction';
+import { useArticleInteractionListener, emitArticleInteractionChange } from '../../utils/articleInteractionEvents';
+import {
+    toggleVoteRegistered,
+    scheduleVotePersist,
+    seedVoteRegistry,
+    setRegisteredVote,
+} from '../../utils/articleVoteController';
+import {
+    applyOptimisticBookmarkToggle,
+    queueBookmarkApi,
+    rollbackBookmarkToggle,
+} from '../../utils/articleBookmarkController';
 import { resolveArticleSource } from '../../utils/articleSource';
 import { navigateToArticleDetail } from '../../utils/articleNavigation';
+import { pushMainStackScreen } from '../../navigation/appStackNavigation';
 import {
     getHomeFeedCache,
     isFeedCacheFresh,
@@ -174,6 +189,8 @@ const NewsFeedScreen = ({ navigation }) => {
     );
     const [votedItems, setVotedItems] = useState(() => (hasCachedHome ? cachedHome.votedItems || {} : {}));
     const [newsData, setNewsData] = useState(() => (hasCachedHome ? cachedHome.newsData : []));
+    const newsDataRef = useRef(newsData);
+    newsDataRef.current = newsData;
     const [nextCursor, setNextCursor] = useState(() => (hasCachedHome ? cachedHome.nextCursor || '' : ''));
     const [hasMore, setHasMore] = useState(() => (hasCachedHome ? Boolean(cachedHome.hasMore) : false));
     const [loadingMore, setLoadingMore] = useState(false);
@@ -337,7 +354,6 @@ const NewsFeedScreen = ({ navigation }) => {
     }, [hasMore, loadingMore, nextCursor, activeTab, votedItems]);
 
     const lastSyncRef = useRef(0);
-    const voteTimerRef = useRef({});
 
     const syncInteractionsFromServer = useCallback(async (force = false) => {
         const now = Date.now();
@@ -352,8 +368,9 @@ const NewsFeedScreen = ({ navigation }) => {
         setBookmarkedItems(new Set(ids));
         await setBookmarkIds(ids).catch(() => {});
 
-        const reactionMap = await mergeReactionRows(reactRes.results || [], { replace: false }).catch(() => ({}));
+        const reactionMap = await mergeReactionRows(reactRes.results || [], { replace: true }).catch(() => ({}));
         setVotedItems(reactionMap);
+        seedVoteRegistry(reactionMap);
         const idSet = new Set(ids);
         setNewsData((prev) =>
             prev.map((n) => {
@@ -369,26 +386,54 @@ const NewsFeedScreen = ({ navigation }) => {
     const lastFeedLoadRef = useRef(hasCachedHome ? Date.now() : 0);
     const FEED_STALE_MS = 10 * 60 * 1000;
 
+    useArticleInteractionListener({
+        setVotedItems,
+        setBookmarkedItems,
+        onArticlesPatch: setNewsData,
+    });
+
     useFocusEffect(
         useCallback(() => {
-            syncInteractionsFromServer(false);
+            let cancelled = false;
+            (async () => {
+                const [bmIds, reactionMap] = await Promise.all([
+                    getBookmarkIds().catch(() => []),
+                    getReactionMap().catch(() => ({})),
+                ]);
+                if (cancelled) return;
+                const bmSet = new Set(bmIds.map(String));
+                setBookmarkedItems(bmSet);
+                setVotedItems(reactionMap);
+                setNewsData((prev) => stampArticleInteractions(prev, reactionMap, bmSet));
+                await syncInteractionsFromServer(true);
+            })();
+
             const cached = getHomeFeedCache();
             if (isFeedCacheFresh(cached) && Array.isArray(cached?.newsData) && cached.newsData.length) {
-                setNewsData(cached.newsData);
-                setNextCursor(cached.nextCursor || '');
-                setHasMore(Boolean(cached.hasMore));
-                setVotedItems(cached.votedItems || {});
-                setBookmarkedItems(new Set((cached.bookmarkIds || []).map(String)));
-                setFeedKeywords(cached.feedKeywords || []);
-                feedModeRef.current = cached.feedMode || 'explore';
-                setLoading(false);
-                const tabKey = cached.activeTab || 'For you';
-                if (cached.scrollY) {
-                    requestAnimationFrame(() => {
-                        restoreScrollPosition(scrollRefs.current[tabKey], cached.scrollY);
-                    });
+                if (!initialLoadRef.current) {
+                    setNewsData(cached.newsData);
+                    setNextCursor(cached.nextCursor || '');
+                    setHasMore(Boolean(cached.hasMore));
+                    setFeedKeywords(cached.feedKeywords || []);
+                    feedModeRef.current = cached.feedMode || 'explore';
+                    setLoading(false);
+                    const tabKey = cached.activeTab || 'For you';
+                    if (cached.scrollY) {
+                        requestAnimationFrame(() => {
+                            restoreScrollPosition(scrollRefs.current[tabKey], cached.scrollY);
+                        });
+                    }
+                } else {
+                    const tabKey = cached.activeTab || activeTab || 'For you';
+                    if (cached.scrollY) {
+                        requestAnimationFrame(() => {
+                            restoreScrollPosition(scrollRefs.current[tabKey], cached.scrollY);
+                        });
+                    }
                 }
-                return;
+                return () => {
+                    cancelled = true;
+                };
             }
 
             const now = Date.now();
@@ -396,13 +441,14 @@ const NewsFeedScreen = ({ navigation }) => {
                 initialLoadRef.current = true;
                 lastFeedLoadRef.current = now;
                 loadNews();
-                return;
-            }
-            if (now - lastFeedLoadRef.current > FEED_STALE_MS) {
+            } else if (now - lastFeedLoadRef.current > FEED_STALE_MS) {
                 lastFeedLoadRef.current = now;
                 loadNews({ silent: true, force: true });
             }
-        }, [syncInteractionsFromServer, loadNews])
+            return () => {
+                cancelled = true;
+            };
+        }, [syncInteractionsFromServer, loadNews, activeTab])
     );
 
     const cacheSaveTimerRef = useRef(null);
@@ -468,51 +514,29 @@ const NewsFeedScreen = ({ navigation }) => {
         navigateToArticleDetail(navigation, article, { returnTab: 'Home' });
     };
 
-    const handleVote = async (itemId, type) => {
+    const handleVote = (itemId, type) => {
         const id = String(itemId || '').trim();
         if (!id) return;
-        let newVote = null;
-        let previousVote = null;
 
-        setVotedItems((prev) => {
-            previousVote = prev[id] ?? null;
-            newVote = previousVote === type ? null : type;
-            return { ...prev, [id]: newVote };
-        });
+        const { previousVote, newVote } = toggleVoteRegistered(id, type);
+        const articleRow = newsDataRef.current.find((n) => String(n.id) === id) || {};
+        const optimistic = patchArticleVoteRow(articleRow, previousVote, newVote);
 
+        setVotedItems((prev) => ({ ...prev, [id]: newVote }));
         setNewsData((prev) =>
-            prev.map((n) => {
-                if (String(n.id) !== id) return n;
-                let likes = Number(n.like_count ?? n.upvotes ?? 0);
-                let dislikes = Number(n.dislike_count ?? 0);
-                if (previousVote === 'up') likes -= 1;
-                if (previousVote === 'down') dislikes -= 1;
-                if (newVote === 'up') likes += 1;
-                if (newVote === 'down') dislikes += 1;
-                const isBm =
-                    bookmarkedItems.has(id) ||
-                    bookmarkedItems.has(n.id) ||
-                    (n.canonical_url && bookmarkedItems.has(n.canonical_url));
-                return {
-                    ...n,
-                    like_count: Math.max(0, likes),
-                    dislike_count: Math.max(0, dislikes),
-                    upvotes: Math.max(0, likes),
-                    userReaction: newVote,
-                    isBookmarked: isBm,
-                };
-            })
+            prev.map((n) => (String(n.id) !== id ? n : optimistic))
         );
         setReactionForArticle(id, newVote).catch(() => {});
+        emitArticleInteractionChange({
+            articleId: id,
+            userReaction: newVote,
+            like_count: optimistic.like_count,
+            dislike_count: optimistic.dislike_count,
+        });
 
-        if (voteTimerRef.current[id]) clearTimeout(voteTimerRef.current[id]);
-        voteTimerRef.current[id] = setTimeout(async () => {
-            delete voteTimerRef.current[id];
-            try {
-                const data = await setReaction(
-                    id,
-                    newVote === 'up' ? 'like' : newVote === 'down' ? 'dislike' : 'none'
-                );
+        scheduleVotePersist(id, {
+            persist: (articleId, apiValue) => setReaction(articleId, apiValue),
+            onReconcile: (data, vote) => {
                 const likes = Number(data.like_count ?? 0);
                 const dislikes = Number(data.dislike_count ?? 0);
                 setNewsData((prev) =>
@@ -524,55 +548,58 @@ const NewsFeedScreen = ({ navigation }) => {
                                   like_count: likes,
                                   dislike_count: dislikes,
                                   upvotes: likes,
-                                  userReaction: newVote,
+                                  userReaction: vote,
                               }
                     )
                 );
-            } catch (err) {
+                emitArticleInteractionChange({
+                    articleId: id,
+                    userReaction: vote,
+                    like_count: likes,
+                    dislike_count: dislikes,
+                });
+            },
+            onRollback: (err) => {
+                setRegisteredVote(id, previousVote);
                 setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
                 setReactionForArticle(id, previousVote || null).catch(() => {});
+                const rollback = patchArticleVoteRow(optimistic, newVote, previousVote);
+                setNewsData((prev) =>
+                    prev.map((n) => (String(n.id) !== id ? n : rollback))
+                );
+                emitArticleInteractionChange({
+                    articleId: id,
+                    userReaction: previousVote,
+                    like_count: rollback.like_count,
+                    dislike_count: rollback.dislike_count,
+                });
                 feedback?.error?.(err?.message || 'Could not save reaction');
-            }
-        }, 0);
+            },
+        });
     };
 
-    const handleBookmark = async (itemId) => {
+    const handleBookmark = (itemId) => {
         const id = String(itemId || '').trim();
         if (!id) return;
-        const wasBookmarked = bookmarkedItems.has(id);
-        setBookmarkedItems(prev => {
-            const next = new Set(prev);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            setBookmarkIds(Array.from(next)).catch(() => {});
-            return next;
+        const article = newsDataRef.current.find((n) => String(n.id) === id);
+        const { wasBookmarked } = applyOptimisticBookmarkToggle({
+            articleId: id,
+            article,
+            setBookmarkedItems,
+            setNewsData,
         });
-        setNewsData((prev) =>
-            prev.map((n) => {
-                if (String(n.id) !== id) return n;
-                const nextBm = !n.isBookmarked;
-                return { ...n, isBookmarked: nextBm };
-            })
-        );
 
-        try {
-            const article = newsData.find((n) => String(n.id) === id);
-            if (wasBookmarked) {
-                await removeBookmark(id);
-            } else {
-                await addBookmark(id, article?.title || '', article?.canonical_url || article?.url || '');
-            }
-        } catch (error) {
+        queueBookmarkApi(id, wasBookmarked ? 'remove' : 'add', article).catch((error) => {
             console.error('Error bookmarking:', error);
             feedback?.error?.(error?.message || 'Could not update bookmark');
-            setBookmarkedItems(prev => {
-                const rollback = new Set(prev);
-                if (rollback.has(id)) rollback.delete(id);
-                else rollback.add(id);
-                setBookmarkIds(Array.from(rollback)).catch(() => {});
-                return rollback;
+            rollbackBookmarkToggle({
+                articleId: id,
+                wasBookmarked,
+                article,
+                setBookmarkedItems,
+                setNewsData,
             });
-        }
+        });
     };
 
     const hasFeedPersonalization = feedKeywords.length > 0;
@@ -613,7 +640,7 @@ const NewsFeedScreen = ({ navigation }) => {
                                 Select news categories to see a personalized For You feed.
                             </Text>
                             <TouchableOpacity
-                                onPress={() => navigation.navigate('TagSelection', { fromSettings: true })}
+                                onPress={() => pushMainStackScreen(navigation, 'TagSelection', { fromSettings: true })}
                                 style={{ backgroundColor: actionColors.background, paddingVertical: 14, paddingHorizontal: 24, borderRadius: 12 }}
                                 activeOpacity={0.85}
                             >

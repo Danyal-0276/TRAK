@@ -7,9 +7,11 @@ import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts
 import { loadExplorePage, mergeUniqueById } from '../../utils/loadFeed';
 import { openArticleDetail } from '../../utils/openArticleDetail';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import { setReaction } from '../../utils/Service/api';
-import { setReactionForArticle } from '../../utils/reactionsStorage';
+import { setReaction, addBookmark, removeBookmark } from '../../utils/Service/api';
+import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
+import { getReactionMap, setReactionForArticle } from '../../utils/reactionsStorage';
 import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
+import { emitArticleInteractionChange } from '../../utils/articleInteractionEvents';
 
 function recencySortKey(item) {
     const s = item?.time || item?.published_at || '';
@@ -56,6 +58,8 @@ const RecentScreen = () => {
 
     useEffect(() => {
         loadNews();
+        setBookmarkedItems(new Set(getBookmarkIds().map(String)));
+        setVotedItems(getReactionMap());
     }, [loadNews]);
 
     const loadMore = useCallback(async () => {
@@ -117,10 +121,29 @@ const RecentScreen = () => {
     };
 
     const handleBookmark = async (itemId) => {
+        const id = String(itemId);
+        const wasBookmarked = bookmarkedItems.has(id);
+        const nextBm = !wasBookmarked;
         const newSet = new Set(bookmarkedItems);
-        if (newSet.has(itemId)) newSet.delete(itemId);
-        else newSet.add(itemId);
+        if (nextBm) newSet.add(id);
+        else newSet.delete(id);
         setBookmarkedItems(newSet);
+        setBookmarkIds(Array.from(newSet));
+        setNewsData((prev) =>
+            prev.map((n) => (String(n.id) === id ? { ...n, isBookmarked: nextBm } : n))
+        );
+        emitArticleInteractionChange({ articleId: id, isBookmarked: nextBm });
+        try {
+            const article = newsData.find((n) => String(n.id) === id);
+            if (wasBookmarked) await removeBookmark(id);
+            else await addBookmark(id, article?.title || '', article?.canonical_url || article?.url || '');
+        } catch (error) {
+            console.error('Error bookmarking:', error);
+            const rollback = new Set(bookmarkedItems);
+            setBookmarkedItems(rollback);
+            setBookmarkIds(Array.from(rollback));
+            emitArticleInteractionChange({ articleId: id, isBookmarked: wasBookmarked });
+        }
     };
 
     return (

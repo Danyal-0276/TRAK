@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
-import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { getUserArticleDetail, listBookmarks, listReactions, setReaction } from '../../utils/Service/api';
 import { mapApiItem } from '../../utils/loadFeed';
 import { normalizeArticleForDetail } from '../../utils/articleNavigation';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
@@ -9,7 +9,23 @@ import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../
 import { useTheme } from '../../theme/ThemeContext';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
 import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
-import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
+import { patchArticleVoteRow } from '../../utils/reactionVote';
+import {
+    subscribeArticleInteractionChange,
+    applyArticleInteractionPatch,
+    applyBookmarkListPatch,
+} from '../../utils/articleInteractionEvents';
+import {
+    toggleVoteRegistered,
+    scheduleVotePersist,
+    seedVoteRegistry,
+    setRegisteredVote,
+} from '../../utils/articleVoteController';
+import {
+    applyOptimisticBookmarkToggle,
+    queueBookmarkApi,
+    rollbackBookmarkToggle,
+} from '../../utils/articleBookmarkController';
 
 const BookmarksScreen = () => {
     const navigate = useNavigate();
@@ -36,7 +52,9 @@ const BookmarksScreen = () => {
             const ids = new Set(rows.map((r) => String(r.article_id)));
             setBookmarkedItems(ids);
             setBookmarkIds(Array.from(ids));
-            setVotedItems(mergeReactionRows(reactRes.results || [], { replace: false }));
+            const reactionMap = mergeReactionRows(reactRes.results || [], { replace: false });
+            setVotedItems(reactionMap);
+            seedVoteRegistry(reactionMap);
             const detailed = await Promise.all(
                 rows.map(async (r) => {
                     const aid = String(r.article_id ?? '').trim();
@@ -89,6 +107,32 @@ const BookmarksScreen = () => {
         loadBookmarks();
     }, []);
 
+    useEffect(() => {
+        return subscribeArticleInteractionChange((patch) => {
+            applyArticleInteractionPatch(patch, {
+                setVotedItems,
+                setBookmarkedItems,
+                onArticlesPatch: setNewsData,
+            });
+            applyBookmarkListPatch(patch, {
+                setBookmarkedItems,
+                removeFromNewsData: (id) => {
+                    setNewsData((prev) => prev.filter((n) => String(n.id) !== String(id)));
+                },
+            });
+            if (patch.userReaction !== undefined) {
+                setRegisteredVote(patch.articleId, patch.userReaction);
+            }
+            if (patch.isBookmarked && patch.article) {
+                setNewsData((prev) => {
+                    const id = String(patch.articleId);
+                    if (prev.some((n) => String(n.id) === id)) return prev;
+                    return [patch.article, ...prev];
+                });
+            }
+        });
+    }, []);
+
     const handleArticlePress = async (article) => {
         const aid = String(article.id);
         try {
@@ -102,60 +146,61 @@ const BookmarksScreen = () => {
 
     const handleVote = (itemId, type) => {
         const id = String(itemId);
-        const previousVote = votedItems[id] ?? null;
-        const newVote = previousVote === type ? null : type;
+        const { previousVote, newVote } = toggleVoteRegistered(id, type);
+        const articleRow = newsData.find((n) => String(n.id) === id) || {};
+        const optimistic = patchArticleVoteRow(articleRow, previousVote, newVote);
 
         setVotedItems((prev) => ({ ...prev, [id]: newVote }));
         setReactionForArticle(id, newVote);
         setNewsData((prev) =>
-            prev.map((n) => (String(n.id) !== id ? n : patchArticleVoteRow(n, previousVote, newVote)))
+            prev.map((n) => (String(n.id) !== id ? n : optimistic))
         );
 
-        (async () => {
-            try {
-                const data = await setReaction(id, reactionApiValue(newVote));
+        scheduleVotePersist(id, {
+            persist: (articleId, apiValue) => setReaction(articleId, apiValue),
+            onReconcile: (data, vote) => {
                 const likes = Number(data.like_count ?? 0);
                 const dislikes = Number(data.dislike_count ?? 0);
                 setNewsData((prev) =>
                     prev.map((n) =>
                         String(n.id) !== id
                             ? n
-                            : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes, userReaction: newVote }
+                            : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes, userReaction: vote }
                     )
                 );
-            } catch {
+            },
+            onRollback: () => {
+                setRegisteredVote(id, previousVote);
                 setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
                 setReactionForArticle(id, previousVote || null);
                 setNewsData((prev) =>
-                    prev.map((n) =>
-                        String(n.id) !== id ? n : patchArticleVoteRow(n, newVote, previousVote)
-                    )
+                    prev.map((n) => (String(n.id) !== id ? n : patchArticleVoteRow(optimistic, newVote, previousVote)))
                 );
-            }
-        })();
+            },
+        });
     };
 
-    const handleBookmark = async (itemId) => {
+    const handleBookmark = (itemId) => {
         const id = String(itemId);
-        const wasBookmarked = bookmarkedItems.has(id);
-
-        setBookmarkedItems((prev) => {
-            const next = new Set([...prev].map(String));
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            setBookmarkIds(Array.from(next));
-            return next;
+        const article = newsData.find((n) => String(n.id) === id);
+        const { wasBookmarked } = applyOptimisticBookmarkToggle({
+            articleId: id,
+            article,
+            setBookmarkedItems,
+            setNewsData,
+            removeFromListOnUnbookmark: true,
         });
 
-        try {
-            const item = newsData.find((n) => String(n.id) === id);
-            if (wasBookmarked) await removeBookmark(id);
-            else await addBookmark(id, item?.title || '', item?.canonical_url || item?.url || '');
-            await loadBookmarks();
-        } catch (error) {
+        queueBookmarkApi(id, wasBookmarked ? 'remove' : 'add', article).catch((error) => {
             console.error('Error bookmarking:', error);
-            await loadBookmarks();
-        }
+            rollbackBookmarkToggle({
+                articleId: id,
+                wasBookmarked,
+                article,
+                setBookmarkedItems,
+                setNewsData,
+            });
+        });
     };
 
     const bookmarkedNews = newsData.filter((item) => bookmarkedItems.has(String(item.id)));

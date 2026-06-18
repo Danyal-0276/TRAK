@@ -8,11 +8,11 @@ import {
     Text,
     StyleSheet,
     StatusBar,
-    ScrollView,
     Animated,
     Dimensions,
     TouchableOpacity,
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { shareArticle, openArticleMenu } from '../../utils/articleMenu';
 import { useFeedback } from '../../components/ui/FeedbackProvider';
 import FeedbackModal from '../../components/FeedbackModal';
@@ -36,10 +36,17 @@ import ArticleCardImage from '../../components/ArticleCardImage';
 import { resolveArticleImageUrl } from '../../utils/articleMedia';
 import { stopNativePlayback } from '../../utils/articleTts';
 import { getAccessToken } from '../../api/client';
-import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { listBookmarks, listReactions, setReaction } from '../../utils/Service/api';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
-import { computeOptimisticReactionCounts, reactionApiValue } from '../../utils/reactionVote';
+import { computeOptimisticReactionCounts } from '../../utils/reactionVote';
+import { emitArticleInteractionChange } from '../../utils/articleInteractionEvents';
+import {
+    toggleVoteRegistered,
+    scheduleVotePersist,
+    setRegisteredVote,
+} from '../../utils/articleVoteController';
+import { emitBookmarkToggle, queueBookmarkApi } from '../../utils/articleBookmarkController';
 
 const { width, height } = Dimensions.get('window');
 
@@ -177,59 +184,79 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         }, [navigation])
     );
 
-    const applyReaction = (next) => {
-        const previous = reaction;
-        const counts = computeOptimisticReactionCounts(likeCount, dislikeCount, previous, next);
-        setReactionState(next);
+    const applyReaction = (type) => {
+        const { previousVote, newVote } = toggleVoteRegistered(articleId, type);
+        const counts = computeOptimisticReactionCounts(likeCount, dislikeCount, previousVote, newVote);
+        setReactionState(newVote);
         setLikeCount(counts.like_count);
         setDislikeCount(counts.dislike_count);
-        setReactionForArticle(articleId, next).catch(() => {});
-        (async () => {
-            try {
-                const data = await setReaction(articleId, reactionApiValue(next));
-                setLikeCount(Number(data.like_count ?? counts.like_count));
-                setDislikeCount(Number(data.dislike_count ?? counts.dislike_count));
-            } catch {
-                setReactionForArticle(articleId, previous || null).catch(() => {});
-                setReactionState(previous);
+        setReactionForArticle(articleId, newVote).catch(() => {});
+        emitArticleInteractionChange({
+            articleId,
+            userReaction: newVote,
+            like_count: counts.like_count,
+            dislike_count: counts.dislike_count,
+        });
+
+        scheduleVotePersist(articleId, {
+            persist: (id, apiValue) => setReaction(id, apiValue),
+            onReconcile: (data, vote) => {
+                const likes = Number(data.like_count ?? counts.like_count);
+                const dislikes = Number(data.dislike_count ?? counts.dislike_count);
+                setLikeCount(likes);
+                setDislikeCount(dislikes);
+                emitArticleInteractionChange({
+                    articleId,
+                    userReaction: vote,
+                    like_count: likes,
+                    dislike_count: dislikes,
+                });
+            },
+            onRollback: () => {
+                setRegisteredVote(articleId, previousVote);
+                setReactionForArticle(articleId, previousVote || null).catch(() => {});
+                setReactionState(previousVote);
                 const rollback = computeOptimisticReactionCounts(
                     counts.like_count,
                     counts.dislike_count,
-                    next,
-                    previous
+                    newVote,
+                    previousVote
                 );
                 setLikeCount(rollback.like_count);
                 setDislikeCount(rollback.dislike_count);
-            }
-        })();
+                emitArticleInteractionChange({
+                    articleId,
+                    userReaction: previousVote,
+                    like_count: rollback.like_count,
+                    dislike_count: rollback.dislike_count,
+                });
+            },
+        });
     };
 
-    const handleLike = () => applyReaction(reaction === 'up' ? null : 'up');
-    const handleDislike = () => applyReaction(reaction === 'down' ? null : 'down');
+    const handleLike = () => applyReaction('up');
+    const handleDislike = () => applyReaction('down');
 
     const handleBookmark = async () => {
         const previous = isBookmarked;
         const next = !previous;
         setIsBookmarked(next);
-        try {
-            const ids = await getBookmarkIds().catch(() => []);
-            const set = new Set((ids || []).map(String));
-            if (next) set.add(articleId);
-            else set.delete(articleId);
-            await setBookmarkIds(Array.from(set)).catch(() => {});
-            if (next) {
-                await addBookmark(articleId, article?.title || '', article?.canonical_url || '');
-            } else {
-                await removeBookmark(articleId);
-            }
-        } catch {
-            const ids = await getBookmarkIds().catch(() => []);
-            const set = new Set((ids || []).map(String));
-            if (previous) set.add(articleId);
-            else set.delete(articleId);
-            await setBookmarkIds(Array.from(set)).catch(() => {});
+        const ids = await getBookmarkIds().catch(() => []);
+        const set = new Set((ids || []).map(String));
+        if (next) set.add(articleId);
+        else set.delete(articleId);
+        await setBookmarkIds(Array.from(set)).catch(() => {});
+        emitBookmarkToggle({ articleId, isBookmarked: next, article });
+
+        queueBookmarkApi(articleId, previous ? 'remove' : 'add', article).catch(async () => {
+            const rollbackIds = await getBookmarkIds().catch(() => []);
+            const rollback = new Set((rollbackIds || []).map(String));
+            if (previous) rollback.add(articleId);
+            else rollback.delete(articleId);
+            await setBookmarkIds(Array.from(rollback)).catch(() => {});
             setIsBookmarked(previous);
-        }
+            emitBookmarkToggle({ articleId, isBookmarked: previous, article });
+        });
     };
 
     const handleShare = () => {

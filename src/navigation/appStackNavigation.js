@@ -91,7 +91,7 @@ export function goBackOrReturnToTab(navigation, tab = 'Profile') {
   return true;
 }
 
-/** Walk nested navigators so hardware back never skips an inner stack. */
+/** Walk from the focused screen up until a navigator can pop. */
 export function goBackInNavigationTree(navigation) {
   let nav = navigation;
   while (nav) {

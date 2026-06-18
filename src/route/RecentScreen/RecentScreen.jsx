@@ -17,6 +17,8 @@ import { addBookmark, removeBookmark, setReaction } from '../../utils/Service/ap
 import Text from '../../components/ui/Text';
 import { navigateToArticleDetail, getCurrentMainTab } from '../../utils/articleNavigation';
 import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
+import { setBookmarkIds } from '../../utils/bookmarksStorage';
+import { emitArticleInteractionChange } from '../../utils/articleInteractionEvents';
 
 /** Higher = more recent (for descending sort). */
 function recencySortKey(timeStr) {
@@ -104,11 +106,14 @@ const RecentScreen = ({ navigation }) => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
             else next.add(id);
+            setBookmarkIds(Array.from(next)).catch(() => {});
             return next;
         });
+        const nextBm = !wasBookmarked;
         setNewsData((prev) =>
-            prev.map((n) => (String(n.id) === id ? { ...n, isBookmarked: !n.isBookmarked } : n))
+            prev.map((n) => (String(n.id) === id ? { ...n, isBookmarked: nextBm } : n))
         );
+        emitArticleInteractionChange({ articleId: id, isBookmarked: nextBm });
         try {
             const item = newsData.find((n) => String(n.id) === id);
             if (wasBookmarked) await removeBookmark(id);

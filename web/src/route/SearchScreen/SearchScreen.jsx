@@ -19,11 +19,22 @@ import {
 } from "../../utils/platformTaxonomy";
 import { useInfiniteScroll } from "../../hooks/useInfiniteScroll";
 import { openArticleDetail } from "../../utils/openArticleDetail";
-import { addBookmark, listBookmarks, listReactions, removeBookmark, setReaction } from "../../utils/Service/api";
+import { listBookmarks, listReactions, setReaction } from "../../utils/Service/api";
 import { getBookmarkIds, setBookmarkIds } from "../../utils/bookmarksStorage";
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from "../../utils/reactionsStorage";
 import { useFeedCache } from "../../context/FeedCacheContext";
-import { patchArticleVoteRow, reactionApiValue } from "../../utils/reactionVote";
+import { patchArticleVoteRow } from "../../utils/reactionVote";
+import { useArticleInteractionListener, emitArticleInteractionChange } from "../../utils/articleInteractionEvents";
+import {
+    toggleVoteRegistered,
+    scheduleVotePersist,
+    setRegisteredVote,
+} from '../../utils/articleVoteController';
+import {
+    applyOptimisticBookmarkToggle,
+    queueBookmarkApi,
+    rollbackBookmarkToggle,
+} from '../../utils/articleBookmarkController';
 
 function articleMatchesExploreTab(item, activeTab, platformCategories = []) {
     if (!activeTab || activeTab === "All") return true;
@@ -102,6 +113,8 @@ const SearchScreen = () => {
     const { isMobile, isDesktop } = useResponsive();
     const { t } = useLanguage();
     const [allNews, setAllNews] = useState([]);
+    const allNewsRef = useRef(allNews);
+    allNewsRef.current = allNews;
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState('');
     const [retryTick, setRetryTick] = useState(0);
@@ -370,66 +383,88 @@ const SearchScreen = () => {
         handleSearch("");
     };
 
+    useArticleInteractionListener({
+        setVotedItems,
+        setBookmarkedItems,
+        onArticlesPatch: setAllNews,
+    });
+
     const handleArticlePress = (article) => {
         openArticleDetail(navigate, article);
     };
 
     const handleVote = (itemId, type) => {
         const id = String(itemId);
-        const previousVote = votedItems[id] ?? null;
-        const newVote = previousVote === type ? null : type;
+        const { previousVote, newVote } = toggleVoteRegistered(id, type);
+        const articleRow = allNewsRef.current.find((n) => String(n.id) === id) || {};
+        const optimistic = patchArticleVoteRow(articleRow, previousVote, newVote);
 
         setVotedItems((prev) => ({ ...prev, [id]: newVote }));
         setReactionForArticle(id, newVote);
         setAllNews((prev) =>
-            prev.map((n) => (String(n.id) !== id ? n : patchArticleVoteRow(n, previousVote, newVote)))
+            prev.map((n) => (String(n.id) !== id ? n : optimistic))
         );
+        emitArticleInteractionChange({
+            articleId: id,
+            userReaction: newVote,
+            like_count: optimistic.like_count,
+            dislike_count: optimistic.dislike_count,
+        });
 
-        (async () => {
-            try {
-                const data = await setReaction(id, reactionApiValue(newVote));
+        scheduleVotePersist(id, {
+            persist: (articleId, apiValue) => setReaction(articleId, apiValue),
+            onReconcile: (data, vote) => {
                 const likes = Number(data.like_count ?? 0);
                 const dislikes = Number(data.dislike_count ?? 0);
-                const patch = { like_count: likes, dislike_count: dislikes, upvotes: likes, votes: likes, userReaction: newVote };
+                const patch = { like_count: likes, dislike_count: dislikes, upvotes: likes, votes: likes, userReaction: vote };
                 setAllNews((prev) =>
                     prev.map((n) => (String(n.id) !== id ? n : { ...n, ...patch }))
                 );
-            } catch {
+                emitArticleInteractionChange({
+                    articleId: id,
+                    userReaction: vote,
+                    like_count: likes,
+                    dislike_count: dislikes,
+                });
+            },
+            onRollback: () => {
+                setRegisteredVote(id, previousVote);
                 setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
                 setReactionForArticle(id, previousVote || null);
+                const rollback = patchArticleVoteRow(optimistic, newVote, previousVote);
                 setAllNews((prev) =>
-                    prev.map((n) =>
-                        String(n.id) !== id ? n : patchArticleVoteRow(n, newVote, previousVote)
-                    )
+                    prev.map((n) => (String(n.id) !== id ? n : rollback))
                 );
-            }
-        })();
+                emitArticleInteractionChange({
+                    articleId: id,
+                    userReaction: previousVote,
+                    like_count: rollback.like_count,
+                    dislike_count: rollback.dislike_count,
+                });
+            },
+        });
     };
 
-    const handleBookmark = async (itemId) => {
+    const handleBookmark = (itemId) => {
         const id = String(itemId);
-        const wasBookmarked = bookmarkedItems.has(id);
-        setBookmarkedItems((prev) => {
-            const newSet = new Set([...prev].map(String));
-            if (newSet.has(id)) {
-                newSet.delete(id);
-            } else {
-                newSet.add(id);
-            }
-            setBookmarkIds(Array.from(newSet));
-            return newSet;
+        const article = allNewsRef.current.find((n) => String(n.id) === id);
+        const { wasBookmarked } = applyOptimisticBookmarkToggle({
+            articleId: id,
+            article,
+            setBookmarkedItems,
+            setNewsData: setAllNews,
         });
 
-        try {
-            const article = allNews.find((n) => String(n.id) === id);
-            if (wasBookmarked) {
-                await removeBookmark(id);
-            } else {
-                await addBookmark(id, article?.title || "", article?.canonical_url || article?.url || "");
-            }
-        } catch (error) {
+        queueBookmarkApi(id, wasBookmarked ? 'remove' : 'add', article).catch((error) => {
             console.error('Error bookmarking:', error);
-        }
+            rollbackBookmarkToggle({
+                articleId: id,
+                wasBookmarked,
+                article,
+                setBookmarkedItems,
+                setNewsData: setAllNews,
+            });
+        });
     };
 
     const backgroundColor = colors.background;

@@ -53,11 +53,25 @@ const BrowseCategoriesScreen = ({ navigation, route }) => {
         [previewByKey],
     );
 
+    const patchPreviewArticles = useCallback((updater) => {
+        setPreviewByKey((prev) => {
+            const flat = Object.values(prev).flat();
+            const nextFlat = updater(flat);
+            if (nextFlat === flat) return prev;
+            const byId = new Map(nextFlat.map((a) => [String(a.id), a]));
+            const out = {};
+            for (const [key, items] of Object.entries(prev)) {
+                out[key] = items.map((a) => byId.get(String(a.id)) || a);
+            }
+            return out;
+        });
+    }, []);
+
     const {
         handleVote,
         handleBookmark,
         syncFromServer,
-    } = useArticleInteractions({ articles: previewArticlesFlat, onArticlesPatch: () => {} });
+    } = useArticleInteractions({ articles: previewArticlesFlat, onArticlesPatch: patchPreviewArticles });
 
     const loadCategories = useCallback(async () => {
         try {

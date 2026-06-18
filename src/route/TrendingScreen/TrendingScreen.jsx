@@ -14,9 +14,12 @@ import { useTheme } from '../../theme/ThemeContext';
 import { getRefreshControlProps } from '../../theme/refreshControl';
 import { loadFeedItems } from '../../utils/loadFeed';
 import { addBookmark, removeBookmark, setReaction } from '../../utils/Service/api';
+import { setBookmarkIds } from '../../utils/bookmarksStorage';
+import { setReactionForArticle } from '../../utils/reactionsStorage';
 import Text from '../../components/ui/Text';
 import { navigateToArticleDetail, getCurrentMainTab } from '../../utils/articleNavigation';
 import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
+import { emitArticleInteractionChange } from '../../utils/articleInteractionEvents';
 
 const TrendingScreen = ({ navigation }) => {
     const { theme } = useTheme();
@@ -83,19 +86,21 @@ const TrendingScreen = ({ navigation }) => {
     const handleBookmark = async (itemId) => {
         const id = String(itemId);
         const wasBookmarked = bookmarkedItems.has(id);
+        const nextBm = !wasBookmarked;
         setBookmarkedItems((prev) => {
             const next = new Set(prev);
             if (next.has(id)) next.delete(id);
             else next.add(id);
+            setBookmarkIds(Array.from(next)).catch(() => {});
             return next;
         });
         setNewsData((prev) =>
-            prev.map((n) => (String(n.id) === id ? { ...n, isBookmarked: !n.isBookmarked } : n))
+            prev.map((n) => (String(n.id) === id ? { ...n, isBookmarked: nextBm } : n))
         );
+        emitArticleInteractionChange({ articleId: id, isBookmarked: nextBm });
         try {
             const item = newsData.find((n) => String(n.id) === id);
-            const exists = bookmarkedItems.has(id);
-            if (exists) await removeBookmark(id);
+            if (wasBookmarked) await removeBookmark(id);
             else await addBookmark(id, item?.title || '', item?.canonical_url || item?.url || '');
         } catch {
             setBookmarkedItems((prev) => {
