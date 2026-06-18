@@ -18,11 +18,12 @@ import { getUserArticleDetail, listBookmarks, listReactions, setReaction } from 
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { computeOptimisticReactionCounts } from '../../utils/reactionVote';
-import { emitArticleInteractionChange } from '../../utils/articleInteractionEvents';
+import { emitArticleInteractionChange, subscribeArticleInteractionChange } from '../../utils/articleInteractionEvents';
 import {
     toggleVoteRegistered,
     scheduleVotePersist,
     setRegisteredVote,
+    getRegisteredVote,
 } from '../../utils/articleVoteController';
 import { emitBookmarkToggle, queueBookmarkApi } from '../../utils/articleBookmarkController';
 import { mapApiItem } from '../../utils/loadFeed';
@@ -69,15 +70,26 @@ const ArticleDetailScreen = () => {
     const [showMoreMenu, setShowMoreMenu] = useState(false);
     const [feedbackOpen, setFeedbackOpen] = useState(false);
 
-    const [reaction, setReactionState] = useState(null);
-    const [isBookmarked, setIsBookmarked] = useState(false);
-    const [likeCount, setLikeCount] = useState(0);
-    const [dislikeCount, setDislikeCount] = useState(0);
+    const [reaction, setReactionState] = useState(() => {
+        const key = String(initialArticle.id || routeArticleId || '').trim();
+        return getRegisteredVote(key) || getReactionMap()[key] || initialArticle.userReaction || null;
+    });
+    const [isBookmarked, setIsBookmarked] = useState(() => {
+        const key = String(initialArticle.id || routeArticleId || '').trim();
+        return new Set(getBookmarkIds().map(String)).has(key) || Boolean(initialArticle.isBookmarked);
+    });
+    const [likeCount, setLikeCount] = useState(() =>
+        Number(initialArticle.like_count ?? initialArticle.upvotes ?? initialArticle.votes ?? 0),
+    );
+    const [dislikeCount, setDislikeCount] = useState(() =>
+        Number(initialArticle.dislike_count ?? 0),
+    );
     const [scrollY, setScrollY] = useState(0);
 
     const submitReaction = (type) => {
         if (!articleKey) return;
-        const { previousVote, newVote } = toggleVoteRegistered(articleKey, type);
+        const { previousVote, newVote, changed } = toggleVoteRegistered(articleKey, type);
+        if (!changed) return;
         const counts = computeOptimisticReactionCounts(likeCount, dislikeCount, previousVote, newVote);
         setReactionState(newVote);
         setLikeCount(counts.like_count);
@@ -233,13 +245,33 @@ const ArticleDetailScreen = () => {
     }, [routeArticleId, location.state?.article]);
 
     useEffect(() => {
+        if (!articleKey) return undefined;
+        const navArticle = location.state?.article;
+        const vote =
+            getRegisteredVote(articleKey) ||
+            getReactionMap()[articleKey] ||
+            navArticle?.userReaction ||
+            null;
+        setReactionState(vote);
+        if (navArticle) {
+            setLikeCount(Number(navArticle.like_count ?? navArticle.upvotes ?? navArticle.votes ?? likeCount));
+            setDislikeCount(Number(navArticle.dislike_count ?? dislikeCount));
+        }
+        setIsBookmarked(new Set(getBookmarkIds().map(String)).has(articleKey));
+
+        return subscribeArticleInteractionChange((patch) => {
+            if (String(patch.articleId) !== articleKey) return;
+            if (patch.userReaction !== undefined) setReactionState(patch.userReaction);
+            if (patch.like_count !== undefined) setLikeCount(patch.like_count);
+            if (patch.dislike_count !== undefined) setDislikeCount(patch.dislike_count);
+            if (patch.isBookmarked !== undefined) setIsBookmarked(patch.isBookmarked);
+        });
+    }, [articleKey, location.state?.article]);
+
+    useEffect(() => {
         if (!articleKey || detailLoading) return;
-        setLikeCount(Number(article.like_count ?? article.upvotes ?? article.votes ?? 0));
-        setDislikeCount(Number(article.dislike_count ?? 0));
-        const cachedIds = new Set(getBookmarkIds().map(String));
-        setIsBookmarked(cachedIds.has(articleKey));
-        const cachedReaction = getReactionMap()[articleKey] || null;
-        setReactionState(cachedReaction);
+        const registered = getRegisteredVote(articleKey);
+        if (registered) setReactionState(registered);
         (async () => {
             const [bmRes, reactRes] = await Promise.all([
                 listBookmarks().catch(() => ({ results: [] })),
@@ -248,8 +280,9 @@ const ArticleDetailScreen = () => {
             const ids = (bmRes.results || []).map((b) => String(b.article_id));
             setBookmarkIds(ids);
             setIsBookmarked(ids.includes(articleKey));
-            const map = mergeReactionRows(reactRes.results || [], { replace: true });
-            setReactionState(map[articleKey] || null);
+            const map = mergeReactionRows(reactRes.results || [], { replace: false });
+            const vote = getRegisteredVote(articleKey) ?? map[articleKey] ?? null;
+            setReactionState(vote);
         })();
     }, [articleKey, detailLoading]);
 

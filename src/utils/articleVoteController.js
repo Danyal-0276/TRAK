@@ -1,5 +1,5 @@
 import { enqueuePerArticle } from './interactionQueue';
-import { reactionApiValue } from './reactionVote';
+import { reactionApiValue, redditVoteTransition } from './reactionVote';
 
 const voteByArticle = {};
 const debounceTimers = {};
@@ -7,11 +7,11 @@ const debounceTimers = {};
 /** Toggle vote in the registry (source of truth during rapid taps). */
 export function toggleVoteRegistered(articleId, type) {
   const id = String(articleId || '').trim();
-  if (!id) return { previousVote: null, newVote: null };
+  if (!id) return { previousVote: null, newVote: null, changed: false };
   const previousVote = voteByArticle[id] ?? null;
-  const newVote = previousVote === type ? null : type;
-  voteByArticle[id] = newVote;
-  return { previousVote, newVote };
+  const { newVote, changed } = redditVoteTransition(previousVote, type);
+  if (changed) voteByArticle[id] = newVote;
+  return { previousVote, newVote, changed };
 }
 
 export function getRegisteredVote(articleId) {

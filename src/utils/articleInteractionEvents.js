@@ -44,8 +44,25 @@ export function applyArticleInteractionPatch(
   }
 
   if (onArticlesPatch) {
-    onArticlesPatch((prev) =>
-      (prev || []).map((n) => {
+    onArticlesPatch((prev) => {
+      const rows = prev || [];
+      if (patch.isBookmarked && patch.article) {
+        if (rows.some((n) => String(n.id) === id)) {
+          return rows.map((n) => {
+            if (String(n.id) !== id) return n;
+            const next = { ...n, ...patch.article, isBookmarked: true };
+            if (patch.userReaction !== undefined) next.userReaction = patch.userReaction;
+            if (patch.like_count !== undefined) {
+              next.like_count = patch.like_count;
+              next.upvotes = patch.like_count;
+            }
+            if (patch.dislike_count !== undefined) next.dislike_count = patch.dislike_count;
+            return next;
+          });
+        }
+        return [{ ...patch.article, isBookmarked: true }, ...rows];
+      }
+      return rows.map((n) => {
         if (String(n.id) !== id) return n;
         const next = { ...n };
         if (patch.userReaction !== undefined) next.userReaction = patch.userReaction;
@@ -56,8 +73,8 @@ export function applyArticleInteractionPatch(
         }
         if (patch.dislike_count !== undefined) next.dislike_count = patch.dislike_count;
         return next;
-      }),
-    );
+      });
+    });
   }
 }
 

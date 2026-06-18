@@ -246,7 +246,8 @@ const UserProfileScreen = () => {
 
     const handleVote = (itemId, type) => {
         const id = String(itemId);
-        const { previousVote, newVote } = toggleVoteRegistered(id, type);
+        const { previousVote, newVote, changed } = toggleVoteRegistered(id, type);
+        if (!changed) return;
         setVotedItems((prev) => ({ ...prev, [id]: newVote }));
         setReactionForArticle(id, newVote);
         setBookmarks((prev) =>
