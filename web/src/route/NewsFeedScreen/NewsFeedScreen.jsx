@@ -325,7 +325,19 @@ const NewsFeedScreen = () => {
         (async () => {
             try {
                 const items = await loadBookmarkFeedItems();
-                if (!cancelled) setBookmarkTabItems(items);
+                if (cancelled) return;
+                setBookmarkTabItems(items);
+                const ids = items.map((item) => String(item.id)).filter(Boolean);
+                if (ids.length) {
+                    setBookmarkedItems((prev) => {
+                        const next = new Set([...prev, ...ids]);
+                        if (next.size === prev.size) return prev;
+                        return next;
+                    });
+                    const stored = getBookmarkIds();
+                    const merged = [...new Set([...stored, ...ids])];
+                    if (merged.length !== stored.length) setBookmarkIds(merged);
+                }
             } catch (e) {
                 console.warn('Bookmark tab load failed:', e?.message || e);
             } finally {
@@ -442,24 +454,22 @@ const NewsFeedScreen = () => {
 
     const visibleNews = useMemo(() => {
         if (activeTab === 'Bookmarks') {
-            const idSet = bookmarkedItems;
             const merged = new Map();
             bookmarkTabItems.forEach((item) => {
                 const id = String(item.id);
-                if (idSet.has(id)) merged.set(id, { ...item, isBookmarked: true });
+                merged.set(id, { ...item, isBookmarked: true });
             });
             newsData.forEach((item) => {
                 const id = String(item.id);
-                if (idSet.has(id)) {
-                    merged.set(id, {
-                        ...item,
-                        ...(merged.get(id) || {}),
-                        isBookmarked: true,
-                        userReaction: item.userReaction ?? merged.get(id)?.userReaction ?? votedItems[id] ?? null,
-                        like_count: item.like_count ?? merged.get(id)?.like_count,
-                        dislike_count: item.dislike_count ?? merged.get(id)?.dislike_count,
-                    });
-                }
+                if (!merged.has(id) && !bookmarkedItems.has(id)) return;
+                merged.set(id, {
+                    ...item,
+                    ...(merged.get(id) || {}),
+                    isBookmarked: true,
+                    userReaction: item.userReaction ?? merged.get(id)?.userReaction ?? votedItems[id] ?? null,
+                    like_count: item.like_count ?? merged.get(id)?.like_count,
+                    dislike_count: item.dislike_count ?? merged.get(id)?.dislike_count,
+                });
             });
             return Array.from(merged.values());
         }

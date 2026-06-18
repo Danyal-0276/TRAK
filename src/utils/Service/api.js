@@ -44,6 +44,7 @@ async function request(path, options = {}) {
 }
 
 const USER_CONTENT_KEYS = [
+  'trak_bookmarks_v1',
   'trak_bookmarks',
   'trak_reactions_v1',
   'trak_user_keywords',

@@ -1,6 +1,6 @@
 import { getBookmarkIds } from './bookmarksStorage';
 import { getReactionMap } from './reactionsStorage';
-import { getRegisteredVote, seedVoteRegistry } from './articleVoteController';
+import { getRegisteredVote, getRegisteredCounts, seedVoteRegistry } from './articleVoteController';
 import { toBookmarkCard } from './articleBookmarkController';
 
 export async function syncFeedInteractionsFromStorage({
@@ -27,7 +27,7 @@ export async function syncFeedInteractionsFromStorage({
   }
 
   if (setBookmarkedItems) {
-    setBookmarkedItems(bmSet);
+    setBookmarkedItems((prev) => new Set([...(prev || []), ...bmSet]));
   }
 
   if (setNewsData) {
@@ -35,11 +35,18 @@ export async function syncFeedInteractionsFromStorage({
       (prev || []).map((n) => {
         const id = String(n.id);
         const userReaction = getRegisteredVote(id) ?? reactionMap[id] ?? n.userReaction ?? null;
-        return {
+        const counts = getRegisteredCounts(id);
+        const next = {
           ...n,
           userReaction,
           isBookmarked: bmSet.has(id),
         };
+        if (counts) {
+          next.like_count = counts.like_count;
+          next.dislike_count = counts.dislike_count;
+          next.upvotes = counts.like_count;
+        }
+        return next;
       }),
     );
   }

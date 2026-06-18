@@ -10,10 +10,11 @@ import {
   stopNativePlayback,
   createTtsSessionId,
   getNativePlaybackPosition,
+  getNativePlaybackDuration,
 } from '../utils/articleTts';
 import {
   lineIndicesForSegment,
-  scheduleLineHighlights,
+  syncHighlightsToPlayback,
 } from '../utils/ttsHighlight';
 
 export default function ArticleTtsPlayer({
@@ -39,6 +40,7 @@ export default function ArticleTtsPlayer({
   const cancelLineHighlightRef = useRef(null);
   const highlightControllerRef = useRef(null);
   const highlightCheckpointRef = useRef({ segmentIndex: 0, lineOffset: 0, elapsedMs: 0, durationMs: 0 });
+  const segmentPlaybackRef = useRef({ segmentIndex: -1, durationMs: 0, offsetSec: 0 });
   const segmentsRef = useRef([]);
   const sessionOptsRef = useRef({ ttsSessionId: null, voice: null, startSegmentIndex: 0 });
   statusRef.current = status;
@@ -97,22 +99,47 @@ export default function ArticleTtsPlayer({
       cancelLineHighlightRef.current?.();
       const indices = lineIndicesForSegment(highlightLines, segmentIndex);
       if (!indices.length) return;
-      const elapsedMs = Math.round((offsetSec || 0) * 1000);
-      const lineOffset = highlightCheckpointRef.current.segmentIndex === segmentIndex
-        ? highlightCheckpointRef.current.lineOffset
-        : 0;
-      highlightCheckpointRef.current = { segmentIndex, lineOffset: 0, elapsedMs, durationMs };
-      const controller = scheduleLineHighlights(
-        indices,
-        highlightLines,
-        durationMs,
-        (lineIdx) => {
-          highlightCheckpointRef.current.lineOffset = indices.indexOf(lineIdx);
+
+      const duration = Math.max(1, Number(durationMs) || 0);
+      segmentPlaybackRef.current = { segmentIndex, durationMs: duration, offsetSec: offsetSec || 0 };
+      highlightCheckpointRef.current = {
+        segmentIndex,
+        lineOffset: highlightCheckpointRef.current.segmentIndex === segmentIndex
+          ? highlightCheckpointRef.current.lineOffset
+          : 0,
+        elapsedMs: Math.round((offsetSec || 0) * 1000),
+        durationMs: duration,
+      };
+
+      const controller = syncHighlightsToPlayback({
+        lineIndices: indices,
+        lines: highlightLines,
+        getElapsedSec: async () => {
+          const pos = await getNativePlaybackPosition();
+          const liveDur = getNativePlaybackDuration();
+          const durSec =
+            liveDur > 0 ? liveDur : segmentPlaybackRef.current.durationMs / 1000;
+          const elapsed = Math.max(0, Math.min(Number(pos) || 0, durSec || 0));
+          highlightCheckpointRef.current.elapsedMs = Math.round(elapsed * 1000);
+          return elapsed;
+        },
+        getDurationSec: () => {
+          const live = getNativePlaybackDuration();
+          if (live > 0) {
+            segmentPlaybackRef.current.durationMs = Math.round(live * 1000);
+            return live;
+          }
+          return segmentPlaybackRef.current.durationMs / 1000;
+        },
+        onLine: (lineIdx) => {
+          const localOffset = indices.indexOf(lineIdx);
+          if (localOffset >= 0) highlightCheckpointRef.current.lineOffset = localOffset;
           onActiveLineIndex?.(lineIdx);
         },
-        () => cancelledRef.current,
-        { startLineOffset: lineOffset, elapsedMs }
-      );
+        isCancelled: () => cancelledRef.current,
+        intervalMs: 200,
+      });
+
       highlightControllerRef.current = controller;
       cancelLineHighlightRef.current = () => controller?.cancel?.();
     },
@@ -142,6 +169,14 @@ export default function ArticleTtsPlayer({
         if (cancelledRef.current) return;
         const cp = playbackRef.current?.getCheckpoint?.();
         if (cp?.voice) sessionOptsRef.current.voice = cp.voice;
+        segmentPlaybackRef.current = {
+          segmentIndex,
+          durationMs: Math.max(1, Number(durationMs) || 0),
+          offsetSec: offsetSec || 0,
+        };
+      },
+      onSegmentPlaybackStart: (segmentIndex, { durationMs, offsetSec }) => {
+        if (cancelledRef.current) return;
         startHighlightForSegment(segmentIndex, durationMs, offsetSec);
       },
       onProgress: (current, total) => {

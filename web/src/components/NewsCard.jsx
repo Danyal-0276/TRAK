@@ -21,6 +21,7 @@ import FeedbackModal from './FeedbackModal';
 import { useUIFeedback } from './ui/UIFeedback';
 import { downloadArticlePdf } from '../utils/articlePdfExport';
 import { shareArticleLink } from '../utils/articleShare';
+import { getRegisteredCounts } from '../utils/articleVoteController';
 
 export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, onBookmark, layout = 'grid' }) => {
     const isMasonry = layout === 'masonry';
@@ -34,8 +35,9 @@ export const NewsCard = ({ item, onPress, votedItems, bookmarkedItems, onVote, o
     const itemId = item?.id != null ? String(item.id) : '';
     const isBookmarked = bookmarkedItems?.has(itemId) || bookmarkedItems?.has(item.id);
     const voteType = votedItems?.[itemId] ?? votedItems?.[item.id] ?? item?.userReaction ?? null;
-    const likeCount = Number(item.like_count ?? item.upvotes ?? 0);
-    const dislikeCount = Number(item.dislike_count ?? 0);
+    const registeredCounts = getRegisteredCounts(itemId);
+    const likeCount = Number(registeredCounts?.like_count ?? item.like_count ?? item.upvotes ?? 0);
+    const dislikeCount = Number(registeredCounts?.dislike_count ?? item.dislike_count ?? 0);
     const cardSummary = getCardSummaryText(item);
     const credMeta = getFeedItemCredibilityMeta(item);
     const itemUrl = item?.canonical_url || item?.url || '';

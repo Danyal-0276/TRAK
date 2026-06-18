@@ -80,8 +80,8 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     const heroImage = resolveArticleImageUrl(article);
     const listenText = getArticleListenText(article);
     const { lines: ttsHighlightLines } = useMemo(
-        () => buildHighlightLinesFromContent(articleBody, listenText),
-        [articleBody, listenText]
+        () => buildHighlightLinesFromContent(articleBody, listenText, { title: article.title }),
+        [articleBody, listenText, article.title]
     );
 
     const fadeAnim = useRef(new Animated.Value(0)).current;

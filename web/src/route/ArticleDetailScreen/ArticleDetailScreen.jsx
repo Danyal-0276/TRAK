@@ -304,8 +304,8 @@ const ArticleDetailScreen = () => {
     const [activeTtsLineIndex, setActiveTtsLineIndex] = useState(-1);
     const listenText = getArticleListenText(article);
     const { lines: ttsHighlightLines } = useMemo(
-        () => buildHighlightLinesFromContent(content, listenText),
-        [content, listenText]
+        () => buildHighlightLinesFromContent(content, listenText, { title: article.title }),
+        [content, listenText, article.title]
     );
 
     return (

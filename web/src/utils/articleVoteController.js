@@ -2,6 +2,7 @@ import { enqueuePerArticle } from './interactionQueue';
 import { reactionApiValue, redditVoteTransition } from './reactionVote';
 
 const voteByArticle = {};
+const countsByArticle = {};
 const debounceTimers = {};
 
 /** Reddit-style vote registry (source of truth during rapid taps). */
@@ -29,6 +30,22 @@ export function seedVoteRegistry(reactionMap = {}) {
   Object.entries(reactionMap || {}).forEach(([id, vote]) => {
     if (vote === 'up' || vote === 'down') voteByArticle[String(id)] = vote;
   });
+}
+
+export function setRegisteredCounts(articleId, likeCount, dislikeCount) {
+  const id = String(articleId || '').trim();
+  if (!id) return;
+  if (likeCount === undefined && dislikeCount === undefined) return;
+  const prev = countsByArticle[id] || {};
+  countsByArticle[id] = {
+    like_count: likeCount !== undefined ? Number(likeCount) : Number(prev.like_count ?? 0),
+    dislike_count: dislikeCount !== undefined ? Number(dislikeCount) : Number(prev.dislike_count ?? 0),
+  };
+}
+
+export function getRegisteredCounts(articleId) {
+  const id = String(articleId || '').trim();
+  return id ? countsByArticle[id] ?? null : null;
 }
 
 export function scheduleVotePersist(articleId, { debounceMs = 280, persist, onReconcile, onRollback } = {}) {

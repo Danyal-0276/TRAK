@@ -282,7 +282,36 @@ export async function getNativePlaybackPosition() {
   return activeAudio?.currentTime || 0;
 }
 
-function playBlobHtmlAudio(blob, { startAt = 0, isAborted, isPaused } = {}) {
+export function getNativePlaybackDuration() {
+  if (wa.useWebAudio && wa.buffer?.duration > 0) {
+    return wa.buffer.duration;
+  }
+  const dur = Number(activeAudio?.duration);
+  return Number.isFinite(dur) && dur > 0 ? dur : 0;
+}
+
+async function measureBlobDurationMs(blob, fallbackBase64 = '') {
+  if (!blob || blob.size < 32) {
+    return estimateSegmentDurationMs(fallbackBase64);
+  }
+  if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      const ctx = new Ctx();
+      const arrayBuffer = await blob.arrayBuffer();
+      const buffer = await ctx.decodeAudioData(arrayBuffer.slice(0));
+      await ctx.close().catch(() => {});
+      if (buffer.duration > 0) {
+        return Math.round(buffer.duration * 1000);
+      }
+    } catch {
+      /* fall through */
+    }
+  }
+  return estimateSegmentDurationMs(fallbackBase64);
+}
+
+function playBlobHtmlAudio(blob, { startAt = 0, isAborted, isPaused, onPlaybackStart } = {}) {
   cleanupActiveAudio();
   const url = URL.createObjectURL(blob);
   activeBlobUrl = url;
@@ -315,7 +344,7 @@ function playBlobHtmlAudio(blob, { startAt = 0, isAborted, isPaused } = {}) {
           /* ignore */
         }
       }
-      audio.play().catch((e) => {
+      audio.play().then(() => onPlaybackStart?.()).catch((e) => {
         if (e?.name === 'NotAllowedError') {
           finish(new Error('Tap Play again to allow audio in your browser.'));
         } else {
@@ -347,7 +376,7 @@ function playBlobHtmlAudio(blob, { startAt = 0, isAborted, isPaused } = {}) {
   });
 }
 
-function playBlobWebAudio(blob, { startAt = 0, isAborted, isPaused } = {}) {
+function playBlobWebAudio(blob, { startAt = 0, isAborted, isPaused, onPlaybackStart } = {}) {
   return new Promise((resolve, reject) => {
     let settled = false;
     let poll = null;
@@ -389,6 +418,7 @@ function playBlobWebAudio(blob, { startAt = 0, isAborted, isPaused } = {}) {
       };
       try {
         src.start(0, Math.min(offset, Math.max(0, buffer.duration - 0.01)));
+        onPlaybackStart?.();
       } catch (e) {
         finish(e);
       }
@@ -439,7 +469,7 @@ function playBlobWebAudio(blob, { startAt = 0, isAborted, isPaused } = {}) {
   });
 }
 
-async function playBlobAndWait(blob, { startAt = 0, isAborted, isPaused } = {}) {
+async function playBlobAndWait(blob, { startAt = 0, isAborted, isPaused, onPlaybackStart } = {}) {
   if (!blob || blob.size < 32) {
     throw new Error('Received empty or invalid audio from server.');
   }
@@ -449,13 +479,13 @@ async function playBlobAndWait(blob, { startAt = 0, isAborted, isPaused } = {}) 
 
   if (typeof window !== 'undefined' && (window.AudioContext || window.webkitAudioContext)) {
     try {
-      return await playBlobWebAudio(blob, { startAt, isAborted, isPaused });
+      return await playBlobWebAudio(blob, { startAt, isAborted, isPaused, onPlaybackStart });
     } catch (e) {
       console.warn('Web Audio playback failed, trying HTML audio', e);
     }
   }
 
-  return playBlobHtmlAudio(blob, { startAt, isAborted, isPaused });
+  return playBlobHtmlAudio(blob, { startAt, isAborted, isPaused, onPlaybackStart });
 }
 
 function estimateSegmentDurationMs(base64Audio) {
@@ -473,6 +503,7 @@ export function playArticleTtsStreaming(
     onUrduPart,
     onFirstReady,
     onSegmentStart,
+    onSegmentPlaybackStart,
     isCancelled,
     startSegmentIndex = 0,
     ttsSessionId,
@@ -568,15 +599,21 @@ export function playArticleTtsStreaming(
       if (i === startSegmentIndex) onFirstReady?.();
       if (entry?.urdu && onUrduPart) onUrduPart(entry.urdu, i);
 
-      const durationMs = estimateSegmentDurationMs(entry.payload?.audio);
+      const durationMs = await measureBlobDurationMs(entry.blob, entry.payload?.audio);
       const startAt = i === startSegmentIndex ? checkpoint.offsetSec : 0;
       onSegmentStart?.(i, { durationMs, segmentText: segments[i], offsetSec: startAt });
 
       if (!halted && !isCancelled?.()) {
+        let playbackStarted = false;
         const playPromise = playBlobAndWait(entry.blob, {
           startAt,
           isAborted: () => halted || isCancelled?.(),
           isPaused: () => paused,
+          onPlaybackStart: () => {
+            if (playbackStarted) return;
+            playbackStarted = true;
+            onSegmentPlaybackStart?.(i, { durationMs, offsetSec: startAt });
+          },
         });
 
         let wasPaused = false;
