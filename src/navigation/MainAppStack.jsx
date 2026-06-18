@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { defaultStackScreenOptions } from './stackScreenOptions';
+import { defaultStackScreenOptions, articleDetailScreenOptions } from './stackScreenOptions';
 import NotificationDetailScreen from '../route/NotificationsScreen/components/NotificationDetailScreen';
 import TabNavigator from './TabNavigator.jsx';
 import { useAuth } from '../context/AuthContext';
@@ -28,13 +28,6 @@ import {
 
 const Stack = createNativeStackNavigator();
 
-const articleDetailOptions = {
-    gestureEnabled: true,
-    fullScreenGestureEnabled: true,
-    animation: 'slide_from_right',
-    presentation: 'card',
-};
-
 /** Admins only see the admin panel (+ article preview), not the consumer app tabs. */
 function AdminAppStack() {
     return (
@@ -42,7 +35,7 @@ function AdminAppStack() {
             <Stack.Screen name="AdminHome" component={AdminScreen} />
             <Stack.Screen name="NewsFeedPreview" component={NewsFeedScreen} options={{ title: 'News app' }} />
             <Stack.Screen name="PicsPreview" component={PicsScreen} options={{ title: 'Pics app' }} />
-            <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} options={articleDetailOptions} />
+            <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} options={articleDetailScreenOptions} />
         </Stack.Navigator>
     );
 }
@@ -70,7 +63,7 @@ const MainAppStack = () => {
             <Stack.Screen name="PrivacyScreen" component={PrivacyScreen} />
             <Stack.Screen name="DataScreen" component={DataScreen} />
             <Stack.Screen name="AboutScreen" component={AboutScreen} />
-            <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} options={articleDetailOptions} />
+            <Stack.Screen name="ArticleDetail" component={ArticleDetailScreen} options={articleDetailScreenOptions} />
             <Stack.Screen name="Trending" component={TrendingScreen} />
             <Stack.Screen name="Bookmarks" component={BookmarksScreen} />
             <Stack.Screen name="ReactionArticles" component={ReactionArticlesScreen} />

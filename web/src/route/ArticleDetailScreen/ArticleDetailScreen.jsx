@@ -14,10 +14,17 @@ import {
 } from 'lucide-react';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import FeedbackModal from '../../components/FeedbackModal';
-import { addBookmark, getUserArticleDetail, listBookmarks, listReactions, removeBookmark, setReaction } from '../../utils/Service/api';
+import { getUserArticleDetail, listBookmarks, listReactions, setReaction } from '../../utils/Service/api';
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
-import { computeOptimisticReactionCounts, reactionApiValue } from '../../utils/reactionVote';
+import { computeOptimisticReactionCounts } from '../../utils/reactionVote';
+import { emitArticleInteractionChange } from '../../utils/articleInteractionEvents';
+import {
+    toggleVoteRegistered,
+    scheduleVotePersist,
+    setRegisteredVote,
+} from '../../utils/articleVoteController';
+import { emitBookmarkToggle, queueBookmarkApi } from '../../utils/articleBookmarkController';
 import { mapApiItem } from '../../utils/loadFeed';
 import { getFeedItemCredibilityMeta } from '../../utils/credibilityIndicator';
 import { normalizeArticleForDetail, getArticleListenText } from '../../utils/articleNavigation';
@@ -68,38 +75,61 @@ const ArticleDetailScreen = () => {
     const [dislikeCount, setDislikeCount] = useState(0);
     const [scrollY, setScrollY] = useState(0);
 
-    const submitReaction = (next) => {
+    const submitReaction = (type) => {
         if (!articleKey) return;
-        const previous = reaction;
-        const counts = computeOptimisticReactionCounts(likeCount, dislikeCount, previous, next);
-        setReactionState(next);
+        const { previousVote, newVote } = toggleVoteRegistered(articleKey, type);
+        const counts = computeOptimisticReactionCounts(likeCount, dislikeCount, previousVote, newVote);
+        setReactionState(newVote);
         setLikeCount(counts.like_count);
         setDislikeCount(counts.dislike_count);
-        setReactionForArticle(articleKey, next);
-        (async () => {
-            try {
-                const data = await setReaction(articleKey, reactionApiValue(next));
-                setLikeCount(Number(data.like_count ?? counts.like_count));
-                setDislikeCount(Number(data.dislike_count ?? counts.dislike_count));
-            } catch {
-                setReactionState(previous);
-                setReactionForArticle(articleKey, previous || null);
+        setReactionForArticle(articleKey, newVote);
+        emitArticleInteractionChange({
+            articleId: articleKey,
+            userReaction: newVote,
+            like_count: counts.like_count,
+            dislike_count: counts.dislike_count,
+        });
+
+        scheduleVotePersist(articleKey, {
+            persist: (articleId, apiValue) => setReaction(articleId, apiValue),
+            onReconcile: (data, vote) => {
+                const likes = Number(data.like_count ?? counts.like_count);
+                const dislikes = Number(data.dislike_count ?? counts.dislike_count);
+                setLikeCount(likes);
+                setDislikeCount(dislikes);
+                emitArticleInteractionChange({
+                    articleId: articleKey,
+                    userReaction: vote,
+                    like_count: likes,
+                    dislike_count: dislikes,
+                });
+            },
+            onRollback: () => {
+                setRegisteredVote(articleKey, previousVote);
+                setReactionState(previousVote);
+                setReactionForArticle(articleKey, previousVote || null);
                 const rollback = computeOptimisticReactionCounts(
                     counts.like_count,
                     counts.dislike_count,
-                    next,
-                    previous
+                    newVote,
+                    previousVote
                 );
                 setLikeCount(rollback.like_count);
                 setDislikeCount(rollback.dislike_count);
-            }
-        })();
+                emitArticleInteractionChange({
+                    articleId: articleKey,
+                    userReaction: previousVote,
+                    like_count: rollback.like_count,
+                    dislike_count: rollback.dislike_count,
+                });
+            },
+        });
     };
 
-    const handleLike = () => submitReaction(reaction === 'up' ? null : 'up');
-    const handleDislike = () => submitReaction(reaction === 'down' ? null : 'down');
+    const handleLike = () => submitReaction('up');
+    const handleDislike = () => submitReaction('down');
 
-    const handleBookmark = async () => {
+    const handleBookmark = () => {
         if (!articleKey) return;
         const previous = isBookmarked;
         const next = !previous;
@@ -108,16 +138,16 @@ const ArticleDetailScreen = () => {
         if (next) ids.add(articleKey);
         else ids.delete(articleKey);
         setBookmarkIds(Array.from(ids));
-        try {
-            if (previous) await removeBookmark(articleKey);
-            else await addBookmark(articleKey, article?.title || '', article?.canonical_url || article?.url || '');
-        } catch {
+        emitBookmarkToggle({ articleId: articleKey, isBookmarked: next, article });
+
+        queueBookmarkApi(articleKey, previous ? 'remove' : 'add', article).catch(() => {
             setIsBookmarked(previous);
             const rollback = new Set(getBookmarkIds());
             if (previous) rollback.add(articleKey);
             else rollback.delete(articleKey);
             setBookmarkIds(Array.from(rollback));
-        }
+            emitBookmarkToggle({ articleId: articleKey, isBookmarked: previous, article });
+        });
     };
 
     const handleShare = async () => {
@@ -218,10 +248,10 @@ const ArticleDetailScreen = () => {
             const ids = (bmRes.results || []).map((b) => String(b.article_id));
             setBookmarkIds(ids);
             setIsBookmarked(ids.includes(articleKey));
-            const map = mergeReactionRows(reactRes.results || [], { replace: false });
+            const map = mergeReactionRows(reactRes.results || [], { replace: true });
             setReactionState(map[articleKey] || null);
         })();
-    }, [articleKey, detailLoading, article.like_count, article.dislike_count, article.upvotes, article.votes]);
+    }, [articleKey, detailLoading]);
 
     useEffect(() => {
         const handleScroll = () => {

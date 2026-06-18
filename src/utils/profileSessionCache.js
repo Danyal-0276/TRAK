@@ -247,6 +247,40 @@ export async function loadProfileBundle({ force = false, enrichLimit = PROFILE_P
   return bundle;
 }
 
+/** Keep profile preview bookmarks in sync when user saves/unsaves from any screen. */
+export function patchProfileSessionBookmark(articleId, isBookmarked, article) {
+  const id = String(articleId || '').trim();
+  if (!id) return;
+
+  const prev = sessionCache?.bookmarks || [];
+  let bookmarks;
+  if (isBookmarked) {
+    if (prev.some((b) => String(b.id) === id)) {
+      bookmarks = prev;
+    } else if (article) {
+      bookmarks = [article, ...prev].slice(0, PROFILE_PREVIEW_LIMIT);
+    } else {
+      bookmarks = prev;
+    }
+  } else {
+    bookmarks = prev.filter((b) => String(b.id) !== id);
+  }
+
+  const stats = {
+    ...(sessionCache?.stats || { liked: 0, disliked: 0, saved: 0 }),
+    saved: bookmarks.length,
+  };
+
+  sessionCache = {
+    ...(sessionCache || {}),
+    bookmarks,
+    stats,
+    fetchedAt: sessionCache?.fetchedAt || Date.now(),
+  };
+
+  persistProfileBundle(sessionCache).catch(() => {});
+}
+
 export function preloadProfileData({ skipIfFresh = true, force = false } = {}) {
   if (!force && skipIfFresh && isProfileCacheFresh(sessionCache, { requireProfile: true })) {
     return Promise.resolve(sessionCache);

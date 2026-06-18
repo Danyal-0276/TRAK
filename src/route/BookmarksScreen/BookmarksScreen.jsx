@@ -13,12 +13,27 @@ import { ChevronLeft } from 'lucide-react-native';
 import ArticleFeedList from '../../components/ArticleFeedList';
 import { useTheme } from '../../theme/ThemeContext';
 import { getRefreshControlProps } from '../../theme/refreshControl';
-import { addBookmark, getUserArticleDetail, listBookmarks, removeBookmark, setReaction } from '../../utils/Service/api';
+import { getUserArticleDetail, listBookmarks, setReaction } from '../../utils/Service/api';
 import Text from '../../components/ui/Text';
 import { navigateToArticleDetail } from '../../utils/articleNavigation';
 import { mapApiItem } from '../../utils/loadFeed';
 import { filterRealFeedItems } from '../../utils/feedRealOnly';
-import { patchArticleVoteRow, reactionApiValue } from '../../utils/reactionVote';
+import { patchArticleVoteRow } from '../../utils/reactionVote';
+import {
+    subscribeArticleInteractionChange,
+    applyArticleInteractionPatch,
+    applyBookmarkListPatch,
+} from '../../utils/articleInteractionEvents';
+import {
+    toggleVoteRegistered,
+    scheduleVotePersist,
+    setRegisteredVote,
+} from '../../utils/articleVoteController';
+import {
+    applyOptimisticBookmarkToggle,
+    queueBookmarkApi,
+    rollbackBookmarkToggle,
+} from '../../utils/articleBookmarkController';
 
 const BookmarksScreen = ({ navigation }) => {
     const { theme } = useTheme();
@@ -81,51 +96,93 @@ const BookmarksScreen = ({ navigation }) => {
         loadNews();
     }, [loadNews]);
 
+    useEffect(() => {
+        return subscribeArticleInteractionChange((patch) => {
+            applyArticleInteractionPatch(patch, {
+                setVotedItems,
+                setBookmarkedItems,
+                onArticlesPatch: setNewsData,
+            });
+            applyBookmarkListPatch(patch, {
+                setBookmarkedItems,
+                removeFromNewsData: (id) => {
+                    setNewsData((prev) => prev.filter((n) => String(n.id) !== String(id)));
+                },
+            });
+            if (patch.isBookmarked && patch.article) {
+                setNewsData((prev) => {
+                    const id = String(patch.articleId);
+                    if (prev.some((n) => String(n.id) === id)) return prev;
+                    return filterRealFeedItems([patch.article, ...prev]).map((n) => ({
+                        ...n,
+                        isBookmarked: true,
+                    }));
+                });
+            }
+            if (patch.userReaction !== undefined) {
+                setRegisteredVote(patch.articleId, patch.userReaction);
+            }
+        });
+    }, []);
+
     const handleArticlePress = (article) => {
         navigateToArticleDetail(navigation, article, { returnTab: 'Profile' });
     };
 
     const handleVote = (itemId, type) => {
         const id = String(itemId);
-        const previousVote = votedItems[id] ?? null;
-        const newVote = previousVote === type ? null : type;
+        const { previousVote, newVote } = toggleVoteRegistered(id, type);
+        const articleRow = newsData.find((n) => String(n.id) === id) || {};
+        const optimistic = patchArticleVoteRow(articleRow, previousVote, newVote);
+
         setVotedItems((prev) => ({ ...prev, [id]: newVote }));
         setNewsData((prev) =>
-            prev.map((n) => (String(n.id) !== id ? n : patchArticleVoteRow(n, previousVote, newVote)))
+            prev.map((n) => (String(n.id) !== id ? n : optimistic))
         );
-        (async () => {
-            try {
-                const data = await setReaction(id, reactionApiValue(newVote));
+
+        scheduleVotePersist(id, {
+            persist: (articleId, apiValue) => setReaction(articleId, apiValue),
+            onReconcile: (data, vote) => {
                 const likes = Number(data.like_count ?? 0);
                 const dislikes = Number(data.dislike_count ?? 0);
                 setNewsData((prev) =>
                     prev.map((n) =>
                         String(n.id) !== id
                             ? n
-                            : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes, userReaction: newVote }
+                            : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes, userReaction: vote }
                     )
                 );
-            } catch {
+            },
+            onRollback: () => {
+                setRegisteredVote(id, previousVote);
                 setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
                 setNewsData((prev) =>
-                    prev.map((n) =>
-                        String(n.id) !== id ? n : patchArticleVoteRow(n, newVote, previousVote)
-                    )
+                    prev.map((n) => (String(n.id) !== id ? n : patchArticleVoteRow(optimistic, newVote, previousVote)))
                 );
-            }
-        })();
+            },
+        });
     };
 
-    const handleBookmark = async (itemId) => {
-        try {
-            const exists = bookmarkedItems.has(itemId) || bookmarkedItems.has(String(itemId));
-            const item = newsData.find((n) => String(n.id) === String(itemId));
-            if (exists) await removeBookmark(itemId);
-            else await addBookmark(itemId, item?.title || '', item?.canonical_url || item?.url || '');
-            await loadNews();
-        } catch {
-            console.warn('bookmark update failed');
-        }
+    const handleBookmark = (itemId) => {
+        const id = String(itemId);
+        const article = newsData.find((n) => String(n.id) === id);
+        const { wasBookmarked } = applyOptimisticBookmarkToggle({
+            articleId: id,
+            article,
+            setBookmarkedItems,
+            setNewsData,
+            removeFromListOnUnbookmark: true,
+        });
+
+        queueBookmarkApi(id, wasBookmarked ? 'remove' : 'add', article).catch(() => {
+            rollbackBookmarkToggle({
+                articleId: id,
+                wasBookmarked,
+                article,
+                setBookmarkedItems,
+                setNewsData,
+            });
+        });
     };
 
     return (

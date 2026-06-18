@@ -1,14 +1,16 @@
-import 'react-native-reanimated';
 /**
+ * Gesture handler MUST be the first import (release builds break swipe-back otherwise).
  * @format
  */
-
-// Firebase is lazy-loaded in src/auth/googleSignIn.js and src/api/pushToken.js
-// so Metro can bundle without crashing if a package is missing from node_modules.
+import 'react-native-gesture-handler';
+import 'react-native-reanimated';
 
 import { AppRegistry } from 'react-native';
+import { enableScreens } from 'react-native-screens';
 import App from './App';
 import { name as appName } from './app.json';
+
+enableScreens(true);
 
 try {
   // Required for data-only FCM messages when the app is backgrounded/killed.
