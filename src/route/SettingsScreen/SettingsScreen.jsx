@@ -157,7 +157,7 @@ export default function SettingsScreen({ navigation, route }) {
           <SettingsRow
             icon={<Bell size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Push notifications"
-            subtitle="Breaking and personalized alerts"
+            subtitle="FCM alerts on this device when the app is in the background"
             switchEnabled
             switchValue={pushEnabled}
             onSwitchChange={async (v) => {
@@ -172,7 +172,7 @@ export default function SettingsScreen({ navigation, route }) {
           <SettingsRow
             icon={<Mail size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Email notifications"
-            subtitle="Summaries and important updates"
+            subtitle="Welcome-back and other account alerts (not keyword matches)"
             switchEnabled
             switchValue={emailEnabled}
             onSwitchChange={async (v) => {

@@ -8,6 +8,8 @@ import {
   pauseNativePlayback,
   resumeNativePlayback,
   getNativePlaybackPosition,
+  getNativePlaybackDuration,
+  settleNativePlayback,
   normalizeAudioBase64,
 } from './ttsNativePlayback';
 
@@ -17,6 +19,7 @@ export {
   pauseNativePlayback,
   resumeNativePlayback,
   getNativePlaybackPosition,
+  getNativePlaybackDuration,
 };
 
 export const TTS_LANGUAGES = [
@@ -166,6 +169,7 @@ export function playArticleTtsStreaming(
     onUrduPart,
     onFirstReady,
     onSegmentStart,
+    onSegmentPlaybackStart,
     isCancelled,
     startSegmentIndex = 0,
     ttsSessionId,
@@ -277,12 +281,23 @@ export function playArticleTtsStreaming(
       if (payload?.urdu_text && onUrduPart) onUrduPart(payload.urdu_text, i);
 
       const durationMs = estimateSegmentDurationMs(payload.audio);
-      onSegmentStart?.(i, { durationMs, segmentText: segments[i], offsetSec: i === startSegmentIndex ? checkpoint.offsetSec : 0 });
+      const startAt = i === startSegmentIndex ? checkpoint.offsetSec : 0;
+      onSegmentStart?.(i, { durationMs, segmentText: segments[i], offsetSec: startAt });
 
       if (!halted && !isCancelled?.()) {
+        let playbackStarted = false;
         const playPromise = playBase64AudioAndWait(payload.audio, payload.format || 'mp3', {
           isAborted: () => halted || isCancelled?.(),
           isPaused: () => paused,
+          onPlaybackStart: () => {
+            if (playbackStarted) return;
+            playbackStarted = true;
+            const liveDur = getNativePlaybackDuration();
+            onSegmentPlaybackStart?.(i, {
+              durationMs: liveDur > 0 ? Math.round(liveDur * 1000) : durationMs,
+              offsetSec: startAt,
+            });
+          },
         });
 
         let wasPaused = false;
@@ -307,6 +322,8 @@ export function playArticleTtsStreaming(
           stopNativePlayback();
           break;
         }
+
+        await settleNativePlayback(100);
       }
       checkpoint.offsetSec = 0;
       onProgress?.(i + 1, segments.length);

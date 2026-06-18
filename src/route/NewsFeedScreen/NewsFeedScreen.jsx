@@ -60,15 +60,18 @@ import { syncFeedInteractionsFromStorage } from '../../utils/syncFeedInteraction
 import { loadBookmarkFeedItems } from '../../utils/loadBookmarkFeedItems';
 
 function buildBookmarksTabNews(newsData, bookmarkedItems, bookmarkTabItems, votedItems = {}) {
-    const idSet = bookmarkedItems;
     const merged = new Map();
+
+    // API bookmark rows are authoritative — do not filter by local id set (may be stale).
     (bookmarkTabItems || []).forEach((item) => {
         const id = String(item.id);
-        if (idSet.has(id)) merged.set(id, { ...item, isBookmarked: true });
+        merged.set(id, { ...item, isBookmarked: true });
     });
+
+    // Enrich with feed rows when the same article is already loaded.
     (newsData || []).forEach((item) => {
         const id = String(item.id);
-        if (!idSet.has(id)) return;
+        if (!merged.has(id) && !bookmarkedItems?.has(id)) return;
         merged.set(id, {
             ...item,
             ...(merged.get(id) || {}),
@@ -78,6 +81,7 @@ function buildBookmarksTabNews(newsData, bookmarkedItems, bookmarkTabItems, vote
             dislike_count: item.dislike_count ?? merged.get(id)?.dislike_count,
         });
     });
+
     return Array.from(merged.values());
 }
 
@@ -423,7 +427,21 @@ const NewsFeedScreen = ({ navigation }) => {
         (async () => {
             try {
                 const items = await loadBookmarkFeedItems();
-                if (!cancelled) setBookmarkTabItems(items);
+                if (cancelled) return;
+                setBookmarkTabItems(items);
+                const ids = items.map((item) => String(item.id)).filter(Boolean);
+                if (ids.length) {
+                    setBookmarkedItems((prev) => {
+                        const next = new Set([...prev, ...ids]);
+                        if (next.size === prev.size) return prev;
+                        return next;
+                    });
+                    const stored = await getBookmarkIds().catch(() => []);
+                    const merged = [...new Set([...stored, ...ids])];
+                    if (merged.length !== stored.length) {
+                        await setBookmarkIds(merged).catch(() => {});
+                    }
+                }
             } catch (e) {
                 console.warn('Bookmark tab load failed:', e?.message || e);
             }

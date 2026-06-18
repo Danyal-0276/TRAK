@@ -34,13 +34,20 @@ function segmentIndexForOffset(ranges, offset) {
   return ranges.length - 1;
 }
 
-export function buildHighlightLinesFromContent(content, listenText) {
+export function buildHighlightLinesFromContent(content, listenText, { title = '' } = {}) {
   const listen = normalizeWs(listenText);
   if (!listen) return { lines: [], segments: [] };
 
   const ranges = buildListenSegmentRanges(listen);
   const lines = [];
   let searchFrom = 0;
+
+  const titleTrim = normalizeWs(title);
+  if (titleTrim && listen.startsWith(titleTrim)) {
+    const withPeriod = listen.startsWith(`${titleTrim}.`) ? `${titleTrim}.` : titleTrim;
+    searchFrom = withPeriod.length;
+    if (listen[searchFrom] === ' ') searchFrom += 1;
+  }
 
   const paragraphs = splitArticleParagraphs(content);
   for (let pi = 0; pi < paragraphs.length; pi++) {
@@ -75,6 +82,76 @@ export function lineIndicesForSegment(lines, segmentIndex) {
     if (lines[i].segmentIndex === segmentIndex) out.push(i);
   }
   return out;
+}
+
+/** Pick highlight line from 0–1 progress through a segment's lines (by char weight). */
+export function lineIndexForPlaybackProgress(lineIndices, lines, progress01) {
+  if (!lineIndices?.length) return -1;
+  const weights = lineIndices.map((i) => Math.max(1, lines[i]?.text?.length || 1));
+  const total = weights.reduce((a, b) => a + b, 0) || 1;
+  const target = Math.min(1, Math.max(0, progress01)) * total;
+  let acc = 0;
+  for (let j = 0; j < lineIndices.length; j++) {
+    acc += weights[j];
+    if (target <= acc || j === lineIndices.length - 1) return lineIndices[j];
+  }
+  return lineIndices[lineIndices.length - 1];
+}
+
+/**
+ * Drive highlights from live playback position (stays aligned with actual audio).
+ */
+export function syncHighlightsToPlayback({
+  lineIndices,
+  lines,
+  getElapsedSec,
+  getDurationSec,
+  onLine,
+  isCancelled,
+  intervalMs = 100,
+}) {
+  let timer = null;
+  let paused = false;
+  let lastLineIdx = -1;
+
+  const tick = async () => {
+    if (isCancelled?.() || paused) return;
+    const dur = Number(await Promise.resolve(getDurationSec?.())) || 0;
+    if (dur <= 0) return;
+    const elapsed = Math.max(0, Number(await Promise.resolve(getElapsedSec?.())) || 0);
+    const lineIdx = lineIndexForPlaybackProgress(lineIndices, lines, elapsed / dur);
+    if (lineIdx >= 0 && lineIdx !== lastLineIdx) {
+      lastLineIdx = lineIdx;
+      onLine(lineIdx);
+    }
+  };
+
+  const cancel = () => {
+    if (timer) clearInterval(timer);
+    timer = null;
+    paused = false;
+    lastLineIdx = -1;
+  };
+
+  const pause = () => {
+    paused = true;
+  };
+
+  const resume = () => {
+    paused = false;
+    tick().catch(() => {});
+  };
+
+  if (!lineIndices?.length) {
+    return { cancel, pause, resume };
+  }
+
+  tick().catch(() => {});
+  timer = setInterval(() => {
+    tick().catch(() => {});
+  }, intervalMs);
+
+  return { cancel, pause, resume };
 }
 
 export function scheduleLineHighlights(

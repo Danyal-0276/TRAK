@@ -1,6 +1,7 @@
 /** Broadcast bookmark / reaction changes across feed cards and article detail. */
 
 import { useEffect } from 'react';
+import { setRegisteredCounts } from './articleVoteController';
 
 const listeners = new Set();
 
@@ -8,6 +9,9 @@ export function emitArticleInteractionChange(patch = {}) {
   const articleId = String(patch.articleId || '').trim();
   if (!articleId) return;
   const payload = { ...patch, articleId };
+  if (patch.like_count !== undefined || patch.dislike_count !== undefined) {
+    setRegisteredCounts(articleId, patch.like_count, patch.dislike_count);
+  }
   listeners.forEach((fn) => {
     try {
       fn(payload);
