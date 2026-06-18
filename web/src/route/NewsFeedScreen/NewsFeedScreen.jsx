@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
 import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
@@ -32,6 +32,8 @@ import {
     rollbackBookmarkToggle,
 } from '../../utils/articleBookmarkController';
 import { API_BASE, API_ORIGIN } from '../../config/api';
+import { syncFeedInteractionsFromStorage } from '../../utils/syncFeedInteractions';
+import { loadBookmarkFeedItems } from '../../utils/loadBookmarkFeedItems';
 
 const FEED_TAB_KEYS = {
     'For you': 'feed.forYou',
@@ -46,6 +48,7 @@ const NewsFeedScreen = () => {
     const { isMobile, isTablet } = useResponsive();
     const { t } = useLanguage();
     const navigate = useNavigate();
+    const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
     const rawTab = searchParams.get('tab');
     const normalizedTab =
@@ -76,6 +79,8 @@ const NewsFeedScreen = () => {
     const [nextCursor, setNextCursor] = useState(() => (hasCachedHome ? cachedHome.nextCursor || '' : ''));
     const [hasMore, setHasMore] = useState(() => (hasCachedHome ? Boolean(cachedHome.hasMore) : false));
     const [loadingMore, setLoadingMore] = useState(false);
+    const [bookmarkTabItems, setBookmarkTabItems] = useState([]);
+    const [bookmarksTabLoading, setBookmarksTabLoading] = useState(false);
 
     const feedModeRef = useRef(hasCachedHome ? cachedHome.feedMode || 'explore' : 'explore');
     const loadAbortRef = useRef(null);
@@ -306,23 +311,40 @@ const NewsFeedScreen = () => {
     });
 
     useEffect(() => {
+        syncFeedInteractionsFromStorage({
+            setVotedItems,
+            setBookmarkedItems,
+            setNewsData,
+        });
+    }, [location.key]);
+
+    useEffect(() => {
+        if (activeTab !== 'Bookmarks') return undefined;
+        let cancelled = false;
+        setBookmarksTabLoading(true);
+        (async () => {
+            try {
+                const items = await loadBookmarkFeedItems();
+                if (!cancelled) setBookmarkTabItems(items);
+            } catch (e) {
+                console.warn('Bookmark tab load failed:', e?.message || e);
+            } finally {
+                if (!cancelled) setBookmarksTabLoading(false);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [activeTab, bookmarkedItems]);
+
+    useEffect(() => {
         const onVisible = () => {
             if (document.visibilityState !== 'visible') return;
-            const reactionMap = getReactionMap();
-            const bmSet = new Set(getBookmarkIds().map(String));
-            setVotedItems(reactionMap);
-            seedVoteRegistry(reactionMap);
-            setBookmarkedItems(bmSet);
-            setNewsData((prev) =>
-                prev.map((n) => {
-                    const id = String(n.id);
-                    return {
-                        ...n,
-                        userReaction: reactionMap[id] ?? null,
-                        isBookmarked: bmSet.has(id),
-                    };
-                }),
-            );
+            syncFeedInteractionsFromStorage({
+                setVotedItems,
+                setBookmarkedItems,
+                setNewsData,
+            });
         };
         document.addEventListener('visibilitychange', onVisible);
         return () => document.removeEventListener('visibilitychange', onVisible);
@@ -336,7 +358,8 @@ const NewsFeedScreen = () => {
         const id = String(itemId || '').trim();
         if (!id) return;
 
-        const { previousVote, newVote } = toggleVoteRegistered(id, type);
+        const { previousVote, newVote, changed } = toggleVoteRegistered(id, type);
+        if (!changed) return;
         const articleRow = newsDataRef.current.find((n) => String(n.id) === id) || {};
         const optimistic = patchArticleVoteRow(articleRow, previousVote, newVote);
 
@@ -419,7 +442,26 @@ const NewsFeedScreen = () => {
 
     const visibleNews = useMemo(() => {
         if (activeTab === 'Bookmarks') {
-            return newsData.filter((n) => bookmarkedItems.has(String(n.id)) || bookmarkedItems.has(n.id));
+            const idSet = bookmarkedItems;
+            const merged = new Map();
+            bookmarkTabItems.forEach((item) => {
+                const id = String(item.id);
+                if (idSet.has(id)) merged.set(id, { ...item, isBookmarked: true });
+            });
+            newsData.forEach((item) => {
+                const id = String(item.id);
+                if (idSet.has(id)) {
+                    merged.set(id, {
+                        ...item,
+                        ...(merged.get(id) || {}),
+                        isBookmarked: true,
+                        userReaction: item.userReaction ?? merged.get(id)?.userReaction ?? votedItems[id] ?? null,
+                        like_count: item.like_count ?? merged.get(id)?.like_count,
+                        dislike_count: item.dislike_count ?? merged.get(id)?.dislike_count,
+                    });
+                }
+            });
+            return Array.from(merged.values());
         }
         if (activeTab === 'Trending') {
             return [...newsData].sort((a, b) => {
@@ -435,7 +477,7 @@ const NewsFeedScreen = () => {
             return filtered.length > 0 ? filtered : newsData;
         }
         return newsData;
-    }, [newsData, activeTab, bookmarkedItems, hasFeedPersonalization, feedKeywords]);
+    }, [newsData, activeTab, bookmarkedItems, bookmarkTabItems, votedItems, hasFeedPersonalization, feedKeywords]);
 
     return (
         <div style={{
@@ -516,7 +558,7 @@ const NewsFeedScreen = () => {
                     ))}
                 </div>
 
-                {loading ? (
+                {loading || (activeTab === 'Bookmarks' && bookmarksTabLoading && !visibleNews.length) ? (
                     <MasonryFeedSkeleton
                         count={isMobile ? 6 : 12}
                         gap={isMobile ? 16 : isTablet ? 20 : 24}

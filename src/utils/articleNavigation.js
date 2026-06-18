@@ -1,4 +1,5 @@
 import { sanitizeArticleBody, sanitizeArticleSummary } from './articleTextSanitize';
+import { getRegisteredVote } from './articleVoteController';
 
 import {
   getMainStackNavigation,
@@ -300,13 +301,28 @@ export function navigateToArticleDetail(navigation, item, options = {}) {
 
     getCurrentMainTab(navigation);
 
-  const params =
+  const rawItem =
 
     typeof item === 'string' || typeof item === 'number'
 
-      ? buildArticleDetailParams({ id: String(item) }, { returnTab: tab, ...rest })
+      ? { id: String(item) }
 
-      : buildArticleDetailParams(item, { returnTab: tab, ...rest });
+      : item;
+
+  const aid = String(rawItem?.id ?? rawItem?.article_id ?? '').trim();
+
+  let enriched = rawItem;
+
+  if (aid && typeof rawItem === 'object') {
+    const vote = getRegisteredVote(aid) ?? rawItem.userReaction ?? null;
+    enriched = {
+      ...rawItem,
+      userReaction: vote,
+      isBookmarked: Boolean(rawItem.isBookmarked),
+    };
+  }
+
+  const params = buildArticleDetailParams(enriched, { returnTab: tab, ...rest });
 
   pushMainStackScreen(navigation, 'ArticleDetail', params);
 

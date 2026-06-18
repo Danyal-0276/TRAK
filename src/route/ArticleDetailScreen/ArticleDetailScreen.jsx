@@ -40,11 +40,12 @@ import { listBookmarks, listReactions, setReaction } from '../../utils/Service/a
 import { getBookmarkIds, setBookmarkIds } from '../../utils/bookmarksStorage';
 import { getReactionMap, mergeReactionRows, setReactionForArticle } from '../../utils/reactionsStorage';
 import { computeOptimisticReactionCounts } from '../../utils/reactionVote';
-import { emitArticleInteractionChange } from '../../utils/articleInteractionEvents';
+import { emitArticleInteractionChange, subscribeArticleInteractionChange } from '../../utils/articleInteractionEvents';
 import {
     toggleVoteRegistered,
     scheduleVotePersist,
     setRegisteredVote,
+    getRegisteredVote,
 } from '../../utils/articleVoteController';
 import { emitBookmarkToggle, queueBookmarkApi } from '../../utils/articleBookmarkController';
 
@@ -55,16 +56,20 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     const feedback = useFeedback();
     const { colors } = theme;
     const initialArticle = normalizeArticleForDetail(route.params?.article || {});
+    const articleId = String(route.params?.articleId || initialArticle.id || '');
     const [article, setArticle] = useState(initialArticle);
-    const [reaction, setReactionState] = useState(null);
-    const [isBookmarked, setIsBookmarked] = useState(false);
+    const [reaction, setReactionState] = useState(
+        () => initialArticle.userReaction ?? getRegisteredVote(articleId) ?? null,
+    );
+    const [isBookmarked, setIsBookmarked] = useState(
+        () => Boolean(initialArticle.isBookmarked) || false,
+    );
     const [likeCount, setLikeCount] = useState(Number(initialArticle.like_count ?? 0));
     const [dislikeCount, setDislikeCount] = useState(Number(initialArticle.dislike_count ?? 0));
     const [detailLoading, setDetailLoading] = useState(
         !initialArticle.title && !initialArticle.fullContent && !initialArticle.excerpt
     );
     const [fetchError, setFetchError] = useState('');
-    const articleId = String(route.params?.articleId || initialArticle.id || '');
     const returnTab = route.params?.returnTab || 'Home';
     useStackBackHandler(navigation, true, returnTab);
     const [activeTtsLineIndex, setActiveTtsLineIndex] = useState(-1);
@@ -128,7 +133,8 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 const rowVal = mergedMap[String(id)];
                 const row = (rRes.results || []).find((r) => String(r.article_id) === String(id));
                 const rv = row?.reaction === 'like' ? 'up' : row?.reaction === 'dislike' ? 'down' : null;
-                setReactionState(rowVal ?? rv ?? null);
+                const vote = getRegisteredVote(id) ?? rowVal ?? rv ?? null;
+                setReactionState(vote);
             } catch (e) {
                 if (!cancelled) {
                     setFetchError(e?.message || 'Could not load this article.');
@@ -141,6 +147,27 @@ const ArticleDetailScreen = ({ navigation, route }) => {
             cancelled = true;
         };
     }, [route.params?.article?.id, route.params?.articleId]);
+
+    useEffect(() => {
+        if (!articleId) return undefined;
+        const fromParams = normalizeArticleForDetail(route.params?.article || {});
+        if (fromParams.userReaction != null) setReactionState(fromParams.userReaction);
+        else {
+            const vote = getRegisteredVote(articleId) ?? null;
+            if (vote) setReactionState(vote);
+        }
+        if (fromParams.like_count != null) setLikeCount(Number(fromParams.like_count));
+        if (fromParams.dislike_count != null) setDislikeCount(Number(fromParams.dislike_count));
+        if (fromParams.isBookmarked != null) setIsBookmarked(Boolean(fromParams.isBookmarked));
+
+        return subscribeArticleInteractionChange((patch) => {
+            if (String(patch.articleId) !== String(articleId)) return;
+            if (patch.userReaction !== undefined) setReactionState(patch.userReaction);
+            if (patch.like_count !== undefined) setLikeCount(patch.like_count);
+            if (patch.dislike_count !== undefined) setDislikeCount(patch.dislike_count);
+            if (patch.isBookmarked !== undefined) setIsBookmarked(patch.isBookmarked);
+        });
+    }, [articleId, route.params?.article]);
 
     useEffect(() => {
         Animated.parallel([
@@ -185,7 +212,8 @@ const ArticleDetailScreen = ({ navigation, route }) => {
     );
 
     const applyReaction = (type) => {
-        const { previousVote, newVote } = toggleVoteRegistered(articleId, type);
+        const { previousVote, newVote, changed } = toggleVoteRegistered(articleId, type);
+        if (!changed) return;
         const counts = computeOptimisticReactionCounts(likeCount, dislikeCount, previousVote, newVote);
         setReactionState(newVote);
         setLikeCount(counts.like_count);

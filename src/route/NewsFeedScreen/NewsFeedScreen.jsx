@@ -56,8 +56,30 @@ import {
     saveHomeFeedCache,
 } from '../../utils/feedSessionCache';
 import { preloadProfileData, seedProfileFromBootstrap } from '../../utils/profileSessionCache';
+import { syncFeedInteractionsFromStorage } from '../../utils/syncFeedInteractions';
+import { loadBookmarkFeedItems } from '../../utils/loadBookmarkFeedItems';
 
-const { width, height } = Dimensions.get('window');
+function buildBookmarksTabNews(newsData, bookmarkedItems, bookmarkTabItems, votedItems = {}) {
+    const idSet = bookmarkedItems;
+    const merged = new Map();
+    (bookmarkTabItems || []).forEach((item) => {
+        const id = String(item.id);
+        if (idSet.has(id)) merged.set(id, { ...item, isBookmarked: true });
+    });
+    (newsData || []).forEach((item) => {
+        const id = String(item.id);
+        if (!idSet.has(id)) return;
+        merged.set(id, {
+            ...item,
+            ...(merged.get(id) || {}),
+            isBookmarked: true,
+            userReaction: item.userReaction ?? merged.get(id)?.userReaction ?? votedItems[id] ?? null,
+            like_count: item.like_count ?? merged.get(id)?.like_count,
+            dislike_count: item.dislike_count ?? merged.get(id)?.dislike_count,
+        });
+    });
+    return Array.from(merged.values());
+}
 const PAGER_LAYOUT = { width };
 
 const HEADER_HEIGHT = 60;
@@ -70,9 +92,9 @@ const FEED_TAB_ROUTES = [
     { key: 'Trending', title: 'Trending' },
 ];
 
-function filterNewsForTab(tabKey, newsData, bookmarkedItems) {
+function filterNewsForTab(tabKey, newsData, bookmarkedItems, bookmarkTabItems, votedItems) {
     if (tabKey === 'Bookmarks') {
-        return newsData.filter((n) => bookmarkedItems.has(String(n.id)) || bookmarkedItems.has(n.id));
+        return buildBookmarksTabNews(newsData, bookmarkedItems, bookmarkTabItems, votedItems);
     }
     if (tabKey === 'Trending') {
         return [...newsData].sort((a, b) => {
@@ -195,6 +217,7 @@ const NewsFeedScreen = ({ navigation }) => {
     const [hasMore, setHasMore] = useState(() => (hasCachedHome ? Boolean(cachedHome.hasMore) : false));
     const [loadingMore, setLoadingMore] = useState(false);
     const [loading, setLoading] = useState(!hasCachedHome);
+    const [bookmarkTabItems, setBookmarkTabItems] = useState([]);
     const [refreshing, setRefreshing] = useState(false);
     const [feedKeywords, setFeedKeywords] = useState(() => (hasCachedHome ? cachedHome.feedKeywords || [] : []));
     const [skipEntryAnim, setSkipEntryAnim] = useState(false);
@@ -392,9 +415,30 @@ const NewsFeedScreen = ({ navigation }) => {
         onArticlesPatch: setNewsData,
     });
 
+    useEffect(() => {
+        if (activeTab !== 'Bookmarks') return undefined;
+        let cancelled = false;
+        (async () => {
+            try {
+                const items = await loadBookmarkFeedItems();
+                if (!cancelled) setBookmarkTabItems(items);
+            } catch (e) {
+                console.warn('Bookmark tab load failed:', e?.message || e);
+            }
+        })();
+        return () => {
+            cancelled = true;
+        };
+    }, [activeTab, bookmarkedItems]);
+
     useFocusEffect(
         useCallback(() => {
             let cancelled = false;
+            syncFeedInteractionsFromStorage({
+                setVotedItems,
+                setBookmarkedItems,
+                setNewsData,
+            }).catch(() => {});
             (async () => {
                 const [bmIds, reactionMap] = await Promise.all([
                     getBookmarkIds().catch(() => []),
@@ -518,7 +562,8 @@ const NewsFeedScreen = ({ navigation }) => {
         const id = String(itemId || '').trim();
         if (!id) return;
 
-        const { previousVote, newVote } = toggleVoteRegistered(id, type);
+        const { previousVote, newVote, changed } = toggleVoteRegistered(id, type);
+        if (!changed) return;
         const articleRow = newsDataRef.current.find((n) => String(n.id) === id) || {};
         const optimistic = patchArticleVoteRow(articleRow, previousVote, newVote);
 
@@ -607,10 +652,16 @@ const NewsFeedScreen = ({ navigation }) => {
     const newsByTab = useMemo(() => {
         const out = {};
         FEED_TAB_ROUTES.forEach((route) => {
-            out[route.key] = filterNewsForTab(route.key, newsData, bookmarkedItems);
+            out[route.key] = filterNewsForTab(
+                route.key,
+                newsData,
+                bookmarkedItems,
+                bookmarkTabItems,
+                votedItems,
+            );
         });
         return out;
-    }, [newsData, bookmarkedItems]);
+    }, [newsData, bookmarkedItems, bookmarkTabItems, votedItems]);
 
     const renderFeedScene = useCallback(
         ({ route }) => {

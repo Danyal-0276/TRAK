@@ -19,6 +19,16 @@ export function computeOptimisticReactionCounts(
   };
 }
 
+export function redditVoteTransition(previousVote, type) {
+  if (type !== 'up' && type !== 'down') {
+    return { previousVote, newVote: previousVote, changed: false };
+  }
+  if (previousVote === type) {
+    return { previousVote, newVote: type, changed: false };
+  }
+  return { previousVote, newVote: type, changed: true };
+}
+
 export function reactionApiValue(newVote) {
   if (newVote === 'up') return 'like';
   if (newVote === 'down') return 'dislike';

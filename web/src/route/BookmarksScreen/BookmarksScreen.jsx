@@ -146,7 +146,8 @@ const BookmarksScreen = () => {
 
     const handleVote = (itemId, type) => {
         const id = String(itemId);
-        const { previousVote, newVote } = toggleVoteRegistered(id, type);
+        const { previousVote, newVote, changed } = toggleVoteRegistered(id, type);
+        if (!changed) return;
         const articleRow = newsData.find((n) => String(n.id) === id) || {};
         const optimistic = patchArticleVoteRow(articleRow, previousVote, newVote);
 

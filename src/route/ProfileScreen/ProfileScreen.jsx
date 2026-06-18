@@ -203,7 +203,8 @@ const UserProfileScreen = ({ navigation: navigationProp }) => {
 
   const handleVote = (itemId, type) => {
     const id = String(itemId);
-    const { previousVote, newVote } = toggleVoteRegistered(id, type);
+        const { previousVote, newVote, changed } = toggleVoteRegistered(id, type);
+        if (!changed) return;
     setVotedItems((prev) => ({ ...prev, [id]: newVote }));
     setBookmarks((prev) =>
       prev.map((n) => {
