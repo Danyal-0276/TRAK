@@ -13,7 +13,9 @@ function filterRealFeedItems(items) {
     const code = item.credibility?.label_code ?? item.credibilityLabel;
     if (code === 0 || code === '0') return true;
     const label = String(item.credibility?.label ?? item.credibilityLabel ?? '').toLowerCase();
-    return label === 'real' || label.startsWith('real');
+    if (label === 'real' || label.startsWith('real')) return true;
+    if (code == null && !label) return true;
+    return false;
   });
 }
 

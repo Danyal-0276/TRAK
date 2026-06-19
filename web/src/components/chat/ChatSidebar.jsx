@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { SquarePen, Trash2, X } from 'lucide-react';
-import { listChatConversations, deleteChatConversation } from '../../utils/Service/api';
+import { deleteChatConversation } from '../../utils/Service/api';
+import { fetchChatSidebarConversations, LEGACY_CONVERSATION_ID } from '../../utils/fetchChatSidebarConversations';
 import { formatConversationWhen } from './chatMessageUtils';
 
 export default function ChatSidebar({
   open,
+  preload = false,
   onClose,
   colors,
   activeConversationId,
@@ -18,8 +20,8 @@ export default function ChatSidebar({
   const loadList = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await listChatConversations();
-      setConversations(Array.isArray(res.conversations) ? res.conversations : []);
+      const rows = await fetchChatSidebarConversations();
+      setConversations(rows);
     } catch {
       setConversations([]);
     } finally {
@@ -28,11 +30,16 @@ export default function ChatSidebar({
   }, []);
 
   useEffect(() => {
-    if (open) loadList();
-  }, [open, loadList, refreshKey]);
+    if (open || preload) loadList();
+  }, [open, preload, loadList, refreshKey]);
 
   const handleDelete = async (id, e) => {
     e.stopPropagation();
+    if (id === LEGACY_CONVERSATION_ID) {
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (activeConversationId === id) onNewChat();
+      return;
+    }
     try {
       await deleteChatConversation(id);
       setConversations((prev) => prev.filter((c) => c.id !== id));

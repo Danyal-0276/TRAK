@@ -9,7 +9,10 @@ export function isRealFeedArticle(item) {
     const label = String(
         item.credibility_label_name ?? item.credibility?.label ?? item.credibilityLabel ?? ''
     ).toLowerCase();
-    return label === 'real' || label.startsWith('real');
+    if (label === 'real' || label.startsWith('real')) return true;
+    // API feeds are already Real-only; keep rows when credibility fields are omitted in list payloads.
+    if (code == null && !label) return true;
+    return false;
 }
 
 export function filterRealFeedItems(items) {

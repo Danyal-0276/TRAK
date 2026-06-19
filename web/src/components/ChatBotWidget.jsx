@@ -5,6 +5,7 @@ import { Bot, Send, Sparkles, SquarePen, PanelLeft, X } from 'lucide-react';
 import {
   chatWithBot,
   getChatConversation,
+  getChatHistory,
 } from '../utils/Service/api';
 import { useAuth } from '../context/AuthContext';
 import { useChatBot } from '../context/ChatBotContext';
@@ -14,6 +15,7 @@ import { filledActionColors } from '../theme/buttonContrast';
 import { CHAT_ANIMATION_CSS, CHAT_HERO_SUBTITLE, CHAT_HERO_TITLE, CHAT_PROMPTS } from './chat/chatUiConstants';
 import ChatSidebar from './chat/ChatSidebar';
 import { mapServerChatMessages } from './chat/chatMessageUtils';
+import { LEGACY_CONVERSATION_ID } from '../utils/fetchChatSidebarConversations';
 
 function resolveTrakArticlePath(article) {
   if (!article) return null;
@@ -237,6 +239,18 @@ const ChatBotWidget = () => {
 
   const openConversation = useCallback(async (id) => {
     if (!id) return;
+    if (id === LEGACY_CONVERSATION_ID) {
+      try {
+        const hist = await getChatHistory();
+        setConversationId(null);
+        setMessages(mapServerChatMessages(hist?.messages || []));
+        setHistoryLoaded(true);
+        scrollToLatest();
+      } catch {
+        startNewChat();
+      }
+      return;
+    }
     try {
       const res = await getChatConversation(id);
       setConversationId(String(res.id || id));
@@ -419,6 +433,7 @@ const ChatBotWidget = () => {
 
           <ChatSidebar
             open={sidebarOpen}
+            preload={open && Boolean(user)}
             onClose={() => setSidebarOpen(false)}
             colors={colors}
             activeConversationId={conversationId}
