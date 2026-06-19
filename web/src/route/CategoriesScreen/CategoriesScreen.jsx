@@ -71,11 +71,17 @@ const CategoriesScreen = () => {
         try {
             const page = await loadCategoryPage({ category: categoryKey, limit: ARTICLES_PREVIEW_COUNT });
             const items = page.items || [];
+            const total = page.categoryTotal != null ? Number(page.categoryTotal) : null;
             setPreviewByKey((prev) => ({ ...prev, [categoryKey]: items }));
             setPreviewStatusByKey((prev) => ({
                 ...prev,
-                [categoryKey]: items.length ? 'loaded' : 'error',
+                [categoryKey]: items.length ? 'loaded' : (total === 0 ? 'loaded' : 'error'),
             }));
+            if (total != null && total > 0) {
+                setCategories((prev) => prev.map((row) => (
+                    row.key === categoryKey ? { ...row, count: total } : row
+                )));
+            }
         } catch (e) {
             console.warn('Category preview failed:', e?.message);
             setPreviewByKey((prev) => ({ ...prev, [categoryKey]: [] }));
@@ -282,7 +288,7 @@ const CategoriesScreen = () => {
                                             }}>
                                                 {previewLoading ? (
                                                     <p style={{ margin: 0, fontSize: 14, color: textSecondary }}>Loading articles…</p>
-                                                ) : category.count === 0 ? (
+                                                ) : previewStatus === 'loaded' && previewArticles.length === 0 ? (
                                                     <p style={{ margin: 0, fontSize: 14, color: textSecondary }}>
                                                         No articles in this category yet.
                                                     </p>

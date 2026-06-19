@@ -180,7 +180,10 @@ export function buildCategoryList(platformCategories = [], categoryCounts = null
 
   const sorted = list.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
   if (useApiCounts) {
-    return sorted.filter((row) => row.count > 0);
+    const withArticles = sorted.filter((row) => row.count > 0);
+    if (withArticles.length > 0) {
+      return withArticles;
+    }
   }
   return sorted;
 }

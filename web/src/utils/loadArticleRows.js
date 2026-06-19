@@ -1,5 +1,6 @@
 import { getUserArticleDetail } from './Service/api';
 import { mapApiItem } from './loadFeed';
+import { filterRealFeedItems } from './feedRealOnly';
 
 /** Load full article cards from bookmark or reaction list rows. */
 export async function loadArticlesFromRows(rows = []) {
@@ -48,5 +49,5 @@ export async function loadArticlesFromRows(rows = []) {
       }
     })
   );
-  return detailed.filter(Boolean);
+  return filterRealFeedItems(detailed.filter(Boolean));
 }
