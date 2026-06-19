@@ -233,17 +233,26 @@ export async function loadProfileBundle({ force = false, enrichLimit = PROFILE_P
 
   const stats = computeStats(reactions, bookmarkRows);
   const votedItems = buildReactionMap(reactions);
-  const bookmarks = await enrichBookmarkPreview(bookmarkRows, enrichLimit);
+  const lightweight = (bookmarkRows || []).map(mapBookmarkRow).filter(Boolean);
 
   const bundle = {
     profile,
     stats,
-    bookmarks,
+    bookmarks: lightweight,
     votedItems,
     fetchedAt: Date.now(),
   };
 
   await persistProfileBundle(bundle);
+
+  enrichBookmarkPreview(bookmarkRows, enrichLimit)
+    .then((enriched) => {
+      if (!enriched?.length) return;
+      sessionCache = { ...sessionCache, bookmarks: enriched };
+      persistProfileBundle(sessionCache).catch(() => {});
+    })
+    .catch(() => {});
+
   return bundle;
 }
 
@@ -294,4 +303,20 @@ export function preloadProfileData({ skipIfFresh = true, force = false } = {}) {
     });
 
   return preloadPromise;
+}
+
+export function updateProfileSessionFromEdit(profilePatch = {}) {
+  if (!profilePatch || typeof profilePatch !== 'object') return sessionCache;
+  const nextProfile = stripLastLogin({
+    ...(sessionCache?.profile || {}),
+    ...profilePatch,
+    full_name: profilePatch.full_name ?? profilePatch.name ?? sessionCache?.profile?.full_name,
+  });
+  sessionCache = {
+    ...(sessionCache || {}),
+    profile: nextProfile,
+    fetchedAt: Date.now(),
+  };
+  persistProfileBundle(sessionCache).catch(() => {});
+  return sessionCache;
 }

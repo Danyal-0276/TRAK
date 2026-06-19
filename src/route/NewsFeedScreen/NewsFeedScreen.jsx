@@ -67,6 +67,8 @@ import {
 } from '../../utils/loadBookmarkFeedItems';
 import { buildBookmarksTabNews, patchBookmarkTabItems } from '../../utils/buildBookmarksTabNews';
 
+let feedInteractionSessionSynced = false;
+
 function filterNewsForTab(tabKey, newsData, bookmarkedItems, bookmarkTabItems, votedItems) {
     if (tabKey === 'Bookmarks') {
         return buildBookmarksTabNews(newsData, bookmarkedItems, bookmarkTabItems, votedItems);
@@ -308,6 +310,28 @@ const NewsFeedScreen = ({ navigation }) => {
             });
             if (!silent) setLoading(false);
             preloadProfileData({ skipIfFresh: true });
+            loadHomeBootstrap({ limit: 50 })
+                .then((boot) => {
+                    if (!boot?.items?.length) return;
+                    const mapped = mapBootstrapItems(boot.items, boot.reactionMap || {});
+                    setNewsData(mapped);
+                    setNextCursor(boot.nextCursor || '');
+                    setHasMore(Boolean(boot.hasMore));
+                    setVotedItems(boot.reactionMap || {});
+                    setBookmarkedItems(boot.bookmarked || new Set());
+                    saveHomeFeedCache({
+                        newsData: mapped,
+                        votedItems: boot.reactionMap || {},
+                        bookmarkIds: Array.from(boot.bookmarked || []),
+                        feedKeywords: boot.keywords || [],
+                        feedMode: boot.feedMode,
+                        nextCursor: boot.nextCursor || '',
+                        hasMore: Boolean(boot.hasMore),
+                        activeTab,
+                        scrollY: scrollYByTab.current[activeTab] || 0,
+                    });
+                })
+                .catch(() => {});
             return;
         }
 
@@ -520,7 +544,10 @@ const NewsFeedScreen = ({ navigation }) => {
                 setBookmarkedItems(bmSet);
                 setVotedItems(reactionMap);
                 setNewsData((prev) => stampArticleInteractions(prev, reactionMap, bmSet));
-                await syncInteractionsFromServer(false);
+                if (!feedInteractionSessionSynced) {
+                    feedInteractionSessionSynced = true;
+                    await syncInteractionsFromServer(false);
+                }
             })();
 
             const cached = getHomeFeedCache();
@@ -619,6 +646,9 @@ const NewsFeedScreen = ({ navigation }) => {
         if (activeTab === 'Bookmarks') {
             lastBookmarkTabLoadRef.current = 0;
             await refreshBookmarkTabItems({ force: true });
+            feedInteractionSessionSynced = false;
+            await syncInteractionsFromServer(true);
+            feedInteractionSessionSynced = true;
         } else {
             await loadNews({ silent: true, force: true });
             await syncInteractionsFromServer(true);

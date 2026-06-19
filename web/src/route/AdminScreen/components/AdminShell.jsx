@@ -14,6 +14,8 @@ import {
   subscribeAdminNotificationSync,
 } from '../../../utils/adminNotificationsEvents';
 import { isDashboardPath } from '../hooks/useAdminTabActive';
+import { loadAdminSettings } from '../../../utils/adminSettingsRuntime';
+import { AdminLanguageProvider } from '../../../context/AdminLanguageContext';
 import { getAdminNotifications } from '../../../api/adminApi';
 import { openAdminNotificationsSocket, isAdminNotificationsWsEnabled } from '../../../api/adminNotificationsRealtime';
 import { useUIFeedback } from '../../../components/ui/UIFeedback';
@@ -34,6 +36,10 @@ export default function AdminShell() {
   );
 
   const sidebarVisible = isDesktop || sidebarOpen;
+
+  useEffect(() => {
+    loadAdminSettings().catch(() => {});
+  }, []);
 
   const refreshUnreadCount = useCallback(async () => {
     try {
@@ -175,7 +181,8 @@ export default function AdminShell() {
   };
 
   return (
-    <div className="admin-shell" style={cssVars}>
+    <AdminLanguageProvider>
+      <div className="admin-shell" style={cssVars}>
       {sidebarOpen ? (
         <button
           type="button"
@@ -210,6 +217,7 @@ export default function AdminShell() {
           <AdminKeepAliveOutlet />
         </div>
       </div>
-    </div>
+      </div>
+    </AdminLanguageProvider>
   );
 }

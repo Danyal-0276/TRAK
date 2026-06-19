@@ -1,4 +1,4 @@
-import { getUserArticleDetail, listBookmarks } from './Service/api';
+import { getUserArticleDetail, listBookmarks, getArticlesBatch } from './Service/api';
 import { mapApiItem } from './loadFeed';
 import { filterRealFeedItems } from './feedRealOnly';
 import { getCardSummaryText } from './articleNavigation';
@@ -6,6 +6,7 @@ import { resolveArticleImageUrl } from './articleMedia';
 import { getReactionMap } from './reactionsStorage';
 import { getRegisteredVote } from './articleVoteController';
 import { toBookmarkCard } from './articleBookmarkController';
+import { formatDateTime } from './formatDateTime';
 
 function mapBookmarkRow(row, full, reactionMap) {
   const aid = String(row?.article_id ?? full?.id ?? '').trim();
@@ -37,7 +38,7 @@ function mapBookmarkRow(row, full, reactionMap) {
     title: row.title || 'Saved article',
     canonical_url: row.url || '',
     url: row.url || '',
-    time: row.created_at ? new Date(row.created_at).toLocaleString() : 'Recently',
+    time: row.created_at ? formatDateTime(row.created_at) : 'Recently',
     userReaction: getRegisteredVote(aid) ?? reactionMap[aid] ?? null,
   });
 }
@@ -47,17 +48,34 @@ export async function loadBookmarkFeedItems() {
   const response = await listBookmarks().catch(() => ({ results: [] }));
   const rows = response.results || [];
   const reactionMap = getReactionMap();
+  const ids = rows.map((row) => String(row.article_id ?? '').trim()).filter(Boolean);
+
+  let detailById = new Map();
+  if (ids.length) {
+    try {
+      const batch = await getArticlesBatch(ids);
+      for (const doc of batch.results || []) {
+        const id = String(doc?.id ?? '').trim();
+        if (id) detailById.set(id, doc);
+      }
+    } catch {
+      /* fall back per-id below */
+    }
+  }
 
   const detailed = await Promise.all(
     rows.map(async (row) => {
       const aid = String(row.article_id ?? '').trim();
       if (!aid) return null;
-      try {
-        const full = await getUserArticleDetail(aid);
-        return mapBookmarkRow(row, full, reactionMap);
-      } catch {
-        return mapBookmarkRow(row, null, reactionMap);
+      let full = detailById.get(aid);
+      if (!full) {
+        try {
+          full = await getUserArticleDetail(aid);
+        } catch {
+          full = null;
+        }
       }
+      return mapBookmarkRow(row, full, reactionMap);
     }),
   );
 

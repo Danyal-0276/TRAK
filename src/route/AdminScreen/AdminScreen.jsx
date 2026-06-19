@@ -69,7 +69,10 @@ import {
   openAdminNotificationsSocket,
   isAdminNotificationsWsEnabled,
 } from '../../api/adminNotificationsRealtime';
-import { dispatchAdminFeedbackRefresh } from '../../utils/adminNotificationsEvents';
+import { dispatchAdminFeedbackRefresh, subscribeAdminNotificationSync, subscribeAdminFeedbackRefresh } from '../../utils/adminNotificationsEvents';
+import { AdminLanguageProvider, useAdminLanguage } from '../../context/AdminLanguageContext';
+import { getNotificationPreferences, patchNotificationPreferences } from '../../api/notificationsApi';
+import { getAdminFeedback } from '../../api/adminApi';
 import {
   getAdminSessionCache,
   hydrateAdminFromStorage,
@@ -134,6 +137,7 @@ const AdminScreen = ({ navigation, route }) => {
   const isDark = theme.mode === 'dark';
   const insets = useSafeAreaInsets();
   const { confirm, error: showError, success: showSuccess } = useFeedback();
+  const { setAdminLanguage } = useAdminLanguage();
   const layout = useWindowDimensions();
   const [tabIndex, setTabIndex] = useState(0);
   const activeTab = ADMIN_TAB_ROUTES[tabIndex]?.key ?? 'overview';
@@ -177,7 +181,7 @@ const AdminScreen = ({ navigation, route }) => {
   const [articlesPage, setArticlesPage] = useState(1);
   const articlesPageRef = useRef(1);
   const searchQueryRef = useRef('');
-  const ADMIN_ARTICLES_PAGE_SIZE = 100;
+  const ADMIN_ARTICLES_PAGE_SIZE = 50;
   const [listsLoading, setListsLoading] = useState(() => !isAdminListsFresh(initialAdminCache.lists));
   const [connectionUrlInput, setConnectionUrlInput] = useState('');
   const [overviewLoading, setOverviewLoading] = useState(() => !isAdminOverviewFresh(initialAdminCache.overview));
@@ -200,6 +204,9 @@ const AdminScreen = ({ navigation, route }) => {
   const [editingItem, setEditingItem] = useState(null);
   const [formData, setFormData] = useState({});
   const [reviewArticle, setReviewArticle] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [feedbackPendingCount, setFeedbackPendingCount] = useState(0);
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
@@ -438,9 +445,13 @@ const AdminScreen = ({ navigation, route }) => {
     force = false,
     includeUsers = null,
     includeAdmins = null,
+    includeNotifications = null,
+    includeSettings = null,
   } = {}) => {
     const wantUsers = includeUsers ?? activeTab === 'users';
     const wantAdmins = includeAdmins ?? activeTab === 'admins';
+    const wantNotifications = includeNotifications ?? activeTab === 'notifications';
+    const wantSettings = includeSettings ?? activeTab === 'settings';
     const cached = getAdminSessionCache().lists;
 
     if (
@@ -448,7 +459,8 @@ const AdminScreen = ({ navigation, route }) => {
       isAdminListsFresh(cached) &&
       (!wantUsers || cached.usersFetched) &&
       (!wantAdmins || cached.adminsFetched) &&
-      Array.isArray(cached.notifications)
+      (!wantNotifications || Array.isArray(cached.notifications)) &&
+      (!wantSettings || Boolean(cached.settings))
     ) {
       applyListsCache(cached);
       return;
@@ -457,10 +469,13 @@ const AdminScreen = ({ navigation, route }) => {
     if (!silent) setListsLoading(true);
     try {
       const listQ = activeTab === 'users' || activeTab === 'admins' ? searchQuery.trim() : '';
-      const tasks = [
-        getAdminNotifications().then((res) => ({ key: 'notifications', res })),
-        getAdminSettings().then((res) => ({ key: 'settings', res })),
-      ];
+      const tasks = [];
+      if (wantNotifications) {
+        tasks.push(getAdminNotifications().then((res) => ({ key: 'notifications', res })));
+      }
+      if (wantSettings) {
+        tasks.push(getAdminSettings().then((res) => ({ key: 'settings', res })));
+      }
       if (wantUsers) {
         tasks.push(
           getAdminUsers({ q: activeTab === 'users' ? listQ : '', role: 'user' }).then((res) => ({
@@ -572,16 +587,80 @@ const AdminScreen = ({ navigation, route }) => {
   }, [activeTab, applyListsCache, searchQuery, settings, categories, connections, showError, updateConnectionsIfChanged]);
 
   const loadData = useCallback(async ({ force = false } = {}) => {
-    await Promise.all([
-      loadOverview({ silent: true, force }),
-      loadLists({ silent: true, force, includeUsers: true, includeAdmins: true }),
-    ]);
+    await loadOverview({ silent: true, force });
+    const cached = getAdminSessionCache().lists;
+    if (force || !isAdminListsFresh(cached)) {
+      await loadLists({
+        silent: true,
+        force,
+        includeNotifications: true,
+        includeSettings: false,
+        includeUsers: false,
+        includeAdmins: false,
+      });
+    }
   }, [loadOverview, loadLists]);
 
   const handleCreateAdmin = async (email, password) => {
     await postAdminCreate(email, password);
-    await loadData();
+    await loadLists({ silent: true, force: true, includeUsers: false, includeAdmins: true });
   };
+
+  const loadFeedbackPendingCount = useCallback(async () => {
+    try {
+      const data = await getAdminFeedback({ status: 'pending', limit: 1 });
+      setFeedbackPendingCount(Number(data?.stats?.pending ?? 0));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin) return undefined;
+    loadFeedbackPendingCount();
+    const id = setInterval(loadFeedbackPendingCount, 60_000);
+    const unsub = subscribeAdminFeedbackRefresh(() => loadFeedbackPendingCount());
+    return () => {
+      clearInterval(id);
+      unsub();
+    };
+  }, [bootstrapped, isAdmin, loadFeedbackPendingCount]);
+
+  useEffect(() => {
+    if (!isAdmin) return undefined;
+    return subscribeAdminNotificationSync((evt) => {
+      if (evt.type === 'read' && evt.id != null) {
+        setNotifications((prev) =>
+          prev.map((n) =>
+            String(n.id) === String(evt.id) ? { ...n, read: true, status: 'read' } : n
+          )
+        );
+      } else if (evt.type === 'readAll') {
+        setNotifications((prev) => prev.map((n) => ({ ...n, read: true, status: 'read' })));
+      } else if (evt.type === 'refresh') {
+        loadLists({
+          silent: true,
+          force: true,
+          includeNotifications: true,
+          includeUsers: false,
+          includeAdmins: false,
+          includeSettings: false,
+        });
+      }
+    });
+  }, [isAdmin, loadLists]);
+
+  useEffect(() => {
+    if (!bootstrapped || !isAdmin || activeTab !== 'notifications') return;
+    loadLists({
+      silent: true,
+      force: true,
+      includeNotifications: true,
+      includeUsers: false,
+      includeAdmins: false,
+      includeSettings: false,
+    });
+  }, [activeTab, bootstrapped, isAdmin, loadLists]);
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || hasBootstrappedRef.current) return;
@@ -648,7 +727,7 @@ const AdminScreen = ({ navigation, route }) => {
     const id = setTimeout(
       () =>
         loadLists({
-          silent: Boolean(cached?.usersFetched && users.length > 0),
+          silent: Boolean(cached?.usersFetched && (cached?.users?.length ?? 0) > 0),
           force: !cached?.usersFetched,
           includeUsers: true,
           includeAdmins: false,
@@ -656,7 +735,7 @@ const AdminScreen = ({ navigation, route }) => {
       searchQuery.trim() ? 350 : 0
     );
     return () => clearTimeout(id);
-  }, [searchQuery, activeTab, bootstrapped, isAdmin, loadLists, users.length]);
+  }, [searchQuery, activeTab, bootstrapped, isAdmin, loadLists]);
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || activeTab !== 'admins') return undefined;
@@ -664,7 +743,7 @@ const AdminScreen = ({ navigation, route }) => {
     const id = setTimeout(
       () =>
         loadLists({
-          silent: Boolean(cached?.adminsFetched && admins.length > 0),
+          silent: Boolean(cached?.adminsFetched && (cached?.admins?.length ?? 0) > 0),
           force: !cached?.adminsFetched,
           includeUsers: false,
           includeAdmins: true,
@@ -672,7 +751,7 @@ const AdminScreen = ({ navigation, route }) => {
       searchQuery.trim() ? 350 : 0
     );
     return () => clearTimeout(id);
-  }, [searchQuery, activeTab, bootstrapped, isAdmin, loadLists, admins.length]);
+  }, [searchQuery, activeTab, bootstrapped, isAdmin, loadLists]);
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || activeTab !== 'overview') return;
@@ -835,14 +914,40 @@ const AdminScreen = ({ navigation, route }) => {
     }
     const id = typeof idOrArticle === 'object' ? idOrArticle.id : idOrArticle;
     const accepted = await confirm({
-      title: 'Confirm Delete',
+      title: type === 'admin' ? 'Delete admin?' : 'Delete user?',
       message: 'Are you sure you want to delete this item?',
       confirmText: 'Delete',
       danger: true,
     });
     if (!accepted) return;
-    if (type === 'user' || type === 'admin') await deleteAdminUser(id);
-    loadData();
+    if (type !== 'user' && type !== 'admin') return;
+
+    setDeletingId(id);
+    try {
+      await deleteAdminUser(id);
+      if (type === 'user') {
+        setUsers((prev) => prev.filter((u) => u.id !== id));
+      } else {
+        setAdmins((prev) => prev.filter((a) => a.id !== id));
+      }
+      showSuccess(type === 'user' ? 'User deleted.' : 'Admin deleted.');
+      await loadLists({
+        silent: true,
+        force: true,
+        includeUsers: type === 'user',
+        includeAdmins: type === 'admin',
+      });
+    } catch (e) {
+      showError(e?.message || 'Delete failed');
+      await loadLists({
+        silent: true,
+        force: true,
+        includeUsers: type === 'user',
+        includeAdmins: type === 'admin',
+      });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleSave = async () => {
@@ -877,12 +982,26 @@ const AdminScreen = ({ navigation, route }) => {
       language: updated.language || 'English',
       timezone: updated.timezone || 'UTC',
     });
+    if (updated?.language) setAdminLanguage(updated.language);
   };
 
   const reloadSettings = useCallback(async () => {
     try {
-      const settingsRes = await getAdminSettings();
+      setSettingsLoading(true);
+      const [settingsRes, notificationPrefs] = await Promise.all([
+        getAdminSettings(),
+        getNotificationPreferences().catch(() => null),
+      ]);
       applySettingsFromApi(settingsRes);
+      if (notificationPrefs) {
+        setSettings((prev) => ({
+          ...prev,
+          pushNotification: !!notificationPrefs.push_enabled,
+          emailNotification: !!notificationPrefs.email_enabled,
+          inAppNotification: notificationPrefs.in_app_enabled !== false,
+        }));
+      }
+      if (settingsRes?.language) setAdminLanguage(settingsRes.language);
       const cats = normAdminCategories(settingsRes.categories || []);
       const connectionsData = normAdminConnections(settingsRes.connections || []);
       setCategories(cats);
@@ -907,8 +1026,10 @@ const AdminScreen = ({ navigation, route }) => {
     } catch (e) {
       showError(e?.message || 'Could not load settings from server.');
       return [];
+    } finally {
+      setSettingsLoading(false);
     }
-  }, [showError, updateConnectionsIfChanged]);
+  }, [showError, setAdminLanguage, updateConnectionsIfChanged]);
 
   useEffect(() => {
     if (!bootstrapped || !isAdmin || activeTab !== 'settings') return;
@@ -916,27 +1037,40 @@ const AdminScreen = ({ navigation, route }) => {
     reloadSettings();
   }, [bootstrapped, isAdmin, activeTab, reloadSettings, categories.length]);
 
-  const handleSettingsChange = async (updates) => {
-    const pushOn =
-      updates.pushNotification !== undefined
-        ? updates.pushNotification
-        : updates.emailNotification !== undefined
-          ? updates.emailNotification
-          : updates.inAppNotification !== undefined
-            ? updates.inAppNotification
-            : settings.pushNotification;
+  const handleNotificationPrefChange = async (key, value) => {
+    const serverKey =
+      key === 'pushNotification'
+        ? 'push_enabled'
+        : key === 'emailNotification'
+          ? 'email_enabled'
+          : key === 'inAppNotification'
+            ? 'in_app_enabled'
+            : null;
+    if (!serverKey) return;
+
+    setSettings((prev) => ({ ...prev, [key]: value }));
     try {
-      const payload = {
-        notifications_enabled_default: pushOn !== undefined ? !!pushOn : !!settings.pushNotification,
-        language: updates.language || settings.language || 'English',
-        timezone: updates.timezone || settings.timezone || 'UTC',
-      };
-      const updated = await patchAdminSettings(payload);
+      await patchNotificationPreferences({ [serverKey]: value });
+    } catch (e) {
+      setSettings((prev) => ({ ...prev, [key]: !value }));
+      showError(e?.message || 'Failed to update notification settings.');
+    }
+  };
+
+  const handleLanguageChange = async (language) => {
+    try {
+      const updated = await patchAdminSettings({ language });
       applySettingsFromApi(updated);
-      if (updates.language) showSuccess(`Language set to ${updates.language}`);
-      else if (updates.timezone) showSuccess(`Timezone set to ${updates.timezone}`);
+      setAdminLanguage(language);
+      showSuccess(`Language set to ${language}`);
     } catch (e) {
       showError(e?.message || 'Failed to update settings.');
+    }
+  };
+
+  const handleSettingsChange = async (updates) => {
+    if (updates.language) {
+      await handleLanguageChange(updates.language);
     }
   };
 
@@ -1164,6 +1298,7 @@ const AdminScreen = ({ navigation, route }) => {
             onSearchChange={setSearchQuery}
             onEdit={handleEdit}
             onDelete={(id) => handleDelete(id, 'user')}
+            deletingId={deletingId}
             loading={listsLoading}
           />
         );
@@ -1174,6 +1309,7 @@ const AdminScreen = ({ navigation, route }) => {
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             onDelete={(id) => handleDelete(id, 'admin')}
+            deletingId={deletingId}
             onCreate={isSuperAdmin ? handleCreateAdmin : null}
             loading={listsLoading}
           />
@@ -1204,9 +1340,9 @@ const AdminScreen = ({ navigation, route }) => {
           />
         );
       case 'feedback':
-        return scroll(<FeedbackTab navigation={navigation} isActive={activeTab === 'feedback'} />);
+        return <FeedbackTab navigation={navigation} isActive={activeTab === 'feedback'} />;
       case 'notifications':
-        return scroll(
+        return (
           <NotificationsTab
             notifications={notifications}
             onSwitchTab={setActiveTab}
@@ -1222,6 +1358,9 @@ const AdminScreen = ({ navigation, route }) => {
         return scroll(
           <SettingsTab
             settings={settings}
+            loading={settingsLoading}
+            onNotificationChange={handleNotificationPrefChange}
+            onLanguageChange={handleLanguageChange}
             onSettingsChange={handleSettingsChange}
             categories={categories}
             connections={connections}
@@ -1288,6 +1427,7 @@ const AdminScreen = ({ navigation, route }) => {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         unreadAlerts={unreadAlertsCount}
+        pendingFeedback={feedbackPendingCount}
       />
 
       <Animated.View
@@ -1395,4 +1535,10 @@ const styles = StyleSheet.create({
   },
 });
 
-export default AdminScreen; 
+export default function AdminScreenRoot(props) {
+  return (
+    <AdminLanguageProvider>
+      <AdminScreen {...props} />
+    </AdminLanguageProvider>
+  );
+} 

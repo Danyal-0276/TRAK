@@ -1,14 +1,15 @@
 import React from 'react';
-import { View, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Edit2, Trash2, User } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
 import Text from '../../../components/ui/Text';
 import LinearGradient from 'react-native-linear-gradient';
 
-const UserCard = ({ user, onEdit, onDelete, palette: paletteProp }) => {
+const UserCard = ({ user, onEdit, onDelete, deletingId = null, palette: paletteProp }) => {
   const { palette: themePalette } = useAdminTheme();
   const palette = paletteProp || themePalette;
   const isActive = user.status === 'active';
+  const isDeleting = deletingId != null && String(deletingId) === String(user.id);
 
   return (
     <View style={[styles.itemCard, {
@@ -65,11 +66,16 @@ const UserCard = ({ user, onEdit, onDelete, palette: paletteProp }) => {
         </TouchableOpacity>
         {onDelete ? (
           <TouchableOpacity 
-            style={[styles.actionButton, { backgroundColor: `${palette.error}15` }]} 
+            style={[styles.actionButton, { backgroundColor: `${palette.error}15`, opacity: isDeleting ? 0.6 : 1 }]} 
             onPress={() => onDelete(user.id)}
             activeOpacity={0.7}
+            disabled={isDeleting}
           >
-            <Trash2 size={18} color={palette.error} />
+            {isDeleting ? (
+              <ActivityIndicator size="small" color={palette.error} />
+            ) : (
+              <Trash2 size={18} color={palette.error} />
+            )}
           </TouchableOpacity>
         ) : null}
       </View>

@@ -5,6 +5,7 @@ import SplashScreen from 'react-native-splash-screen';
 import CustomSplashScreen from './src/components/SplashScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider } from './src/theme/ThemeContext';
+import AppFontLoader from './src/theme/AppFontLoader';
 import { AuthProvider } from './src/context/AuthContext';
 import { NotificationUnreadProvider } from './src/context/NotificationUnreadContext';
 import { FeedbackProvider } from './src/components/ui/FeedbackProvider';
@@ -50,20 +51,23 @@ const App = () => {
     };
 
     if (showSplash) {
-        return (
-            <ThemeProvider>
+    return (
+        <ThemeProvider>
+            <AppFontLoader>
                 <CustomSplashScreen 
                     onFinish={handleSplashFinish} 
                     isReady={isAppReady}
                     onReady={handleSplashReady}
                 />
-            </ThemeProvider>
-        );
+            </AppFontLoader>
+        </ThemeProvider>
+    );
     }
 
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
         <ThemeProvider>
+            <AppFontLoader>
             <FeedbackProvider>
                 <SafeAreaProvider>
                     <AuthProvider>
@@ -73,6 +77,7 @@ const App = () => {
                     </AuthProvider>
                 </SafeAreaProvider>
             </FeedbackProvider>
+            </AppFontLoader>
         </ThemeProvider>
         </GestureHandlerRootView>
     );

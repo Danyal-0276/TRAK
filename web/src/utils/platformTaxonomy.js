@@ -4,7 +4,7 @@ import { fetchPlatformCategories } from './Service/api';
 /** Load onboarding category map from API; fallback to bundled defaults if offline/empty. */
 export async function loadTagsWithSubcategories() {
   try {
-    const data = await fetchPlatformCategories();
+    const data = await fetchPlatformCategoriesCached({ includeCounts: false });
     const map = data?.tags_with_subcategories;
     if (map && typeof map === 'object' && Object.keys(map).length > 0) {
       return map;
@@ -102,6 +102,65 @@ export function resolveSavedInterestSelections(saved, tagsMap, routeSelectedTags
 
 const DEFAULT_EXPLORE_TABS = ['All', 'Sports', 'Technology', 'Environment', 'Business', 'Wildlife'];
 
+const PLATFORM_CATEGORIES_CACHE_KEY = 'trak:platform-categories';
+const PLATFORM_CATEGORIES_TTL_MS = 8 * 60 * 1000;
+
+function readPlatformCategoriesCache() {
+  try {
+    const raw = sessionStorage.getItem(PLATFORM_CATEGORIES_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.data || Date.now() - (parsed.savedAt || 0) > PLATFORM_CATEGORIES_TTL_MS) {
+      return null;
+    }
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+function writePlatformCategoriesCache(data) {
+  try {
+    sessionStorage.setItem(
+      PLATFORM_CATEGORIES_CACHE_KEY,
+      JSON.stringify({ data, savedAt: Date.now() }),
+    );
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Fast taxonomy first (no counts), then merge counts when available. */
+export async function fetchPlatformCategoriesCached({ includeCounts = true } = {}) {
+  const cached = readPlatformCategoriesCache();
+  if (cached && (!includeCounts || Object.keys(cached.category_counts || {}).length > 0)) {
+    return cached;
+  }
+
+  if (!includeCounts) {
+    const data = await fetchPlatformCategories({ includeCounts: false });
+    writePlatformCategoriesCache(data);
+    return data;
+  }
+
+  const fast = cached || (await fetchPlatformCategories({ includeCounts: false }));
+  if (!fast?.categories?.length) {
+    const full = await fetchPlatformCategories({ includeCounts: true });
+    writePlatformCategoriesCache(full);
+    return full;
+  }
+
+  try {
+    const withCounts = await fetchPlatformCategories({ includeCounts: true });
+    const merged = { ...fast, category_counts: withCounts.category_counts || {} };
+    writePlatformCategoriesCache(merged);
+    return merged;
+  } catch {
+    writePlatformCategoriesCache(fast);
+    return fast;
+  }
+}
+
 export function formatPlatformCategoryLabel(cat) {
   const name = String(cat?.name || '').trim();
   if (name) return name;
@@ -166,18 +225,42 @@ export function exploreTabsFromCounts(counts = {}) {
 
 /** Explore/search category chips — show taxonomy categories even when counts are still loading. */
 export async function loadExploreCategoryTabs() {
-  try {
-    const data = await fetchPlatformCategories();
-    return buildExploreTabsFromPlatform(data);
-  } catch {
-    /* offline — use bundled defaults */
-  }
-  return {
+  return loadExploreCategoryTabsProgressive();
+}
+
+/**
+ * Phase A: fast taxonomy (no counts) via onFast callback.
+ * Phase B: fetch counts and return final tab set.
+ */
+export async function loadExploreCategoryTabsProgressive(onFast) {
+  const fallback = {
     tabs: [...DEFAULT_EXPLORE_TABS],
     categories: [],
     categoryCounts: {},
     countsByLabel: { All: 0 },
   };
+
+  try {
+    let fast = readPlatformCategoriesCache();
+    if (!fast?.categories?.length) {
+      fast = await fetchPlatformCategories({ includeCounts: false });
+      writePlatformCategoriesCache(fast);
+    }
+
+    const fastBuilt = buildExploreTabsFromPlatform(fast);
+    onFast?.(fastBuilt);
+
+    try {
+      const withCounts = await fetchPlatformCategories({ includeCounts: true });
+      const merged = { ...fast, category_counts: withCounts.category_counts || {} };
+      writePlatformCategoriesCache(merged);
+      return buildExploreTabsFromPlatform(merged);
+    } catch {
+      return fastBuilt;
+    }
+  } catch {
+    return fallback;
+  }
 }
 
 export function exploreTabToCategorySlug(tab, categories = []) {

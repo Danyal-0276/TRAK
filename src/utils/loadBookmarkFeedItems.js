@@ -1,4 +1,4 @@
-import { getUserArticleDetail, listBookmarks } from './Service/api';
+import { getUserArticleDetail, listBookmarks, getArticlesBatch } from './Service/api';
 import { mapApiItem } from './loadFeed';
 import { getCardSummaryText } from './articleNavigation';
 import { resolveArticleImageUrl } from './articleMedia';
@@ -108,11 +108,25 @@ export async function enrichBookmarkFeedItems(items, { rows = [] } = {}) {
     (rows || []).map((r) => [String(r.article_id ?? ''), r]).filter(([id]) => id),
   );
 
+  const needIds = list.filter(needsDetailEnrichment).map((item) => String(item.id));
+  let detailById = new Map();
+  if (needIds.length) {
+    try {
+      const batch = await getArticlesBatch(needIds);
+      for (const doc of batch.results || []) {
+        const id = String(doc?.id ?? '').trim();
+        if (id) detailById.set(id, doc);
+      }
+    } catch {
+      /* fall back per-id below */
+    }
+  }
+
   return mapWithConcurrency(list, async (item) => {
     if (!needsDetailEnrichment(item)) return item;
     const aid = String(item.id);
     try {
-      const full = await getUserArticleDetail(aid);
+      const full = detailById.get(aid) || (await getUserArticleDetail(aid));
       const reactionMap = await getReactionMap().catch(() => ({}));
       return mapBookmarkRow(rowById[aid] || { article_id: aid, title: item.title }, full, reactionMap) || item;
     } catch {

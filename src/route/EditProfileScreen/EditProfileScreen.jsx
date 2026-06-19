@@ -10,6 +10,11 @@ import ProfileInput from "./components/ProfileInput";
 import SaveButton from "./components/SaveButton";
 import AlertModal from "./components/AlertModal";
 import { getProfile, updateProfile } from "../../utils/Service/api";
+import {
+  getProfileSessionCache,
+  hydrateProfileFromStorage,
+  updateProfileSessionFromEdit,
+} from "../../utils/profileSessionCache";
 import { useStackBackHandler } from "../../hooks/useStackBackHandler";
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -29,63 +34,54 @@ export default function EditProfileScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const contentPaddingTop = Math.max(insets.top, theme.spacing.md);
   
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-  const circle1Anim = useRef(new Animated.Value(0)).current;
-  const circle2Anim = useRef(new Animated.Value(0)).current;
-  const circle3Anim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const circle1Anim = useRef(new Animated.Value(1)).current;
+  const circle2Anim = useRef(new Animated.Value(1)).current;
+  const circle3Anim = useRef(new Animated.Value(1)).current;
+  const initialAvatarRef = useRef(null);
 
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
-        duration: 600,
+        duration: 180,
         useNativeDriver: true,
       }),
-      Animated.spring(slideAnim, {
+      Animated.timing(slideAnim, {
         toValue: 0,
-        friction: 8,
-        tension: 40,
-        useNativeDriver: true,
-      }),
-      Animated.timing(circle1Anim, {
-        toValue: 1,
-        duration: 1000,
-        delay: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(circle2Anim, {
-        toValue: 1,
-        duration: 1000,
-        delay: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(circle3Anim, {
-        toValue: 1,
-        duration: 1000,
-        delay: 600,
+        duration: 180,
         useNativeDriver: true,
       }),
     ]).start();
   }, []);
 
+  const applyProfileToForm = (profile) => {
+    if (!profile) return;
+    if (profile.full_name) setName(profile.full_name);
+    if (profile.username) setUsername(profile.username);
+    if (profile.email) setEmail(profile.email);
+    if (profile.phone) setPhone(profile.phone);
+    if (profile.bio) setBio(profile.bio);
+    if (profile.avatar_image) {
+      initialAvatarRef.current = profile.avatar_image;
+      setProfilePic({
+        uri: profile.avatar_image,
+        dataUrl: profile.avatar_image,
+      });
+    }
+  };
+
   useEffect(() => {
     (async () => {
+      await hydrateProfileFromStorage().catch(() => null);
+      const cached = getProfileSessionCache();
+      if (cached?.profile) applyProfileToForm(cached.profile);
       try {
         const profile = await getProfile();
-        if (profile?.full_name) setName(profile.full_name);
-        if (profile?.username) setUsername(profile.username);
-        if (profile?.email) setEmail(profile.email);
-        if (profile?.phone) setPhone(profile.phone);
-        if (profile?.bio) setBio(profile.bio);
-        if (profile?.avatar_image) {
-          setProfilePic({
-            uri: profile.avatar_image,
-            dataUrl: profile.avatar_image,
-          });
-        }
+        applyProfileToForm(profile);
       } catch {
-        // Keep editable defaults when profile request fails.
+        // Keep cached/default values when profile request fails.
       }
     })();
   }, []);
@@ -109,13 +105,28 @@ export default function EditProfileScreen({ navigation }) {
 
     try {
       setIsSaving(true);
-      await updateProfile({
+      const payload = {
         full_name: name,
         username,
         phone,
         bio,
-        avatar_image: profilePic?.dataUrl || profilePic?.uri || "",
+      };
+      const nextAvatar = profilePic?.dataUrl || profilePic?.uri || '';
+      const avatarChanged = nextAvatar && nextAvatar !== initialAvatarRef.current;
+      if (avatarChanged && nextAvatar.startsWith('data:')) {
+        payload.avatar_image = nextAvatar;
+      } else if (avatarChanged) {
+        payload.avatar_image = nextAvatar;
+      }
+      await updateProfile(payload);
+      updateProfileSessionFromEdit({
+        full_name: name,
+        username,
+        phone,
+        bio,
+        ...(payload.avatar_image ? { avatar_image: payload.avatar_image } : {}),
       });
+      if (payload.avatar_image) initialAvatarRef.current = payload.avatar_image;
       setAlert({ visible: true, title: "Profile Updated", message: "Your profile has been saved successfully!" });
     } catch (error) {
       setAlert({ visible: true, title: "Save failed", message: error?.message || "Could not update profile." });

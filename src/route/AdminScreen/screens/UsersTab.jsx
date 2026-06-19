@@ -9,7 +9,7 @@ import EmptyState from '../components/EmptyState';
 import AdminListRowSkeleton from '../components/skeletons/AdminListRowSkeleton';
 import { ADMIN_TEXT_STYLE } from '../adminTypography';
 
-const UsersTab = ({ users, searchQuery, onSearchChange, onEdit, onDelete, loading = false }) => {
+const UsersTab = ({ users, searchQuery, onSearchChange, onEdit, onDelete, deletingId = null, loading = false }) => {
   const { palette } = useAdminTheme();
 
   return (
@@ -47,6 +47,7 @@ const UsersTab = ({ users, searchQuery, onSearchChange, onEdit, onDelete, loadin
             user={user}
             onEdit={onEdit}
             onDelete={onDelete}
+            deletingId={deletingId}
             palette={palette}
           />
         ))

@@ -24,10 +24,11 @@ import {
 import { useTheme } from "../../theme/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { useUIFeedback } from "../../components/ui/UIFeedback";
-import { getNotificationPreferences, patchNotificationPreferences } from "../../utils/Service/api";
+import { getNotificationPreferences, patchNotificationPreferences, getUserPreferences, patchUserPreferences } from "../../utils/Service/api";
 import { SkeletonPageBlocks } from "../../components/skeletons/SkeletonLayouts";
 import FeedbackModal from "../../components/FeedbackModal";
 import { useLanguage } from "../../context/LanguageContext";
+import { TIMEZONE_OPTIONS, migrateStoredTimezone, normalizeTimezone } from "../../utils/formatDateTime";
 
 export default function SettingsScreen() {
     const { theme, toggleTheme } = useTheme();
@@ -68,6 +69,10 @@ export default function SettingsScreen() {
     }, [settings]);
 
     useEffect(() => {
+        migrateStoredTimezone();
+    }, []);
+
+    useEffect(() => {
         (async () => {
             try {
                 const p = await getNotificationPreferences();
@@ -79,11 +84,22 @@ export default function SettingsScreen() {
                 }));
             } catch {
                 /* keep local defaults */
+            }
+            try {
+                const prefs = await getUserPreferences();
+                if (prefs?.language) {
+                    setLanguage(prefs.language);
+                }
+                if (prefs?.timezone) {
+                    setSettings((prev) => ({ ...prev, timezone: normalizeTimezone(prefs.timezone) }));
+                }
+            } catch {
+                /* local only */
             } finally {
                 setPrefsLoading(false);
             }
         })();
-    }, []);
+    }, [setLanguage]);
 
     const handleToggle = (key) => {
         setIsSaving(true);
@@ -113,8 +129,15 @@ export default function SettingsScreen() {
         setIsSaving(true);
         if (key === 'language') {
             setLanguage(value);
+            patchUserPreferences({ language: value }).catch(() => {});
+            setSettings((prev) => ({ ...prev, language: value }));
+        } else if (key === 'timezone') {
+            const tz = normalizeTimezone(value);
+            patchUserPreferences({ timezone: tz }).catch(() => {});
+            setSettings((prev) => ({ ...prev, timezone: tz }));
+        } else {
+            setSettings((prev) => ({ ...prev, [key]: value }));
         }
-        setSettings(prev => ({ ...prev, [key]: value }));
         setTimeout(() => {
             setIsSaving(false);
             setShowSaveSuccess(true);
@@ -567,13 +590,7 @@ export default function SettingsScreen() {
                         description={t('settings.timezoneDesc')}
                         selectEnabled
                         selectValue={settings.timezone}
-                        selectOptions={[
-                            { value: 'UTC', label: 'UTC' },
-                            { value: 'EST', label: 'Eastern Time' },
-                            { value: 'PST', label: 'Pacific Time' },
-                            { value: 'PKT', label: 'Pakistan Time' },
-                            { value: 'IST', label: 'India Time' },
-                        ]}
+                        selectOptions={TIMEZONE_OPTIONS}
                         onSelectChange={(value) => handleSelectChange('timezone', value)}
                     />
                 </SettingsSection>

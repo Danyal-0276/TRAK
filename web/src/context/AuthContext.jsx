@@ -59,7 +59,8 @@ export const AuthProvider = ({ children }) => {
 
     const register = async (email, password, passwordConfirm, fullName, phone) => {
         const session = await registerWithEmail(email, password, passwordConfirm, fullName, phone);
-        return applySession(session);
+        applySession(session);
+        return session;
     };
 
     const sendOtp = async (identity) => requestOtp(identity);

@@ -46,6 +46,9 @@ import {
     scheduleVotePersist,
     setRegisteredVote,
     getRegisteredVote,
+    isVoteRegistered,
+    hasPendingVotePersist,
+    seedVoteRegistry,
 } from '../../utils/articleVoteController';
 import { emitBookmarkToggle, queueBookmarkApi } from '../../utils/articleBookmarkController';
 
@@ -110,6 +113,14 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 setDetailLoading(false);
                 return;
             }
+            const cachedReactions = await getReactionMap().catch(() => ({}));
+            seedVoteRegistry(cachedReactions);
+            const cachedBmIds = await getBookmarkIds().catch(() => []);
+            const cacheHasBm = (cachedBmIds || []).map(String).includes(String(id));
+            if (cacheHasBm) setIsBookmarked(true);
+            const cachedVote = getRegisteredVote(id) ?? cachedReactions[String(id)] ?? fromNav.userReaction ?? null;
+            if (cachedVote) setReactionState(cachedVote);
+
             const needsLoader = !fromNav.title && !fromNav.fullContent && !fromNav.excerpt;
             if (needsLoader) setDetailLoading(true);
             try {
@@ -117,24 +128,22 @@ const ArticleDetailScreen = ({ navigation, route }) => {
                 if (cancelled) return;
                 const mapped = normalizeArticleForDetail(mapApiItem(doc));
                 setArticle((prev) => ({ ...prev, ...mapped, id }));
-                setLikeCount(Number(doc.like_count ?? mapped.like_count ?? 0));
-                setDislikeCount(Number(doc.dislike_count ?? mapped.dislike_count ?? 0));
-                const [cachedBmIds, bRes, rRes] = await Promise.all([
-                    getBookmarkIds().catch(() => []),
-                    listBookmarks().catch(() => ({ results: [] })),
-                    listReactions().catch(() => ({ results: [] })),
-                ]);
-                const cacheHas = (cachedBmIds || []).map(String).includes(String(id));
-                const isBm = cacheHas || (bRes.results || []).some((b) => String(b.article_id) === String(id));
-                setIsBookmarked(isBm);
-                const cachedReactions = await getReactionMap().catch(() => ({}));
-                const serverReactionMap = await mergeReactionRows(rRes.results || [], { replace: false }).catch(() => ({}));
-                const mergedMap = { ...cachedReactions, ...serverReactionMap };
-                const rowVal = mergedMap[String(id)];
-                const row = (rRes.results || []).find((r) => String(r.article_id) === String(id));
-                const rv = row?.reaction === 'like' ? 'up' : row?.reaction === 'dislike' ? 'down' : null;
-                const vote = getRegisteredVote(id) ?? rowVal ?? rv ?? null;
-                setReactionState(vote);
+                if (!isVoteRegistered(id) && !hasPendingVotePersist(id)) {
+                    setLikeCount(Number(doc.like_count ?? mapped.like_count ?? 0));
+                    setDislikeCount(Number(doc.dislike_count ?? mapped.dislike_count ?? 0));
+                }
+                if (!isVoteRegistered(id) && !hasPendingVotePersist(id)) {
+                    const row = (await listReactions().catch(() => ({ results: [] }))).results?.find(
+                        (r) => String(r.article_id) === String(id)
+                    );
+                    const rv = row?.reaction === 'like' ? 'up' : row?.reaction === 'dislike' ? 'down' : null;
+                    setReactionState(getRegisteredVote(id) ?? cachedReactions[String(id)] ?? rv ?? null);
+                }
+                if (!cacheHasBm) {
+                    const bRes = await listBookmarks().catch(() => ({ results: [] }));
+                    const isBm = (bRes.results || []).some((b) => String(b.article_id) === String(id));
+                    setIsBookmarked(isBm);
+                }
             } catch (e) {
                 if (!cancelled) {
                     setFetchError(e?.message || 'Could not load this article.');
@@ -227,6 +236,7 @@ const ArticleDetailScreen = ({ navigation, route }) => {
         });
 
         scheduleVotePersist(articleId, {
+            debounceMs: 80,
             persist: (id, apiValue) => setReaction(id, apiValue),
             onReconcile: (data, vote) => {
                 const likes = Number(data.like_count ?? counts.like_count);

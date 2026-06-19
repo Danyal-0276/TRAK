@@ -5,7 +5,7 @@ import {
   setReaction,
 } from '../utils/Service/api';
 import { getBookmarkIds, setBookmarkIds } from '../utils/bookmarksStorage';
-import { mergeReactionRows, setReactionForArticle } from '../utils/reactionsStorage';
+import { mergeReactionRows, setReactionForArticle, getReactionMap } from '../utils/reactionsStorage';
 import { useFeedback } from '../components/ui/FeedbackProvider';
 import { patchArticleVoteRow } from '../utils/reactionVote';
 import {
@@ -26,6 +26,11 @@ import {
 } from '../utils/articleBookmarkController';
 
 const SYNC_COOLDOWN_MS = 8000;
+let globalInteractionSessionSynced = false;
+
+export function resetInteractionSessionSync() {
+  globalInteractionSessionSynced = false;
+}
 
 /**
  * Fast optimistic like/dislike/bookmark with throttled server sync.
@@ -77,7 +82,15 @@ export function useArticleInteractions({ articles = [], onArticlesPatch, autoSyn
     (async () => {
       const cached = await getBookmarkIds().catch(() => []);
       if (cached.length) setBookmarkedItems(new Set(cached.map(String)));
-      await syncFromServer(true);
+      const reactionMap = await getReactionMap().catch(() => ({}));
+      if (Object.keys(reactionMap).length) {
+        setVotedItems(reactionMap);
+        seedVoteRegistry(reactionMap);
+      }
+      if (!globalInteractionSessionSynced) {
+        globalInteractionSessionSynced = true;
+        await syncFromServer(true);
+      }
     })();
   }, [autoSync, syncFromServer]);
 
@@ -200,4 +213,4 @@ export function useArticleInteractions({ articles = [], onArticlesPatch, autoSyn
     handleBookmark,
   };
 }
-
+

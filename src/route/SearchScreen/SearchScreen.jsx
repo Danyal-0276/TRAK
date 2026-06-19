@@ -32,7 +32,7 @@ import { useCollapsibleHeader } from "../../hooks/useCollapsibleHeader";
 import { useTheme } from "../../theme/ThemeContext";
 import { getRefreshControlProps } from "../../theme/refreshControl";
 import { loadExplorePage } from "../../utils/loadFeed";
-import { loadExploreCategoryTabs, exploreTabToCategorySlug } from "../../utils/platformTaxonomy";
+import { loadExploreCategoryTabsProgressive, exploreTabToCategorySlug } from "../../utils/platformTaxonomy";
 import Text from "../../components/ui/Text";
 import { Search } from "lucide-react-native";
 import { useFeedback } from "../../components/ui/FeedbackProvider";
@@ -226,6 +226,8 @@ const SearchScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState("");
   const [discoverCategories, setDiscoverCategories] = useState(DEFAULT_DISCOVER_CATEGORIES);
   const [platformCategories, setPlatformCategories] = useState([]);
+  const [categoryCountsByLabel, setCategoryCountsByLabel] = useState({ All: 0 });
+  const [categoriesLoading, setCategoriesLoading] = useState(true);
   const discoverTabRoutes = useMemo(
     () => discoverCategories.map((c) => ({ key: c, title: c })),
     [discoverCategories]
@@ -239,12 +241,23 @@ const SearchScreen = ({ navigation }) => {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      const { tabs, categories } = await loadExploreCategoryTabs();
+    setCategoriesLoading(true);
+    loadExploreCategoryTabsProgressive((fast) => {
       if (cancelled) return;
-      setDiscoverCategories(tabs);
-      setPlatformCategories(categories);
-    })();
+      setDiscoverCategories(fast.tabs || DEFAULT_DISCOVER_CATEGORIES);
+      setPlatformCategories(fast.categories || []);
+      setCategoryCountsByLabel(fast.countsByLabel || { All: 0 });
+      setCategoriesLoading(false);
+    })
+      .then((built) => {
+        if (cancelled || !built) return;
+        setDiscoverCategories(built.tabs || DEFAULT_DISCOVER_CATEGORIES);
+        setPlatformCategories(built.categories || []);
+        setCategoryCountsByLabel(built.countsByLabel || { All: 0 });
+      })
+      .finally(() => {
+        if (!cancelled) setCategoriesLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -264,6 +277,7 @@ const SearchScreen = ({ navigation }) => {
   } = useArticleInteractions({
     articles: allNews,
     onArticlesPatch: setAllNews,
+    autoSync: false,
   });
   const [topSectionHeight, setTopSectionHeight] = useState(152);
   const [nextCursor, setNextCursor] = useState(null);
@@ -317,7 +331,13 @@ const SearchScreen = ({ navigation }) => {
       }
     }
     prefetchAttemptsRef.current = 0;
-    setLoading(true);
+    const cachedStale = discoverFeedCache.get(cacheKey);
+    if (cachedStale?.items?.length) {
+      setAllNews(cachedStale.items);
+      setNextCursor(cachedStale.nextCursor || null);
+      setHasMore(Boolean(cachedStale.hasMore));
+    }
+    setLoading(!cachedStale?.items?.length);
     try {
       const page = await loadExplorePage({ q, limit: DISCOVER_PAGE_SIZE, cursor: '', category });
       setAllNews(page.items);
@@ -335,9 +355,11 @@ const SearchScreen = ({ navigation }) => {
       });
     } catch (error) {
       console.error("Error fetching data:", error);
-      setAllNews([]);
-      setNextCursor(null);
-      setHasMore(false);
+      const cached = discoverFeedCache.get(cacheKey);
+      if (!cached?.items?.length) {
+        setNextCursor(null);
+        setHasMore(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -499,7 +521,10 @@ const SearchScreen = ({ navigation }) => {
     try {
       showDiscoverHeader();
       const q = searchQuery.trim();
-      await loadFirstPage(q, activeTab, { refreshAux: true, preferCache: false });
+      await Promise.all([
+        loadFirstPage(q, activeTab, { refreshAux: true, preferCache: false }),
+        syncFromServer(true),
+      ]);
     } catch (e) {
       console.error(e);
     } finally {
@@ -540,8 +565,6 @@ const SearchScreen = ({ navigation }) => {
   const handleTabPress = (category) => {
     if (category === activeTab) return;
     setActiveTab(category);
-    setLoading(true);
-    loadFirstPage(searchQuery.trim(), category, { preferCache: false, refreshAux: true });
   };
 
   const discoverNewsByTab = useMemo(
@@ -667,73 +690,6 @@ const SearchScreen = ({ navigation }) => {
   return (
     <View style={[styles.outerContainer, { backgroundColor: colors.background }]}>
       <StatusBar barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
-      
-      {/* Enhanced gradient background */}
-      <LinearGradient
-        colors={theme.mode === 'dark' 
-          ? [colors.background, colors.backgroundSecondary, colors.background]
-          : [colors.background, colors.backgroundSecondary, '#F8FAFC', colors.backgroundSecondary, colors.background]
-        }
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientBackground}
-      />
-      
-      {/* Animated decorative circles */}
-      <Animated.View 
-        style={[
-          styles.accentCircle1, 
-          { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.12' : '0.05'})`,
-            opacity: circle1Anim,
-            transform: [
-              {
-                scale: circle1Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-            ],
-          }
-        ]}
-        pointerEvents="none"
-      />
-      <Animated.View 
-        style={[
-          styles.accentCircle2, 
-          { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.10' : '0.04'})`,
-            opacity: circle2Anim,
-            transform: [
-              {
-                scale: circle2Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-            ],
-          }
-        ]}
-        pointerEvents="none"
-      />
-      <Animated.View 
-        style={[
-          styles.accentCircle3, 
-          { 
-            backgroundColor: `rgba(0, 0, 0, ${theme.mode === 'dark' ? '0.08' : '0.03'})`,
-            opacity: circle3Anim,
-            transform: [
-              {
-                scale: circle3Anim.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0.8, 1],
-                }),
-              },
-            ],
-          }
-        ]}
-        pointerEvents="none"
-      />
 
       <View
         style={[styles.statusBarCover, { height: topInset, backgroundColor: colors.surface }]}
@@ -772,6 +728,8 @@ const SearchScreen = ({ navigation }) => {
             categories={discoverCategories}
             activeTab={activeTab}
             onTabPress={handleTabPress}
+            countsByLabel={categoryCountsByLabel}
+            loading={categoriesLoading}
           />
         </Animated.View>
 

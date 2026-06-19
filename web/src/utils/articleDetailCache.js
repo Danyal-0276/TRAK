@@ -1,4 +1,4 @@
-import { getUserArticleDetail } from '../utils/Service/api';
+import { getUserArticleDetail, getAccessToken } from '../utils/Service/api';
 
 const cache = new Map();
 const inflight = new Map();
@@ -9,7 +9,7 @@ const inflight = new Map();
  */
 export function prefetchArticleDetail(id) {
   const key = String(id || '').trim();
-  if (!key || cache.has(key) || inflight.has(key)) return inflight.get(key);
+  if (!key || !getAccessToken() || cache.has(key) || inflight.has(key)) return inflight.get(key);
 
   const promise = getUserArticleDetail(key)
     .then((doc) => {

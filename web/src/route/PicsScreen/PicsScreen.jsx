@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
 import { useTheme } from '../../theme/ThemeContext';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
 import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts';
-import { loadPicsPage, mergeUniqueById } from '../../utils/loadFeed';
+import { loadPicsPage, mergePageWithPaginationGuard } from '../../utils/loadFeed';
 import { openArticleDetail } from '../../utils/openArticleDetail';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
 import { setReaction } from '../../utils/Service/api';
@@ -27,11 +27,15 @@ const PicsScreen = () => {
     const [nextCursor, setNextCursor] = useState('');
     const [hasMore, setHasMore] = useState(false);
     const [loadingMore, setLoadingMore] = useState(false);
+    const emptyStreakRef = useRef(0);
+    const newsDataRef = useRef(newsData);
+    newsDataRef.current = newsData;
 
     const loadNews = useCallback(async () => {
         try {
             setLoading(true);
             setLoadError('');
+            emptyStreakRef.current = 0;
             const page = await loadPicsPage({ limit: 50, cursor: '' });
             setNewsData(page.items || []);
             setNextCursor(page.nextCursor || '');
@@ -54,9 +58,15 @@ const PicsScreen = () => {
         setLoadingMore(true);
         try {
             const page = await loadPicsPage({ limit: 50, cursor: nextCursor });
-            setNewsData((prev) => mergeUniqueById(prev, page.items || []));
+            const { items, hasMore: more } = mergePageWithPaginationGuard(
+                newsDataRef.current,
+                page.items,
+                Boolean(page.hasMore),
+                emptyStreakRef,
+            );
+            setNewsData(items);
             setNextCursor(page.nextCursor || '');
-            setHasMore(Boolean(page.hasMore));
+            setHasMore(more);
         } catch (e) {
             console.warn('Load more failed:', e?.message);
         } finally {

@@ -12,6 +12,9 @@ export function isRealFeedArticle(item) {
     if (label.includes('fake') || label.includes('suspicious')) return false;
     if (code === 0 || code === '0') return true;
     if (label === 'real' || label.startsWith('real')) return true;
+    // Bookmark/lightweight rows often omit credibility — treat as visible unless explicitly fake/suspicious.
+    const hasCode = code !== undefined && code !== null && code !== '';
+    if (!hasCode && !label) return true;
     return false;
 }
 

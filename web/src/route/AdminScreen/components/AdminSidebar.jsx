@@ -16,22 +16,23 @@ import {
   Image,
 } from 'lucide-react';
 import { useTheme } from '../../../theme/ThemeContext';
+import { useAdminLanguage } from '../../../context/AdminLanguageContext';
 import TrakLogo from '../../../components/TrakLogo';
 import { enableAdminAppPreview } from '../../../utils/adminAppPreview';
 import './adminShell.css';
 
 const MAIN_NAV = [
-  { path: '/admin/dashboard', icon: BarChart3, label: 'Overview' },
-  { path: '/admin/articles', icon: FileText, label: 'Articles' },
-  { path: '/admin/users', icon: Users, label: 'Users' },
-  { path: '/admin/admins', icon: Shield, label: 'Admins' },
-  { path: '/admin/feedback', icon: MessageSquare, label: 'User feedback' },
-  { path: '/admin/notifications', icon: Bell, label: 'Notifications', badge: true },
+  { path: '/admin/dashboard', icon: BarChart3, labelKey: 'overview' },
+  { path: '/admin/articles', icon: FileText, labelKey: 'articles' },
+  { path: '/admin/users', icon: Users, labelKey: 'users' },
+  { path: '/admin/admins', icon: Shield, labelKey: 'admins' },
+  { path: '/admin/feedback', icon: MessageSquare, labelKey: 'feedback' },
+  { path: '/admin/notifications', icon: Bell, labelKey: 'notifications', badge: true },
 ];
 
 const SYSTEM_NAV = [
-  { path: '/admin/settings', icon: Settings, label: 'Settings' },
-  { path: '/admin/profile', icon: UserCircle, label: 'Profile' },
+  { path: '/admin/settings', icon: Settings, labelKey: 'settings' },
+  { path: '/admin/profile', icon: UserCircle, labelKey: 'profile' },
 ];
 
 function linkActive(pathname, path) {
@@ -55,11 +56,13 @@ export default function AdminSidebar({
 }) {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { adminT } = useAdminLanguage();
   const isDark = theme.mode === 'dark';
 
-  const renderLink = ({ path, icon: Icon, label, badge }) => {
+  const renderLink = ({ path, icon: Icon, labelKey, badge }) => {
     const active = linkActive(location.pathname, path);
     const showBadge = badge && unreadAlerts > 0;
+    const label = adminT(labelKey);
     return (
       <NavLink
         key={path}
@@ -99,10 +102,10 @@ export default function AdminSidebar({
       </div>
 
       <nav className="admin-sidebar__nav">
-        <div className="admin-sidebar__section-label">Main</div>
+        <div className="admin-sidebar__section-label">{adminT('main')}</div>
         {MAIN_NAV.map(renderLink)}
         <div className="admin-sidebar__section-label" style={{ marginTop: 12 }}>
-          System
+          {adminT('system')}
         </div>
         {SYSTEM_NAV.map(renderLink)}
       </nav>
@@ -115,7 +118,7 @@ export default function AdminSidebar({
               {email}
             </div>
             <div className="admin-sidebar__user-role">
-              {isSuperAdmin ? 'Super Admin' : 'Administrator'}
+              {isSuperAdmin ? adminT('superAdmin') : adminT('administrator')}
             </div>
           </div>
         </div>
@@ -126,7 +129,7 @@ export default function AdminSidebar({
           style={{ marginBottom: 8 }}
         >
           {isDark ? <Sun size={16} /> : <Moon size={16} />}
-          {isDark ? 'Light mode' : 'Dark mode'}
+          {isDark ? adminT('lightMode') : adminT('darkMode')}
         </button>
         <NavLink
           to="/newsfeed"
@@ -138,7 +141,7 @@ export default function AdminSidebar({
           }}
         >
           <Newspaper size={16} />
-          View news app
+          {adminT('viewNewsApp')}
         </NavLink>
         <NavLink
           to="/pics"
@@ -150,11 +153,11 @@ export default function AdminSidebar({
           }}
         >
           <Image size={16} />
-          View pics app
+          {adminT('viewPicsApp')}
         </NavLink>
         <button type="button" className="admin-sidebar__footer-btn admin-sidebar__footer-btn--danger" onClick={onLogout}>
           <LogOut size={16} />
-          Sign out
+          {adminT('signOut')}
         </button>
       </div>
     </aside>

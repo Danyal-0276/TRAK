@@ -169,6 +169,7 @@ const FeedbackTab = ({ navigation, isActive = true }) => {
       </ScrollView>
 
       <FlatList
+        style={styles.listScroll}
         data={rows}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
@@ -302,7 +303,8 @@ const styles = StyleSheet.create({
   title: { fontWeight: '700' },
   chips: { maxHeight: 44, marginBottom: 12 },
   chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, marginRight: 8 },
-  list: { paddingBottom: 24 },
+  listScroll: { flex: 1 },
+  list: { paddingBottom: 100 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.45)', justifyContent: 'flex-end' },
   modalCard: { borderTopLeftRadius: 20, borderTopRightRadius: 20, borderWidth: 1, padding: 20, maxHeight: '85%' },
   modalTitle: { fontWeight: '700', marginBottom: 4 },

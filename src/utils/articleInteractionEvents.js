@@ -99,12 +99,12 @@ export function applyBookmarkListPatch(
         if (rows.some((b) => String(b.id) === id)) return rows;
         if (!patch.article) return rows;
         const next = [patch.article, ...rows];
-        if (setStats) setStats((s) => ({ ...s, saved: next.length }));
+        if (setStats) setStats((s) => ({ ...s, saved: (s?.saved || 0) + 1 }));
         return next;
       }
       const next = rows.filter((b) => String(b.id) !== id);
       if (next.length !== rows.length && setStats) {
-        setStats((s) => ({ ...s, saved: next.length }));
+        setStats((s) => ({ ...s, saved: Math.max(0, (s?.saved || 0) - 1) }));
       }
       return next;
     });

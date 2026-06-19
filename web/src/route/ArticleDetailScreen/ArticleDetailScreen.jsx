@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo } from 'react';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { 
     ChevronLeft, 
@@ -34,6 +34,7 @@ import { ArticleBodyParagraphs } from '../../components/ArticleBodyParagraphs';
 import ArticleTtsPlayer from '../../components/ArticleTtsPlayer';
 import TrakLogo from '../../components/TrakLogo';
 import { useTheme } from '../../theme/ThemeContext';
+import { useLanguage } from '../../context/LanguageContext';
 import { SkeletonArticleDetail } from '../../components/skeletons/SkeletonLayouts';
 import { getCachedArticleDetail, setCachedArticleDetail } from '../../utils/articleDetailCache';
 import { getUserFacingError } from '../../utils/getUserFacingError';
@@ -48,6 +49,7 @@ const ARTICLE_HEADER_HEIGHT = 56;
 const ArticleDetailScreen = () => {
     const navigate = useNavigate();
     const { theme } = useTheme();
+    const { t } = useLanguage();
     const { colors } = theme;
     const { isDesktop, isMobile } = useResponsive();
     const headerPadX = isMobile ? 16 : 24;
@@ -65,6 +67,11 @@ const ArticleDetailScreen = () => {
     const [fetchError, setFetchError] = useState(location.state?.fetchError || '');
 
     const articleKey = String(article.id || routeArticleId || '').trim();
+
+    useLayoutEffect(() => {
+        window.scrollTo(0, 0);
+    }, [routeArticleId]);
+
     const credMeta = getFeedItemCredibilityMeta(article);
     const { success, error: notifyError, confirm } = useUIFeedback();
     const [showMoreMenu, setShowMoreMenu] = useState(false);
@@ -387,7 +394,7 @@ const ArticleDetailScreen = () => {
                             fontWeight: '500',
                             color: colors.textPrimary,
                         }}>
-                            Back
+                            {t('article.back')}
                         </span>
                     </button>
                     <div style={{ flex: 1, minWidth: 8 }} />

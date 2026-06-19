@@ -2,6 +2,7 @@ import React, { createContext, useContext, useMemo, useState, useEffect, useCall
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { lightColors } from './colors/lightColors';
 import { darkColors } from './colors/darkColors';
+import { APP_FONTS } from './AppFontLoader';
 
 const THEME_STORAGE_KEY = 'theme';
 
@@ -23,11 +24,19 @@ const radius = {
 };
 
 const typography = {
-  title: { fontSize: 28, fontWeight: '700', letterSpacing: -0.25 },
-  subtitle: { fontSize: 20, fontWeight: '600' },
-  body: { fontSize: 16, fontWeight: '400', lineHeight: 24 },
-  caption: { fontSize: 13, fontWeight: '400' },
-  button: { fontSize: 17, fontWeight: '600', letterSpacing: 0.3 },
+  title: { fontSize: 28, fontWeight: '700', letterSpacing: -0.25, fontFamily: APP_FONTS.headingBold },
+  subtitle: { fontSize: 20, fontWeight: '600', fontFamily: APP_FONTS.heading },
+  body: { fontSize: 16, fontWeight: '400', lineHeight: 24, fontFamily: APP_FONTS.body },
+  caption: { fontSize: 13, fontWeight: '400', fontFamily: APP_FONTS.body },
+  button: { fontSize: 17, fontWeight: '600', letterSpacing: 0.3, fontFamily: APP_FONTS.bodySemiBold },
+};
+
+const fonts = {
+  body: APP_FONTS.body,
+  bodySemiBold: APP_FONTS.bodySemiBold,
+  bodyBold: APP_FONTS.bodyBold,
+  heading: APP_FONTS.heading,
+  headingBold: APP_FONTS.headingBold,
 };
 
 const elevation = {
@@ -73,6 +82,9 @@ export const ThemeProvider = ({ initialMode = 'light', children }) => {
       spacing,
       radius,
       typography,
+      fonts,
+      fontFamily: APP_FONTS.body,
+      fontFamilyHeading: APP_FONTS.heading,
       elevation,
     }),
     [mode, palette]

@@ -20,6 +20,16 @@ export function getRegisteredVote(articleId) {
   return id ? voteByArticle[id] ?? null : null;
 }
 
+export function isVoteRegistered(articleId) {
+  const id = String(articleId || '').trim();
+  return id ? Object.prototype.hasOwnProperty.call(voteByArticle, id) : false;
+}
+
+export function hasPendingVotePersist(articleId) {
+  const id = String(articleId || '').trim();
+  return Boolean(id && debounceTimers[id]);
+}
+
 export function setRegisteredVote(articleId, vote) {
   const id = String(articleId || '').trim();
   if (!id) return;
