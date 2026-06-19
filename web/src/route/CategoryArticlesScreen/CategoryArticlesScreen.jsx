@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { NewsCard } from '../../components/NewsCard';
@@ -7,7 +7,7 @@ import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import { loadCategoryPage, mergeUniqueById } from '../../utils/loadFeed';
+import { loadCategoryPage, mergePageWithPaginationGuard } from '../../utils/loadFeed';
 import { openArticleDetail } from '../../utils/openArticleDetail';
 import { addBookmark, removeBookmark, setReaction } from '../../utils/Service/api';
 import { setReactionForArticle } from '../../utils/reactionsStorage';
@@ -32,6 +32,8 @@ const CategoryArticlesScreen = () => {
     const [bookmarkedItems, setBookmarkedItems] = useState(new Set());
     const [votedItems, setVotedItems] = useState({});
     const [newsData, setNewsData] = useState([]);
+    const newsDataRef = useRef(newsData);
+    newsDataRef.current = newsData;
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState('');
     const [nextCursor, setNextCursor] = useState('');
@@ -40,12 +42,14 @@ const CategoryArticlesScreen = () => {
     const [categoryTotal, setCategoryTotal] = useState(
         () => (location.state?.categoryCount != null ? Number(location.state.categoryCount) : null)
     );
+    const emptyStreakRef = useRef(0);
 
     const loadNews = useCallback(async () => {
         if (!categoryKey) return;
         try {
             setLoading(true);
             setLoadError('');
+            emptyStreakRef.current = 0;
             const page = await loadCategoryPage({ category: categoryKey, limit: 50, cursor: '' });
             setNewsData(page.items || []);
             setNextCursor(page.nextCursor || '');
@@ -73,9 +77,15 @@ const CategoryArticlesScreen = () => {
         setLoadingMore(true);
         try {
             const page = await loadCategoryPage({ category: categoryKey, limit: 50, cursor: nextCursor });
-            setNewsData((prev) => mergeUniqueById(prev, page.items || []));
+            const { items, hasMore: more } = mergePageWithPaginationGuard(
+                newsDataRef.current,
+                page.items,
+                Boolean(page.hasMore),
+                emptyStreakRef,
+            );
+            setNewsData(items);
             setNextCursor(page.nextCursor || '');
-            setHasMore(Boolean(page.hasMore));
+            setHasMore(more);
         } catch (e) {
             console.warn('Load more failed:', e?.message);
         } finally {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { NewsCard } from '../../components/NewsCard';
 import { MasonryFeed, MasonryFeedSkeleton } from '../../components/MasonryFeed';
@@ -6,7 +6,7 @@ import { getSkeletonFeedProps } from '../../components/skeletons/SkeletonLayouts
 import { setReaction } from '../../utils/Service/api';
 import { useUserKeywords } from '../../context/UserKeywordsContext';
 import { useInfiniteScroll } from '../../hooks/useInfiniteScroll';
-import { loadExplorePage, loadFeedPage, mergeUniqueById } from '../../utils/loadFeed';
+import { loadExplorePage, loadFeedPage, mergeUniqueById, mergePageWithPaginationGuard } from '../../utils/loadFeed';
 import { loadHomeBootstrap } from '../../utils/loadHomeBootstrap';
 import { useTheme } from '../../theme/ThemeContext';
 import { useResponsive } from '../../hooks/useResponsive';
@@ -35,6 +35,9 @@ import { API_BASE, API_ORIGIN } from '../../config/api';
 import { syncFeedInteractionsFromStorage } from '../../utils/syncFeedInteractions';
 import { loadBookmarkFeedItems } from '../../utils/loadBookmarkFeedItems';
 import { buildBookmarksTabNews, patchBookmarkTabItems } from '../../utils/buildBookmarksTabNews';
+import { useFeedScrollPersistence } from '../../hooks/useFeedScrollPersistence';
+import { readFeedScrollBackup } from '../../utils/feedScrollBridge';
+import { formatDateTime } from '../../utils/formatDateTime';
 
 const FEED_TAB_KEYS = {
     'For you': 'feed.forYou',
@@ -58,7 +61,6 @@ const NewsFeedScreen = () => {
         ['For you', 'Bookmarks', 'Trending'].includes(normalizedTab) ? normalizedTab : 'For you'
     );
     const { getHomeFeed, saveHomeFeed, isFresh } = useFeedCache();
-    const restoredRef = useRef(false);
 
     const cachedHome = getHomeFeed();
     const hasCachedHome = isFresh(cachedHome) && Array.isArray(cachedHome?.newsData) && cachedHome.newsData.length > 0;
@@ -85,6 +87,7 @@ const NewsFeedScreen = () => {
 
     const feedModeRef = useRef(hasCachedHome ? cachedHome.feedMode || 'explore' : 'explore');
     const loadAbortRef = useRef(null);
+    const emptyStreakRef = useRef(0);
 
     const mapFeedResults = (rawItems, reactionMap) =>
         (rawItems || []).map((item, idx) => {
@@ -105,7 +108,7 @@ const NewsFeedScreen = () => {
                 fullContent: item.full_content || item.content || '',
                 category: (item.topic_keywords?.[0] || item.category || 'General').toString().toUpperCase(),
                 source: item.source || item.source_key || '',
-                time: item.published_at ? new Date(item.published_at).toLocaleString() : 'Recently',
+                time: item.published_at ? formatDateTime(item.published_at) : 'Recently',
                 like_count: likes,
                 dislike_count: dislikes,
                 upvotes: likes,
@@ -207,8 +210,9 @@ const NewsFeedScreen = () => {
         }
     }, [getHomeFeed, isFresh]);
 
-    const persistHomeFeed = useCallback(() => {
+    const persistHomeFeed = useCallback((scrollOverride) => {
         if (!newsData.length) return;
+        const scrollY = scrollOverride ?? window.scrollY;
         saveHomeFeed({
             newsData,
             nextCursor,
@@ -217,60 +221,57 @@ const NewsFeedScreen = () => {
             bookmarkIds: Array.from(bookmarkedItems),
             feedMode: feedModeRef.current,
             feedError,
-            scrollY: window.scrollY,
+            scrollY,
             activeTab,
         });
     }, [newsData, nextCursor, hasMore, votedItems, bookmarkedItems, feedError, activeTab, saveHomeFeed]);
+
+    const handlePersistScroll = useCallback((scrollY) => {
+        persistHomeFeed(scrollY);
+    }, [persistHomeFeed]);
+
+    const backupScroll = readFeedScrollBackup('/newsfeed');
+    const restoreScrollY = backupScroll ?? (hasCachedHome ? cachedHome.scrollY : 0);
+
+    useFeedScrollPersistence({
+        enabled: !loading && newsData.length > 0,
+        feedPath: '/newsfeed',
+        onPersistScroll: handlePersistScroll,
+        restoreScrollY,
+        shouldRestore: hasCachedHome && restoreScrollY > 0,
+    });
 
     useEffect(() => {
         persistHomeFeed();
     }, [persistHomeFeed]);
 
-    useEffect(() => {
-        return () => {
-            if (newsData.length) {
-                saveHomeFeed({
-                    newsData,
-                    nextCursor,
-                    hasMore,
-                    votedItems,
-                    bookmarkIds: Array.from(bookmarkedItems),
-                    feedMode: feedModeRef.current,
-                    feedError,
-                    scrollY: window.scrollY,
-                    activeTab,
-                });
-            }
-        };
-    }, [newsData, nextCursor, hasMore, votedItems, bookmarkedItems, feedError, activeTab, saveHomeFeed]);
-
-    useEffect(() => {
-        if (restoredRef.current || !hasCachedHome) return;
-        restoredRef.current = true;
-        if (cachedHome.scrollY) {
-            requestAnimationFrame(() => window.scrollTo(0, cachedHome.scrollY));
-        }
-    }, [hasCachedHome, cachedHome]);
-
     const loadMore = useCallback(async () => {
-        if (!hasMore || loadingMore || !nextCursor) return;
+        if (!hasMore || loadingMore || !nextCursor || activeTab === 'Bookmarks') return;
         setLoadingMore(true);
         try {
             const page = await fetchFeedPage(nextCursor);
             const reactionMap = getReactionMap();
-            setNewsData((prev) => mapFeedResults(mergeUniqueById(prev, page.items), reactionMap));
+            const { items, hasMore: more } = mergePageWithPaginationGuard(
+                newsDataRef.current,
+                page.items,
+                Boolean(page.hasMore),
+                emptyStreakRef,
+            );
+            setNewsData(mapFeedResults(items, reactionMap));
             setNextCursor(page.nextCursor || '');
-            setHasMore(Boolean(page.hasMore));
+            setHasMore(more);
         } catch (e) {
             console.warn('Load more failed:', e?.message);
         } finally {
             setLoadingMore(false);
         }
-    }, [hasMore, loadingMore, nextCursor, fetchFeedPage]);
+    }, [hasMore, loadingMore, nextCursor, fetchFeedPage, activeTab]);
+
+    const feedHasMore = hasMore && activeTab !== 'Bookmarks';
 
     const scrollSentinelRef = useInfiniteScroll({
         onLoadMore: loadMore,
-        hasMore,
+        hasMore: feedHasMore,
         loading: loading || loadingMore,
     });
 
@@ -651,7 +652,7 @@ const NewsFeedScreen = () => {
                             ))}
                         </MasonryFeed>
                         <div ref={scrollSentinelRef} style={{ height: 1, width: '100%' }} aria-hidden />
-                        {loadingMore ? (
+                        {loadingMore && feedHasMore ? (
                             <p style={{ textAlign: 'center', color: textSecondary, padding: '16px 0', fontSize: 14 }}>
                                 Loading more…
                             </p>

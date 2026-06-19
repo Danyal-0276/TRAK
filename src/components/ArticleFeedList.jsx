@@ -1,5 +1,5 @@
 import React, { useCallback, memo } from 'react';
-import { FlatList, Animated, Platform, StyleSheet } from 'react-native';
+import { FlatList, Animated, Platform, StyleSheet, View } from 'react-native';
 import { NewsCard } from './NewsCard';
 import { resolveCardArticleId } from '../utils/articleCardInteraction';
 
@@ -49,6 +49,7 @@ function ArticleFeedList({
   listRef,
   keyPrefix = '',
   animated = false,
+  scrollEnabled = true,
   ...rest
 }) {
   const ListComponent = animated ? AnimatedFlatList : FlatList;
@@ -72,6 +73,44 @@ function ArticleFeedList({
     ),
     [onArticlePress, onVote, onBookmark]
   );
+
+  if (scrollEnabled === false) {
+    const items = data || [];
+    const renderListPart = () => {
+      if (items.length === 0) {
+        if (!ListEmptyComponent) return null;
+        return typeof ListEmptyComponent === 'function'
+          ? <ListEmptyComponent />
+          : ListEmptyComponent;
+      }
+      return items.map((item, index) => (
+        <FeedRow
+          key={keyExtractor(item, index)}
+          item={item}
+          index={index}
+          onArticlePress={onArticlePress}
+          onVote={onVote}
+          onBookmark={onBookmark}
+        />
+      ));
+    };
+
+    return (
+      <View style={[styles.list, style, contentContainerStyle]}>
+        {ListHeaderComponent
+          ? (typeof ListHeaderComponent === 'function'
+            ? <ListHeaderComponent />
+            : ListHeaderComponent)
+          : null}
+        {renderListPart()}
+        {ListFooterComponent
+          ? (typeof ListFooterComponent === 'function'
+            ? <ListFooterComponent />
+            : ListFooterComponent)
+          : null}
+      </View>
+    );
+  }
 
   return (
     <ListComponent

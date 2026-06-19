@@ -18,23 +18,36 @@ export async function clearTokens() {
     await AsyncStorage.multiRemove([ACCESS_KEY, REFRESH_KEY]);
 }
 
+let refreshInFlight = null;
+
 async function refreshAccess(baseUrl) {
+    if (refreshInFlight) return refreshInFlight;
     const refresh = await AsyncStorage.getItem(REFRESH_KEY);
     if (!refresh) return null;
-    const res = await fetchWithTimeout(`${baseUrl}/api/auth/token/refresh/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ refresh }),
-    }, MOBILE_API_TIMEOUT_MS);
-    if (!res.ok) {
-        // Refresh token rejected (e.g. account deleted or DB rebuilt).
-        await clearTokens();
-        emitAuthSessionEnded();
-        return null;
-    }
-    const data = await res.json();
-    if (data.access) await AsyncStorage.setItem(ACCESS_KEY, data.access);
-    return data.access;
+
+    refreshInFlight = (async () => {
+        try {
+            const res = await fetchWithTimeout(`${baseUrl}/api/auth/token/refresh/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                body: JSON.stringify({ refresh }),
+            }, MOBILE_API_TIMEOUT_MS);
+            if (!res.ok) {
+                await clearTokens();
+                emitAuthSessionEnded();
+                return null;
+            }
+            const data = await res.json();
+            if (data.access) await AsyncStorage.setItem(ACCESS_KEY, data.access);
+            return data.access || null;
+        } catch {
+            return null;
+        } finally {
+            refreshInFlight = null;
+        }
+    })();
+
+    return refreshInFlight;
 }
 
 /**

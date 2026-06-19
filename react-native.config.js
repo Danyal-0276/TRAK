@@ -1,3 +1,4 @@
 module.exports = {
-  assets: ['./node_modules/react-native-vector-icons/Fonts'],
+  // Inter / Space Grotesk only — vector icons are linked via fonts.gradle in android/app/build.gradle
+  assets: ['./assets/fonts'],
 };

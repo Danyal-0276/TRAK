@@ -2,6 +2,7 @@ import React from 'react';
 import { View, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Settings as SettingsIcon, Plus, Trash2, X, Newspaper, Moon, Sun, Image } from 'lucide-react-native';
 import { useAdminTheme } from '../useAdminTheme';
+import { useAdminLanguage } from '../../../context/AdminLanguageContext';
 import ToggleSwitch from '../components/ToggleSwitch';
 import SettingRow from '../components/SettingRow';
 import Text from '../../../components/ui/Text';
@@ -9,12 +10,15 @@ import { ADMIN_TEXT_STYLE } from '../adminTypography';
 import { useFeedback } from '../../../components/ui/FeedbackProvider';
 import AdminListPanel from '../components/AdminListPanel';
 import AdminCategoryPicker from '../components/AdminCategoryPicker';
+import AdminListRowSkeleton from '../components/skeletons/AdminListRowSkeleton';
 
 const LANGUAGE_OPTIONS = ['English', 'Urdu', 'Arabic', 'French', 'Spanish'];
-const TIMEZONE_OPTIONS = ['UTC', 'Asia/Karachi', 'Asia/Dubai', 'Europe/London', 'America/New_York'];
 
 const SettingsTab = ({
   settings,
+  loading = false,
+  onNotificationChange,
+  onLanguageChange,
   onSettingsChange,
   categories,
   connections,
@@ -47,6 +51,7 @@ const SettingsTab = ({
   onToggleTheme,
 }) => {
   const { palette, isDark } = useAdminTheme();
+  const { adminT } = useAdminLanguage();
   const { confirm } = useFeedback();
 
   const actionBg = palette.textPrimary;
@@ -71,6 +76,14 @@ const SettingsTab = ({
     textTertiary: palette.textTertiary,
   };
 
+  if (loading) {
+    return (
+      <View style={styles.managementSection}>
+        <AdminListRowSkeleton palette={palette} count={8} />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.managementSection}>
       <View style={styles.managementHeader}>
@@ -79,47 +92,47 @@ const SettingsTab = ({
             <SettingsIcon size={20} color={palette.textPrimary} />
           </View>
           <Text variant="subtitle" color={palette.textPrimary} style={ADMIN_TEXT_STYLE.sectionTitle}>
-            Settings
+            {adminT('settings')}
           </Text>
         </View>
       </View>
 
       <View style={[styles.settingsSection, { backgroundColor: palette.card, borderColor: palette.border }]}>
         <Text variant="subtitle" color={palette.textPrimary} style={styles.settingsSectionTitle}>
-          Notification Setting
+          {adminT('notificationSetting')}
         </Text>
-        <SettingRow label="Push Notification">
+        <SettingRow label={adminT('pushNotification')}>
           <ToggleSwitch
             value={settings.pushNotification}
-            onValueChange={(value) => onSettingsChange({ pushNotification: value })}
+            onValueChange={(value) => onNotificationChange?.('pushNotification', value)}
           />
         </SettingRow>
-        <SettingRow label="Email Notification">
+        <SettingRow label={adminT('emailNotification')}>
           <ToggleSwitch
             value={settings.emailNotification}
-            onValueChange={(value) => onSettingsChange({ emailNotification: value })}
+            onValueChange={(value) => onNotificationChange?.('emailNotification', value)}
           />
         </SettingRow>
-        <SettingRow label="In-app Notification">
+        <SettingRow label={adminT('inAppNotification')}>
           <ToggleSwitch
             value={settings.inAppNotification}
-            onValueChange={(value) => onSettingsChange({ inAppNotification: value })}
+            onValueChange={(value) => onNotificationChange?.('inAppNotification', value)}
           />
         </SettingRow>
       </View>
 
       <View style={[styles.settingsSection, { backgroundColor: palette.card, borderColor: palette.border }]}>
         <Text variant="subtitle" color={palette.textPrimary} style={styles.settingsSectionTitle}>
-          Language & Region
+          {adminT('languageSection')}
         </Text>
-        <SettingRow label="Language">
+        <SettingRow label={adminT('language')}>
           <TouchableOpacity
             style={[styles.settingValueButton, { backgroundColor: actionBg }]}
             onPress={() => {
-              Alert.alert('Language', 'Select language', [
+              Alert.alert(adminT('language'), adminT('language'), [
                 ...LANGUAGE_OPTIONS.map((lang) => ({
                   text: lang,
-                  onPress: () => onSettingsChange({ language: lang }),
+                  onPress: () => (onLanguageChange ? onLanguageChange(lang) : onSettingsChange?.({ language: lang })),
                 })),
                 { text: 'Cancel', style: 'cancel' },
               ]);
@@ -128,25 +141,6 @@ const SettingsTab = ({
           >
             <Text variant="caption" color={actionFg} style={styles.settingValueText}>
               {settings.language || 'English'}
-            </Text>
-          </TouchableOpacity>
-        </SettingRow>
-        <SettingRow label="Timezone">
-          <TouchableOpacity
-            style={[styles.settingValueButton, { backgroundColor: actionBg }]}
-            onPress={() => {
-              Alert.alert('Timezone', 'Select timezone', [
-                ...TIMEZONE_OPTIONS.map((tz) => ({
-                  text: tz,
-                  onPress: () => onSettingsChange({ timezone: tz }),
-                })),
-                { text: 'Cancel', style: 'cancel' },
-              ]);
-            }}
-            activeOpacity={0.85}
-          >
-            <Text variant="caption" color={actionFg} style={styles.settingValueText}>
-              {settings.timezone || 'UTC'}
             </Text>
           </TouchableOpacity>
         </SettingRow>

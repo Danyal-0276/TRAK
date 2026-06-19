@@ -22,6 +22,7 @@ const AdminsTab = ({
   searchQuery,
   onSearchChange,
   onDelete,
+  deletingId = null,
   onCreate,
   loading = false,
 }) => {
@@ -125,8 +126,16 @@ const AdminsTab = ({
                 ) : null}
               </View>
               {isSuperAdmin && !admin.is_super_admin ? (
-                <TouchableOpacity onPress={() => handleDelete(admin)} style={styles.deleteBtn}>
-                  <Trash2 size={18} color={palette.error || '#ef4444'} />
+                <TouchableOpacity
+                  onPress={() => handleDelete(admin)}
+                  style={[styles.deleteBtn, { opacity: String(deletingId) === String(admin.id) ? 0.5 : 1 }]}
+                  disabled={String(deletingId) === String(admin.id)}
+                >
+                  {String(deletingId) === String(admin.id) ? (
+                    <ActivityIndicator size="small" color={palette.error || '#ef4444'} />
+                  ) : (
+                    <Trash2 size={18} color={palette.error || '#ef4444'} />
+                  )}
                 </TouchableOpacity>
               ) : null}
             </View>

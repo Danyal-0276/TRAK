@@ -10,9 +10,9 @@ import TrendingTopics from "./components/TrendingTopics";
 import { NewsCard } from "../../components/NewsCard";
 import { MasonryFeed, MasonryFeedSkeleton } from "../../components/MasonryFeed";
 import { getSkeletonFeedProps } from "../../components/skeletons/SkeletonLayouts";
-import { loadExplorePage, mergeUniqueById } from "../../utils/loadFeed";
+import { loadExplorePage, mergeUniqueById, mergePageWithPaginationGuard } from "../../utils/loadFeed";
 import {
-    loadExploreCategoryTabs,
+    loadExploreCategoryTabsProgressive,
     exploreTabToCategorySlug,
     buildExploreCountsFromArticles,
     exploreTabsFromCounts,
@@ -35,6 +35,8 @@ import {
     queueBookmarkApi,
     rollbackBookmarkToggle,
 } from '../../utils/articleBookmarkController';
+import { useFeedScrollPersistence } from '../../hooks/useFeedScrollPersistence';
+import { readFeedScrollBackup, restoreFeedScroll } from '../../utils/feedScrollBridge';
 
 function articleMatchesExploreTab(item, activeTab, platformCategories = []) {
     if (!activeTab || activeTab === "All") return true;
@@ -96,10 +98,10 @@ function matchesExploreSearch(item, searchQuery) {
     return terms.every((term) => fields.some((text) => text.includes(term)));
 }
 
-function filterExploreResults(allNews, searchQuery, activeTab, { platformCategories = [] } = {}) {
+function filterExploreResults(allNews, searchQuery, activeTab, { platformCategories = [], serverCategoryFiltered = false } = {}) {
     let results = [...allNews];
 
-    if (activeTab && activeTab !== "All") {
+    if (activeTab && activeTab !== "All" && !serverCategoryFiltered) {
         results = results.filter((item) => articleMatchesExploreTab(item, activeTab, platformCategories));
     }
 
@@ -148,6 +150,8 @@ const SearchScreen = () => {
     const [loadingMore, setLoadingMore] = useState(false);
     const loadSeqRef = useRef(0);
     const forceReloadRef = useRef(false);
+    const socialLoadedRef = useRef(false);
+    const emptyStreakRef = useRef(0);
     const stickySentinelRef = useRef(null);
     const toolbarRef = useRef(null);
     const [toolbarPinned, setToolbarPinned] = useState(false);
@@ -161,19 +165,23 @@ const SearchScreen = () => {
 
     const [categories, setCategories] = useState(["All"]);
     const [platformCategories, setPlatformCategories] = useState([]);
+    const platformCategoriesRef = useRef([]);
+    platformCategoriesRef.current = platformCategories;
     const [serverCountsByLabel, setServerCountsByLabel] = useState({ All: 0 });
 
     const queryKey = searchQuery.trim().toLowerCase();
 
     useEffect(() => {
         let cancelled = false;
-        (async () => {
-            const { tabs, categories: platformCats, countsByLabel } = await loadExploreCategoryTabs();
+        const applyTabs = ({ tabs, categories: platformCats, countsByLabel }) => {
             if (cancelled) return;
             setCategories(tabs);
             setPlatformCategories(platformCats);
             setServerCountsByLabel(countsByLabel || { All: 0 });
-        })();
+        };
+        loadExploreCategoryTabsProgressive(applyTabs)
+            .then((final) => applyTabs(final))
+            .catch(() => {});
         return () => {
             cancelled = true;
         };
@@ -212,6 +220,7 @@ const SearchScreen = () => {
         () =>
             filterExploreResults(allNews, searchQuery, activeTab, {
                 platformCategories,
+                serverCategoryFiltered: activeTab !== "All" && !searchQuery.trim(),
             }),
         [allNews, searchQuery, activeTab, platformCategories]
     );
@@ -255,7 +264,7 @@ const SearchScreen = () => {
 
     const loadFirstPage = useCallback(async (q, tab = activeTab, { force = false } = {}) => {
         const key = String(q || "").trim().toLowerCase();
-        const category = exploreTabToCategorySlug(tab, platformCategories);
+        const category = exploreTabToCategorySlug(tab, platformCategoriesRef.current);
         const cacheKey = `${key}|${category}`;
         const seq = ++loadSeqRef.current;
 
@@ -268,43 +277,50 @@ const SearchScreen = () => {
             setBookmarkedItems(new Set(cached.bookmarkIds || []));
             setLoadError(cached.loadError || '');
             setLoading(false);
-            if (cached.scrollY) {
-                requestAnimationFrame(() => window.scrollTo(0, cached.scrollY));
+            const scrollY = cached.scrollY || readFeedScrollBackup('/search') || 0;
+            if (scrollY > 0) {
+                restoreFeedScroll(scrollY);
             }
             return;
         }
 
         setLoading(true);
         setLoadError('');
+        emptyStreakRef.current = 0;
         const cachedBookmarks = new Set(getBookmarkIds());
         if (cachedBookmarks.size) setBookmarkedItems(cachedBookmarks);
         const cachedReactions = getReactionMap();
         if (Object.keys(cachedReactions).length) setVotedItems(cachedReactions);
 
         try {
-            const page = await loadExplorePage({
-                limit: 50,
-                cursor: '',
-                q: String(q || "").trim(),
-                category,
-            });
+            const categorySlug = exploreTabToCategorySlug(tab, platformCategoriesRef.current);
+            const needSocial = !socialLoadedRef.current;
+            const [page, bookmarks, reactions] = await Promise.all([
+                loadExplorePage({
+                    limit: 50,
+                    cursor: '',
+                    q: String(q || "").trim(),
+                    category: categorySlug,
+                }),
+                needSocial ? listBookmarks().catch(() => ({ results: [] })) : Promise.resolve(null),
+                needSocial ? listReactions().catch(() => ({ results: [] })) : Promise.resolve(null),
+            ]);
             if (seq !== loadSeqRef.current) return;
 
             const newsData = page.items || [];
             setNextCursor(page.nextCursor || '');
             setHasMore(Boolean(page.hasMore));
             setAllNews(newsData);
-            const [bookmarks, reactions] = await Promise.all([
-                listBookmarks().catch(() => ({ results: [] })),
-                listReactions().catch(() => ({ results: [] })),
-            ]);
-            if (seq !== loadSeqRef.current) return;
-
-            const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
-            setBookmarkedItems(bookmarked);
-            setBookmarkIds(Array.from(bookmarked));
-            const serverReactions = mergeReactionRows(reactions.results || [], { replace: false });
-            setVotedItems({ ...cachedReactions, ...serverReactions });
+            if (bookmarks) {
+                const bookmarked = new Set((bookmarks.results || []).map((b) => String(b.article_id)));
+                setBookmarkedItems(bookmarked);
+                setBookmarkIds(Array.from(bookmarked));
+                socialLoadedRef.current = true;
+            }
+            if (reactions) {
+                const serverReactions = mergeReactionRows(reactions.results || [], { replace: false });
+                setVotedItems({ ...cachedReactions, ...serverReactions });
+            }
         } catch (error) {
             if (seq !== loadSeqRef.current) return;
             console.error("Error fetching data:", error);
@@ -313,7 +329,7 @@ const SearchScreen = () => {
         } finally {
             if (seq === loadSeqRef.current) setLoading(false);
         }
-    }, [activeTab, getExploreFeed, isFresh, platformCategories]);
+    }, [activeTab, getExploreFeed, isFresh]);
 
     useEffect(() => {
         const q = searchQuery.trim();
@@ -326,9 +342,12 @@ const SearchScreen = () => {
         return () => clearTimeout(timer);
     }, [searchQuery, activeTab, retryTick, loadFirstPage]);
 
-    useEffect(() => {
+    const exploreCacheKey = `${queryKey}|${exploreTabToCategorySlug(activeTab, platformCategories)}`;
+
+    const persistExploreFeed = useCallback((scrollOverride) => {
         if (!allNews.length) return;
-        saveExploreFeed(`${queryKey}|${exploreTabToCategorySlug(activeTab, platformCategories)}`, {
+        const scrollY = scrollOverride ?? window.scrollY;
+        saveExploreFeed(exploreCacheKey, {
             allNews,
             filteredNews,
             nextCursor,
@@ -338,27 +357,30 @@ const SearchScreen = () => {
             votedItems,
             bookmarkIds: Array.from(bookmarkedItems),
             loadError,
-            scrollY: window.scrollY,
+            scrollY,
         });
-    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, queryKey, saveExploreFeed, platformCategories]);
+    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, exploreCacheKey, saveExploreFeed]);
+
+    const handlePersistScroll = useCallback((scrollY) => {
+        persistExploreFeed(scrollY);
+    }, [persistExploreFeed]);
+
+    const cachedExplore = getExploreFeed(exploreCacheKey);
+    const hasCachedExplore = isFresh(cachedExplore) && Array.isArray(cachedExplore?.allNews) && cachedExplore.allNews.length > 0;
+    const backupScroll = readFeedScrollBackup('/search');
+    const restoreScrollY = backupScroll ?? (hasCachedExplore ? cachedExplore.scrollY : 0);
+
+    useFeedScrollPersistence({
+        enabled: !loading && allNews.length > 0,
+        feedPath: '/search',
+        onPersistScroll: handlePersistScroll,
+        restoreScrollY,
+        shouldRestore: hasCachedExplore && restoreScrollY > 0,
+    });
 
     useEffect(() => {
-        return () => {
-            if (!allNews.length) return;
-            saveExploreFeed(`${queryKey}|${exploreTabToCategorySlug(activeTab, platformCategories)}`, {
-                allNews,
-                filteredNews,
-                nextCursor,
-                hasMore,
-                categories,
-                activeTab,
-                votedItems,
-                bookmarkIds: Array.from(bookmarkedItems),
-                loadError,
-                scrollY: window.scrollY,
-            });
-        };
-    }, [allNews, filteredNews, nextCursor, hasMore, categories, activeTab, votedItems, bookmarkedItems, loadError, queryKey, saveExploreFeed, platformCategories]);
+        persistExploreFeed();
+    }, [persistExploreFeed]);
 
     const loadMore = useCallback(async () => {
         if (!hasMore || loadingMore || !nextCursor) return;
@@ -368,11 +390,17 @@ const SearchScreen = () => {
                 limit: 50,
                 cursor: nextCursor,
                 q: searchQuery.trim(),
-                category: exploreTabToCategorySlug(activeTab, platformCategories),
+                category: exploreTabToCategorySlug(activeTab, platformCategoriesRef.current),
             });
-            setAllNews((prev) => mergeUniqueById(prev, page.items || []));
+            const { items, hasMore: more } = mergePageWithPaginationGuard(
+                allNewsRef.current,
+                page.items,
+                Boolean(page.hasMore),
+                emptyStreakRef,
+            );
+            setAllNews(items);
             setNextCursor(page.nextCursor || '');
-            setHasMore(Boolean(page.hasMore));
+            setHasMore(more);
         } catch (e) {
             console.warn('Load more failed:', e?.message);
         } finally {
@@ -405,6 +433,8 @@ const SearchScreen = () => {
         if (tab === activeTab) return;
         forceReloadRef.current = true;
         setLoading(true);
+        setAllNews([]);
+        setLoadError('');
         setActiveTab(tab);
         window.scrollTo({ top: 0, behavior: "smooth" });
     }, [activeTab]);
@@ -768,7 +798,7 @@ const SearchScreen = () => {
                             ))}
                         </MasonryFeed>
                         <div ref={scrollSentinelRef} style={{ height: 1 }} aria-hidden />
-                        {loadingMore ? (
+                        {loadingMore && hasMore ? (
                             <p style={{ textAlign: 'center', color: textSecondary, padding: 16, fontSize: 14 }}>
                                 Loading more…
                             </p>

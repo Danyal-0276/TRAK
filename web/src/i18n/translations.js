@@ -135,6 +135,30 @@ const en = {
     back: 'Back',
     clearFilters: 'Clear Filters & Show All',
   },
+  about: {
+    articlesIndexed: 'Articles indexed',
+    trustedSources: 'Trusted sources',
+    categories: 'News categories',
+    missionTitle: 'Our mission',
+    missionBody: 'TRAK helps you follow the news that matters with credibility signals, smart categories, and feeds tuned to your interests — on web and mobile.',
+    lastUpdated: 'Catalog last updated',
+    trustTitle: 'Credibility-first',
+    trustBody: 'Every story is scored for source trust and labeled so you can decide quickly what to read and what to verify.',
+    techTitle: 'Built with',
+  },
+  article: {
+    back: 'Back',
+    loading: 'Loading article…',
+    share: 'Share',
+    bookmark: 'Bookmark',
+    listen: 'Listen',
+  },
+  profile: {
+    title: 'Profile',
+    bookmarks: 'Bookmarks',
+    liked: 'Liked',
+    disliked: 'Disliked',
+  },
 };
 
 const es = {

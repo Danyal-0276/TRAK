@@ -1,6 +1,8 @@
 const API_TIMEOUT_MS = 90000;
 /** Mobile feed/auth timeout — long enough for VPS cold start after container recreate. */
 export const MOBILE_API_TIMEOUT_MS = 45000;
+/** Home bootstrap can be slow on cold Mongo / first explore cache miss. */
+export const BOOTSTRAP_TIMEOUT_MS = 120000;
 /** Admin pipeline batch (HF Spaces per article) can take several minutes. */
 export const PIPELINE_RUN_TIMEOUT_MS = 600000;
 export const TTS_PLAN_TIMEOUT_MS = 120000;

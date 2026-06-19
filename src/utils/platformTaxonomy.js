@@ -1,5 +1,34 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { newsTagsWithSubcategories } from '../route/TagSelectionScreen/constants/newsCategories';
 import { fetchPlatformCategories } from '../api/newsApi';
+
+const PLATFORM_CATEGORIES_CACHE_KEY = 'trak_platform_categories_v1';
+const PLATFORM_CATEGORIES_TTL_MS = 8 * 60 * 1000;
+
+async function readPlatformCategoriesCache() {
+  try {
+    const raw = await AsyncStorage.getItem(PLATFORM_CATEGORIES_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed?.data || Date.now() - (parsed.savedAt || 0) > PLATFORM_CATEGORIES_TTL_MS) {
+      return null;
+    }
+    return parsed.data;
+  } catch {
+    return null;
+  }
+}
+
+async function writePlatformCategoriesCache(data) {
+  try {
+    await AsyncStorage.setItem(
+      PLATFORM_CATEGORIES_CACHE_KEY,
+      JSON.stringify({ data, savedAt: Date.now() }),
+    );
+  } catch {
+    /* ignore */
+  }
+}
 
 /** Load onboarding category map from MongoDB (via API); fallback to bundled defaults. */
 export async function loadTagsWithSubcategories() {
@@ -168,18 +197,42 @@ export function exploreTabsFromCounts(counts = {}) {
 
 /** Explore/search category chips — show taxonomy categories even when counts are still loading. */
 export async function loadExploreCategoryTabs() {
-  try {
-    const data = await fetchPlatformCategories();
-    return buildExploreTabsFromPlatform(data);
-  } catch {
-    /* offline — use bundled defaults */
-  }
-  return {
+  return loadExploreCategoryTabsProgressive();
+}
+
+/**
+ * Phase A: fast taxonomy (no counts) via onFast callback.
+ * Phase B: fetch counts and return final tab set.
+ */
+export async function loadExploreCategoryTabsProgressive(onFast) {
+  const fallback = {
     tabs: [...DEFAULT_EXPLORE_TABS],
     categories: [],
     categoryCounts: {},
     countsByLabel: { All: 0 },
   };
+
+  try {
+    let fast = await readPlatformCategoriesCache();
+    if (!fast?.categories?.length) {
+      fast = await fetchPlatformCategories({ includeCounts: false });
+      await writePlatformCategoriesCache(fast);
+    }
+
+    const fastBuilt = buildExploreTabsFromPlatform(fast);
+    onFast?.(fastBuilt);
+
+    try {
+      const withCounts = await fetchPlatformCategories({ includeCounts: true });
+      const merged = { ...fast, category_counts: withCounts.category_counts || {} };
+      await writePlatformCategoriesCache(merged);
+      return buildExploreTabsFromPlatform(merged);
+    } catch {
+      return fastBuilt;
+    }
+  } catch {
+    return fallback;
+  }
 }
 
 export function exploreTabToCategorySlug(tab, categories = []) {

@@ -34,6 +34,7 @@ import ProtectedRoute from '../components/ProtectedRoute';
 import UserOnlyRoute from '../components/UserOnlyRoute';
 import { useTheme } from '../theme/ThemeContext';
 import SessionGuard from './SessionGuard';
+import ScrollToTop from '../components/ScrollToTop';
 
 const RouterContent = () => {
   const location = useLocation();
@@ -59,6 +60,7 @@ const RouterContent = () => {
       }}
     >
       <SessionGuard />
+      <ScrollToTop />
       <Routes>
         {/* Auth Routes */}
         <Route path="/" element={<OpeningScreen />} />

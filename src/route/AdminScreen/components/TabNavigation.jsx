@@ -14,7 +14,7 @@ const TABS = [
   { id: 'settings', icon: SettingsIcon, label: 'Settings' },
 ];
 
-const TabNavigation = ({ activeTab, onTabChange, unreadAlerts = 0 }) => {
+const TabNavigation = ({ activeTab, onTabChange, unreadAlerts = 0, pendingFeedback = 0 }) => {
   const { palette, isDark } = useAdminTheme();
 
   return (
@@ -26,7 +26,12 @@ const TabNavigation = ({ activeTab, onTabChange, unreadAlerts = 0 }) => {
       >
         {TABS.map(({ id, icon: Icon, label }) => {
           const isActive = activeTab === id;
-          const badge = id === 'notifications' && unreadAlerts > 0 ? unreadAlerts : 0;
+          const badge =
+            id === 'notifications' && unreadAlerts > 0
+              ? unreadAlerts
+              : id === 'feedback' && pendingFeedback > 0
+                ? pendingFeedback
+                : 0;
 
           // Dark: active = light pill + dark icon; inactive = bordered tile + light icon
           const activeBg = isDark ? palette.textPrimary : palette.textPrimary;

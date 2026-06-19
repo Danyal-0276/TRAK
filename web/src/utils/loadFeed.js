@@ -10,6 +10,15 @@ const allowMockFallback = import.meta.env.VITE_ALLOW_MOCK_FEED === 'true';
 
 export { filterRealFeedItems, isRealFeedArticle } from './feedRealOnly';
 
+function formatCategoryDisplayLabel(primaryCategory, topicKeywords = []) {
+  const slug = String(primaryCategory || '').trim();
+  if (slug) {
+    return slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+  const fallback = (topicKeywords[0] || 'News').toString();
+  return fallback.toUpperCase();
+}
+
 export function mapApiItem(a) {
   const cred = a.credibility || {};
   const label = cred.label || cred.label_code;
@@ -41,7 +50,7 @@ export function mapApiItem(a) {
     fullContent: a.full_content || a.content || '',
     primary_category: a.primary_category || '',
     categories: mlCategories,
-    category: (topicKeywords[0] || 'News').toString().toUpperCase(),
+    category: formatCategoryDisplayLabel(a.primary_category, topicKeywords),
     trending: cred.label_code === 2 || cred.label === 'suspicious' || labelStr === 'suspicious',
     votes: likes,
     credibility: a.credibility,
@@ -77,6 +86,40 @@ export function mergeUniqueById(existing, incoming) {
     out.push(item);
   }
   return out;
+}
+
+/** Stop paginating when API says no more, or merges add nothing repeatedly. */
+export function shouldContinuePagination({ prevLen, nextLen, apiHasMore, emptyStreak = 0 }) {
+  if (!apiHasMore) return false;
+  if (nextLen > prevLen) return true;
+  return emptyStreak < 2;
+}
+
+/**
+ * Merge a feed page and compute whether pagination should continue.
+ * @param {React.MutableRefObject<number>} emptyStreakRef
+ */
+export function mergePageWithPaginationGuard(prev, incoming, apiHasMore, emptyStreakRef) {
+  const incomingList = incoming || [];
+  if (!incomingList.length) {
+    emptyStreakRef.current += 1;
+    return {
+      items: prev || [],
+      hasMore: false,
+    };
+  }
+  const merged = mergeUniqueById(prev, incomingList);
+  const prevLen = (prev || []).length;
+  const nextLen = merged.length;
+  const added = nextLen - prevLen;
+  emptyStreakRef.current = added > 0 ? 0 : emptyStreakRef.current + 1;
+  const hasMore = shouldContinuePagination({
+    prevLen,
+    nextLen,
+    apiHasMore,
+    emptyStreak: emptyStreakRef.current,
+  });
+  return { items: merged, hasMore };
 }
 
 async function fetchExplore(limit = 50, q = '', cursor = '', category = '') {

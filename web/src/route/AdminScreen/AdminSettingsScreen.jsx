@@ -7,6 +7,9 @@ import AdminPageLayout from './components/AdminPageLayout';
 import AdminPageHeader from './components/AdminPageHeader';
 import { useAdminPageMeta } from './adminPageMeta';
 import { getAdminSettings, patchAdminSettings, createAdminCategory, deleteAdminCategory, addAdminSubcategory, deleteAdminSubcategory, createAdminConnection, deleteAdminConnection } from '../../api/adminApi';
+import { getNotificationPreferences, patchNotificationPreferences } from '../../utils/Service/api';
+import { setAdminSettingsCache } from '../../utils/adminSettingsRuntime';
+import { useAdminLanguage } from '../../context/AdminLanguageContext';
 import { normAdminCategories, normAdminConnections } from '../../utils/adminLists';
 import { useUIFeedback } from '../../components/ui/UIFeedback';
 import { SkeletonPageBlocks } from '../../components/skeletons/SkeletonLayouts';
@@ -17,7 +20,6 @@ import AdminCategorySelect from './components/AdminCategorySelect';
 import AdminAnimatedSelect from './components/AdminAnimatedSelect';
 
 const LANGUAGE_OPTIONS = ['English', 'Urdu', 'Arabic', 'French', 'Spanish'];
-const TIMEZONE_OPTIONS = ['UTC', 'Asia/Karachi', 'Asia/Dubai', 'Europe/London', 'America/New_York'];
 const REGION_SELECT_WIDTH = 240;
 const regionSelectWrapStyle = { width: REGION_SELECT_WIDTH, maxWidth: '100%', flexShrink: 0 };
 
@@ -27,13 +29,13 @@ const AdminSettingsScreen = () => {
   const location = useLocation();
   const { logout } = useAuth();
   const { success, error: showError, confirm } = useUIFeedback();
+  const { adminT, setAdminLanguage } = useAdminLanguage();
 
   const [settings, setSettings] = useState({
     pushNotification: true,
     emailNotification: true,
     inAppNotification: true,
     language: 'English',
-    timezone: 'UTC',
   });
   const [categories, setCategories] = useState([]);
   const [connections, setConnections] = useState([]);
@@ -59,20 +61,30 @@ const AdminSettingsScreen = () => {
   const secondaryButtonBorder = palette.buttonSecondaryBorder || borderColor;
 
   const applySettingsFromApi = (updated) => {
-    setSettings({
-      pushNotification: !!updated.notifications_enabled_default,
-      emailNotification: !!updated.notifications_enabled_default,
-      inAppNotification: !!updated.notifications_enabled_default,
-      language: updated.language || 'English',
-      timezone: updated.timezone || 'UTC',
-    });
+    setSettings((prev) => ({
+      ...prev,
+      language: updated.language || prev.language || 'English',
+    }));
+    setAdminSettingsCache(updated);
+    if (updated?.language) setAdminLanguage(updated.language);
   };
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
-      const s = await getAdminSettings();
+      const [s, notificationPrefs] = await Promise.all([
+        getAdminSettings(),
+        getNotificationPreferences().catch(() => null),
+      ]);
       applySettingsFromApi(s);
+      if (notificationPrefs) {
+        setSettings((prev) => ({
+          ...prev,
+          pushNotification: !!notificationPrefs.push_enabled,
+          emailNotification: !!notificationPrefs.email_enabled,
+          inAppNotification: notificationPrefs.in_app_enabled !== false,
+        }));
+      }
       const cats = normAdminCategories(s.categories || []);
       setCategories(cats);
       setConnections(normAdminConnections(s.connections || []));
@@ -84,7 +96,7 @@ const AdminSettingsScreen = () => {
     } finally {
       setLoading(false);
     }
-  }, [showError]);
+  }, [showError, setAdminLanguage]);
 
   useEffect(() => {
     load();
@@ -100,26 +112,31 @@ const AdminSettingsScreen = () => {
     }
   }, [loading, location.hash]);
 
-  const handleSettingsChange = async (updates) => {
-    const pushOn =
-      updates.pushNotification !== undefined
-        ? updates.pushNotification
-        : updates.emailNotification !== undefined
-          ? updates.emailNotification
-          : updates.inAppNotification !== undefined
-            ? updates.inAppNotification
-            : settings.pushNotification;
+  const handleNotificationChange = async (key, value) => {
+    const serverKey =
+      key === 'pushNotification'
+        ? 'push_enabled'
+        : key === 'emailNotification'
+          ? 'email_enabled'
+          : key === 'inAppNotification'
+            ? 'in_app_enabled'
+            : null;
+    if (!serverKey) return;
 
+    setSettings((prev) => ({ ...prev, [key]: value }));
     try {
-      const payload = {
-        notifications_enabled_default: pushOn !== undefined ? !!pushOn : !!settings.pushNotification,
-        language: updates.language || settings.language || 'English',
-        timezone: updates.timezone || settings.timezone || 'UTC',
-      };
-      const updated = await patchAdminSettings(payload);
+      await patchNotificationPreferences({ [serverKey]: value });
+    } catch (e) {
+      setSettings((prev) => ({ ...prev, [key]: !value }));
+      showError(e?.message || 'Failed to update notification settings.');
+    }
+  };
+
+  const handleLanguageChange = async (language) => {
+    try {
+      const updated = await patchAdminSettings({ language });
       applySettingsFromApi(updated);
-      if (updates.language) success(`Language set to ${updates.language}`);
-      else if (updates.timezone) success(`Timezone set to ${updates.timezone}`);
+      success(`${adminT('language')}: ${language}`);
     } catch (e) {
       showError(e?.message || 'Failed to update settings.');
     }
@@ -303,59 +320,43 @@ const AdminSettingsScreen = () => {
           <>
             <section style={sectionStyle}>
               <h2 style={{ fontSize: 16, fontWeight: 700, color: textPrimary, margin: '0 0 16px 0' }}>
-                Notification Setting
+                {adminT('notificationSetting')}
               </h2>
-              <AdminSettingRow label="Push Notification" borderColor={borderColor} textPrimary={textPrimary}>
+              <AdminSettingRow label={adminT('pushNotification')} borderColor={borderColor} textPrimary={textPrimary}>
                 <AdminToggle
                   value={settings.pushNotification}
-                  onChange={(v) => handleSettingsChange({ pushNotification: v })}
+                  onChange={(v) => handleNotificationChange('pushNotification', v)}
                 />
               </AdminSettingRow>
-              <AdminSettingRow label="Email Notification" borderColor={borderColor} textPrimary={textPrimary}>
+              <AdminSettingRow label={adminT('emailNotification')} borderColor={borderColor} textPrimary={textPrimary}>
                 <AdminToggle
                   value={settings.emailNotification}
-                  onChange={(v) => handleSettingsChange({ emailNotification: v })}
+                  onChange={(v) => handleNotificationChange('emailNotification', v)}
                 />
               </AdminSettingRow>
-              <AdminSettingRow label="In-app Notification" borderColor={borderColor} textPrimary={textPrimary}>
+              <AdminSettingRow label={adminT('inAppNotification')} borderColor={borderColor} textPrimary={textPrimary}>
                 <AdminToggle
                   value={settings.inAppNotification}
-                  onChange={(v) => handleSettingsChange({ inAppNotification: v })}
+                  onChange={(v) => handleNotificationChange('inAppNotification', v)}
                 />
               </AdminSettingRow>
             </section>
 
             <section style={sectionStyle}>
               <h2 style={{ fontSize: 16, fontWeight: 700, color: textPrimary, margin: '0 0 16px 0' }}>
-                Language &amp; Region
+                {adminT('languageSection')}
               </h2>
-              <AdminSettingRow label="Language" borderColor={borderColor} textPrimary={textPrimary}>
+              <AdminSettingRow label={adminT('language')} borderColor={borderColor} textPrimary={textPrimary}>
                 <div style={regionSelectWrapStyle}>
                   <AdminAnimatedSelect
                     inputId="admin-language-select"
                     ariaLabel="Select language"
                     placeholder="Choose a language"
                     value={settings.language}
-                    onChange={(language) => handleSettingsChange({ language })}
+                    onChange={handleLanguageChange}
                     options={LANGUAGE_OPTIONS}
                     colors={selectColors}
                     isDark={isDark}
-                    selectWidth={REGION_SELECT_WIDTH}
-                  />
-                </div>
-              </AdminSettingRow>
-              <AdminSettingRow label="Timezone" borderColor={borderColor} textPrimary={textPrimary}>
-                <div style={regionSelectWrapStyle}>
-                  <AdminAnimatedSelect
-                    inputId="admin-timezone-select"
-                    ariaLabel="Select timezone"
-                    placeholder="Choose a timezone"
-                    value={settings.timezone}
-                    onChange={(timezone) => handleSettingsChange({ timezone })}
-                    options={TIMEZONE_OPTIONS}
-                    colors={selectColors}
-                    isDark={isDark}
-                    isSearchable
                     selectWidth={REGION_SELECT_WIDTH}
                   />
                 </div>
@@ -364,7 +365,7 @@ const AdminSettingsScreen = () => {
 
             <section style={sectionStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                <h2 style={{ fontSize: 16, fontWeight: 700, color: textPrimary, margin: 0 }}>Manage Category</h2>
+                <h2 style={{ fontSize: 16, fontWeight: 700, color: textPrimary, margin: 0 }}>{adminT('manageCategory')}</h2>
                 <button
                   type="button"
                   style={{
@@ -505,7 +506,7 @@ const AdminSettingsScreen = () => {
             <section id="admin-sources" style={sectionStyle}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
                 <div>
-                  <h2 style={{ fontSize: 16, fontWeight: 700, color: textPrimary, margin: 0 }}>Manage Connection</h2>
+                  <h2 style={{ fontSize: 16, fontWeight: 700, color: textPrimary, margin: 0 }}>{adminT('manageConnection')}</h2>
                   <p style={{ margin: '6px 0 0 0', fontSize: 13, color: textSecondary }}>
                     News scrape sources (RSS feeds and built-in sites). Used when running the RSS scraper.
                   </p>

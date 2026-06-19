@@ -2,6 +2,7 @@ import { normalizeArticleForDetail } from './articleNavigation';
 import { getReactionMap } from './reactionsStorage';
 import { getBookmarkIds } from './bookmarksStorage';
 import { getRegisteredVote } from './articleVoteController';
+import { flushFeedScrollBeforeNavigate } from './feedScrollBridge';
 
 /**
  * Navigate immediately to /article/:id with whatever card data is available.
@@ -19,6 +20,8 @@ export function openArticleDetail(navigate, article) {
   const userReaction =
     getRegisteredVote(aid) ?? article?.userReaction ?? reactionMap[aid] ?? null;
   const isBookmarked = bookmarkIds.includes(aid) || Boolean(article?.isBookmarked);
+
+  flushFeedScrollBeforeNavigate();
 
   navigate(`/article/${encodeURIComponent(aid)}`, {
     state: {

@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE } from '../../config/api';
-import { fetchWithTimeout, MOBILE_API_TIMEOUT_MS } from '../../api/fetchWithTimeout';
+import { fetchWithTimeout, MOBILE_API_TIMEOUT_MS, BOOTSTRAP_TIMEOUT_MS } from '../../api/fetchWithTimeout';
 import { formatNetworkError } from '../networkError';
 import { emitAuthSessionEnded } from '../authSessionEvents';
 
@@ -136,7 +136,50 @@ export const loginWithFirebase = (idToken) =>
     body: JSON.stringify({ id_token: idToken }),
   });
 
+let refreshInFlight = null;
+
+/** Single-flight access token refresh — avoids parallel 401s invalidating the session. */
+async function refreshAccessTokenSingleFlight() {
+  if (refreshInFlight) return refreshInFlight;
+  const refresh = await AsyncStorage.getItem(REFRESH_KEY);
+  if (!refresh) return null;
+
+  refreshInFlight = (async () => {
+    try {
+      const refreshRes = await fetchWithTimeout(
+        `${API_BASE_URL}/api/auth/token/refresh/`,
+        {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify({ refresh }),
+        },
+        MOBILE_API_TIMEOUT_MS
+      );
+      if (!refreshRes.ok) {
+        await clearAuthSession();
+        emitAuthSessionEnded();
+        return null;
+      }
+      const payload = await refreshRes.json().catch(() => ({}));
+      if (!payload.access) {
+        await clearAuthSession();
+        emitAuthSessionEnded();
+        return null;
+      }
+      await AsyncStorage.setItem(ACCESS_KEY, payload.access);
+      return payload.access;
+    } catch {
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
 export const authRequest = async (path, options = {}) => {
+  const timeoutMs = options.timeoutMs ?? MOBILE_API_TIMEOUT_MS;
   const access = await getAccessToken();
   if (!access) {
     throw new Error('Please sign in to use this feature.');
@@ -152,7 +195,7 @@ export const authRequest = async (path, options = {}) => {
           'Content-Type': 'application/json',
         },
       },
-      MOBILE_API_TIMEOUT_MS
+      timeoutMs
     );
 
   let res;
@@ -162,44 +205,14 @@ export const authRequest = async (path, options = {}) => {
     throw new Error(formatNetworkError(err));
   }
   if (res.status === 401) {
-    const refresh = await AsyncStorage.getItem(REFRESH_KEY);
-    if (!refresh) {
-      await clearAuthSession();
-      emitAuthSessionEnded();
+    const newAccess = await refreshAccessTokenSingleFlight();
+    if (!newAccess) {
       throw new Error('Session expired. Please sign in again.');
     }
-    let refreshRes;
     try {
-      refreshRes = await fetchWithTimeout(
-        `${API_BASE_URL}/api/auth/token/refresh/`,
-        {
-          method: 'POST',
-          headers: jsonHeaders,
-          body: JSON.stringify({ refresh }),
-        },
-        MOBILE_API_TIMEOUT_MS
-      );
+      res = await doReq(newAccess);
     } catch (err) {
       throw new Error(formatNetworkError(err));
-    }
-    if (refreshRes.ok) {
-      const payload = await refreshRes.json().catch(() => ({}));
-      if (payload.access) {
-        await AsyncStorage.setItem(ACCESS_KEY, payload.access);
-        try {
-          res = await doReq(payload.access);
-        } catch (err) {
-          throw new Error(formatNetworkError(err));
-        }
-      } else {
-        await clearAuthSession();
-        emitAuthSessionEnded();
-        throw new Error('Session expired. Please sign in again.');
-      }
-    } else {
-      await clearAuthSession();
-      emitAuthSessionEnded();
-      throw new Error('Session expired. Please sign in again.');
     }
   }
   if (res.status === 401) {
@@ -224,7 +237,7 @@ export const getUserBootstrap = ({ limit = 50 } = {}) => {
   const params = new URLSearchParams({
     limit: String(Math.min(Math.max(Number(limit) || 50, 1), 50)),
   });
-  return authRequest(`/api/user/bootstrap/?${params}`);
+  return authRequest(`/api/user/bootstrap/?${params}`, { timeoutMs: BOOTSTRAP_TIMEOUT_MS });
 };
 
 export const chatWithBot = (message, conversationId = null) =>
@@ -297,3 +310,9 @@ export const removeBookmark = (articleId) =>
 export const listBookmarks = () => authRequest('/api/user/bookmarks/');
 export const getUserArticleDetail = (articleId) =>
   authRequest(`/api/user/articles/${encodeURIComponent(articleId)}/`);
+
+export const getArticlesBatch = (articleIds) =>
+  authRequest('/api/user/articles/batch/', {
+    method: 'POST',
+    body: JSON.stringify({ article_ids: articleIds }),
+  });

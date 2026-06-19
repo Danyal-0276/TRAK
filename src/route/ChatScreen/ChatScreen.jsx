@@ -461,7 +461,7 @@ const ChatScreen = () => {
                   {m.role === 'bot' ? <BotAvatar colors={colors} action={action} /> : null}
                   <View style={[styles.msgColumn, m.role === 'user' && styles.msgColumnUser]}>
                     {m.role === 'bot' ? (
-                      <View style={styles.botTextBlock}>
+                      <View style={[styles.botBubble, { backgroundColor: colors.surface, borderColor: colors.border }]}>
                         <Text style={[styles.botText, { color: colors.textPrimary }]}>{m.text}</Text>
                       </View>
                     ) : (
@@ -666,7 +666,15 @@ const styles = StyleSheet.create({
   msgColumn: { flex: 1, maxWidth: '100%' },
   msgColumnUser: { alignItems: 'flex-end', flex: 0, maxWidth: '86%' },
   botAvatar: { alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  botTextBlock: { flex: 1, paddingTop: 4, paddingRight: 8 },
+  botBubble: {
+    flex: 1,
+    borderRadius: 20,
+    borderBottomLeftRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    maxWidth: '92%',
+  },
   botText: { fontSize: 15, lineHeight: 24 },
   userBubble: {
     borderRadius: 20,

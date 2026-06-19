@@ -67,19 +67,24 @@ export function setAdminFeedbackCache(statusKey, payload) {
   return session.feedback[statusKey];
 }
 
+let persistTimer = null;
+
 async function persistAdminSessionCache() {
-  try {
-    await AsyncStorage.setItem(
-      ADMIN_SESSION_CACHE_KEY,
-      JSON.stringify({
-        overview: session.overview,
-        lists: session.lists,
-        feedback: session.feedback,
-      })
-    );
-  } catch {
-    // ignore storage failures
-  }
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(async () => {
+    try {
+      await AsyncStorage.setItem(
+        ADMIN_SESSION_CACHE_KEY,
+        JSON.stringify({
+          overview: session.overview,
+          lists: session.lists,
+          feedback: session.feedback,
+        })
+      );
+    } catch {
+      // ignore storage failures
+    }
+  }, 450);
 }
 
 export async function hydrateAdminFromStorage() {

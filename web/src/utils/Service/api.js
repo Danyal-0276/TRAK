@@ -49,6 +49,44 @@ migrateLegacyAuthKeys();
 export const getAccessToken = () => storage?.getItem(ACCESS_KEY) || null;
 export const getRefreshToken = () => storage?.getItem(REFRESH_KEY) || null;
 
+let refreshInFlight = null;
+
+/** Single-flight access token refresh — avoids parallel 401s invalidating the session. */
+export async function refreshAccessTokenSingleFlight() {
+  if (refreshInFlight) return refreshInFlight;
+  const refresh = getRefreshToken();
+  if (!refresh) return null;
+
+  refreshInFlight = (async () => {
+    try {
+      const refreshRes = await fetchWithTimeout(`${API_BASE_URL}/api/auth/token/refresh/`, {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify({ refresh }),
+      });
+      if (!refreshRes.ok) {
+        clearAuthTokens();
+        emitAuthSessionEnded();
+        return null;
+      }
+      const payload = await refreshRes.json().catch(() => ({}));
+      if (!payload.access) {
+        clearAuthTokens();
+        emitAuthSessionEnded();
+        return null;
+      }
+      storage?.setItem(ACCESS_KEY, payload.access);
+      return payload.access;
+    } catch {
+      return null;
+    } finally {
+      refreshInFlight = null;
+    }
+  })();
+
+  return refreshInFlight;
+}
+
 export const getCurrentUser = () => {
   const raw = storage?.getItem(USER_KEY);
   if (!raw) return null;
@@ -165,25 +203,9 @@ export const authRequest = async (path, options = {}) => {
     });
   let res = await doReq(getAccessToken());
   if (res.status === 401 && getRefreshToken()) {
-    const refreshRes = await fetchWithTimeout(`${API_BASE_URL}/api/auth/token/refresh/`, {
-      method: 'POST',
-      headers: jsonHeaders,
-      body: JSON.stringify({ refresh: getRefreshToken() }),
-    });
-    if (refreshRes.ok) {
-      const payload = await refreshRes.json().catch(() => ({}));
-      if (payload.access) {
-        storage?.setItem(ACCESS_KEY, payload.access);
-        res = await doReq(payload.access);
-      } else {
-        clearAuthTokens();
-        emitAuthSessionEnded();
-        throw new Error('Session expired. Please sign in again.');
-      }
-    } else {
-      clearAuthTokens();
-      emitAuthSessionEnded();
-      throw new Error('Session expired. Please sign in again.');
+    const next = await refreshAccessTokenSingleFlight();
+    if (next) {
+      res = await doReq(next);
     }
   }
   if (res.status === 401) {
@@ -282,10 +304,22 @@ export const removeBookmark = (articleId) =>
 
 export const listBookmarks = () => authRequest('/api/user/bookmarks/');
 export const getUserArticleDetail = (articleId) => authRequest(`/api/user/articles/${encodeURIComponent(articleId)}/`);
+export const getArticlesBatch = (articleIds) =>
+  authRequest('/api/user/articles/batch/', {
+    method: 'POST',
+    body: JSON.stringify({ article_ids: articleIds }),
+  });
+export const getAboutStats = () => authRequest('/api/user/about-stats/');
+export const getUserPreferences = () => authRequest('/api/user/preferences/');
+export const patchUserPreferences = (payload) =>
+  authRequest('/api/user/preferences/', { method: 'PATCH', body: JSON.stringify(payload) });
 
 export const getUserKeywordsFromServer = () => authRequest('/api/user/keywords/');
 
-export const fetchPlatformCategories = () => authRequest('/api/user/platform-categories/');
+export const fetchPlatformCategories = ({ includeCounts = true } = {}) => {
+  const suffix = includeCounts ? '' : '?include_counts=0';
+  return authRequest(`/api/user/platform-categories/${suffix}`);
+};
 
 export const submitArticleReport = (payload) =>
   submitUserFeedback({ ...payload, type: payload.type || 'article_report' });

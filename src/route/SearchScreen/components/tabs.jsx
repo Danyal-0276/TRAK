@@ -3,10 +3,25 @@ import { View, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import Text from '../../../components/ui/Text';
 
-/** Horizontal pill filters for Discover categories. */
-const Tabs = ({ categories, activeTab, onTabPress }) => {
+/** Horizontal category chip rail with optional count badges. */
+const Tabs = ({ categories, activeTab, onTabPress, countsByLabel = {}, loading = false }) => {
   const { theme } = useTheme();
   const { colors } = theme;
+
+  if (loading && (!categories || categories.length <= 1)) {
+    return (
+      <View style={styles.wrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+          {[1, 2, 3, 4, 5].map((i) => (
+            <View
+              key={i}
+              style={[styles.skeletonChip, { backgroundColor: colors.borderLight }]}
+            />
+          ))}
+        </ScrollView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.wrap}>
@@ -17,6 +32,8 @@ const Tabs = ({ categories, activeTab, onTabPress }) => {
       >
         {categories.map((cat) => {
           const isActive = activeTab === cat;
+          const count = countsByLabel?.[cat];
+          const showCount = typeof count === 'number' && count > 0 && cat !== 'All';
           return (
             <TouchableOpacity
               key={cat}
@@ -28,7 +45,7 @@ const Tabs = ({ categories, activeTab, onTabPress }) => {
                 },
               ]}
               onPress={() => onTabPress(cat)}
-              activeOpacity={0.8}
+              activeOpacity={0.85}
             >
               <Text
                 variant="body"
@@ -43,6 +60,27 @@ const Tabs = ({ categories, activeTab, onTabPress }) => {
               >
                 {cat}
               </Text>
+              {showCount ? (
+                <View
+                  style={[
+                    styles.countBadge,
+                    {
+                      backgroundColor: isActive ? 'rgba(255,255,255,0.22)' : `${colors.primary}18`,
+                    },
+                  ]}
+                >
+                  <Text
+                    variant="caption"
+                    style={{
+                      color: isActive ? colors.textInverse || '#fff' : colors.primary,
+                      fontWeight: '700',
+                      fontSize: 11,
+                    }}
+                  >
+                    {count > 99 ? '99+' : count}
+                  </Text>
+                </View>
+              ) : null}
             </TouchableOpacity>
           );
         })}
@@ -54,23 +92,40 @@ const Tabs = ({ categories, activeTab, onTabPress }) => {
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
-    paddingBottom: 8,
+    paddingBottom: 10,
   },
   row: {
     flexDirection: 'row',
     paddingHorizontal: 16,
     alignItems: 'center',
+    gap: 8,
   },
   pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingHorizontal: 14,
-    paddingVertical: 7,
+    paddingVertical: 8,
     borderRadius: 999,
     borderWidth: 1,
-    marginRight: 8,
+    gap: 6,
   },
   pillText: {
     fontSize: 13,
     letterSpacing: 0.1,
+  },
+  countBadge: {
+    minWidth: 22,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  skeletonChip: {
+    width: 88,
+    height: 34,
+    borderRadius: 999,
+    marginRight: 8,
   },
 });
 

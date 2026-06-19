@@ -1,19 +1,56 @@
-import React from 'react';
-import { useTheme } from '../../theme/ThemeContext';
-import { useResponsive } from '../../hooks/useResponsive';
-import { Heart, Newspaper, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { Heart, Newspaper, Users, Shield, Database } from 'lucide-react';
 import {
   ABOUT_META,
-  ABOUT_STATS,
   ABOUT_FEATURES,
   ABOUT_TEAM,
 } from './aboutContent';
+import { getAboutStats } from '../../utils/Service/api';
+import { formatDateTime } from '../../utils/formatDateTime';
+import { useTheme } from '../../theme/ThemeContext';
+import { useResponsive } from '../../hooks/useResponsive';
+import { useLanguage } from '../../context/LanguageContext';
 
 const AboutScreen = () => {
   const { theme } = useTheme();
   const { colors } = theme;
   const isDark = theme.mode === 'dark';
   const { isMobile } = useResponsive();
+  const { t } = useLanguage();
+  const navigate = useNavigate();
+  const [stats, setStats] = useState(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await getAboutStats();
+        if (!cancelled) setStats(data);
+      } catch {
+        if (!cancelled) setStats(null);
+      } finally {
+        if (!cancelled) setStatsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  const liveStats = [
+    {
+      label: t('about.articlesIndexed'),
+      value: statsLoading ? '…' : (stats?.article_count != null ? Number(stats.article_count).toLocaleString() : '—'),
+    },
+    {
+      label: t('about.trustedSources'),
+      value: statsLoading ? '…' : (stats?.source_count != null ? Number(stats.source_count).toLocaleString() : '—'),
+    },
+    {
+      label: t('about.categories'),
+      value: statsLoading ? '…' : (stats?.category_count != null ? String(stats.category_count) : '—'),
+    },
+  ];
 
   const backgroundColor = colors.background;
   const cardBackground = isDark ? colors.surfaceElevated : colors.surface;
@@ -149,7 +186,7 @@ const AboutScreen = () => {
             marginBottom: 32,
           }}
         >
-          {ABOUT_STATS.map((stat) => (
+          {liveStats.map((stat) => (
             <div
               key={stat.label}
               style={{
@@ -175,6 +212,30 @@ const AboutScreen = () => {
             </div>
           ))}
         </div>
+
+        <section style={{ marginBottom: 32 }}>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: textPrimary, margin: '0 0 12px' }}>
+            {t('about.missionTitle')}
+          </h2>
+          <p style={{ fontSize: 15, color: textSecondary, margin: 0, lineHeight: 1.65 }}>
+            {t('about.missionBody')}
+          </p>
+          {stats?.last_updated ? (
+            <p style={{ fontSize: 13, color: textSecondary, margin: '12px 0 0', opacity: 0.9 }}>
+              {t('about.lastUpdated')}: {formatDateTime(stats.last_updated)}
+            </p>
+          ) : null}
+        </section>
+
+        <section style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <Shield size={20} color={accent} />
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: textPrimary, margin: 0 }}>{t('about.trustTitle')}</h2>
+          </div>
+          <p style={{ fontSize: 15, color: textSecondary, margin: 0, lineHeight: 1.65 }}>
+            {t('about.trustBody')}
+          </p>
+        </section>
 
         {/* Features */}
         <section style={{ marginBottom: 36 }}>
@@ -216,6 +277,27 @@ const AboutScreen = () => {
                 </p>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section style={{ marginBottom: 32 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+            <Database size={20} color={accent} />
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: textPrimary, margin: 0 }}>{t('about.techTitle')}</h2>
+          </div>
+          <p style={{ fontSize: 14, color: textSecondary, margin: 0, lineHeight: 1.6 }}>
+            React · Django · MongoDB · Resend · Credibility ML pipeline
+          </p>
+          <div style={{ display: 'flex', gap: 12, marginTop: 14, flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => navigate('/privacy')} style={{ background: 'none', border: 'none', color: accent, cursor: 'pointer', fontWeight: 600 }}>
+              {t('sidebar.privacy')}
+            </button>
+            <button type="button" onClick={() => navigate('/terms')} style={{ background: 'none', border: 'none', color: accent, cursor: 'pointer', fontWeight: 600 }}>
+              {t('sidebar.terms')}
+            </button>
+            <button type="button" onClick={() => navigate('/help')} style={{ background: 'none', border: 'none', color: accent, cursor: 'pointer', fontWeight: 600 }}>
+              {t('sidebar.help')}
+            </button>
           </div>
         </section>
 

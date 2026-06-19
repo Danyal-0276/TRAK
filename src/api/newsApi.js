@@ -81,8 +81,9 @@ export async function submitArticleReport(payload) {
     return submitUserFeedback({ ...payload, type: payload.type || 'article_report' });
 }
 
-export async function fetchPlatformCategories() {
-    const res = await apiFetch(`${USER_PREFIX}/platform-categories/`, {}, API_BASE);
+export async function fetchPlatformCategories({ includeCounts = true } = {}) {
+    const suffix = includeCounts ? '' : '?include_counts=0';
+    const res = await apiFetch(`${USER_PREFIX}/platform-categories/${suffix}`, {}, API_BASE);
     if (!res.ok) {
         const t = await res.text();
         throw new Error(t || `Categories ${res.status}`);

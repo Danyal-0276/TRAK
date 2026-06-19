@@ -2,7 +2,8 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../../theme/ThemeContext';
 import { loadCategoryPage } from '../../utils/loadFeed';
-import { fetchPlatformCategories, removeBookmark, setReaction, addBookmark } from '../../utils/Service/api';
+import { fetchPlatformCategoriesCached, loadExploreCategoryTabsProgressive } from '../../utils/platformTaxonomy';
+import { removeBookmark, setReaction, addBookmark } from '../../utils/Service/api';
 import { setReactionForArticle } from '../../utils/reactionsStorage';
 import { NewsCard } from '../../components/NewsCard';
 import { MasonryFeed } from '../../components/MasonryFeed';
@@ -23,7 +24,7 @@ const POPULAR_CATEGORY_KEYS = new Set([
 
 const ARTICLES_PREVIEW_COUNT = 6;
 const INITIAL_VISIBLE_COUNT = 8;
-const PREVIEW_TIMEOUT_MS = 12000;
+const PREVIEW_TIMEOUT_MS = 45000;
 
 function loadCategoryPreviewPage(categoryKey) {
     return Promise.race([
@@ -49,22 +50,35 @@ const CategoriesScreen = () => {
     const [showMore, setShowMore] = useState(false);
     const [previewByKey, setPreviewByKey] = useState({});
     const [previewStatusByKey, setPreviewStatusByKey] = useState({});
+    const [countsLoading, setCountsLoading] = useState(true);
 
     const loadCategories = async () => {
         try {
             setLoading(true);
-            const plat = await fetchPlatformCategories().catch(() => ({
-                categories: [],
-                connections: [],
-                category_counts: {},
-            }));
-            const categoryList = buildCategoryList(plat.categories || [], plat.category_counts ?? {});
-            setCategories(categoryList);
+            setCountsLoading(true);
+            const applyList = (plat) => {
+                const categoryList = buildCategoryList(plat.categories || [], plat.category_counts ?? {});
+                setCategories(categoryList);
+            };
+
+            await loadExploreCategoryTabsProgressive(({ categories: platformCats, categoryCounts }) => {
+                applyList({ categories: platformCats, category_counts: categoryCounts });
+                setLoading(false);
+            }).then(({ categories: platformCats, categoryCounts }) => {
+                applyList({ categories: platformCats, category_counts: categoryCounts });
+            }).catch(async () => {
+                const plat = await fetchPlatformCategoriesCached({ includeCounts: false }).catch(() => ({
+                    categories: [],
+                    category_counts: {},
+                }));
+                applyList(plat);
+            });
         } catch (error) {
             console.error('Error loading categories:', error);
             setCategories([]);
         } finally {
             setLoading(false);
+            setCountsLoading(false);
         }
     };
 
@@ -102,6 +116,17 @@ const CategoriesScreen = () => {
             setPreviewStatusByKey((prev) => ({ ...prev, [categoryKey]: 'error' }));
         }
     }, [previewStatusByKey]);
+
+    const retryCounts = () => {
+        setCountsLoading(true);
+        fetchPlatformCategoriesCached({ includeCounts: true })
+            .then((plat) => {
+                const categoryList = buildCategoryList(plat.categories || [], plat.category_counts ?? {});
+                setCategories(categoryList);
+            })
+            .catch(() => {})
+            .finally(() => setCountsLoading(false));
+    };
 
     const retryPreview = (category) => {
         if (!category?.key) return;
@@ -245,7 +270,26 @@ const CategoriesScreen = () => {
                                 />
                             </div>
                             <span style={{ fontSize: 13, color: textSecondary }}>
-                                {categories.filter((c) => c.count > 0).length} categories with articles
+                                {countsLoading
+                                    ? 'Loading article counts…'
+                                    : `${categories.filter((c) => c.count > 0).length} categories with articles`}
+                                {!countsLoading && categories.every((c) => c.count === 0) ? (
+                                    <button
+                                        type="button"
+                                        onClick={retryCounts}
+                                        style={{
+                                            marginLeft: 8,
+                                            border: 'none',
+                                            background: 'transparent',
+                                            color: accentColor,
+                                            cursor: 'pointer',
+                                            fontSize: 13,
+                                            fontWeight: 600,
+                                        }}
+                                    >
+                                        Retry counts
+                                    </button>
+                                ) : null}
                             </span>
                         </div>
 
@@ -287,7 +331,7 @@ const CategoriesScreen = () => {
                                                 background: colors.backgroundSecondary,
                                                 padding: '3px 10px', borderRadius: 999, marginRight: 8,
                                             }}>
-                                                {category.count} {category.count === 1 ? 'article' : 'articles'}
+                                                {countsLoading && category.count === 0 ? '…' : category.count} {category.count === 1 ? 'article' : 'articles'}
                                             </span>
                                             {isExpanded
                                                 ? <ChevronUp size={18} color={textSecondary} />
@@ -306,7 +350,7 @@ const CategoriesScreen = () => {
                                                     <p style={{ margin: 0, fontSize: 14, color: textSecondary }}>
                                                         No articles in this category yet.
                                                     </p>
-                                                ) : previewFailed || previewArticles.length === 0 ? (
+                                                ) : previewStatus === 'error' ? (
                                                     <div>
                                                         <p style={{ margin: '0 0 12px', fontSize: 14, color: textSecondary }}>
                                                             Could not load preview. Open the full category page.

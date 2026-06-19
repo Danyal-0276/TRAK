@@ -75,6 +75,16 @@ const SignUpScreen = () => {
         try {
             const normalizedPhone = phone.trim().replace(/\D/g, '');
             const sessionUser = await register(email, password, confirmPassword, fullName, normalizedPhone);
+            if (sessionUser?.verification_required && sessionUser?.email_sent === false) {
+                setErrors((prev) => ({
+                    ...prev,
+                    email:
+                        sessionUser?.email_error === 'resend_domain_not_verified'
+                            ? 'We could not send the verification email. Email service is not fully configured yet.'
+                            : 'We could not send the verification email. Check your address and try again, or use Resend code.',
+                }));
+                return;
+            }
             if (sessionUser?.email_verified) {
                 navigate('/tag-selection', { state: { fromSignup: true } });
             } else {
