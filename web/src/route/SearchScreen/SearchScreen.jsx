@@ -96,10 +96,10 @@ function matchesExploreSearch(item, searchQuery) {
     return terms.every((term) => fields.some((text) => text.includes(term)));
 }
 
-function filterExploreResults(allNews, searchQuery, activeTab, { platformCategories = [], apiCategory = false } = {}) {
+function filterExploreResults(allNews, searchQuery, activeTab, { platformCategories = [] } = {}) {
     let results = [...allNews];
 
-    if (!apiCategory && activeTab && activeTab !== "All") {
+    if (activeTab && activeTab !== "All") {
         results = results.filter((item) => articleMatchesExploreTab(item, activeTab, platformCategories));
     }
 
@@ -212,7 +212,6 @@ const SearchScreen = () => {
         () =>
             filterExploreResults(allNews, searchQuery, activeTab, {
                 platformCategories,
-                apiCategory: Boolean(exploreTabToCategorySlug(activeTab, platformCategories)),
             }),
         [allNews, searchQuery, activeTab, platformCategories]
     );
@@ -403,9 +402,12 @@ const SearchScreen = () => {
     };
 
     const handleTabPress = useCallback((tab) => {
+        if (tab === activeTab) return;
+        forceReloadRef.current = true;
+        setLoading(true);
         setActiveTab(tab);
         window.scrollTo({ top: 0, behavior: "smooth" });
-    }, []);
+    }, [activeTab]);
 
     const handleClearFilters = () => {
         setActiveTab("All");
