@@ -3,21 +3,12 @@ import { USER_PREFIX } from '../config/api';
 import { apiFetch } from '../api/client';
 import { getCardSummaryText } from './articleNavigation';
 import { parseApiResponse } from './getUserFacingError';
+import { filterRealFeedItems } from './feedRealOnly';
 
 /** Mock feed only when explicitly enabled (never auto-on in dev — hides real API issues). */
 const allowMockFallback = import.meta.env.VITE_ALLOW_MOCK_FEED === 'true';
 
-/** Belt-and-suspenders: user feeds are Real-only (fake/suspicious are admin-only). */
-function filterRealFeedItems(items) {
-  return (items || []).filter((item) => {
-    const code = item.credibility?.label_code ?? item.credibilityLabel;
-    if (code === 0 || code === '0') return true;
-    const label = String(item.credibility?.label ?? item.credibilityLabel ?? '').toLowerCase();
-    if (label === 'real' || label.startsWith('real')) return true;
-    if (code == null && !label) return true;
-    return false;
-  });
-}
+export { filterRealFeedItems, isRealFeedArticle } from './feedRealOnly';
 
 export function mapApiItem(a) {
   const cred = a.credibility || {};
@@ -55,11 +46,10 @@ export function mapApiItem(a) {
     votes: likes,
     credibility: a.credibility,
     credibilityLabel: labelStr || null,
+    credibility_label: cred.label_code ?? a.credibility_label,
+    credibility_label_name: cred.label || a.credibility_label_name,
     isFake: labelStr === 'fake' || Number(cred.label_code) === 1,
-    isLowCredibility:
-      labelStr === 'fake' ||
-      labelStr === 'suspicious' ||
-      (typeof cred.max_prob === 'number' && cred.max_prob < 0.6),
+    isLowCredibility: labelStr === 'fake' || labelStr === 'suspicious' || Number(cred.label_code) === 2,
     like_count: likes,
     dislike_count: dislikes,
     upvotes: likes,

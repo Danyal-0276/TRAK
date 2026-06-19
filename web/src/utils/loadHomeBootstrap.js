@@ -1,5 +1,6 @@
 import { getUserBootstrap } from './Service/api';
 import { loadExplorePage, mapApiItem } from './loadFeed';
+import { filterRealFeedItems } from './feedRealOnly';
 import { mergeReactionRows } from './reactionsStorage';
 import { setUserKeywords } from './userKeywordsStorage';
 
@@ -13,7 +14,7 @@ export async function loadHomeBootstrap({ limit = 50 } = {}) {
   let feedMode = keywords.length > 0 ? 'feed' : 'explore';
 
   const feed = data?.feed || {};
-  let items = (feed.results || []).map(mapApiItem);
+  let items = filterRealFeedItems((feed.results || []).map(mapApiItem));
   let nextCursor = feed.next_cursor || '';
   let hasMore = Boolean(feed.has_more);
 

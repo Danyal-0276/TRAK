@@ -59,10 +59,7 @@ export function mapApiItem(a, userKeywords = []) {
         matchedKeywords,
         credibilityLabel: labelStr || null,
         isFake: labelStr === 'fake' || Number(cred.label_code) === 1,
-        isLowCredibility:
-            labelStr === 'fake' ||
-            labelStr === 'suspicious' ||
-            (typeof cred.max_prob === 'number' && cred.max_prob < 0.6),
+        isLowCredibility: labelStr === 'fake' || labelStr === 'suspicious' || Number(cred.label_code) === 2,
         votes: 0,
         credibility: a.credibility,
         topic_keywords: topicKeywords,

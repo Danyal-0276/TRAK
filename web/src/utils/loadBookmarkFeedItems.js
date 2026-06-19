@@ -1,5 +1,6 @@
 import { getUserArticleDetail, listBookmarks } from './Service/api';
 import { mapApiItem } from './loadFeed';
+import { filterRealFeedItems } from './feedRealOnly';
 import { getCardSummaryText } from './articleNavigation';
 import { resolveArticleImageUrl } from './articleMedia';
 import { getReactionMap } from './reactionsStorage';
@@ -60,5 +61,5 @@ export async function loadBookmarkFeedItems() {
     }),
   );
 
-  return detailed.filter(Boolean);
+  return filterRealFeedItems(detailed.filter(Boolean));
 }
