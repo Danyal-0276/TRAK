@@ -123,16 +123,19 @@ function buildExploreTabsFromPlatform(data) {
       const count = Number(apiCounts[slug] || 0);
       return { slug, label, count };
     })
-    .filter((row) => row.label && row.count > 0)
+    .filter((row) => row.label)
     .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label));
 
-  const countsByLabel = { All: rows.reduce((sum, row) => sum + row.count, 0) };
-  for (const row of rows) {
+  const withArticles = rows.filter((row) => row.count > 0);
+  const displayRows = withArticles.length > 0 ? withArticles : rows.slice(0, 12);
+
+  const countsByLabel = { All: withArticles.reduce((sum, row) => sum + row.count, 0) };
+  for (const row of displayRows) {
     countsByLabel[row.label] = row.count;
   }
 
   return {
-    tabs: ['All', ...rows.map((row) => row.label)],
+    tabs: ['All', ...displayRows.map((row) => row.label)],
     categories: cats,
     categoryCounts: apiCounts,
     countsByLabel,
@@ -163,12 +166,11 @@ export function exploreTabsFromCounts(counts = {}) {
   return ['All', ...tabs];
 }
 
-/** Explore/search category chips — only categories that have articles. */
+/** Explore/search category chips — show taxonomy categories even when counts are still loading. */
 export async function loadExploreCategoryTabs() {
   try {
     const data = await fetchPlatformCategories();
-    const built = buildExploreTabsFromPlatform(data);
-    if (built.tabs.length > 1) return built;
+    return buildExploreTabsFromPlatform(data);
   } catch {
     /* offline — use bundled defaults */
   }

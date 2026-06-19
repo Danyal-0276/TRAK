@@ -23,6 +23,16 @@ const POPULAR_CATEGORY_KEYS = new Set([
 
 const ARTICLES_PREVIEW_COUNT = 6;
 const INITIAL_VISIBLE_COUNT = 8;
+const PREVIEW_TIMEOUT_MS = 12000;
+
+function loadCategoryPreviewPage(categoryKey) {
+    return Promise.race([
+        loadCategoryPage({ category: categoryKey, limit: ARTICLES_PREVIEW_COUNT }),
+        new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Category preview timed out')), PREVIEW_TIMEOUT_MS);
+        }),
+    ]);
+}
 
 const CategoriesScreen = () => {
     const { theme } = useTheme();
@@ -69,17 +79,21 @@ const CategoriesScreen = () => {
 
         setPreviewStatusByKey((prev) => ({ ...prev, [categoryKey]: 'loading' }));
         try {
-            const page = await loadCategoryPage({ category: categoryKey, limit: ARTICLES_PREVIEW_COUNT });
+            const page = await loadCategoryPreviewPage(categoryKey);
             const items = page.items || [];
             const total = page.categoryTotal != null ? Number(page.categoryTotal) : null;
             setPreviewByKey((prev) => ({ ...prev, [categoryKey]: items }));
             setPreviewStatusByKey((prev) => ({
                 ...prev,
-                [categoryKey]: items.length ? 'loaded' : (total === 0 ? 'loaded' : 'error'),
+                [categoryKey]: 'loaded',
             }));
-            if (total != null && total > 0) {
+            if (total != null && total >= 0) {
                 setCategories((prev) => prev.map((row) => (
                     row.key === categoryKey ? { ...row, count: total } : row
+                )));
+            } else if (items.length > 0) {
+                setCategories((prev) => prev.map((row) => (
+                    row.key === categoryKey ? { ...row, count: Math.max(row.count, items.length) } : row
                 )));
             }
         } catch (e) {

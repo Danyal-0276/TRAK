@@ -636,8 +636,8 @@ const SearchScreen = () => {
                             {searchQuery.trim()
                                 ? "Try a different search term or clear filters"
                                 : activeTab !== "All"
-                                    ? `No articles found in ${activeTab} category`
-                                    : "No articles available"}
+                                    ? `No Real articles in ${activeTab} yet. Fake and suspicious items stay in the admin panel only.`
+                                    : "No Real articles available yet. Only verified Real news appears here — check the admin panel for Fake/Suspicious items, or run the pipeline to process pending articles."}
                         </p>
                         <div style={{
                             display: 'flex',
