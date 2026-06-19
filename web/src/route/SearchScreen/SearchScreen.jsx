@@ -48,6 +48,31 @@ function articleMatchesExploreTab(item, activeTab, platformCategories = []) {
     const label = String(item?.category || "").trim().toLowerCase();
     if (label === tabLower) return true;
     if (slug && label === slug.replace(/-/g, " ")) return true;
+    const blob = [
+        item?.title,
+        item?.excerpt,
+        item?.description,
+        item?.content,
+        item?.fullContent,
+        item?.source,
+        item?.primary_category,
+        ...(Array.isArray(item?.categories) ? item.categories : []),
+        ...(Array.isArray(item?.topic_keywords) ? item.topic_keywords : []),
+    ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+    if (blob.includes(tabLower)) return true;
+    const synonyms = {
+        sports: ["sport", "cricket", "football", "soccer", "nba", "olympic", "match", "league", "athlete"],
+        technology: ["tech", "software", "ai", "apple", "google", "startup", "computer", "digital", "cyber"],
+        environment: ["climate", "pollution", "carbon", "green", "energy", "renewable", "weather"],
+        business: ["business", "economy", "market", "stock", "finance", "trade", "company", "tariff"],
+        wildlife: ["wildlife", "animal", "species", "zoo", "nature", "forest", "marine", "bird"],
+    };
+    for (const word of synonyms[tabLower] || []) {
+        if (blob.includes(word)) return true;
+    }
     return false;
 }
 
@@ -71,10 +96,10 @@ function matchesExploreSearch(item, searchQuery) {
     return terms.every((term) => fields.some((text) => text.includes(term)));
 }
 
-function filterExploreResults(allNews, searchQuery, activeTab, { platformCategories = [] } = {}) {
+function filterExploreResults(allNews, searchQuery, activeTab, { platformCategories = [], apiCategory = false } = {}) {
     let results = [...allNews];
 
-    if (activeTab && activeTab !== "All") {
+    if (!apiCategory && activeTab && activeTab !== "All") {
         results = results.filter((item) => articleMatchesExploreTab(item, activeTab, platformCategories));
     }
 
@@ -184,7 +209,11 @@ const SearchScreen = () => {
     }, [visibleCategories, activeTab]);
 
     const filteredNews = useMemo(
-        () => filterExploreResults(allNews, searchQuery, activeTab, { platformCategories }),
+        () =>
+            filterExploreResults(allNews, searchQuery, activeTab, {
+                platformCategories,
+                apiCategory: Boolean(exploreTabToCategorySlug(activeTab, platformCategories)),
+            }),
         [allNews, searchQuery, activeTab, platformCategories]
     );
 

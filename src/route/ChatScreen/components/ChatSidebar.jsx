@@ -13,13 +13,15 @@ import {
 } from 'react-native';
 import { SquarePen, Trash2, X } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
-import { listChatConversations, deleteChatConversation } from '../../../utils/Service/api';
+import { deleteChatConversation } from '../../../utils/Service/api';
+import { fetchChatSidebarConversations, LEGACY_CONVERSATION_ID } from '../../../utils/fetchChatSidebarConversations';
 import { formatConversationWhen } from '../chatMessageUtils';
 
 const PANEL_WIDTH = Math.min(Dimensions.get('window').width * 0.84, 320);
 
 export default function ChatSidebar({
   visible,
+  preload = false,
   onClose,
   activeConversationId,
   onSelectConversation,
@@ -37,8 +39,8 @@ export default function ChatSidebar({
   const loadList = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await listChatConversations();
-      setConversations(Array.isArray(res.conversations) ? res.conversations : []);
+      const rows = await fetchChatSidebarConversations();
+      setConversations(rows);
     } catch {
       setConversations([]);
     } finally {
@@ -47,8 +49,8 @@ export default function ChatSidebar({
   }, []);
 
   useEffect(() => {
-    if (visible) loadList();
-  }, [visible, loadList, refreshKey]);
+    if (visible || preload) loadList();
+  }, [visible, preload, loadList, refreshKey]);
 
   useEffect(() => {
     Animated.parallel([
@@ -66,6 +68,11 @@ export default function ChatSidebar({
   }, [visible, slideAnim, fadeAnim]);
 
   const handleDelete = async (id) => {
+    if (id === LEGACY_CONVERSATION_ID) {
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      if (activeConversationId === id) onNewChat();
+      return;
+    }
     try {
       await deleteChatConversation(id);
       setConversations((prev) => prev.filter((c) => c.id !== id));

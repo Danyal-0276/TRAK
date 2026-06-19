@@ -19,7 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import { Bot, Send, SquarePen, PanelLeft, Sparkles } from 'lucide-react-native';
-import { chatWithBot, getChatConversation } from '../../utils/Service/api';
+import { chatWithBot, getChatConversation, getChatHistory } from '../../utils/Service/api';
 import { useTheme } from '../../theme/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { filledActionColors } from '../../theme/buttonContrast';
@@ -30,6 +30,7 @@ import AccentTabHeader from '../../components/ui/AccentTabHeader';
 import { CHAT_HERO_SUBTITLE, CHAT_HERO_TITLE, CHAT_PROMPTS } from './chatUiConstants';
 import ChatSidebar from './components/ChatSidebar';
 import { mapChatRelatedArticles, mapServerChatMessages } from './chatMessageUtils';
+import { LEGACY_CONVERSATION_ID } from '../../utils/fetchChatSidebarConversations';
 import { navigateToArticleDetail } from '../../utils/articleNavigation';
 
 const TAB_BAR_CLEARANCE = 100;
@@ -289,6 +290,18 @@ const ChatScreen = () => {
 
   const openConversation = useCallback(async (id) => {
     if (!id) return;
+    if (id === LEGACY_CONVERSATION_ID) {
+      try {
+        const hist = await getChatHistory();
+        setConversationId(null);
+        setMessages(mapServerChatMessages(hist?.messages || []));
+        setHistoryLoaded(true);
+        requestAnimationFrame(() => scrollToLatest());
+      } catch {
+        startNewChat();
+      }
+      return;
+    }
     try {
       const res = await getChatConversation(id);
       setConversationId(String(res.id || id));
@@ -532,6 +545,7 @@ const ChatScreen = () => {
 
       <ChatSidebar
         visible={sidebarOpen}
+        preload={bootstrapped && Boolean(user)}
         onClose={() => setSidebarOpen(false)}
         activeConversationId={conversationId}
         onSelectConversation={openConversation}
