@@ -30,7 +30,7 @@ import AccentTabHeader from '../../components/ui/AccentTabHeader';
 import { CHAT_HERO_SUBTITLE, CHAT_HERO_TITLE, CHAT_PROMPTS } from './chatUiConstants';
 import ChatSidebar from './components/ChatSidebar';
 import { mapChatRelatedArticles, mapServerChatMessages } from './chatMessageUtils';
-import { LEGACY_CONVERSATION_ID } from '../../utils/fetchChatSidebarConversations';
+import { parseLegacyConversationId, sessionsFromLegacyMessages } from '../../utils/fetchChatSidebarConversations';
 import { navigateToArticleDetail } from '../../utils/articleNavigation';
 
 const TAB_BAR_CLEARANCE = 100;
@@ -290,11 +290,17 @@ const ChatScreen = () => {
 
   const openConversation = useCallback(async (id) => {
     if (!id) return;
-    if (id === LEGACY_CONVERSATION_ID) {
+    const legacyRef = parseLegacyConversationId(id);
+    if (legacyRef.legacy) {
       try {
         const hist = await getChatHistory();
+        const allMessages = Array.isArray(hist?.messages) ? hist.messages : [];
+        const sessionMessages =
+          legacyRef.index === null
+            ? allMessages
+            : sessionsFromLegacyMessages(allMessages)[legacyRef.index] || [];
         setConversationId(null);
-        setMessages(mapServerChatMessages(hist?.messages || []));
+        setMessages(mapServerChatMessages(sessionMessages));
         setHistoryLoaded(true);
         requestAnimationFrame(() => scrollToLatest());
       } catch {

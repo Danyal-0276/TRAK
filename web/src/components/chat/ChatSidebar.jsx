@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { SquarePen, Trash2, X } from 'lucide-react';
 import { deleteChatConversation } from '../../utils/Service/api';
-import { fetchChatSidebarConversations, LEGACY_CONVERSATION_ID } from '../../utils/fetchChatSidebarConversations';
+import { fetchChatSidebarConversations, parseLegacyConversationId } from '../../utils/fetchChatSidebarConversations';
 import { formatConversationWhen } from './chatMessageUtils';
 
 export default function ChatSidebar({
@@ -35,7 +35,7 @@ export default function ChatSidebar({
 
   const handleDelete = async (id, e) => {
     e.stopPropagation();
-    if (id === LEGACY_CONVERSATION_ID) {
+    if (parseLegacyConversationId(id).legacy) {
       setConversations((prev) => prev.filter((c) => c.id !== id));
       if (activeConversationId === id) onNewChat();
       return;

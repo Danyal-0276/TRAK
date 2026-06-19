@@ -15,7 +15,7 @@ import { filledActionColors } from '../theme/buttonContrast';
 import { CHAT_ANIMATION_CSS, CHAT_HERO_SUBTITLE, CHAT_HERO_TITLE, CHAT_PROMPTS } from './chat/chatUiConstants';
 import ChatSidebar from './chat/ChatSidebar';
 import { mapServerChatMessages } from './chat/chatMessageUtils';
-import { LEGACY_CONVERSATION_ID } from '../utils/fetchChatSidebarConversations';
+import { parseLegacyConversationId, sessionsFromLegacyMessages } from '../utils/fetchChatSidebarConversations';
 
 function resolveTrakArticlePath(article) {
   if (!article) return null;
@@ -239,11 +239,17 @@ const ChatBotWidget = () => {
 
   const openConversation = useCallback(async (id) => {
     if (!id) return;
-    if (id === LEGACY_CONVERSATION_ID) {
+    const legacyRef = parseLegacyConversationId(id);
+    if (legacyRef.legacy) {
       try {
         const hist = await getChatHistory();
+        const allMessages = Array.isArray(hist?.messages) ? hist.messages : [];
+        const sessionMessages =
+          legacyRef.index === null
+            ? allMessages
+            : sessionsFromLegacyMessages(allMessages)[legacyRef.index] || [];
         setConversationId(null);
-        setMessages(mapServerChatMessages(hist?.messages || []));
+        setMessages(mapServerChatMessages(sessionMessages));
         setHistoryLoaded(true);
         scrollToLatest();
       } catch {
