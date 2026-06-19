@@ -43,14 +43,12 @@ const { width, height } = Dimensions.get('window');
 const PAGER_LAYOUT = { width };
 const AnimatedDiscoverScrollView = Animated.createAnimatedComponent(GHScrollView);
 
-function buildDiscoverNewsByTab(allNews, searchQuery, routes, activeTab, platformCategories = []) {
+function buildDiscoverNewsByTab(allNews, searchQuery, routes, platformCategories = []) {
   const apiSearch = Boolean(String(searchQuery || '').trim());
   const out = {};
   routes.forEach((route) => {
-    const slug = exploreTabToCategorySlug(route.key, platformCategories);
     out[route.key] = filterDiscoverNews(allNews, searchQuery, route.key, {
       apiSearch,
-      apiCategory: Boolean(slug) && route.key === activeTab,
       platformCategories,
     });
   });
@@ -96,9 +94,9 @@ const DISCOVER_TAB_SYNONYMS = {
   wildlife: ['wildlife', 'animal', 'species', 'zoo', 'nature', 'forest', 'marine', 'bird'],
 };
 
-function filterDiscoverNews(allNews, searchQuery, tabKey, { apiSearch = false, apiCategory = false, platformCategories = [] } = {}) {
+function filterDiscoverNews(allNews, searchQuery, tabKey, { apiSearch = false, platformCategories = [] } = {}) {
   let results = [...allNews];
-  if (!apiCategory && tabKey !== "All") {
+  if (tabKey !== "All") {
     results = results.filter((item) => itemMatchesDiscoverTab(item, tabKey, platformCategories));
   }
   if (apiSearch || !searchQuery || !searchQuery.trim()) return results;
@@ -386,7 +384,6 @@ const SearchScreen = ({ navigation }) => {
     () =>
       filterDiscoverNews(allNews, searchQuery, activeTab, {
         apiSearch: Boolean(searchQuery.trim()),
-        apiCategory: Boolean(exploreTabToCategorySlug(activeTab, platformCategories)),
         platformCategories,
       }),
     [allNews, searchQuery, activeTab, platformCategories]
@@ -541,12 +538,15 @@ const SearchScreen = ({ navigation }) => {
   };
 
   const handleTabPress = (category) => {
+    if (category === activeTab) return;
     setActiveTab(category);
+    setLoading(true);
+    loadFirstPage(searchQuery.trim(), category, { preferCache: false, refreshAux: true });
   };
 
   const discoverNewsByTab = useMemo(
-    () => buildDiscoverNewsByTab(allNews, searchQuery, discoverTabRoutes, activeTab, platformCategories),
-    [allNews, searchQuery, discoverTabRoutes, activeTab, platformCategories]
+    () => buildDiscoverNewsByTab(allNews, searchQuery, discoverTabRoutes, platformCategories),
+    [allNews, searchQuery, discoverTabRoutes, platformCategories]
   );
 
   const renderDiscoverScene = useCallback(
