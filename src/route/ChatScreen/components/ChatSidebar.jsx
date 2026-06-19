@@ -14,7 +14,7 @@ import {
 import { SquarePen, Trash2, X } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeContext';
 import { deleteChatConversation } from '../../../utils/Service/api';
-import { fetchChatSidebarConversations, LEGACY_CONVERSATION_ID } from '../../../utils/fetchChatSidebarConversations';
+import { fetchChatSidebarConversations, parseLegacyConversationId } from '../../../utils/fetchChatSidebarConversations';
 import { formatConversationWhen } from '../chatMessageUtils';
 
 const PANEL_WIDTH = Math.min(Dimensions.get('window').width * 0.84, 320);
@@ -68,7 +68,7 @@ export default function ChatSidebar({
   }, [visible, slideAnim, fadeAnim]);
 
   const handleDelete = async (id) => {
-    if (id === LEGACY_CONVERSATION_ID) {
+    if (parseLegacyConversationId(id).legacy) {
       setConversations((prev) => prev.filter((c) => c.id !== id));
       if (activeConversationId === id) onNewChat();
       return;
