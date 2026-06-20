@@ -114,14 +114,9 @@ export function useArticleInteractions({ articles = [], onArticlesPatch, autoSyn
 
       const { previousVote, newVote, changed } = toggleVoteRegistered(id, type);
       if (!changed) return;
-      setVotedItems((prev) => ({ ...prev, [id]: newVote }));
 
       const articleRow = articlesRef.current.find((n) => String(n.id) === id) || {};
       const optimistic = patchArticleVoteRow(articleRow, previousVote, newVote);
-
-      onArticlesPatch?.((prev) =>
-        (prev || []).map((n) => (String(n.id) !== id ? n : optimistic))
-      );
 
       setReactionForArticle(id, newVote).catch(() => {});
       emitArticleInteractionChange({
@@ -132,44 +127,32 @@ export function useArticleInteractions({ articles = [], onArticlesPatch, autoSyn
       });
 
       scheduleVotePersist(id, {
+        debounceMs: 80,
         persist: (articleId, apiValue) => setReaction(articleId, apiValue),
         onReconcile: (data, vote) => {
-          const likes = Number(data.like_count ?? 0);
-          const dislikes = Number(data.dislike_count ?? 0);
-          onArticlesPatch?.((prev) =>
-            (prev || []).map((n) =>
-              String(n.id) !== id
-                ? n
-                : {
-                    ...n,
-                    like_count: likes,
-                    dislike_count: dislikes,
-                    upvotes: likes,
-                    userReaction: vote,
-                  }
-            )
+          applyArticleInteractionPatch(
+            {
+              articleId: id,
+              userReaction: vote,
+              like_count: Number(data.like_count ?? 0),
+              dislike_count: Number(data.dislike_count ?? 0),
+            },
+            { setVotedItems, setBookmarkedItems, onArticlesPatch }
           );
-          emitArticleInteractionChange({
-            articleId: id,
-            userReaction: vote,
-            like_count: likes,
-            dislike_count: dislikes,
-          });
         },
         onRollback: (err, failedVote) => {
           setRegisteredVote(id, previousVote);
-          setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
           setReactionForArticle(id, previousVote || null).catch(() => {});
           const rollback = patchArticleVoteRow(optimistic, failedVote, previousVote);
-          onArticlesPatch?.((prev) =>
-            (prev || []).map((n) => (String(n.id) !== id ? n : rollback))
+          applyArticleInteractionPatch(
+            {
+              articleId: id,
+              userReaction: previousVote,
+              like_count: rollback.like_count,
+              dislike_count: rollback.dislike_count,
+            },
+            { setVotedItems, setBookmarkedItems, onArticlesPatch }
           );
-          emitArticleInteractionChange({
-            articleId: id,
-            userReaction: previousVote,
-            like_count: rollback.like_count,
-            dislike_count: rollback.dislike_count,
-          });
           feedback?.error?.(err?.message || 'Could not save reaction');
         },
       });

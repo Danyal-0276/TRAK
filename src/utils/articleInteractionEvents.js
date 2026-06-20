@@ -36,14 +36,23 @@ export function applyArticleInteractionPatch(
   if (!id) return;
 
   if (patch.userReaction !== undefined && setVotedItems) {
-    setVotedItems((prev) => ({ ...prev, [id]: patch.userReaction }));
+    setVotedItems((prev) => {
+      if (prev?.[id] === patch.userReaction) return prev;
+      return { ...prev, [id]: patch.userReaction };
+    });
   }
 
   if (patch.isBookmarked !== undefined && setBookmarkedItems) {
     setBookmarkedItems((prev) => {
       const next = new Set(prev);
-      if (patch.isBookmarked) next.add(id);
-      else next.delete(id);
+      const had = next.has(id);
+      if (patch.isBookmarked) {
+        if (had) return prev;
+        next.add(id);
+      } else {
+        if (!had) return prev;
+        next.delete(id);
+      }
       return next;
     });
   }
@@ -53,32 +62,65 @@ export function applyArticleInteractionPatch(
       const rows = prev || [];
       if (patch.isBookmarked && patch.article) {
         if (rows.some((n) => String(n.id) === id)) {
-          return rows.map((n) => {
+          let changed = false;
+          const next = rows.map((n) => {
             if (String(n.id) !== id) return n;
-            const next = { ...n, ...patch.article, isBookmarked: true };
-            if (patch.userReaction !== undefined) next.userReaction = patch.userReaction;
+            const row = { ...n, ...patch.article, isBookmarked: true };
+            if (patch.userReaction !== undefined) row.userReaction = patch.userReaction;
             if (patch.like_count !== undefined) {
-              next.like_count = patch.like_count;
-              next.upvotes = patch.like_count;
+              row.like_count = patch.like_count;
+              row.upvotes = patch.like_count;
             }
-            if (patch.dislike_count !== undefined) next.dislike_count = patch.dislike_count;
-            return next;
+            if (patch.dislike_count !== undefined) row.dislike_count = patch.dislike_count;
+            if (
+              row.userReaction === n.userReaction &&
+              !!row.isBookmarked === !!n.isBookmarked &&
+              Number(row.like_count ?? row.upvotes ?? 0) === Number(n.like_count ?? n.upvotes ?? 0) &&
+              Number(row.dislike_count ?? 0) === Number(n.dislike_count ?? 0)
+            ) {
+              return n;
+            }
+            changed = true;
+            return row;
           });
+          return changed ? next : rows;
         }
         return [{ ...patch.article, isBookmarked: true }, ...rows];
       }
-      return rows.map((n) => {
+
+      let changed = false;
+      const next = rows.map((n) => {
         if (String(n.id) !== id) return n;
-        const next = { ...n };
-        if (patch.userReaction !== undefined) next.userReaction = patch.userReaction;
-        if (patch.isBookmarked !== undefined) next.isBookmarked = patch.isBookmarked;
-        if (patch.like_count !== undefined) {
-          next.like_count = patch.like_count;
-          next.upvotes = patch.like_count;
+        const row = { ...n };
+        let rowChanged = false;
+        if (patch.userReaction !== undefined && row.userReaction !== patch.userReaction) {
+          row.userReaction = patch.userReaction;
+          rowChanged = true;
         }
-        if (patch.dislike_count !== undefined) next.dislike_count = patch.dislike_count;
-        return next;
+        if (patch.isBookmarked !== undefined && !!row.isBookmarked !== !!patch.isBookmarked) {
+          row.isBookmarked = patch.isBookmarked;
+          rowChanged = true;
+        }
+        if (
+          patch.like_count !== undefined &&
+          Number(row.like_count ?? row.upvotes ?? 0) !== Number(patch.like_count)
+        ) {
+          row.like_count = patch.like_count;
+          row.upvotes = patch.like_count;
+          rowChanged = true;
+        }
+        if (
+          patch.dislike_count !== undefined &&
+          Number(row.dislike_count ?? 0) !== Number(patch.dislike_count)
+        ) {
+          row.dislike_count = patch.dislike_count;
+          rowChanged = true;
+        }
+        if (!rowChanged) return n;
+        changed = true;
+        return row;
       });
+      return changed ? next : rows;
     });
   }
 }

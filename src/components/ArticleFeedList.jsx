@@ -128,6 +128,10 @@ function ArticleFeedList({
       refreshControl={refreshControl}
       onScroll={onScroll}
       scrollEventThrottle={scrollEventThrottle}
+      maintainVisibleContentPosition={
+        Platform.OS === 'android' ? { minIndexForVisible: 0, autoscrollToTopThreshold: 100 } : undefined
+      }
+      nestedScrollEnabled
       {...ARTICLE_LIST_PERF}
       {...rest}
     />

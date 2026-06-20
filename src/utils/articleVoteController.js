@@ -61,7 +61,7 @@ export function getRegisteredCounts(articleId) {
 /**
  * Debounce API persistence; always sends the latest registered vote for the article.
  */
-export function scheduleVotePersist(articleId, { debounceMs = 280, persist, onReconcile, onRollback } = {}) {
+export function scheduleVotePersist(articleId, { debounceMs = 80, persist, onReconcile, onRollback } = {}) {
   const id = String(articleId || '').trim();
   if (!id || typeof persist !== 'function') return;
 

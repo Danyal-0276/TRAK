@@ -142,7 +142,7 @@ export default function SettingsScreen({ navigation, route }) {
           <SettingsRow
             icon={<Tag size={ICON_SIZE} color={iconColor} strokeWidth={2.25} />}
             label="Manage categories"
-            subtitle="Topics you follow"
+            subtitle="Select or update topics you follow"
             onPress={() => openSettingsScreen('SettingsTagSelection', { fromSettings: true })}
           />
           <SettingsRow

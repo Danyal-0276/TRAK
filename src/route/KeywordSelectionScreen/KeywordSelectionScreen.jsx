@@ -367,7 +367,7 @@ const KeywordSelectionScreen = ({ navigation, route }) => {
                         </TextComponent>
                         <TextComponent variant="body" color={colors.textSecondary} style={styles.subtitle}>
                             {fromSettings
-                                ? 'Update your extra keywords. Category tags are managed on the previous step.'
+                                ? 'Add extra search terms. Category preferences are saved separately under Manage categories.'
                                 : 'Add specific keywords you want to follow for more personalized news content'}
                         </TextComponent>
                     </Animated.View>

@@ -6,12 +6,22 @@ import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator } from 'rea
 import { useTheme } from '../../../theme/ThemeContext';
 import { filledActionColors } from '../../../theme/buttonContrast';
 
-export function ContinueButton({ onPress, selectedCount, loading = false, labelPrefix = 'Continue' }) {
+export function ContinueButton({
+    onPress,
+    selectedCount,
+    loading = false,
+    labelPrefix = 'Continue',
+    allowEmpty = false,
+}) {
     const { theme } = useTheme();
     const { colors } = theme;
     const isDark = theme.mode === 'dark';
     const action = filledActionColors(colors, isDark);
-    const isDisabled = selectedCount === 0 || loading;
+    const isDisabled = (!allowEmpty && selectedCount === 0) || loading;
+    const buttonLabel =
+        allowEmpty && selectedCount === 0
+            ? labelPrefix
+            : `${labelPrefix} (${selectedCount})`;
     
     return (
         <View style={styles.buttonContainer}>
@@ -41,7 +51,7 @@ export function ContinueButton({ onPress, selectedCount, loading = false, labelP
                     </View>
                 ) : (
                     <Text style={[styles.continueButtonText, { color: action.foreground }]}>
-                        {labelPrefix} ({selectedCount})
+                        {buttonLabel}
                     </Text>
                 )}
             </TouchableOpacity>

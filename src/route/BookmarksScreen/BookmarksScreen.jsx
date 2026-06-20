@@ -24,10 +24,12 @@ import {
     saveBookmarkTabCache,
 } from '../../utils/feedSessionCache';
 import { patchArticleVoteRow } from '../../utils/reactionVote';
+import { setReactionForArticle } from '../../utils/reactionsStorage';
 import {
     subscribeArticleInteractionChange,
     applyArticleInteractionPatch,
     applyBookmarkListPatch,
+    emitArticleInteractionChange,
 } from '../../utils/articleInteractionEvents';
 import {
     toggleVoteRegistered,
@@ -126,29 +128,40 @@ const BookmarksScreen = ({ navigation }) => {
         const articleRow = newsData.find((n) => String(n.id) === id) || {};
         const optimistic = patchArticleVoteRow(articleRow, previousVote, newVote);
 
-        setVotedItems((prev) => ({ ...prev, [id]: newVote }));
-        setNewsData((prev) =>
-            prev.map((n) => (String(n.id) !== id ? n : optimistic))
-        );
+        setReactionForArticle(id, newVote).catch(() => {});
+        emitArticleInteractionChange({
+            articleId: id,
+            userReaction: newVote,
+            like_count: optimistic.like_count,
+            dislike_count: optimistic.dislike_count,
+        });
 
         scheduleVotePersist(id, {
+            debounceMs: 80,
             persist: (articleId, apiValue) => setReaction(articleId, apiValue),
             onReconcile: (data, vote) => {
-                const likes = Number(data.like_count ?? 0);
-                const dislikes = Number(data.dislike_count ?? 0);
-                setNewsData((prev) =>
-                    prev.map((n) =>
-                        String(n.id) !== id
-                            ? n
-                            : { ...n, like_count: likes, dislike_count: dislikes, upvotes: likes, userReaction: vote }
-                    )
+                applyArticleInteractionPatch(
+                    {
+                        articleId: id,
+                        userReaction: vote,
+                        like_count: Number(data.like_count ?? 0),
+                        dislike_count: Number(data.dislike_count ?? 0),
+                    },
+                    { setVotedItems, setBookmarkedItems, onArticlesPatch: setNewsData }
                 );
             },
             onRollback: () => {
                 setRegisteredVote(id, previousVote);
-                setVotedItems((prev) => ({ ...prev, [id]: previousVote }));
-                setNewsData((prev) =>
-                    prev.map((n) => (String(n.id) !== id ? n : patchArticleVoteRow(optimistic, newVote, previousVote)))
+                setReactionForArticle(id, previousVote || null).catch(() => {});
+                const rollback = patchArticleVoteRow(optimistic, newVote, previousVote);
+                applyArticleInteractionPatch(
+                    {
+                        articleId: id,
+                        userReaction: previousVote,
+                        like_count: rollback.like_count,
+                        dislike_count: rollback.dislike_count,
+                    },
+                    { setVotedItems, setBookmarkedItems, onArticlesPatch: setNewsData }
                 );
             },
         });

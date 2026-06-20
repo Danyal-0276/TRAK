@@ -15,15 +15,19 @@ import { ContinueButton } from './components/ContinueButton';
 import { newsTagsWithSubcategories } from './constants/newsCategories';
 import { loadTagsWithSubcategories, resolveSavedInterestSelections } from '../../utils/platformTaxonomy';
 import { useStackBackHandler } from '../../hooks/useStackBackHandler';
-import { isSettingsFlowRoute } from '../../navigation/appStackNavigation';
+import { goBackOrReturnToTab, isSettingsFlowRoute } from '../../navigation/appStackNavigation';
 import { useTheme } from '../../theme/ThemeContext';
 import TextComponent from '../../components/ui/Text';
-import { loadUserKeywords } from '../../utils/userKeywordsStorage';
+import { loadUserKeywords, setUserKeywords, invalidateUserKeywordsCache } from '../../utils/userKeywordsStorage';
+import { trackKeywords } from '../../api/newsApi';
+import { getAccessToken } from '../../api/client';
+import { useFeedback } from '../../components/ui/FeedbackProvider';
 
 const { width, height } = Dimensions.get('window');
 
 const TagSelectionScreen = ({ navigation, route }) => {
     const { theme } = useTheme();
+    const { success, error: notifyError } = useFeedback();
     const { colors } = theme;
     const [selectedTags, setSelectedTags] = useState([]);
     const [expandedMainTags, setExpandedMainTags] = useState([]);
@@ -245,18 +249,47 @@ const TagSelectionScreen = ({ navigation, route }) => {
         });
     };
 
-    // Navigate to next screen with selected tags
+    const saveSettingsCategories = async () => {
+        setLoading(true);
+        try {
+            const saved = savedKeywordsRef.current ?? (await loadUserKeywords({ force: true }));
+            const { customKeywords } = resolveSavedInterestSelections(saved, tagsMap, []);
+            const categoryTags = selectedTags
+                .map((t) => String(t || '').trim().toLowerCase())
+                .filter(Boolean);
+            const merged = [...customKeywords, ...categoryTags].filter(
+                (k, idx, arr) => arr.indexOf(k) === idx
+            );
+
+            await setUserKeywords(merged);
+            invalidateUserKeywordsCache();
+            savedKeywordsRef.current = merged;
+
+            const token = await getAccessToken();
+            if (token) {
+                await trackKeywords(merged);
+            }
+
+            success('Categories saved.');
+            goBackOrReturnToTab(navigation, returnTab);
+        } catch (err) {
+            notifyError(err?.message || 'Failed to save categories.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     const handleContinue = async () => {
+        if (settingsFlow) {
+            await saveSettingsCategories();
+            return;
+        }
         if (selectedTags.length === 0) {
             return;
         }
         setLoading(true);
         try {
-            const keywordScreen =
-                fromSettings && route?.name === 'SettingsTagSelection'
-                    ? 'SettingsKeywordSelection'
-                    : 'KeywordSelection';
-            navigation.push(keywordScreen, { selectedTags, fromSettings, fromSignup });
+            navigation.push('KeywordSelection', { selectedTags, fromSettings, fromSignup });
         } catch (error) {
             console.error('Error:', error);
         } finally {
@@ -400,7 +433,7 @@ const TagSelectionScreen = ({ navigation, route }) => {
                         </TextComponent>
                         <TextComponent variant="body" color={colors.textSecondary} style={styles.subtitle}>
                             {fromSettings
-                                ? 'Edit your category preferences. Next, you can review custom keywords.'
+                                ? 'Choose topics for your feed. Custom keywords are managed separately in Settings.'
                                 : "Select news categories you're interested in to personalize your feed"}
                         </TextComponent>
                     </Animated.View>
@@ -528,7 +561,8 @@ const TagSelectionScreen = ({ navigation, route }) => {
                             onPress={handleContinue}
                             selectedCount={selectedTags.length}
                             loading={loading}
-                            labelPrefix={fromSettings ? 'Next' : 'Continue'}
+                            labelPrefix={fromSettings ? 'Save' : 'Continue'}
+                            allowEmpty={settingsFlow}
                         />
                     </Animated.View>
                 </Animated.View>
